@@ -19,8 +19,14 @@ def normalise_ticker(raw: str) -> str:
     # V10.4 does not blindly append .AX because bare US symbols must work.
     return t
 
-def detect_market(ticker: str, info: dict | None = None) -> dict:
-    info = info or {}
+def detect_market(ticker: str, info=None) -> dict:
+    # yfinance can return dict-like objects, None, or fail upstream.
+    # Never allow market detection to crash the dashboard.
+    if not isinstance(info, dict):
+        try:
+            info = dict(info) if info is not None and hasattr(info, "items") else {}
+        except Exception:
+            info = {}
     exchange = str(info.get("exchange") or info.get("fullExchangeName") or "").upper()
     quote_type = str(info.get("quoteType") or "").upper()
     if ticker.endswith(".AX") or "ASX" in exchange or "AUSTRAL" in exchange:
@@ -45,16 +51,25 @@ def detect_market(ticker: str, info: dict | None = None) -> dict:
     }
 
 def resolve_bare_ticker(raw: str) -> str:
-    """Prefer an exact US symbol; fall back to ASX suffix for bare symbols."""
+    """Resolve bare symbols without assuming they are ASX.
+
+    Explicit .AX remains ASX. Bare symbols are first tested as US/global Yahoo
+    symbols (KO, AAPL, JPM, etc). If no history exists, then try .AX.
+    """
     t = normalise_ticker(raw)
     if not t or "." in t or t.startswith("^") or "/" in t or "=" in t:
         return t
     try:
-        i = yf.Ticker(t).fast_info
-        # Accessing last_price forces resolution in current yfinance versions.
-        p = i.get("last_price")
-        if p is not None:
+        h = yf.Ticker(t).history(period="5d", interval="1d", auto_adjust=True)
+        if h is not None and not h.empty:
             return t
     except Exception:
         pass
-    return t + ".AX"
+    try:
+        ax = t + ".AX"
+        h = yf.Ticker(ax).history(period="5d", interval="1d", auto_adjust=True)
+        if h is not None and not h.empty:
+            return ax
+    except Exception:
+        pass
+    return t

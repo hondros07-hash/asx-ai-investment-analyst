@@ -51,11 +51,15 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.5 • ASX + NASDAQ + NYSE • line + candlestick charting")
+st.caption("V10.5.1 • ASX + NASDAQ + NYSE • ticker-resolution hotfix")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
-    market_meta = detect_market(ticker, info)
+    try:
+        _market_info = info if isinstance(info, dict) else {}
+    except Exception:
+        _market_info = {}
+    market_meta = detect_market(ticker, _market_info)
     ex1,ex2,ex3,ex4=st.columns(4)
     ex1.metric("Market", market_meta["market"])
     ex2.metric("Exchange", market_meta["exchange"])
