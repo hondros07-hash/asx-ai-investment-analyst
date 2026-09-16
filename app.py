@@ -621,7 +621,66 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Company Command Centre","Before I Invest","Monitor My Thesis","Thesis Scorecard","Catalyst Calendar","Strategy Builder","Risk Centre","Portfolio Intelligence","Alerts","Workspace Settings","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+NAV_GROUPS = {
+    "Home": ["Dashboard"],
+    "Research": ["Markets","Company Command Centre","Before I Invest","Monitor My Thesis"],
+    "Portfolio": ["Portfolio"],
+    "Trading": ["Trade Centre"],
+    "Tools": ["Research Tools"],
+    "System": ["Settings"],
+}
+
+PRIMARY_NAV = ["Home","Markets","Company Command Centre","Before I Invest",
+               "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
+
+primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2)
+
+SUBPAGES = {
+    "Company Command Centre": ["Overview","Fundamentals","Valuation","Technical","Announcements & Reports",
+                               "News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
+    "Portfolio": ["Portfolio Overview","Portfolio Intelligence","Risk Centre","Watchlist","Paper Portfolio"],
+    "Trade Centre": ["Trade Ticket","Orders","Strategy Builder"],
+    "Research Tools": ["Research Report","Investment Committee","Evidence & Thesis","Model Lab"],
+    "Settings": ["Workspace Settings","Data & Production","Broker Connections"],
+}
+
+# Map the simplified navigation back to the existing engines. No analytical page is deleted.
+if primary == "Home":
+    page = "Dashboard"
+elif primary in ["Markets","Before I Invest","Monitor My Thesis"]:
+    page = primary
+elif primary in SUBPAGES:
+    sub = st.sidebar.selectbox("Inside this workspace", SUBPAGES[primary])
+    PAGE_MAP = {
+        ("Company Command Centre","Overview"):"Company Command Centre",
+        ("Company Command Centre","Fundamentals"):"Fundamentals",
+        ("Company Command Centre","Valuation"):"Valuation",
+        ("Company Command Centre","Technical"):"Technical",
+        ("Company Command Centre","Announcements & Reports"):"Announcements & Reports",
+        ("Company Command Centre","News & Events"):"News & Events",
+        ("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",
+        ("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",
+        ("Company Command Centre","Quant"):"Quant",
+        ("Company Command Centre","Forecasts"):"Forecasts",
+        ("Portfolio","Portfolio Overview"):"Portfolio",
+        ("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",
+        ("Portfolio","Risk Centre"):"Risk Centre",
+        ("Portfolio","Watchlist"):"Watchlist",
+        ("Portfolio","Paper Portfolio"):"Paper Portfolio",
+        ("Trade Centre","Trade Ticket"):"Trade Centre",
+        ("Trade Centre","Orders"):"Orders",
+        ("Trade Centre","Strategy Builder"):"Strategy Builder",
+        ("Research Tools","Research Report"):"Research Report",
+        ("Research Tools","Investment Committee"):"Investment Committee",
+        ("Research Tools","Evidence & Thesis"):"Evidence & Thesis",
+        ("Research Tools","Model Lab"):"Model Lab",
+        ("Settings","Workspace Settings"):"Workspace Settings",
+        ("Settings","Data & Production"):"Data & Production",
+        ("Settings","Broker Connections"):"Broker Connections",
+    }
+    page = PAGE_MAP[(primary,sub)]
+else:
+    page = primary
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -631,7 +690,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V17 • Market Investment Analyst • decision brief + thesis monitor")
+st.caption("V17.1 • Market Investment Analyst • simplified workflow navigation")
 
 if page=="Markets":
     st.header("Global Market Terminal")
