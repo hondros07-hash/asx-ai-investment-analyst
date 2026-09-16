@@ -29,6 +29,19 @@ import json
 
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
+st.markdown("""
+<style>
+/* V18.2.1 — text metric cards: allow long labels such as Financial Services to fit */
+.mia-text-metric-value {
+    font-size: clamp(1.15rem, 1.65vw, 1.65rem) !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 st.markdown('''
 <style>
@@ -1232,7 +1245,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.2 • Market Investment Analyst • forecast + analyst consensus")
+st.caption("V18.2.1 • Market Investment Analyst • sector card layout fix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1423,7 +1436,8 @@ elif page=="Dashboard":
     cls=classification(ticker,meta)
     bm_ticker,bm_name=default_benchmark(ticker,meta)
     pc1,pc2,pc3=st.columns(3)
-    metric_box(pc1, "Sector",cls["sector"])
+    with pc1:
+            st.markdown(f"""<div class="mia-text-metric-value">{str(cls["sector"]) if cls["sector"] else "—"}</div>""", unsafe_allow_html=True)
     metric_box(pc2, "Industry",cls["industry"])
     metric_box(pc3, "Market benchmark",bm_name)
 
