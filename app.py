@@ -21,6 +21,10 @@ from market_terminal import td_catalog, commodity_catalog, fallback_catalog, liv
 from security_search import search_securities, resolve_listing, identity
 from announcement_engine import announcements, fetch_document, extract_text, evidence_summary
 
+import sqlite3
+import uuid
+from datetime import datetime, timezone
+
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
 st.markdown("""
@@ -120,7 +124,10 @@ METRIC_HELP = {
     "Annualised volatility": "Historical variability of daily returns scaled to a 252-trading-day year. Higher values indicate larger historical price fluctuations.",
     "Max drawdown": "The largest historical peak-to-trough decline in the selected price history.",
     "Sharpe (0% RF)": "Annualised historical return divided by annualised volatility, using a 0% risk-free rate in this screen. It is a risk-adjusted performance measure, not a forecast.",
-    "12M momentum": "Price performance over approximately the previous 252 trading sessions.",
+     "12M momentum": "Price performance over approximately the previous 252 trading sessions.",
+    "Paper cash": "Simulated cash available in the V15 paper-trading account. It is not connected to a bank or broker.",
+    "Paper shares held": "Number of simulated shares currently held for the selected ticker.",
+    "Paper account value": "Simulated cash plus the latest estimated market value of all paper positions.",
 }
 def metric_box(target, label, value, delta=None, **kwargs):
     """Render a Streamlit metric card with contextual hover help."""
@@ -282,6 +289,105 @@ def combined_technical_reading(selected,t,px):
     parts.append("Do not count correlated indicators as independent confirmation. RSI, Stochastic, Williams %R and CCI overlap; moving averages and MACD also share price-trend information. A more balanced combination uses different families: trend + momentum + volume/flow + volatility/strength.")
     return " ".join(parts)
 
+
+# ---------------- V15 Paper Trading + Order Management ----------------
+PAPER_DB="paper_trading.db"
+
+def paper_db():
+    con=sqlite3.connect(PAPER_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS paper_orders(
+        id TEXT PRIMARY KEY, created_at TEXT, ticker TEXT, side TEXT, order_type TEXT,
+        quantity REAL, limit_price REAL, stop_price REAL, tif TEXT, status TEXT,
+        reference_price REAL, fill_price REAL, estimated_value REAL, notes TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS paper_positions(
+        ticker TEXT PRIMARY KEY, quantity REAL, avg_cost REAL, updated_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS paper_cash(
+        id INTEGER PRIMARY KEY CHECK(id=1), balance REAL)""")
+    con.execute("INSERT OR IGNORE INTO paper_cash(id,balance) VALUES(1,100000.0)")
+    con.commit()
+    return con
+
+def paper_cash_balance():
+    con=paper_db(); x=con.execute("SELECT balance FROM paper_cash WHERE id=1").fetchone(); con.close()
+    return float(x[0] if x else 0)
+
+def paper_orders_df():
+    con=paper_db()
+    df=pd.read_sql_query("SELECT * FROM paper_orders ORDER BY created_at DESC",con)
+    con.close(); return df
+
+def paper_positions_df():
+    con=paper_db()
+    df=pd.read_sql_query("SELECT * FROM paper_positions ORDER BY ticker",con)
+    con.close(); return df
+
+def estimate_order(side,qty,price):
+    gross=max(float(qty),0)*max(float(price),0)
+    # Simulator assumption only, deliberately not presented as broker pricing.
+    sim_cost=max(3.0,gross*0.0005) if gross else 0.0
+    return gross,sim_cost
+
+def submit_paper_order(ticker,side,order_type,qty,reference_price,limit_price=None,stop_price=None,tif="DAY",notes=""):
+    qty=float(qty); reference_price=float(reference_price)
+    if qty<=0: return False,"Quantity must be greater than zero."
+    if reference_price<=0: return False,"A valid reference price is required."
+    if order_type=="Limit" and (not limit_price or float(limit_price)<=0): return False,"Enter a valid limit price."
+    if order_type in {"Stop","Stop Limit"} and (not stop_price or float(stop_price)<=0): return False,"Enter a valid stop price."
+    if order_type=="Stop Limit" and (not limit_price or float(limit_price)<=0): return False,"Enter a valid limit price."
+
+    # V15 paper engine fills market orders immediately; conditional orders remain OPEN.
+    fill = reference_price if order_type=="Market" else None
+    status="FILLED" if fill else "OPEN"
+    gross,_=estimate_order(side,qty,reference_price)
+    oid=str(uuid.uuid4())[:8].upper()
+    now=datetime.now(timezone.utc).isoformat()
+    con=paper_db()
+    try:
+        if status=="FILLED":
+            cash=float(con.execute("SELECT balance FROM paper_cash WHERE id=1").fetchone()[0])
+            if side=="Buy":
+                if gross>cash: return False,f"Insufficient paper cash. Required ${gross:,.2f}; available ${cash:,.2f}."
+                con.execute("UPDATE paper_cash SET balance=? WHERE id=1",(cash-gross,))
+                row=con.execute("SELECT quantity,avg_cost FROM paper_positions WHERE ticker=?",(ticker,)).fetchone()
+                oq,oc=(row if row else (0.0,0.0))
+                nq=oq+qty; navg=((oq*oc)+(qty*fill))/nq
+                con.execute("""INSERT INTO paper_positions(ticker,quantity,avg_cost,updated_at) VALUES(?,?,?,?)
+                               ON CONFLICT(ticker) DO UPDATE SET quantity=excluded.quantity,avg_cost=excluded.avg_cost,updated_at=excluded.updated_at""",
+                            (ticker,nq,navg,now))
+            else:
+                row=con.execute("SELECT quantity,avg_cost FROM paper_positions WHERE ticker=?",(ticker,)).fetchone()
+                oq,oc=(row if row else (0.0,0.0))
+                if qty>oq: return False,f"Paper position only contains {oq:g} shares; short selling is disabled in V15."
+                nq=oq-qty
+                con.execute("UPDATE paper_cash SET balance=? WHERE id=1",(cash+qty*fill,))
+                if nq<=0: con.execute("DELETE FROM paper_positions WHERE ticker=?",(ticker,))
+                else: con.execute("UPDATE paper_positions SET quantity=?,updated_at=? WHERE ticker=?",(nq,now,ticker))
+        con.execute("""INSERT INTO paper_orders VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (oid,now,ticker,side,order_type,qty,float(limit_price or 0),float(stop_price or 0),
+                     tif,status,reference_price,float(fill or 0),gross,notes))
+        con.commit()
+        return True,f"Paper order {oid} {status.lower()}."
+    finally:
+        con.close()
+
+def cancel_paper_order(order_id):
+    con=paper_db()
+    cur=con.execute("UPDATE paper_orders SET status='CANCELLED' WHERE id=? AND status='OPEN'",(order_id,))
+    con.commit(); con.close()
+    return cur.rowcount>0
+
+def reset_paper_account():
+    con=paper_db()
+    con.execute("DELETE FROM paper_orders"); con.execute("DELETE FROM paper_positions")
+    con.execute("UPDATE paper_cash SET balance=100000.0 WHERE id=1")
+    con.commit(); con.close()
+
+BROKER_ADAPTER_REQUIREMENTS=pd.DataFrame([
+    {"Route":"Australia / ASX","Requirement":"CHESS/HIN-capable execution partner","Status":"Adapter interface only","Live execution":"Disabled"},
+    {"Route":"Global","Requirement":"Broker API supporting international markets/FX","Status":"Adapter interface only","Live execution":"Disabled"},
+    {"Route":"Market data","Requirement":"Licensed real-time/Level 2 feed for production","Status":"Existing prototype feeds","Live execution":"N/A"},
+])
+
 st.sidebar.title("Market Investment Analyst")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
@@ -303,7 +409,7 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -313,7 +419,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V14.2 • Market Investment Analyst • dual page hotfix")
+st.caption("V15 • Market Investment Analyst • paper trading + order management")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -843,6 +949,129 @@ Agreement across different families is more informative than several similar ind
                     "Volatility / trend strength" if name in {"ATR","ADX / DMI"} else "Momentum / oscillator")
             guide.append({"Indicator":name,"Family":family,"What it tracks":desc})
         st.dataframe(pd.DataFrame(guide),use_container_width=True,hide_index=True)
+
+
+elif page=="Trade Centre":
+    st.header(f"Trade Centre — {ticker}")
+    st.warning("PAPER TRADING ONLY — V15 does not connect to a live broker or transmit real orders.")
+    st.caption("The order manager is intentionally separated from research signals. Analysis can inform an order proposal, but a user must review and submit the paper order.")
+
+    h=history(ticker,"1mo")
+    if h.empty:
+        st.error("A current reference price could not be loaded.")
+    else:
+        ref=float(h["Close"].iloc[-1])
+        c1,c2,c3=st.columns(3)
+        metric_box(c1,"Price",f"${ref:,.3f}")
+        metric_box(c2,"Paper cash",f"${paper_cash_balance():,.2f}")
+        pos=paper_positions_df()
+        held=float(pos.loc[pos["ticker"]==ticker,"quantity"].iloc[0]) if (not pos.empty and ticker in pos["ticker"].values) else 0
+        metric_box(c3,"Paper shares held",f"{held:,.0f}")
+
+        with st.form("paper_order_ticket"):
+            st.subheader("Paper order ticket")
+            a,b,c=st.columns(3)
+            side=a.selectbox("Side",["Buy","Sell"])
+            order_type=b.selectbox("Order type",["Market","Limit","Stop","Stop Limit"])
+            tif=c.selectbox("Time in force",["DAY","GTC"])
+            d,e,f=st.columns(3)
+            qty=d.number_input("Quantity",min_value=0.0,value=100.0,step=1.0)
+            limit=e.number_input("Limit price",min_value=0.0,value=round(ref,3),step=0.01,
+                                 disabled=order_type not in {"Limit","Stop Limit"})
+            stop=f.number_input("Stop price",min_value=0.0,value=round(ref,3),step=0.01,
+                                disabled=order_type not in {"Stop","Stop Limit"})
+            notes=st.text_input("Order notes / thesis reference",placeholder="Optional: why this paper trade is being considered")
+            gross,sim_cost=estimate_order(side,qty,ref)
+            st.info(f"Reference notional: ${gross:,.2f}. Simulator cost estimate: ${sim_cost:,.2f}. V15 fills Market paper orders at the latest loaded close; this is not a live execution quote.")
+            preview=st.form_submit_button("Review paper order",type="primary",use_container_width=True)
+
+        if preview:
+            st.session_state["paper_preview"]={
+                "ticker":ticker,"side":side,"order_type":order_type,"qty":qty,"reference_price":ref,
+                "limit_price":limit if order_type in {"Limit","Stop Limit"} else None,
+                "stop_price":stop if order_type in {"Stop","Stop Limit"} else None,"tif":tif,"notes":notes
+            }
+
+        if "paper_preview" in st.session_state and st.session_state["paper_preview"].get("ticker")==ticker:
+            o=st.session_state["paper_preview"]
+            st.subheader("Order confirmation")
+            st.write(f"**{o['side']} {o['qty']:,.0f} {ticker} — {o['order_type']} — {o['tif']}**")
+            st.write(f"Reference price: **${o['reference_price']:,.3f}**")
+            x,y=st.columns(2)
+            if x.button("Submit PAPER order",type="primary",use_container_width=True):
+                ok,msg=submit_paper_order(**o)
+                (st.success if ok else st.error)(msg)
+                if ok: st.session_state.pop("paper_preview",None); st.rerun()
+            if y.button("Discard",use_container_width=True):
+                st.session_state.pop("paper_preview",None); st.rerun()
+
+elif page=="Orders":
+    st.header("Order Management System")
+    st.caption("Audit trail for the V15 paper execution engine. Live broker transmission is disabled.")
+    od=paper_orders_df()
+    if od.empty:
+        st.info("No paper orders yet.")
+    else:
+        show=od.copy()
+        for col in ["reference_price","fill_price","estimated_value"]:
+            if col in show: show[col]=show[col].map(lambda x:f"{x:,.3f}" if pd.notna(x) else "")
+        st.dataframe(show,use_container_width=True,hide_index=True)
+        opens=od[od["status"]=="OPEN"]
+        if not opens.empty:
+            oid=st.selectbox("Open order to cancel",opens["id"].tolist())
+            if st.button("Cancel selected paper order"):
+                if cancel_paper_order(oid): st.success("Paper order cancelled."); st.rerun()
+
+elif page=="Paper Portfolio":
+    st.header("Paper Portfolio")
+    st.caption("Unified portfolio framework for simulated positions. Future broker adapters can reconcile domestic and global accounts into this schema.")
+    pos=paper_positions_df(); cash=paper_cash_balance()
+    metric_box(st,"Paper cash",f"${cash:,.2f}")
+    if pos.empty:
+        st.info("No paper positions yet.")
+    else:
+        rows=[]
+        total=cash
+        for _,r in pos.iterrows():
+            hh=history(r["ticker"],"5d")
+            last=float(hh["Close"].iloc[-1]) if not hh.empty else float(r["avg_cost"])
+            mv=float(r["quantity"])*last; pnl=(last-float(r["avg_cost"]))*float(r["quantity"])
+            total+=mv
+            rows.append({"Ticker":r["ticker"],"Quantity":r["quantity"],"Avg cost":r["avg_cost"],
+                         "Last":last,"Market value":mv,"Unrealised P&L":pnl})
+        st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
+        metric_box(st,"Paper account value",f"${total:,.2f}")
+    with st.expander("Reset simulator"):
+        st.write("Deletes all V15 paper orders and positions and restores simulated cash to $100,000.")
+        if st.button("Reset paper account"):
+            reset_paper_account(); st.success("Paper account reset."); st.rerun()
+
+elif page=="Broker Connections":
+    st.header("Broker & Execution Architecture")
+    st.warning("LIVE EXECUTION IS DISABLED IN V15.")
+    st.write("V15 establishes adapter boundaries without storing brokerage credentials or sending orders. A production connection should use broker-supported authentication, encrypted secrets, explicit account permissions, risk controls and an auditable order lifecycle.")
+    st.dataframe(BROKER_ADAPTER_REQUIREMENTS,use_container_width=True,hide_index=True)
+    st.subheader("Target routing")
+    st.code("""Research / Technical / Quant
+        ↓
+Order Proposal
+        ↓
+Risk & Validation
+        ↓
+User Confirmation
+        ↓
+Order Manager
+   ↙             ↘
+AU Broker       Global Broker
+Adapter         Adapter
+(CHESS/HIN)     (Global/FX)""")
+    st.subheader("Production gates before live trading")
+    st.markdown("""- Verify the selected Australian partner's current CHESS/HIN and API capabilities.
+- Verify the global broker's supported API, instruments, order types, market-data entitlements and FX workflow.
+- Add secure OAuth/token or broker-approved authentication; never hard-code credentials.
+- Add account-level limits, duplicate-order protection, stale-price protection, market-hours checks and a kill switch.
+- Add immutable order/event audit logging and broker reconciliation.
+- Obtain legal advice on the exact Australian licensing/authorisation model before offering execution to other users.""")
 
 
 elif page=="Quant":
