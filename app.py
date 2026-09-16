@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import re
 import yfinance as yf
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
@@ -311,7 +313,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V14.1 • Market Investment Analyst • technical lab + announcements hotfix")
+st.caption("V14.2 • Market Investment Analyst • dual page hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")

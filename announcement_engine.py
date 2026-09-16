@@ -202,31 +202,35 @@ def sec_archive(ticker, limit=250, include_regulatory=False):
 def announcements(ticker, provider_url="", provider_key="", limit=250):
     if ticker.upper().endswith(".AX"):
         code=ticker[:-3]
+
+        # Only use the licensed/provider route when it actually returns rows.
         p=asx_provider_api(code,provider_url,provider_key,limit)
-        if not p.empty:p=p.copy()
-        if "PDFURL" not in p:p["PDFURL"]=p["URL"]
-        if "ReadURL" not in p:p["ReadURL"]=p["URL"]
-        if "Has PDF" not in p:p["Has PDF"]=True
-        if "Group" not in p:p["Group"]="ASX Announcements"
-        return p,"Provider-backed ASX announcements"
+        if p is not None and not p.empty:
+            p=p.copy()
+            if "URL" not in p.columns:p["URL"]=""
+            if "PDFURL" not in p.columns:p["PDFURL"]=p["URL"]
+            if "ReadURL" not in p.columns:p["ReadURL"]=p["URL"]
+            if "Has PDF" not in p.columns:
+                p["Has PDF"]=p["PDFURL"].astype(str).str.lower().str.contains(r"\\.pdf(?:$|\\?)",regex=True)
+            if "Group" not in p.columns:p["Group"]="ASX Announcements"
+            return p,"Provider-backed ASX announcements"
+
+        # Provider unavailable/empty: continue to the public fallback.
         p=asx_public_archive(code,12,limit)
-        # Empty ASX fallback frames may have no columns at all. Never index URL
-        # until rows/columns actually exist.
         if p is None or p.empty:
-            return pd.DataFrame(columns=["Date","Time","Group","Type","Title","Price Sensitive",
-                                         "Source","URL","PDFURL","ReadURL","Has PDF","ID"]), "ASX public archive fallback"
+            cols=["Date","Time","Group","Type","Title","Price Sensitive",
+                  "Source","URL","PDFURL","ReadURL","Has PDF","ID"]
+            return pd.DataFrame(columns=cols),"ASX public archive fallback"
+
         p=p.copy()
-        if "URL" not in p.columns:
-            p["URL"]=""
-        if "PDFURL" not in p.columns:
-            p["PDFURL"]=p["URL"]
-        if "ReadURL" not in p.columns:
-            p["ReadURL"]=p["URL"]
+        if "URL" not in p.columns:p["URL"]=""
+        if "PDFURL" not in p.columns:p["PDFURL"]=p["URL"]
+        if "ReadURL" not in p.columns:p["ReadURL"]=p["URL"]
         if "Has PDF" not in p.columns:
-            p["Has PDF"]=p["PDFURL"].astype(str).str.lower().str.contains(r"\.pdf(?:$|\?)",regex=True)
-        if "Group" not in p.columns:
-            p["Group"]="ASX Announcements"
+            p["Has PDF"]=p["PDFURL"].astype(str).str.lower().str.contains(r"\\.pdf(?:$|\\?)",regex=True)
+        if "Group" not in p.columns:p["Group"]="ASX Announcements"
         return p,"ASX public archive fallback"
+
     return sec_archive(ticker,limit),"SEC EDGAR"
 
 def fetch_document(url, fallback_url=""):
