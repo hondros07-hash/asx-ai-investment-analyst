@@ -47,16 +47,29 @@ st.markdown('''
 <style>
 /* V18.0.3: prevent quote cards from hiding prices with ellipses */
 [data-testid="stMetricValue"] {
-    font-size: clamp(1.55rem, 2.25vw, 2.35rem) !important;
+    font-size: clamp(1.30rem, 1.85vw, 2.15rem) !important;
     line-height: 1.12 !important;
+    min-width: 0 !important;
 }
 [data-testid="stMetricValue"] > div {
     overflow: visible !important;
     text-overflow: clip !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    min-width: 0 !important;
 }
 [data-testid="stMetricDelta"] {
-    white-space: nowrap !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+}
+[data-testid="stMetric"] {
+    min-width: 0 !important;
+}
+[data-testid="stMetric"] label,
+[data-testid="stMetricLabel"] {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
 }
 </style>
 ''', unsafe_allow_html=True)
@@ -175,6 +188,11 @@ def metric_box(target, label, value, delta=None, **kwargs):
     if help_text and "help" not in kwargs:
         kwargs["help"] = help_text
     return target.metric(label, value, delta=delta, **kwargs)
+
+def text_metric_box(target, label, value, delta=None, **kwargs):
+    """Metric card for categorical/text values. Global responsive CSS allows wrapping."""
+    value = "—" if value is None or str(value).strip() == "" else str(value)
+    return metric_box(target, label, value, delta=delta, **kwargs)
 
 
 # ---------------- Technical Analysis Lab ----------------
@@ -689,7 +707,7 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
         st.caption(f"Current price is {pos:.0f}% of the way from the 52-week low to the 52-week high.")
 
         k1,k2,k3,k4=st.columns(4)
-        k1.metric("Ordinary shares",compact_number(shares)); k2.metric("Sector",str(sector)); k3.metric("Exchange",str(exchange))
+        k1.metric("Ordinary shares",compact_number(shares)); text_metric_box(k2,"Sector",sector); text_metric_box(k3,"Exchange",exchange)
         try: stamp_text=pd.Timestamp(h.index[-1]).strftime("%d %b %Y")
         except Exception: stamp_text="Latest loaded session"
         k4.metric("Latest session",stamp_text)
@@ -1245,7 +1263,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.2.2 • Market Investment Analyst • Command Centre forecast")
+st.caption("V18.2.3 • Market Investment Analyst • responsive metric cards")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1306,9 +1324,9 @@ elif page=="Dashboard":
     _market_info = meta if isinstance(meta, dict) else {}
     market_meta = detect_market(ticker, _market_info)
     ex1,ex2,ex3,ex4=st.columns(4)
-    metric_box(ex1, "Market", market_meta["market"])
-    metric_box(ex2, "Exchange", market_meta["exchange"])
-    metric_box(ex3, "Currency", market_meta["currency"])
+    text_metric_box(ex1, "Market", market_meta["market"])
+    text_metric_box(ex2, "Exchange", market_meta["exchange"])
+    text_metric_box(ex3, "Currency", market_meta["currency"])
     metric_box(ex4, "Default benchmark",
                "ASX 200" if market_meta["benchmark"]=="^AXJO" else
                "Nasdaq 100" if market_meta["benchmark"]=="^NDX" else "S&P 500")
@@ -1436,10 +1454,9 @@ elif page=="Dashboard":
     cls=classification(ticker,meta)
     bm_ticker,bm_name=default_benchmark(ticker,meta)
     pc1,pc2,pc3=st.columns(3)
-    with pc1:
-            st.markdown(f"""<div class="mia-text-metric-value">{str(cls["sector"]) if cls["sector"] else "—"}</div>""", unsafe_allow_html=True)
-    metric_box(pc2, "Industry",cls["industry"])
-    metric_box(pc3, "Market benchmark",bm_name)
+    text_metric_box(pc1, "Sector", cls["sector"])
+    text_metric_box(pc2, "Industry",cls["industry"])
+    text_metric_box(pc3, "Market benchmark",bm_name)
 
     with st.spinner("Identifying comparable companies and calculating relative performance..."):
         peers=find_peers(ticker,meta,max_peers=8)
@@ -1596,8 +1613,8 @@ elif page=="Research Report":
 
     st.subheader("1. Research identity")
     r1,r2,r3,r4=st.columns(4)
-    metric_box(r1, "Sector",cls["sector"]); metric_box(r2, "Industry",cls["industry"])
-    metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",display_price(price,ticker))
+    text_metric_box(r1, "Sector",cls["sector"]); text_metric_box(r2, "Industry",cls["industry"])
+    text_metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",display_price(price,ticker))
 
     st.subheader("2. Fundamental & valuation snapshot")
     rows=[]
