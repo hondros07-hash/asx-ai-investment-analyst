@@ -16,6 +16,7 @@ from sector_peer_engine import classification, find_peers, peer_table, normalize
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
+from report_library import report_catalog, report_summary
 
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
@@ -111,7 +112,7 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Reports & Filings","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -121,7 +122,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V11.3.1 • Market Investment Analyst • company-name and multi-listing search hotfix")
+st.caption("V11.4 • Market Investment Analyst • historical reports, summaries + downloads")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -371,6 +372,60 @@ elif page=="Dashboard":
     else:
         st.warning("Insufficient price history to calculate the selected relative-performance period.")
 
+
+elif page=="Reports & Filings":
+    st.header(f"Reports & Filings — {ticker} — {name}")
+    st.caption("Historical company reports and filings are retrieved from the official ASX announcements feed for ASX securities or SEC EDGAR for US securities when available.")
+
+    rc1,rc2=st.columns([1,2])
+    report_limit=rc1.selectbox("Reports to retrieve",[25,50,100],index=1)
+    report_filter=rc2.text_input("Filter reports","",placeholder="Annual report, quarterly, results, presentation…")
+    with st.spinner("Loading report history..."):
+        reports=report_catalog(ticker,int(report_limit))
+
+    if reports.empty:
+        st.warning("No official report history was returned for this listing. The source may not expose this security through the current adapter.")
+    else:
+        if report_filter:
+            m=(reports["Title"].astype(str).str.contains(report_filter,case=False,regex=False) |
+               reports["Type"].astype(str).str.contains(report_filter,case=False,regex=False))
+            reports=reports[m]
+        st.metric("Reports found",len(reports))
+        st.dataframe(reports[["Date","Type","Title","Source"]],use_container_width=True,hide_index=True,height=360)
+
+        if not reports.empty:
+            labels=[]
+            idxmap={}
+            for i,r in reports.iterrows():
+                label=f"{r['Date']} — {r['Type']} — {r['Title']}"
+                labels.append(label); idxmap[label]=i
+            selected=st.selectbox("Open a report",labels)
+            rr=reports.loc[idxmap[selected]]
+            st.subheader(str(rr["Title"]))
+            d1,d2,d3=st.columns(3)
+            d1.metric("Date",str(rr["Date"])); d2.metric("Type",str(rr["Type"])); d3.metric("Source",str(rr["Source"]))
+
+            if st.button("Load summary",type="primary"):
+                with st.spinner("Reading and summarising the selected report..."):
+                    summary_text,report_bytes,ctype=report_summary(str(rr["URL"]))
+                st.session_state["report_summary_text"]=summary_text
+                st.session_state["report_bytes"]=report_bytes
+                st.session_state["report_ctype"]=ctype
+                st.session_state["report_key"]=selected
+
+            if st.session_state.get("report_key")==selected:
+                st.markdown("#### Report summary")
+                st.write(st.session_state.get("report_summary_text",""))
+                b=st.session_state.get("report_bytes")
+                if b:
+                    ext=".pdf" if ("pdf" in st.session_state.get("report_ctype","").lower() or b[:4]==b"%PDF") else ".html"
+                    safe=re.sub(r"[^A-Za-z0-9_-]+","_",f"{ticker}_{rr['Date']}_{rr['Type']}")[:100]+ext
+                    st.download_button("Download original report",data=b,file_name=safe,
+                                       mime=st.session_state.get("report_ctype") or "application/octet-stream")
+                else:
+                    st.warning("The report metadata was found, but the document could not be downloaded from the source.")
+            elif rr.get("URL"):
+                st.caption("Select Load summary to retrieve the document, create an extractive summary and enable the original-file download.")
 
 elif page=="Research Report":
     st.header(f"Research Report — {ticker} — {name}")
