@@ -395,7 +395,7 @@ BROKER_ADAPTER_REQUIREMENTS=pd.DataFrame([
 WORKSPACE_DB="workstation.db"
 
 def ws_db():
-    con=sqlite3.connect(WORKSPACE_DB)
+    con=sqlite3.connect(WORKSPACE_DB, timeout=10)
     con.execute("""CREATE TABLE IF NOT EXISTS thesis_rules(
         id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,operator TEXT,
         threshold REAL,current_value REAL,status TEXT,source TEXT,updated_at TEXT)""")
@@ -522,10 +522,18 @@ def save_holding(ticker,quantity,avg_cost,source="Manual"):
     con.commit(); con.close()
 
 def thesis_table(ticker):
+    # Self-initialise the V17 schema because this helper is called by attention_items()
+    # before some V17 pages have explicitly run the database upgrade.
+    v17_db_upgrade()
     con=ws_db()
-    d=pd.read_sql_query("""SELECT id,metric,operator,threshold,current_value,status,source,updated_at
-                           FROM thesis_rules WHERE ticker=? ORDER BY id""",(ticker,),con)
-    con.close(); return d
+    try:
+        d=pd.read_sql_query("""SELECT id,metric,operator,threshold,current_value,status,source,updated_at
+                               FROM thesis_rules WHERE ticker=? ORDER BY id""",(ticker,),con)
+    except Exception:
+        d=pd.DataFrame(columns=["id","metric","operator","threshold","current_value","status","source","updated_at"])
+    finally:
+        con.close()
+    return d
 
 def snapshot_thesis(ticker):
     d=thesis_table(ticker)
@@ -690,7 +698,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V17.1 • Market Investment Analyst • simplified workflow navigation")
+st.caption("V17.1.1 • Market Investment Analyst • navigation + database hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
