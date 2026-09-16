@@ -64,34 +64,67 @@ def comparison_series(primary: pd.DataFrame, compare_ticker: str):
 
 def price_figure(d: pd.DataFrame, ticker: str, mode="Price", show_volume=True,
                  show_sma20=False, show_sma50=False, show_sma200=False,
-                 compare_df=None, compare_label=None):
+                 compare_df=None, compare_label=None, chart_type="Line"):
     fig = go.Figure()
     if d.empty:
         return fig
+
+    # Percentage/benchmark comparisons remain line charts because normalized
+    # performance is more meaningful than candlesticks across different assets.
+    use_candles = chart_type == "Candlestick" and mode == "Price"
+
     if mode == "Percentage":
         base = float(d["Close"].iloc[0])
         y = (d["Close"]/base - 1)*100
-        fig.add_trace(go.Scatter(x=d.index, y=y, mode="lines", name=ticker,
-                                 hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>"))
+        fig.add_trace(go.Scatter(
+            x=d.index, y=y, mode="lines", name=ticker,
+            hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>"
+        ))
         if compare_df is not None and not compare_df.empty:
-            s = compare_df["Close"].reindex(d.index, method="nearest")
-            s = s.dropna()
-            if not s.empty:
-                y2=(s/float(s.iloc[0])-1)*100
-                fig.add_trace(go.Scatter(x=y2.index,y=y2,mode="lines",
-                                         name=compare_label or "Comparison",
-                                         hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>"))
+            s2 = compare_df["Close"].reindex(d.index, method="nearest").dropna()
+            if not s2.empty:
+                y2=(s2/float(s2.iloc[0])-1)*100
+                fig.add_trace(go.Scatter(
+                    x=y2.index,y=y2,mode="lines",
+                    name=compare_label or "Comparison",
+                    hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>"
+                ))
         ytitle="Return (%)"
     else:
-        fig.add_trace(go.Scatter(x=d.index,y=d["Close"],mode="lines",name=ticker,
-                                 hovertemplate="%{x}<br>$%{y:.3f}<extra></extra>"))
+        if use_candles:
+            fig.add_trace(go.Candlestick(
+                x=d.index,
+                open=d["Open"], high=d["High"], low=d["Low"], close=d["Close"],
+                name=ticker,
+                increasing_line_color="#16a34a",
+                decreasing_line_color="#dc2626",
+                increasing_fillcolor="#16a34a",
+                decreasing_fillcolor="#dc2626",
+                hovertext=[
+                    f"Open ${o:.3f}<br>High ${h:.3f}<br>Low ${l:.3f}<br>Close ${c:.3f}"
+                    for o,h,l,c in zip(d["Open"],d["High"],d["Low"],d["Close"])
+                ]
+            ))
+        else:
+            fig.add_trace(go.Scatter(
+                x=d.index,y=d["Close"],mode="lines",name=ticker,
+                hovertemplate="%{x}<br>$%{y:.3f}<extra></extra>"
+            ))
+
+        # Moving averages are calculated on the displayed candle/price series.
         for n,show in [(20,show_sma20),(50,show_sma50),(200,show_sma200)]:
             if show and len(d)>=n:
-                fig.add_trace(go.Scatter(x=d.index,y=d["Close"].rolling(n).mean(),
-                                         mode="lines",name=f"SMA {n}"))
+                fig.add_trace(go.Scatter(
+                    x=d.index,y=d["Close"].rolling(n).mean(),
+                    mode="lines",name=f"SMA {n}"
+                ))
         ytitle="Price"
-    fig.update_layout(height=480,margin=dict(l=10,r=10,t=20,b=10),
-                      xaxis_title=None,yaxis_title=ytitle,hovermode="x unified",
-                      legend=dict(orientation="h"))
-    fig.update_xaxes(rangeslider_visible=False)
+
+    fig.update_layout(
+        height=500, margin=dict(l=10,r=10,t=20,b=10),
+        xaxis_title=None, yaxis_title=ytitle,
+        hovermode="x unified" if not use_candles else "x",
+        legend=dict(orientation="h"),
+        xaxis_rangeslider_visible=False
+    )
     return fig

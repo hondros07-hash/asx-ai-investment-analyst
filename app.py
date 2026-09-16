@@ -51,7 +51,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.4 • ASX + NASDAQ + NYSE market intelligence")
+st.caption("V10.5 • ASX + NASDAQ + NYSE • line + candlestick charting")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
@@ -86,7 +86,8 @@ if page=="Dashboard":
 
     st.subheader("Price chart")
     period = st.radio("Period", list(RANGES.keys()), horizontal=True, index=4)
-    cc1,cc2,cc3=st.columns([1,1,2])
+    cc0,cc1,cc2,cc3=st.columns([1.2,1.2,1,2])
+    chart_type=cc0.radio("Chart type",["Line","Candlestick"],horizontal=True)
     mode=cc1.radio("Display",["Price","Percentage"],horizontal=True)
     volume_on=cc2.checkbox("Show volume",value=True)
     with cc3:
@@ -132,8 +133,12 @@ if page=="Dashboard":
                 st.caption("Comparison is displayed in Percentage mode so instruments with different price scales can be compared.")
                 mode="Percentage"
 
-        st.plotly_chart(price_figure(chart_d,ticker,mode,volume_on,sma20,sma50,sma200,comp,compare_choice),
-                        use_container_width=True)
+        if chart_type=="Candlestick" and mode=="Percentage":
+            st.info("Candlesticks use OHLC prices, so Percentage mode is displayed as a line chart.")
+        st.plotly_chart(price_figure(
+            chart_d,ticker,mode,volume_on,sma20,sma50,sma200,
+            comp,compare_choice,chart_type
+        ),use_container_width=True)
 
         if volume_on and "Volume" in chart_d:
             vol=chart_d[["Volume"]].copy()
