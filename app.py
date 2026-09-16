@@ -391,6 +391,52 @@ BROKER_ADAPTER_REQUIREMENTS=pd.DataFrame([
 ])
 
 
+
+def classify_company(ticker):
+    """Best-effort company classification used by KPI templates.
+
+    Returns a stable dictionary even when the market-data provider does not
+    supply sector/industry metadata. This prevents Command Centre rendering
+    from failing merely because classification data is unavailable.
+    """
+    sector=""
+    industry=""
+    name=ticker
+    try:
+        t=yf.Ticker(ticker)
+        info=getattr(t, "info", {}) or {}
+        sector=str(info.get("sector") or "")
+        industry=str(info.get("industry") or "")
+        name=str(info.get("longName") or info.get("shortName") or ticker)
+    except Exception:
+        pass
+    return {"ticker":ticker, "name":name, "sector":sector, "industry":industry}
+
+
+def safe_company_classification(ticker):
+    """Always return a usable company classification dictionary."""
+    result={"ticker":str(ticker), "name":str(ticker), "sector":"", "industry":""}
+    try:
+        # Reuse any existing classifier if it exists and succeeds.
+        fn=globals().get("classify_company")
+        if callable(fn):
+            x=fn(ticker) or {}
+            if isinstance(x,dict):
+                result.update({k:str(x.get(k) or result.get(k,"")) for k in result})
+                return result
+    except Exception:
+        pass
+    try:
+        # Optional metadata enrichment only; failure must never break a page.
+        if "yf" in globals():
+            info=getattr(yf.Ticker(ticker),"info",{}) or {}
+            result["name"]=str(info.get("longName") or info.get("shortName") or ticker)
+            result["sector"]=str(info.get("sector") or "")
+            result["industry"]=str(info.get("industry") or "")
+    except Exception:
+        pass
+    return result
+
 # ---------------- V16 Institutional Workstation ----------------
 WORKSPACE_DB="workstation.db"
 
@@ -415,8 +461,11 @@ def ws_db():
     con.commit(); return con
 
 def company_kpi_template(ticker,sector="",industry=""):
-    name=(company_name(ticker) if 'company_name' in globals() else ticker)
-    text=f"{name} {sector} {industry}".lower()
+    try:
+        name=(company_name(ticker) if 'company_name' in globals() else ticker)
+    except Exception:
+        name=ticker
+    text=f"{ticker} {name} {sector} {industry}".lower()
     if "zip" in text or "financial" in text or "credit" in text:
         return ["Transaction / TTV growth","Revenue growth","Revenue margin","Credit losses / bad debts",
                 "Cash EBITDA / EBTDA","Operating margin","Active customers","Cash generation"]
@@ -698,7 +747,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V17.1.1 • Market Investment Analyst • navigation + database hotfix")
+st.caption("V17.1.3 • Market Investment Analyst • classification hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1375,7 +1424,7 @@ elif page=="Company Command Centre":
             st.write(st.session_state.get("thesis","Use the sidebar investment thesis as the working hypothesis."))
             st.info("Use Thesis Scorecard to convert narrative beliefs into measurable conditions.")
         with tabs[1]:
-            cls=classify_company(ticker)
+            cls=safe_company_classification(ticker)
             kpis=company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))
             st.write("**Relevant KPI framework for this company type:**")
             st.write(" • ".join(kpis))
@@ -1438,7 +1487,7 @@ elif page=="Before I Invest":
             if t.empty: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard.")
             else: st.dataframe(t[["metric","current_value","operator","threshold","status","source"]],use_container_width=True,hide_index=True)
             st.subheader("Company KPI checklist")
-            cls=classify_company(ticker)
+            cls=safe_company_classification(ticker)
             st.write(" • ".join(company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))))
         with right:
             st.subheader("Technical & market context")
