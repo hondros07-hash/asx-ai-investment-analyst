@@ -542,6 +542,164 @@ def portfolio_risk_snapshot():
     return d,stats
 
 
+
+# ---------------- V18 Investment Intelligence Layer ----------------
+def v18_db_upgrade():
+    v17_db_upgrade()
+    con=ws_db()
+    con.execute("""CREATE TABLE IF NOT EXISTS kpi_observations(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,period TEXT,value REAL,
+        unit TEXT,source TEXT,source_url TEXT,evidence_note TEXT,observed_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS valuation_profiles(
+        ticker TEXT PRIMARY KEY,fcf REAL,shares REAL,net_debt REAL,bear_growth REAL,base_growth REAL,
+        bull_growth REAL,bear_wacc REAL,base_wacc REAL,bull_wacc REAL,bear_terminal REAL,
+        base_terminal REAL,bull_terminal REAL,updated_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS report_reviews(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,reviewed_at TEXT,title TEXT,source TEXT,notes TEXT)""")
+    con.commit(); con.close()
+
+def kpi_observations(ticker):
+    v18_db_upgrade(); con=ws_db()
+    try:
+        d=pd.read_sql_query("""SELECT id,metric,period,value,unit,source,source_url,evidence_note,observed_at
+                               FROM kpi_observations WHERE ticker=? ORDER BY metric,observed_at DESC,id DESC""",(ticker,),con)
+    finally: con.close()
+    return d
+
+def kpi_latest_comparison(ticker):
+    d=kpi_observations(ticker)
+    if d.empty:return pd.DataFrame(columns=["Metric","Previous","Latest","Unit","Change","Source","Evidence"])
+    rows=[]
+    for metric,g in d.groupby("metric",sort=False):
+        g=g.sort_values(["observed_at","id"],ascending=False)
+        latest=g.iloc[0]; prev=g.iloc[1] if len(g)>1 else None
+        lv=float(latest["value"]); pv=float(prev["value"]) if prev is not None else np.nan
+        ch="New evidence" if pd.isna(pv) else ("↑ Increased" if lv>pv else "↓ Decreased" if lv<pv else "→ Unchanged")
+        rows.append({"Metric":metric,"Previous":pv,"Latest":lv,"Unit":latest["unit"] or "",
+                     "Change":ch,"Source":latest["source"] or "Manual evidence",
+                     "Evidence":latest["evidence_note"] or ""})
+    return pd.DataFrame(rows)
+
+def save_kpi_observation(ticker,metric,period,value,unit,source,source_url="",note=""):
+    v18_db_upgrade(); con=ws_db()
+    con.execute("""INSERT INTO kpi_observations(ticker,metric,period,value,unit,source,source_url,evidence_note,observed_at)
+                   VALUES(?,?,?,?,?,?,?,?,?)""",
+                (ticker,metric,period,float(value),unit,source,source_url,note,datetime.now(timezone.utc).isoformat()))
+    con.commit(); con.close()
+
+def valuation_profile(ticker):
+    v18_db_upgrade(); con=ws_db()
+    row=con.execute("""SELECT fcf,shares,net_debt,bear_growth,base_growth,bull_growth,bear_wacc,base_wacc,bull_wacc,
+                      bear_terminal,base_terminal,bull_terminal FROM valuation_profiles WHERE ticker=?""",(ticker,)).fetchone()
+    con.close()
+    if row:
+        keys=["fcf","shares","net_debt","bear_growth","base_growth","bull_growth","bear_wacc","base_wacc","bull_wacc",
+              "bear_terminal","base_terminal","bull_terminal"]
+        return dict(zip(keys,map(float,row)))
+    return {"fcf":100_000_000.0,"shares":1_000_000_000.0,"net_debt":0.0,
+            "bear_growth":.04,"base_growth":.10,"bull_growth":.16,
+            "bear_wacc":.12,"base_wacc":.10,"bull_wacc":.09,
+            "bear_terminal":.02,"base_terminal":.03,"bull_terminal":.035}
+
+def save_valuation_profile(ticker,p):
+    v18_db_upgrade(); con=ws_db()
+    con.execute("""INSERT INTO valuation_profiles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(ticker) DO UPDATE SET fcf=excluded.fcf,shares=excluded.shares,net_debt=excluded.net_debt,
+                   bear_growth=excluded.bear_growth,base_growth=excluded.base_growth,bull_growth=excluded.bull_growth,
+                   bear_wacc=excluded.bear_wacc,base_wacc=excluded.base_wacc,bull_wacc=excluded.bull_wacc,
+                   bear_terminal=excluded.bear_terminal,base_terminal=excluded.base_terminal,bull_terminal=excluded.bull_terminal,
+                   updated_at=excluded.updated_at""",
+                (ticker,p["fcf"],p["shares"],p["net_debt"],p["bear_growth"],p["base_growth"],p["bull_growth"],
+                 p["bear_wacc"],p["base_wacc"],p["bull_wacc"],p["bear_terminal"],p["base_terminal"],p["bull_terminal"],
+                 datetime.now(timezone.utc).isoformat()))
+    con.commit(); con.close()
+
+def valuation_snapshot(ticker,price):
+    p=valuation_profile(ticker)
+    assumptions={"Bear":{"growth":p["bear_growth"],"wacc":p["bear_wacc"],"terminal_growth":p["bear_terminal"]},
+                 "Base":{"growth":p["base_growth"],"wacc":p["base_wacc"],"terminal_growth":p["base_terminal"]},
+                 "Bull":{"growth":p["bull_growth"],"wacc":p["bull_wacc"],"terminal_growth":p["bull_terminal"]}}
+    try:
+        v=scenarios(p["fcf"],p["shares"],p["net_debt"],assumptions)
+        if "scenario" not in [str(x).lower() for x in v.columns]:
+            v=v.reset_index().rename(columns={"index":"Scenario"})
+        v["Margin of safety"]=v["value_per_share"].map(lambda x:margin_of_safety(price,x))
+        return v
+    except Exception:
+        return pd.DataFrame()
+
+def reverse_targets(ticker,targets=(3,4,5,6)):
+    p=valuation_profile(ticker); rows=[]
+    for target in targets:
+        try:g=implied_growth(float(target),p["fcf"],p["shares"],p["net_debt"],p["base_wacc"],p["base_terminal"])
+        except Exception:g=np.nan
+        rows.append({"Target price":float(target),"Implied 5Y FCF growth":g})
+    return pd.DataFrame(rows)
+
+def relative_strength_snapshot(ticker,df):
+    if df is None or df.empty:return {}
+    bench="^AXJO" if ticker.upper().endswith(".AX") else "^GSPC"
+    b=history(bench,"1y")
+    def ret(x,n):
+        return np.nan if x is None or x.empty or len(x)<n+1 else float(x["Close"].iloc[-1]/x["Close"].iloc[-n-1]-1)
+    return {"Benchmark":bench,"Stock 3M":ret(df,63),"Benchmark 3M":ret(b,63),
+            "Relative 3M":ret(df,63)-ret(b,63) if pd.notna(ret(df,63)) and pd.notna(ret(b,63)) else np.nan,
+            "Stock 6M":ret(df,126),"Benchmark 6M":ret(b,126),
+            "Relative 6M":ret(df,126)-ret(b,126) if pd.notna(ret(df,126)) and pd.notna(ret(b,126)) else np.nan}
+
+def technical_regime(df,ticker):
+    if df is None or df.empty:return {}
+    ms=market_structure(df); conf=confluence_snapshot(df)
+    states=conf["State"].tolist() if not conf.empty and "State" in conf else []
+    pos=sum(x=="Positive" for x in states); neg=sum(x=="Negative" for x in states)
+    trend="Improving / constructive" if pos>neg else "Weak / defensive" if neg>pos else "Mixed"
+    vol=np.nan
+    try: vol=float(df["Close"].pct_change().tail(20).std()*np.sqrt(252))
+    except: pass
+    rs=relative_strength_snapshot(ticker,df)
+    return {"Trend":trend,"Support":ms.get("20D support"),"Resistance":ms.get("20D resistance"),
+            "Volume ratio":ms.get("Volume vs 20D"),"Annualised volatility":vol,**rs}
+
+def portfolio_impact(ticker,amount,price):
+    hold=holding_for(ticker); qty0=hold["quantity"]; avg0=hold["avg_cost"]
+    add=int(float(amount)//price) if price>0 else 0; spend=add*price; qty1=qty0+add
+    avg1=((qty0*avg0)+spend)/qty1 if qty1 else 0
+    pos=paper_positions_df(); other=0.0
+    if not pos.empty:
+        for _,r in pos.iterrows():
+            if str(r["ticker"])==ticker:continue
+            hh=history(str(r["ticker"]),"5d")
+            lp=float(hh["Close"].iloc[-1]) if not hh.empty else float(r["avg_cost"])
+            other+=float(r["quantity"])*lp
+    cash=paper_cash_balance(); mv0=qty0*price; mv1=qty1*price
+    d0=mv0+other+cash; d1=mv1+other+max(cash-spend,0)
+    return {"qty0":qty0,"avg0":avg0,"mv0":mv0,"add":add,"spend":spend,"qty1":qty1,"avg1":avg1,"mv1":mv1,
+            "weight0":mv0/d0 if d0 else np.nan,"weight1":mv1/d1 if d1 else np.nan}
+
+def latest_announcements_safe(ticker,limit=5):
+    try:
+        d=announcements(ticker)
+        if d is None or d.empty:return pd.DataFrame()
+        return d.head(limit)
+    except Exception:
+        return pd.DataFrame()
+
+def v18_attention(ticker,amount=0,price=None):
+    rows=[]
+    t=thesis_table(ticker)
+    if not t.empty:
+        for _,r in t.iterrows():
+            if str(r["status"])!="Met":rows.append({"Priority":"⚠","Item":f"{r['metric']}: {r['status']}","Source":"Thesis"})
+    kc=kpi_latest_comparison(ticker)
+    for _,r in kc.iterrows():
+        if r["Change"]!="→ Unchanged":rows.append({"Priority":"●","Item":f"{r['Metric']}: {r['Change']}","Source":r["Source"]})
+    if price and amount:
+        pi=portfolio_impact(ticker,amount,price)
+        if pd.notna(pi["weight1"]) and pi["weight1"]>=.20:
+            rows.append({"Priority":"⚠","Item":f"Known-portfolio concentration would be {pi['weight1']:.1%} after the proposed purchase","Source":"Portfolio calculation"})
+    if not rows:rows=[{"Priority":"✓","Item":"No stored thesis/KPI condition currently requires attention","Source":"Stored evidence"}]
+    return pd.DataFrame(rows)
+
 # ---------------- V17 Decision Brief + Thesis Monitor ----------------
 def v17_db_upgrade():
     con=ws_db()
@@ -747,7 +905,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V17.1.3 • Market Investment Analyst • classification hotfix")
+st.caption("V18 • Market Investment Analyst • investment command centre")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1172,15 +1330,32 @@ elif page=="Fundamentals":
 
 elif page=="Valuation":
     st.header("Valuation & Expectations")
-    fcf=st.number_input("Starting annual FCF",value=100_000_000.0,step=1_000_000.0)
-    shares=st.number_input("Shares outstanding",value=1_000_000_000.0,step=1_000_000.0)
-    debt=st.number_input("Net debt (negative = net cash)",value=0.0,step=1_000_000.0)
-    assumptions={"Bear":{"growth":.04,"wacc":.12,"terminal_growth":.02},"Base":{"growth":.10,"wacc":.10,"terminal_growth":.03},"Bull":{"growth":.16,"wacc":.09,"terminal_growth":.035}}
+    v18_db_upgrade(); vp=valuation_profile(ticker)
+    a,b,c=st.columns(3)
+    fcf=a.number_input("Starting annual FCF",value=float(vp["fcf"]),step=1_000_000.0,key="v18_val_fcf")
+    shares=b.number_input("Shares outstanding",value=float(vp["shares"]),step=1_000_000.0,key="v18_val_shares")
+    debt=c.number_input("Net debt (negative = net cash)",value=float(vp["net_debt"]),step=1_000_000.0,key="v18_val_debt")
+    st.markdown("#### Scenario assumptions")
+    rows=[]
+    vals={}
+    for label,key in [("Bear","bear"),("Base","base"),("Bull","bull")]:
+        c1,c2,c3=st.columns(3)
+        vals[f"{key}_growth"]=c1.number_input(f"{label} 5Y FCF growth",value=float(vp[f"{key}_growth"]),format="%.3f",key=f"v18_{key}_g")
+        vals[f"{key}_wacc"]=c2.number_input(f"{label} WACC",value=float(vp[f"{key}_wacc"]),format="%.3f",key=f"v18_{key}_w")
+        vals[f"{key}_terminal"]=c3.number_input(f"{label} terminal growth",value=float(vp[f"{key}_terminal"]),format="%.3f",key=f"v18_{key}_t")
+    profile={"fcf":fcf,"shares":shares,"net_debt":debt,**vals}
+    if st.button("Save valuation assumptions",type="primary"):
+        save_valuation_profile(ticker,profile); st.success("Valuation assumptions saved."); st.rerun()
+    assumptions={"Bear":{"growth":vals["bear_growth"],"wacc":vals["bear_wacc"],"terminal_growth":vals["bear_terminal"]},
+                 "Base":{"growth":vals["base_growth"],"wacc":vals["base_wacc"],"terminal_growth":vals["base_terminal"]},
+                 "Bull":{"growth":vals["bull_growth"],"wacc":vals["bull_wacc"],"terminal_growth":vals["bull_terminal"]}}
     v=scenarios(fcf,shares,debt,assumptions); v["margin_of_safety"]=v.value_per_share.map(lambda x:margin_of_safety(price,x))
     st.dataframe(v,use_container_width=True,hide_index=True)
-    ig=implied_growth(price,fcf,shares,debt,.10,.03)
-    metric_box(st, "Reverse-DCF implied 5Y FCF growth","—" if pd.isna(ig) else f"{ig*100:.1f}%")
-    st.caption("Outputs are assumption-sensitive; validated inputs are required.")
+    st.subheader("Reverse valuation")
+    rt=reverse_targets(ticker)
+    rt["Implied 5Y FCF growth"]=rt["Implied 5Y FCF growth"].map(lambda x:"—" if pd.isna(x) else f"{x:.1%}")
+    st.dataframe(rt,use_container_width=True,hide_index=True)
+    st.caption("Outputs are assumption-sensitive. Store only inputs you can defend; reported company values should be verified against source documents.")
 
 elif page=="Technical":
     st.header(f"Technical Analysis Lab — {ticker}")
@@ -1403,46 +1578,73 @@ Adapter         Adapter
 
 
 elif page=="Company Command Centre":
-    st.header(f"Company Command Centre — {ticker}")
-    st.caption("One-screen research cockpit: price, thesis, fundamentals, technical context, valuation, catalysts, risk and evidence provenance.")
-    st.markdown("**Core workflow:** Before I Invest → make the evidence visible. Monitor My Thesis → check whether the reasons for owning the company remain true.")
-    q1,q2=st.columns(2)
-    q1.info("**BEFORE I INVEST**\n\nWhat do I need to know before committing more capital? Open **Before I Invest** from the sidebar.")
-    q2.info("**MONITOR MY THESIS**\n\nAre the reasons I invested still true? Open **Monitor My Thesis** from the sidebar.")
+    v18_db_upgrade()
+    cls=safe_company_classification(ticker)
+    st.header(f"{cls.get('name') or ticker} — Investment Command Centre")
     h=history(ticker,"1y")
     if h.empty:
         st.warning("No price history available.")
     else:
-        ms=market_structure(h); conf=confluence_snapshot(h)
+        price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
+        p1,p2,p3,p4=st.columns(4)
+        metric_box(p1,"Price",f"${price:,.3f}")
+        metric_box(p2,"52W high",f"${float(h['High'].max()):,.3f}")
+        metric_box(p3,"52W low",f"${float(h['Low'].min()):,.3f}")
+        metric_box(p4,"Volume",f"{market_structure(h).get('Volume vs 20D',np.nan):.2f}× 20D")
+
+        st.subheader("Your position")
         a,b,c,d=st.columns(4)
-        metric_box(a,"Price",f"${ms['Price']:,.3f}")
-        metric_box(b,"52W high",f"${ms['Period high']:,.3f}")
-        metric_box(c,"52W low",f"${ms['Period low']:,.3f}")
-        metric_box(d,"Volume",f"{ms['Volume vs 20D']:.2f}× 20D")
-        tabs=st.tabs(["Thesis","Company KPIs","Technical","Market Structure","Catalysts","Risks & Evidence"])
-        with tabs[0]:
-            st.write(st.session_state.get("thesis","Use the sidebar investment thesis as the working hypothesis."))
-            st.info("Use Thesis Scorecard to convert narrative beliefs into measurable conditions.")
-        with tabs[1]:
-            cls=safe_company_classification(ticker)
-            kpis=company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))
-            st.write("**Relevant KPI framework for this company type:**")
-            st.write(" • ".join(kpis))
-            st.caption("V16 defines the KPI schema. Report extraction should populate reported values only when supported by source documents.")
-        with tabs[2]:
-            st.dataframe(conf,use_container_width=True,hide_index=True)
-            if not conf.empty:
-                st.info("Read across different families. Trend + momentum + participation agreement is more informative than counting several correlated momentum indicators.")
-        with tabs[3]:
-            st.dataframe(pd.DataFrame([ms]).T.rename(columns={0:"Current reading"}),use_container_width=True)
-        with tabs[4]:
-            con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,),con); con.close()
-            st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded yet. Add them in Catalyst Calendar.")
-        with tabs[5]:
-            st.write(provenance_badge("Market"),"Price/volume history")
-            st.write(provenance_badge("Calculated"),"Technical indicators, market structure and model outputs")
-            st.write(provenance_badge("Reported"),"Only use this label for values taken directly from company documents.")
-            st.write(provenance_badge("AI"),"Interpretation must remain distinguishable from reported facts.")
+        a.metric("Shares",f"{hold['quantity']:,.0f}")
+        b.metric("Average cost",f"${hold['avg_cost']:,.3f}" if hold["quantity"] else "—")
+        c.metric("Market value",f"${hold['quantity']*price:,.0f}")
+        pnl=(price-hold["avg_cost"])*hold["quantity"] if hold["quantity"] else 0
+        d.metric("Unrealised P&L",f"${pnl:,.0f}" if hold["quantity"] else "—")
+
+        st.subheader("What requires my attention?")
+        st.dataframe(v18_attention(ticker,0,price),use_container_width=True,hide_index=True)
+
+        l,r=st.columns(2)
+        with l:
+            st.subheader("Thesis")
+            t=thesis_table(ticker)
+            if t.empty: st.info("No measurable thesis conditions yet.")
+            else:
+                met=int((t["status"]=="Met").sum())
+                st.metric("Conditions met",f"{met} / {len(t)}")
+                st.dataframe(t[["metric","current_value","operator","threshold","status","source"]],use_container_width=True,hide_index=True)
+            st.subheader("What changed since last review?")
+            kc=kpi_latest_comparison(ticker)
+            if kc.empty: st.info("No KPI observations have been recorded yet. Use Monitor My Thesis → Evidence capture.")
+            else: st.dataframe(kc,use_container_width=True,hide_index=True)
+        with r:
+            st.subheader("Market structure")
+            q1,q2=st.columns(2)
+            q1.metric("Trend regime",tr.get("Trend","—"))
+            q2.metric("Relative strength 3M","—" if pd.isna(tr.get("Relative 3M",np.nan)) else f"{tr['Relative 3M']:+.1%}")
+            st.write(f"Support **${tr['Support']:,.3f}** · Resistance **${tr['Resistance']:,.3f}**")
+            st.write(f"20D volume **{tr['Volume ratio']:.2f}×** · Annualised volatility **{tr['Annualised volatility']:.1%}**")
+            st.caption(f"Relative-strength benchmark: {tr.get('Benchmark','—')}")
+
+            st.subheader("Valuation scenarios")
+            vv=valuation_snapshot(ticker,price)
+            if vv.empty: st.info("Valuation scenario could not be calculated.")
+            else: st.dataframe(vv,use_container_width=True,hide_index=True)
+
+        st.subheader("Latest announcements")
+        aa=latest_announcements_safe(ticker,5)
+        if aa.empty: st.info("No announcement rows are available from the current announcement provider.")
+        else: st.dataframe(aa,use_container_width=True,hide_index=True)
+
+        st.subheader("Catalysts")
+        con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT 6",(ticker,),con); con.close()
+        st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded yet.")
+
+        st.markdown("---")
+        st.markdown("### Core workflows")
+        x,y=st.columns(2)
+        x.info("**BEFORE I INVEST**\n\nRun a decision brief that combines position impact, valuation, thesis evidence, market structure and catalysts.")
+        y.info("**MONITOR MY THESIS**\n\nCapture company-reported KPI evidence and compare the latest observation with the previous one.")
+        st.caption("Evidence discipline: company-reported KPI values are only shown after they have been explicitly captured with a source. The app does not invent missing reported figures.")
 
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
@@ -1463,7 +1665,7 @@ elif page=="Before I Invest":
         st.error("Price history could not be loaded, so the Decision Brief cannot calculate a trade scenario.")
     else:
         st.subheader("What requires my attention?")
-        for icon,msg in attention_items(ticker): st.write(f"{icon} {msg}")
+        st.dataframe(v18_attention(ticker,amount,d["price"]),use_container_width=True,hide_index=True)
 
         st.subheader("Position & proposed investment")
         c1,c2,c3,c4=st.columns(4)
@@ -1495,6 +1697,25 @@ elif page=="Before I Invest":
             ms=d["market"]
             st.write(f"20D support: **${ms['20D support']:,.3f}**  |  20D resistance: **${ms['20D resistance']:,.3f}**")
             st.write(f"52-week/period range: **${ms['Period low']:,.3f} – ${ms['Period high']:,.3f}**")
+
+        st.subheader("Valuation & expectations")
+        vv=valuation_snapshot(ticker,d["price"])
+        if vv.empty: st.info("Valuation scenario could not be calculated.")
+        else: st.dataframe(vv,use_container_width=True,hide_index=True)
+        rt=reverse_targets(ticker)
+        if not rt.empty:
+            rt2=rt.copy()
+            rt2["Implied 5Y FCF growth"]=rt2["Implied 5Y FCF growth"].map(lambda x:"—" if pd.isna(x) else f"{x:.1%}")
+            st.caption("Reverse valuation: approximate FCF growth required by the stored base WACC/terminal-growth assumptions.")
+            st.dataframe(rt2,use_container_width=True,hide_index=True)
+
+        st.subheader("Latest KPI evidence")
+        kc=kpi_latest_comparison(ticker)
+        st.dataframe(kc,use_container_width=True,hide_index=True) if not kc.empty else st.info("No company KPI evidence captured yet.")
+
+        st.subheader("Latest announcements")
+        aa=latest_announcements_safe(ticker,3)
+        st.dataframe(aa,use_container_width=True,hide_index=True) if not aa.empty else st.info("No announcement rows available from the current provider.")
 
         st.subheader("Catalysts")
         con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT 8",(ticker,),con); con.close()
@@ -1543,8 +1764,32 @@ elif page=="Monitor My Thesis":
         st.dataframe(changes,use_container_width=True,hide_index=True)
         st.info("An increase is not automatically good and a decrease is not automatically bad. Direction must be interpreted in the context of the metric—for example, lower credit losses may be favourable while lower growth may not be.")
 
+    st.subheader("Company KPI evidence")
+    cls=safe_company_classification(ticker)
+    kpis=company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))
+    with st.expander("Capture a company-reported KPI observation",expanded=False):
+        km=st.selectbox("KPI",kpis,key="v18_kpi_metric")
+        kp=st.text_input("Reporting period",placeholder="e.g. FY26 / H1 FY27",key="v18_kpi_period")
+        c1,c2=st.columns(2)
+        kv=c1.number_input("Reported value",value=0.0,key="v18_kpi_value")
+        ku=c2.text_input("Unit",placeholder="%, $m, customers, etc.",key="v18_kpi_unit")
+        ks=st.text_input("Source / report title",placeholder="e.g. FY26 Results Presentation",key="v18_kpi_source")
+        kurl=st.text_input("Source URL (optional)",key="v18_kpi_url")
+        kn=st.text_area("Evidence note",placeholder="Page/section and concise context",key="v18_kpi_note")
+        if st.button("Save reported KPI evidence",type="primary",key="v18_save_kpi"):
+            if not kp.strip() or not ks.strip():
+                st.error("Reporting period and source are required so the value is not presented without provenance.")
+            else:
+                save_kpi_observation(ticker,km,kp,kv,ku,ks,kurl,kn); st.success("KPI evidence saved."); st.rerun()
+    kc=kpi_latest_comparison(ticker)
+    if kc.empty: st.info("No company KPI observations recorded yet.")
+    else:
+        st.subheader("What changed in company KPIs?")
+        st.dataframe(kc,use_container_width=True,hide_index=True)
+
     st.subheader("Attention queue")
-    for icon,msg in attention_items(ticker): st.write(f"{icon} {msg}")
+    att=v18_attention(ticker)
+    st.dataframe(att,use_container_width=True,hide_index=True)
 
     st.subheader("Monitoring controls")
     st.write("Use **Catalyst Calendar** for expected events, **Alerts** for stored market/technical thresholds, and **Announcements & Reports** to inspect new company evidence and original documents.")
