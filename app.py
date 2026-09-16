@@ -1,3 +1,50 @@
+ZIP — INVESTMENT COMMITTEE REPORT
+
+Fundamental:
+Strong / Mixed / Weak
+
+Valuation:
+Cheap / Fair / Expensive
+
+Growth:
+Accelerating / Stable / Slowing
+
+Cash Generation:
+Improving / Stable / Deteriorating
+
+Balance Sheet:
+Strong / Adequate / Weak
+
+Bull Case:
+...
+
+Bear Case:
+...
+
+Kill My Thesis:
+...
+
+Key Catalysts:
+...
+
+Key Risks:
+...
+
+Bear Value: $X.XX
+Base Value: $X.XX
+Bull Value: $X.XX
+
+Thesis Status:
+INTACT / WATCH / BROKEN
+
+Research Score:
+X.X / 10
+
+Committee Conclusion:
+...
+
+#===========================================================
+
 import streamlit as st
 import pandas as pd
 import numpy as np
