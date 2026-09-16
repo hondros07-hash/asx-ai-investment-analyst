@@ -681,6 +681,124 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
         except Exception: stamp_text="Latest loaded session"
         k4.metric("Latest session",stamp_text)
 
+
+# ---------------- V18.2 Forecast + Analyst Consensus ----------------
+FORECAST_HORIZONS={"1 Month":21,"3 Months":63,"6 Months":126,"12 Months":252}
+
+def research_forecast(df):
+    """Transparent historical-distribution forecast; research only, not a recommendation."""
+    cols=["Horizon","Days","Current price","Median forecast","Low case (20%)","High case (80%)",
+          "Median return","Positive-return frequency","Sample size","Method"]
+    try:
+        px=pd.to_numeric(df["Close"],errors="coerce").dropna()
+        if len(px)<80: return pd.DataFrame(columns=cols)
+        current=float(px.iloc[-1])
+        rows=[]
+        for label,h in FORECAST_HORIZONS.items():
+            # Non-overlapping-ish rolling horizon outcomes sampled every 5 sessions to reduce duplication.
+            fwd=(px.shift(-h)/px-1).dropna().iloc[::5]
+            if len(fwd)<12:
+                rows.append([label,h,current,np.nan,np.nan,np.nan,np.nan,np.nan,len(fwd),"Insufficient history"])
+                continue
+            # Weight recent observations more, while remaining entirely historical and auditable.
+            vals=fwd.to_numpy(dtype=float)
+            n=len(vals)
+            weights=np.linspace(0.5,1.5,n); weights=weights/weights.sum()
+            # Deterministic weighted quantile helper.
+            order=np.argsort(vals); sv=vals[order]; sw=weights[order]; cw=np.cumsum(sw)
+            def wq(q): return float(np.interp(q,cw,sv))
+            med=wq(.50); lo=wq(.20); hi=wq(.80)
+            pos=float(weights[vals>0].sum())
+            rows.append([label,h,current,current*(1+med),current*(1+lo),current*(1+hi),
+                         med,pos,n,"Recency-weighted historical horizon returns"])
+        return pd.DataFrame(rows,columns=cols)
+    except Exception:
+        return pd.DataFrame(columns=cols)
+
+def analyst_consensus_snapshot(ticker):
+    """Best-effort Yahoo/yfinance analyst consensus. This reports analysts' views, not the app's rating."""
+    out={"label":"Unavailable","strongBuy":0,"buy":0,"hold":0,"sell":0,"strongSell":0,
+         "analysts":0,"target_low":np.nan,"target_mean":np.nan,"target_median":np.nan,
+         "target_high":np.nan,"source":"Yahoo Finance via yfinance"}
+    try:
+        t=yf.Ticker(ticker)
+        rec=t.get_recommendations()
+        if rec is None or len(rec)==0:
+            rec=getattr(t,"recommendations_summary",None)
+        if rec is not None and len(rec):
+            r=rec.iloc[0]
+            for k in ["strongBuy","buy","hold","sell","strongSell"]:
+                try: out[k]=int(float(r.get(k,0) or 0))
+                except Exception: out[k]=0
+            total=sum(out[k] for k in ["strongBuy","buy","hold","sell","strongSell"])
+            out["analysts"]=total
+            if total:
+                # Consensus is the plurality of published analyst categories; ties are Hold.
+                counts={k:out[k] for k in ["strongBuy","buy","hold","sell","strongSell"]}
+                mx=max(counts.values()); winners=[k for k,v in counts.items() if v==mx]
+                labels={"strongBuy":"Strong Buy","buy":"Buy","hold":"Hold","sell":"Sell","strongSell":"Strong Sell"}
+                out["label"]=labels[winners[0]] if len(winners)==1 else "Hold"
+        try:
+            pt=t.get_analyst_price_targets()
+            if isinstance(pt,dict):
+                for src_key,dst in [("low","target_low"),("mean","target_mean"),("median","target_median"),("high","target_high")]:
+                    v=pt.get(src_key)
+                    out[dst]=float(v) if v is not None else np.nan
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return out
+
+def render_analyst_consensus(ticker,price):
+    a=analyst_consensus_snapshot(ticker)
+    st.subheader("Analyst consensus")
+    st.caption("External analyst consensus reported by Yahoo Finance via yfinance. This is not Market Investment Analyst's recommendation.")
+    c=st.columns(4)
+    metric_box(c[0],"Consensus",a["label"])
+    metric_box(c[1],"Analysts",str(a["analysts"]) if a["analysts"] else "—")
+    metric_box(c[2],"Mean target","—" if pd.isna(a["target_mean"]) else display_price(a["target_mean"],ticker))
+    upside=(a["target_mean"]/price-1) if price and not pd.isna(a["target_mean"]) else np.nan
+    metric_box(c[3],"Mean target vs price","—" if pd.isna(upside) else f"{upside*100:+.1f}%")
+    dist=pd.DataFrame({
+        "Rating":["Strong Buy","Buy","Hold","Sell","Strong Sell"],
+        "Analysts":[a["strongBuy"],a["buy"],a["hold"],a["sell"],a["strongSell"]]
+    })
+    st.dataframe(dist,use_container_width=True,hide_index=True)
+    if not all(pd.isna(a[k]) for k in ["target_low","target_mean","target_median","target_high"]):
+        st.dataframe(pd.DataFrame([{
+            "Low target":"—" if pd.isna(a["target_low"]) else display_price(a["target_low"],ticker),
+            "Mean target":"—" if pd.isna(a["target_mean"]) else display_price(a["target_mean"],ticker),
+            "Median target":"—" if pd.isna(a["target_median"]) else display_price(a["target_median"],ticker),
+            "High target":"—" if pd.isna(a["target_high"]) else display_price(a["target_high"],ticker),
+        }]),use_container_width=True,hide_index=True)
+    if a["analysts"]==0 and all(pd.isna(a[k]) for k in ["target_low","target_mean","target_median","target_high"]):
+        st.info("No analyst consensus or price-target data is available from the current provider for this security.")
+
+def render_forecast_tool(ticker,df):
+    st.header("Forecast Research")
+    st.caption("1M / 3M / 6M / 12M scenario research based on historical horizon returns. It is not a price promise or investment recommendation.")
+    fc=research_forecast(df)
+    if fc.empty:
+        st.info("Not enough price history is available to calculate forecast scenarios.")
+        return
+    show=fc.copy()
+    for c in ["Current price","Median forecast","Low case (20%)","High case (80%)"]:
+        show[c]=show[c].map(lambda x:"—" if pd.isna(x) else display_price(x,ticker))
+    for c in ["Median return","Positive-return frequency"]:
+        show[c]=show[c].map(lambda x:"—" if pd.isna(x) else f"{x*100:.1f}%")
+    st.dataframe(show,use_container_width=True,hide_index=True)
+    st.caption("Low/high cases are the 20th/80th percentiles of historical forward returns for the same horizon, with modest recency weighting. Positive-return frequency is historical, not a calibrated probability of the future.")
+    # Visual forecast path using horizon medians.
+    valid=fc.dropna(subset=["Median forecast"])
+    if not valid.empty:
+        chart=pd.DataFrame({"Months":[0,1,3,6,12],"Price":[float(fc["Current price"].iloc[0])]+valid["Median forecast"].tolist()})
+        # Ensure lengths align even if a horizon is unavailable.
+        if len(chart)!=len(valid)+1:
+            months=[0]+[{"1 Month":1,"3 Months":3,"6 Months":6,"12 Months":12}[x] for x in valid["Horizon"]]
+            chart=pd.DataFrame({"Months":months,"Price":[float(fc["Current price"].iloc[0])]+valid["Median forecast"].tolist()})
+        st.line_chart(chart.set_index("Months"))
+
 # ---------------- V18 Investment Intelligence Layer ----------------
 def v18_db_upgrade():
     v17_db_upgrade()
@@ -1114,7 +1232,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.1 • Market Investment Analyst • company snapshot header")
+st.caption("V18.2 • Market Investment Analyst • forecast + analyst consensus")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1798,6 +1916,8 @@ elif page=="Company Command Centre":
         price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
         company_snapshot_header(ticker, meta, h, cls)
         st.subheader("Investment Command Centre")
+        render_analyst_consensus(ticker,price)
+        st.divider()
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
         a.metric("Shares",f"{hold['quantity']:,.0f}")
@@ -2173,9 +2293,9 @@ elif page=="Quant":
     st.info("V6–V9 backtest, factor, ML ensemble and point-in-time modules remain packaged.")
 
 elif page=="Forecasts":
-    st.header("1M / 3M / 6M Forecast Research")
-    st.info("V10.1 does not invent current probabilities when a validated model run is unavailable.")
-    st.write("Target outputs: calibrated positive-return/outperformance probability, expected return, downside distribution, model disagreement and data confidence.")
+    render_forecast_tool(ticker,df)
+    st.divider()
+    render_analyst_consensus(ticker,price)
 
 elif page=="News & Events":
     st.header("News, Announcements & Catalysts")
