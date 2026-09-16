@@ -121,8 +121,11 @@ METRIC_HELP = {
     "12M momentum": "Price performance over approximately the previous 252 trading sessions.",
 }
 def metric_box(target, label, value, delta=None, **kwargs):
+    """Render a Streamlit metric card with contextual hover help."""
     help_text = METRIC_HELP.get(label)
-    return metric_box(target, label, value, delta=delta, help=help_text, **kwargs)
+    if help_text and "help" not in kwargs:
+        kwargs["help"] = help_text
+    return target.metric(label, value, delta=delta, **kwargs)
 
 st.sidebar.title("Market Investment Analyst")
 try:
@@ -155,7 +158,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V13.1 • Market Investment Analyst • contextual hover help")
+st.caption("V13.1.1 • Market Investment Analyst • hover-help hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
