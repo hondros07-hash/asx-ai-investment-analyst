@@ -25,6 +25,8 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 
+import json
+
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
 st.markdown("""
@@ -388,6 +390,108 @@ BROKER_ADAPTER_REQUIREMENTS=pd.DataFrame([
     {"Route":"Market data","Requirement":"Licensed real-time/Level 2 feed for production","Status":"Existing prototype feeds","Live execution":"N/A"},
 ])
 
+
+# ---------------- V16 Institutional Workstation ----------------
+WORKSPACE_DB="workstation.db"
+
+def ws_db():
+    con=sqlite3.connect(WORKSPACE_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS thesis_rules(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,operator TEXT,
+        threshold REAL,current_value REAL,status TEXT,source TEXT,updated_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS catalysts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,event_date TEXT,event TEXT,
+        category TEXT,source TEXT,status TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS alerts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,operator TEXT,
+        threshold REAL,enabled INTEGER,notes TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS strategy_rules(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,ticker TEXT,rule_json TEXT,created_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS user_layout(
+        id INTEGER PRIMARY KEY CHECK(id=1),preset TEXT,default_period TEXT,default_benchmark TEXT,
+        widgets TEXT)""")
+    con.execute("""INSERT OR IGNORE INTO user_layout VALUES
+        (1,'Investor','1y','Auto','Price,Thesis,Fundamentals,Technical,Valuation,Catalysts,Risks,Latest announcement,Portfolio')""")
+    con.commit(); return con
+
+def company_kpi_template(ticker,sector="",industry=""):
+    name=(company_name(ticker) if 'company_name' in globals() else ticker)
+    text=f"{name} {sector} {industry}".lower()
+    if "zip" in text or "financial" in text or "credit" in text:
+        return ["Transaction / TTV growth","Revenue growth","Revenue margin","Credit losses / bad debts",
+                "Cash EBITDA / EBTDA","Operating margin","Active customers","Cash generation"]
+    if any(x in text for x in ["bank","banks"]):
+        return ["Net interest margin","CET1 ratio","Loan growth","Deposit growth","Bad debts","ROE","Cost-to-income"]
+    if any(x in text for x in ["mining","miner","materials","gold","copper","lithium"]):
+        return ["Production","Realised commodity price","AISC / unit cost","Cash flow","Capex","Reserves/resources","Net cash/debt"]
+    if any(x in text for x in ["reit","real estate"]):
+        return ["FFO/AFFO","Occupancy","WALE","NTA","Gearing","Distribution per security","Cap rate"]
+    return ["Revenue growth","Earnings growth","Operating margin","Free cash flow","ROIC / ROE","Net debt","Guidance"]
+
+def provenance_badge(kind):
+    return {"Reported":"🟢 Company reported","Exchange":"🔵 Exchange / regulatory",
+            "Market":"🟣 Market data","Calculated":"🟠 Model calculated",
+            "AI":"⚪ AI interpretation","Unavailable":"⚫ Unavailable"}.get(kind,kind)
+
+def market_structure(df):
+    if df is None or df.empty: return {}
+    c=df["Close"].astype(float); h=df["High"].astype(float); l=df["Low"].astype(float); v=df["Volume"].astype(float)
+    last=float(c.iloc[-1]); hi=float(h.max()); lo=float(l.min())
+    sma20=float(c.rolling(20).mean().iloc[-1]) if len(c)>=20 else np.nan
+    sma50=float(c.rolling(50).mean().iloc[-1]) if len(c)>=50 else np.nan
+    sma200=float(c.rolling(200).mean().iloc[-1]) if len(c)>=200 else np.nan
+    vol20=float(v.rolling(20).mean().iloc[-1]) if len(v)>=20 else np.nan
+    recent_hi=float(h.tail(min(20,len(h))).max()); recent_lo=float(l.tail(min(20,len(l))).min())
+    return {"Price":last,"Period high":hi,"Period low":lo,"SMA20":sma20,"SMA50":sma50,"SMA200":sma200,
+            "20D resistance":recent_hi,"20D support":recent_lo,"Volume vs 20D":float(v.iloc[-1]/vol20) if vol20 else np.nan}
+
+def confluence_snapshot(df):
+    if df is None or df.empty: return pd.DataFrame()
+    ti=technical_indicators(df); z=ti.iloc[-1]; px=float(df["Close"].iloc[-1]); rows=[]
+    def add(family,indicator,reading,state):
+        rows.append({"Family":family,"Indicator":indicator,"Reading":reading,"State":state})
+    if pd.notna(z.get("SMA 50",np.nan)): add("Trend","Price vs SMA50",f"{(px/z['SMA 50']-1)*100:+.1f}%","Positive" if px>z["SMA 50"] else "Negative")
+    if pd.notna(z.get("SMA 200",np.nan)): add("Trend","Price vs SMA200",f"{(px/z['SMA 200']-1)*100:+.1f}%","Positive" if px>z["SMA 200"] else "Negative")
+    if pd.notna(z.get("RSI",np.nan)): add("Momentum","RSI14",f"{z['RSI']:.1f}","Positive" if z["RSI"]>50 else "Negative")
+    if pd.notna(z.get("MACD",np.nan)): add("Momentum","MACD",f"{z['MACD Hist']:.3f} hist","Positive" if z["MACD"]>z["MACD Signal"] else "Negative")
+    if pd.notna(z.get("ADX",np.nan)): add("Strength","ADX",f"{z['ADX']:.1f}","Strong trend" if z["ADX"]>=25 else "Weak / range")
+    if len(ti)>=11:
+        d=ti["OBV"].diff(10).iloc[-1]
+        add("Participation","OBV 10D","Rising" if d>0 else "Falling","Positive" if d>0 else "Negative")
+    if pd.notna(z.get("ATR",np.nan)): add("Volatility","ATR",f"{z['ATR']/px*100:.1f}% of price","Context")
+    return pd.DataFrame(rows)
+
+def strategy_eval(df,rules):
+    if df is None or df.empty: return []
+    ti=technical_indicators(df); z=ti.iloc[-1]; px=float(df["Close"].iloc[-1]); results=[]
+    values={"Price":px,"SMA20":z.get("SMA 20"),"SMA50":z.get("SMA 50"),"SMA200":z.get("SMA 200"),
+            "RSI":z.get("RSI"),"ADX":z.get("ADX"),"ROC":z.get("ROC"),"VolumeRatio":float(df["Volume"].iloc[-1]/df["Volume"].rolling(20).mean().iloc[-1])}
+    for r in rules:
+        lhs=values.get(r["metric"],np.nan); rhs=values.get(r["compare_metric"],r.get("value",0))
+        if isinstance(rhs,str): rhs=values.get(rhs,np.nan)
+        op=r["operator"]
+        passed=False if pd.isna(lhs) or pd.isna(rhs) else {"gt":lhs>rhs,"lt":lhs<rhs,"gte":lhs>=rhs,"lte":lhs<=rhs}.get(op,False)
+        results.append({**r,"lhs":lhs,"rhs":rhs,"passed":bool(passed)})
+    return results
+
+def portfolio_risk_snapshot():
+    pos=paper_positions_df()
+    if pos.empty: return pd.DataFrame(),{}
+    rows=[]
+    for _,r in pos.iterrows():
+        h=history(r["ticker"],"1y")
+        if h.empty: continue
+        ret=h["Close"].pct_change().dropna()
+        last=float(h["Close"].iloc[-1]); mv=float(r["quantity"])*last
+        rows.append({"Ticker":r["ticker"],"Market value":mv,"Volatility":float(ret.std()*np.sqrt(252)) if len(ret)>20 else np.nan,
+                     "Max drawdown":float((h["Close"]/h["Close"].cummax()-1).min())})
+    d=pd.DataFrame(rows)
+    if d.empty:return d,{}
+    total=d["Market value"].sum()
+    d["Weight"]=d["Market value"]/total
+    stats={"Invested":total,"Largest position":float(d["Weight"].max()),"Weighted volatility":float((d["Weight"]*d["Volatility"]).sum())}
+    return d,stats
+
 st.sidebar.title("Market Investment Analyst")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
@@ -409,7 +513,7 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Company Command Centre","Thesis Scorecard","Catalyst Calendar","Strategy Builder","Risk Centre","Portfolio Intelligence","Alerts","Workspace Settings","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -419,7 +523,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V15 • Market Investment Analyst • paper trading + order management")
+st.caption("V16 • Market Investment Analyst • institutional research workstation")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1072,6 +1176,185 @@ Adapter         Adapter
 - Add account-level limits, duplicate-order protection, stale-price protection, market-hours checks and a kill switch.
 - Add immutable order/event audit logging and broker reconciliation.
 - Obtain legal advice on the exact Australian licensing/authorisation model before offering execution to other users.""")
+
+
+elif page=="Company Command Centre":
+    st.header(f"Company Command Centre — {ticker}")
+    st.caption("One-screen research cockpit: price, thesis, fundamentals, technical context, valuation, catalysts, risk and evidence provenance.")
+    h=history(ticker,"1y")
+    if h.empty:
+        st.warning("No price history available.")
+    else:
+        ms=market_structure(h); conf=confluence_snapshot(h)
+        a,b,c,d=st.columns(4)
+        metric_box(a,"Price",f"${ms['Price']:,.3f}")
+        metric_box(b,"52W high",f"${ms['Period high']:,.3f}")
+        metric_box(c,"52W low",f"${ms['Period low']:,.3f}")
+        metric_box(d,"Volume",f"{ms['Volume vs 20D']:.2f}× 20D")
+        tabs=st.tabs(["Thesis","Company KPIs","Technical","Market Structure","Catalysts","Risks & Evidence"])
+        with tabs[0]:
+            st.write(st.session_state.get("thesis","Use the sidebar investment thesis as the working hypothesis."))
+            st.info("Use Thesis Scorecard to convert narrative beliefs into measurable conditions.")
+        with tabs[1]:
+            cls=classify_company(ticker)
+            kpis=company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))
+            st.write("**Relevant KPI framework for this company type:**")
+            st.write(" • ".join(kpis))
+            st.caption("V16 defines the KPI schema. Report extraction should populate reported values only when supported by source documents.")
+        with tabs[2]:
+            st.dataframe(conf,use_container_width=True,hide_index=True)
+            if not conf.empty:
+                st.info("Read across different families. Trend + momentum + participation agreement is more informative than counting several correlated momentum indicators.")
+        with tabs[3]:
+            st.dataframe(pd.DataFrame([ms]).T.rename(columns={0:"Current reading"}),use_container_width=True)
+        with tabs[4]:
+            con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,),con); con.close()
+            st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded yet. Add them in Catalyst Calendar.")
+        with tabs[5]:
+            st.write(provenance_badge("Market"),"Price/volume history")
+            st.write(provenance_badge("Calculated"),"Technical indicators, market structure and model outputs")
+            st.write(provenance_badge("Reported"),"Only use this label for values taken directly from company documents.")
+            st.write(provenance_badge("AI"),"Interpretation must remain distinguishable from reported facts.")
+
+elif page=="Thesis Scorecard":
+    st.header(f"Investment Thesis Scorecard — {ticker}")
+    st.caption("Convert the investment thesis into measurable conditions. Status is descriptive; it is not an investment recommendation.")
+    con=ws_db()
+    with st.form("thesis_rule"):
+        c1,c2,c3,c4=st.columns(4)
+        metric=c1.text_input("Metric",placeholder="e.g. US TTV growth")
+        operator=c2.selectbox("Condition",[">",">=","<","<="])
+        threshold=c3.number_input("Threshold",value=0.0)
+        current=c4.number_input("Current reported value",value=0.0)
+        source=st.text_input("Evidence/source",placeholder="e.g. FY26 results presentation p. 12")
+        add=st.form_submit_button("Add thesis condition")
+    if add and metric:
+        ok={">":current>threshold,">=":current>=threshold,"<":current<threshold,"<=":current<=threshold}[operator]
+        status="Met" if ok else "Watch / Broken"
+        con.execute("INSERT INTO thesis_rules(ticker,metric,operator,threshold,current_value,status,source,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                    (ticker,metric,operator,threshold,current,status,source,datetime.now(timezone.utc).isoformat()))
+        con.commit(); st.success("Condition added."); st.rerun()
+    df=pd.read_sql_query("SELECT id,metric,operator,threshold,current_value,status,source,updated_at FROM thesis_rules WHERE ticker=? ORDER BY id",(ticker,),con)
+    con.close()
+    st.dataframe(df,use_container_width=True,hide_index=True) if not df.empty else st.info("No measurable thesis conditions yet.")
+
+elif page=="Catalyst Calendar":
+    st.header(f"Catalyst Calendar — {ticker}")
+    st.caption("Track company events, results, AGMs, dividends, index events, macro releases and your own thesis checkpoints.")
+    con=ws_db()
+    with st.form("cat_form"):
+        a,b,c=st.columns(3)
+        event_date=a.date_input("Date")
+        category=b.selectbox("Category",["Results","AGM","Dividend","Guidance","Capital","Index","Macro","Other"])
+        status=c.selectbox("Status",["Expected","Confirmed","Completed"])
+        event=st.text_input("Catalyst / event")
+        source=st.text_input("Source / evidence")
+        submit=st.form_submit_button("Add catalyst")
+    if submit and event:
+        con.execute("INSERT INTO catalysts(ticker,event_date,event,category,source,status) VALUES(?,?,?,?,?,?)",
+                    (ticker,str(event_date),event,category,source,status)); con.commit(); st.success("Catalyst added."); st.rerun()
+    cats=pd.read_sql_query("SELECT id,event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,),con); con.close()
+    st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded.")
+
+elif page=="Strategy Builder":
+    st.header(f"No-Code Strategy Builder — {ticker}")
+    st.caption("Build transparent technical rules, test their current state, then use Backtesting/Paper Trading before considering any live workflow.")
+    h=history(ticker,"2y")
+    metrics=["Price","SMA20","SMA50","SMA200","RSI","ADX","ROC","VolumeRatio"]
+    n=st.slider("Number of rules",1,6,3)
+    rules=[]
+    for i in range(n):
+        a,b,c,d=st.columns(4)
+        metric=a.selectbox(f"Metric {i+1}",metrics,key=f"sm{i}")
+        op=b.selectbox("Operator",[">","<",">=","<="],key=f"so{i}")
+        compare_type=c.selectbox("Compare with",["Value","Indicator"],key=f"ct{i}")
+        if compare_type=="Indicator":
+            rhs=d.selectbox("Indicator",metrics,key=f"si{i}")
+            rules.append({"metric":metric,"operator":{">":"gt","<":"lt",">=":"gte","<=":"lte"}[op],"compare_metric":rhs})
+        else:
+            val=d.number_input("Value",value=0.0,key=f"sv{i}")
+            rules.append({"metric":metric,"operator":{">":"gt","<":"lt",">=":"gte","<=":"lte"}[op],"compare_metric":None,"value":val})
+    if not h.empty:
+        results=strategy_eval(h,rules)
+        rdf=pd.DataFrame([{"Rule":f"{r['metric']} {r['operator']} {r.get('compare_metric') or r.get('value')}",
+                           "Current":r["lhs"],"Comparison":r["rhs"],"Pass":r["passed"]} for r in results])
+        st.dataframe(rdf,use_container_width=True,hide_index=True)
+        st.info(f"Current setup satisfies {sum(r['passed'] for r in results)} of {len(results)} rules. This is a rule-state check, not a forecast.")
+    name=st.text_input("Strategy name",value=f"{ticker} strategy")
+    if st.button("Save strategy"):
+        con=ws_db(); con.execute("INSERT INTO strategy_rules(name,ticker,rule_json,created_at) VALUES(?,?,?,?)",
+                                 (name,ticker,json.dumps(rules),datetime.now(timezone.utc).isoformat())); con.commit(); con.close(); st.success("Strategy saved.")
+
+elif page=="Risk Centre":
+    st.header(f"Risk & Position Sizing Centre — {ticker}")
+    h=history(ticker,"1y")
+    if h.empty: st.warning("No price history available.")
+    else:
+        ti=technical_indicators(h); px=float(h["Close"].iloc[-1]); atr=float(ti["ATR"].iloc[-1])
+        a,b,c=st.columns(3)
+        account=a.number_input("Portfolio value",min_value=0.0,value=max(paper_cash_balance(),100000.0),step=1000.0)
+        risk_pct=b.number_input("Maximum risk per trade (%)",min_value=0.1,max_value=10.0,value=1.0,step=0.1)
+        atr_mult=c.number_input("ATR stop multiple",min_value=0.5,max_value=10.0,value=2.0,step=0.5)
+        stop=max(0,px-atr*atr_mult); risk_per_share=max(px-stop,0.000001); risk_dollars=account*risk_pct/100
+        qty=int(risk_dollars/risk_per_share); position=qty*px
+        r1,r2,r3,r4=st.columns(4)
+        r1.metric("ATR",f"${atr:.3f}"); r2.metric("Illustrative stop",f"${stop:.3f}")
+        r3.metric("Risk-sized shares",f"{qty:,}"); r4.metric("Position value",f"${position:,.0f}")
+        st.caption("Illustrative risk sizing only. ATR-based stops can gap through their level and do not cap losses.")
+        pr,stats=portfolio_risk_snapshot()
+        if not pr.empty:
+            st.subheader("Existing paper portfolio concentration")
+            st.dataframe(pr,use_container_width=True,hide_index=True)
+            st.write(f"Largest paper position weight: **{stats['Largest position']*100:.1f}%**")
+
+elif page=="Portfolio Intelligence":
+    st.header("Portfolio Intelligence")
+    pr,stats=portfolio_risk_snapshot()
+    if pr.empty:
+        st.info("Create paper positions to populate portfolio intelligence.")
+    else:
+        a,b,c=st.columns(3)
+        a.metric("Invested value",f"${stats['Invested']:,.0f}")
+        b.metric("Largest position",f"{stats['Largest position']*100:.1f}%")
+        c.metric("Weighted volatility",f"{stats['Weighted volatility']*100:.1f}%")
+        st.dataframe(pr,use_container_width=True,hide_index=True)
+        st.subheader("Concentration")
+        fig=go.Figure(go.Pie(labels=pr["Ticker"],values=pr["Market value"],hole=.45))
+        st.plotly_chart(fig,use_container_width=True)
+        st.caption("V16 portfolio analytics use paper positions and historical market data. Tax, dividends, FX attribution and broker cash reconciliation require richer transaction data.")
+
+elif page=="Alerts":
+    st.header(f"Research Alerts — {ticker}")
+    st.caption("Define monitoring rules now. V16 stores them; scheduled/background evaluation should be connected to a durable worker before relying on notifications.")
+    con=ws_db()
+    with st.form("alert_form"):
+        a,b,c=st.columns(3)
+        metric=a.selectbox("Metric",["Price","RSI","VolumeRatio","SMA50","SMA200","ADX"])
+        op=b.selectbox("Condition",[">","<",">=","<="])
+        threshold=c.number_input("Threshold",value=0.0)
+        notes=st.text_input("Alert note")
+        submit=st.form_submit_button("Add alert")
+    if submit:
+        con.execute("INSERT INTO alerts(ticker,metric,operator,threshold,enabled,notes) VALUES(?,?,?,?,1,?)",(ticker,metric,op,threshold,notes))
+        con.commit(); st.success("Alert rule saved."); st.rerun()
+    adf=pd.read_sql_query("SELECT id,metric,operator,threshold,enabled,notes FROM alerts WHERE ticker=? ORDER BY id",(ticker,),con); con.close()
+    st.dataframe(adf,use_container_width=True,hide_index=True) if not adf.empty else st.info("No alert rules saved.")
+
+elif page=="Workspace Settings":
+    st.header("Workspace Customisation")
+    st.caption("Choose a working style and the information that should dominate your company workflow.")
+    con=ws_db(); row=con.execute("SELECT preset,default_period,default_benchmark,widgets FROM user_layout WHERE id=1").fetchone()
+    preset=st.selectbox("Workspace preset",["Investor","Swing Trader","Technical Trader","Portfolio Manager"],index=["Investor","Swing Trader","Technical Trader","Portfolio Manager"].index(row[0] if row else "Investor"))
+    period=st.selectbox("Default timeframe",["6mo","1y","2y","5y"],index=["6mo","1y","2y","5y"].index(row[1] if row and row[1] in ["6mo","1y","2y","5y"] else "1y"))
+    widgets=st.multiselect("Command Centre modules",["Price","Thesis","Fundamentals","Technical","Valuation","Catalysts","Risks","Latest announcement","Portfolio"],
+                           default=(row[3].split(",") if row and row[3] else ["Price","Thesis","Fundamentals","Technical"]))
+    if st.button("Save workspace"):
+        con.execute("""INSERT INTO user_layout(id,preset,default_period,default_benchmark,widgets) VALUES(1,?,?,?,?)
+                       ON CONFLICT(id) DO UPDATE SET preset=excluded.preset,default_period=excluded.default_period,
+                       default_benchmark=excluded.default_benchmark,widgets=excluded.widgets""",
+                    (preset,period,"Auto",",".join(widgets))); con.commit(); st.success("Workspace saved.")
+    con.close()
+    st.info("Streamlit does not provide native drag-and-drop dashboard layout persistence. V16 implements saved presets/module selection; a custom frontend/component would be the next step for true draggable cards.")
 
 
 elif page=="Quant":
