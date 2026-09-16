@@ -13,6 +13,7 @@ from live_data_provider import market_snapshot, twelve_price
 from market_chart_engine import RANGES, range_data, summary as chart_summary, previous_close, price_figure
 from market_universe import BENCHMARKS, resolve_bare_ticker, detect_market
 from sector_peer_engine import classification, find_peers, peer_table, normalized_history, equal_weight_peer_basket, default_benchmark
+from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 
 st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
 
@@ -43,7 +44,7 @@ st.sidebar.title("ASX AI Analyst")
 ticker=st.sidebar.text_input("ASX ticker","ZIP.AX").strip().upper()
 ticker = resolve_bare_ticker(ticker)
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Dashboard","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Dashboard","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -52,7 +53,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.6 • ASX + NASDAQ + NYSE • universal sector & peer intelligence")
+st.caption("V11 • Serious Investment Research System • evidence-first, multi-market")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
@@ -232,6 +233,73 @@ if page=="Dashboard":
     else:
         st.warning("Insufficient price history to calculate the selected relative-performance period.")
 
+
+elif page=="Research Report":
+    st.header(f"Research Report — {ticker} — {name}")
+    cls=classification(ticker,meta)
+    snap=research_snapshot(meta)
+    tech=technical_state(h)
+    peers=find_peers(ticker,meta,max_peers=8)
+    bm_ticker,bm_name=default_benchmark(ticker,meta)
+
+    st.subheader("1. Research identity")
+    r1,r2,r3,r4=st.columns(4)
+    r1.metric("Sector",cls["sector"]); r2.metric("Industry",cls["industry"])
+    r3.metric("Market benchmark",bm_name); r4.metric("Price",f"${price:.3f}")
+
+    st.subheader("2. Fundamental & valuation snapshot")
+    rows=[]
+    pct_keys={"Revenue growth","Earnings growth","Gross margin","Operating margin","Profit margin","ROE","ROA","Dividend yield"}
+    for k,v in snap.items():
+        if pd.isna(v): shown="—"
+        elif k in pct_keys: shown=f"{v:.2%}"
+        elif k in {"Market cap","Enterprise value","Free cash flow","Operating cash flow"}: shown=money(v)
+        else: shown=f"{v:,.2f}"
+        rows.append([k,shown])
+    st.dataframe(pd.DataFrame(rows,columns=["Metric","Value"]),use_container_width=True,hide_index=True)
+    st.caption("Provider fundamentals are screening inputs. Material figures should be verified against company filings before an investment decision.")
+
+    st.subheader("3. Sector-specific operating KPIs")
+    kp=kpi_framework(cls["sector"],cls["industry"])
+    st.dataframe(pd.DataFrame({"KPI to monitor":kp,"Live verified value":["Not connected"]*len(kp),
+                              "Trend":["Awaiting filings / KPI feed"]*len(kp)}),
+                 use_container_width=True,hide_index=True)
+
+    st.subheader("4. Peer fundamentals & valuation")
+    if peers:
+        pf=peer_fundamentals([ticker]+[p["ticker"] for p in peers])
+        pctcols=["Revenue growth","Operating margin","ROE"]
+        st.dataframe(pf.style.format({
+            "P/E":"{:.2f}","Forward P/E":"{:.2f}","EV/EBITDA":"{:.2f}","P/B":"{:.2f}",
+            **{x:"{:.2%}" for x in pctcols}
+        },na_rep="—"),use_container_width=True,hide_index=True)
+    else: st.info("No matched peers available in the current curated universe.")
+
+    st.subheader("5. Price, momentum & risk")
+    tr=[]
+    for k,v in tech.items():
+        if pd.isna(v): shown="—"
+        elif "return" in k.lower() or "volatility" in k.lower() or "drawdown" in k.lower(): shown=f"{v:.2%}"
+        else: shown=f"${v:,.3f}"
+        tr.append([k,shown])
+    st.dataframe(pd.DataFrame(tr,columns=["Measure","Value"]),use_container_width=True,hide_index=True)
+
+    st.subheader("6. Thesis stress test")
+    st.write("Current thesis:",thesis)
+    st.dataframe(pd.DataFrame(thesis_checklist(cls["sector"],cls["industry"])),
+                 use_container_width=True,hide_index=True)
+    st.caption("V11 deliberately does not mark a thesis as supported or broken without verified operating evidence.")
+
+    st.subheader("7. Evidence & data quality")
+    es=evidence_status(meta,h)
+    st.dataframe(pd.DataFrame(es.items(),columns=["Evidence source","Status"]),
+                 use_container_width=True,hide_index=True)
+
+    st.subheader("8. Forecast discipline")
+    st.info("1M / 3M / 6M probabilities are withheld until the backtest is leakage-safe, horizon-correct and calibrated on unseen data. V11 will not manufacture forecast probabilities.")
+
+    st.subheader("9. Research gaps")
+    st.write("Before this can function as an institutional-grade research system, connect official ASX/SEC filings, point-in-time fundamentals, consensus estimates, corporate actions, a survivorship-safe universe and licensed production market data.")
 
 elif page=="Investment Committee":
     st.header(f"{ticker} — Investment Committee"); st.info(thesis)
