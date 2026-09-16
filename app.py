@@ -492,6 +492,114 @@ def portfolio_risk_snapshot():
     stats={"Invested":total,"Largest position":float(d["Weight"].max()),"Weighted volatility":float((d["Weight"]*d["Volatility"]).sum())}
     return d,stats
 
+
+# ---------------- V17 Decision Brief + Thesis Monitor ----------------
+def v17_db_upgrade():
+    con=ws_db()
+    con.execute("""CREATE TABLE IF NOT EXISTS portfolio_holdings(
+        ticker TEXT PRIMARY KEY, quantity REAL, avg_cost REAL, source TEXT, updated_at TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS thesis_snapshots(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,snapshot_at TEXT,metric TEXT,
+        current_value REAL,status TEXT,source TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS review_log(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,reviewed_at TEXT,amount REAL,
+        price REAL,shares_before REAL,avg_cost_before REAL,shares_after REAL,
+        avg_cost_after REAL,notes TEXT)""")
+    con.commit(); con.close()
+
+def holding_for(ticker):
+    v17_db_upgrade(); con=ws_db()
+    row=con.execute("SELECT quantity,avg_cost,source FROM portfolio_holdings WHERE ticker=?",(ticker,)).fetchone()
+    con.close()
+    return {"quantity":float(row[0]),"avg_cost":float(row[1]),"source":row[2]} if row else {"quantity":0.0,"avg_cost":0.0,"source":"Manual"}
+
+def save_holding(ticker,quantity,avg_cost,source="Manual"):
+    v17_db_upgrade(); con=ws_db()
+    con.execute("""INSERT INTO portfolio_holdings(ticker,quantity,avg_cost,source,updated_at) VALUES(?,?,?,?,?)
+                   ON CONFLICT(ticker) DO UPDATE SET quantity=excluded.quantity,avg_cost=excluded.avg_cost,
+                   source=excluded.source,updated_at=excluded.updated_at""",
+                (ticker,float(quantity),float(avg_cost),source,datetime.now(timezone.utc).isoformat()))
+    con.commit(); con.close()
+
+def thesis_table(ticker):
+    con=ws_db()
+    d=pd.read_sql_query("""SELECT id,metric,operator,threshold,current_value,status,source,updated_at
+                           FROM thesis_rules WHERE ticker=? ORDER BY id""",(ticker,),con)
+    con.close(); return d
+
+def snapshot_thesis(ticker):
+    d=thesis_table(ticker)
+    if d.empty:return 0
+    con=ws_db(); now=datetime.now(timezone.utc).isoformat()
+    for _,r in d.iterrows():
+        con.execute("INSERT INTO thesis_snapshots(ticker,snapshot_at,metric,current_value,status,source) VALUES(?,?,?,?,?,?)",
+                    (ticker,now,r["metric"],float(r["current_value"]),str(r["status"]),str(r["source"] or "")))
+    con.commit(); con.close(); return len(d)
+
+def thesis_changes(ticker):
+    con=ws_db()
+    d=pd.read_sql_query("""SELECT snapshot_at,metric,current_value,status,source
+                           FROM thesis_snapshots WHERE ticker=? ORDER BY snapshot_at DESC,id DESC""",(ticker,),con)
+    con.close()
+    cur=thesis_table(ticker)
+    if cur.empty:return pd.DataFrame()
+    if d.empty:
+        out=cur[["metric","current_value","status","source"]].copy()
+        out["Previous"]=np.nan; out["Change"]="No prior snapshot"; return out
+    times=d["snapshot_at"].drop_duplicates().tolist()
+    prev=d[d["snapshot_at"]==times[0]].drop_duplicates("metric").set_index("metric")
+    rows=[]
+    for _,r in cur.iterrows():
+        p=prev.loc[r["metric"]] if r["metric"] in prev.index else None
+        pv=float(p["current_value"]) if p is not None else np.nan
+        cv=float(r["current_value"])
+        delta=cv-pv if pd.notna(pv) else np.nan
+        change="New" if pd.isna(pv) else ("↑ Increased" if delta>0 else "↓ Decreased" if delta<0 else "→ Unchanged")
+        rows.append({"Metric":r["metric"],"Previous":pv,"Latest":cv,"Change":change,
+                     "Status":r["status"],"Source":r["source"]})
+    return pd.DataFrame(rows)
+
+def decision_brief_data(ticker,amount):
+    h=history(ticker,"1y")
+    if h.empty:return None
+    price=float(h["Close"].iloc[-1]); hold=holding_for(ticker)
+    qty0=hold["quantity"]; avg0=hold["avg_cost"]; add_qty=int(float(amount)//price) if price>0 else 0
+    spend=add_qty*price; qty1=qty0+add_qty
+    avg1=((qty0*avg0)+spend)/qty1 if qty1>0 else 0
+    mv0=qty0*price; mv1=qty1*price
+    cash=paper_cash_balance()
+    # Portfolio weight uses paper portfolio plus manually entered selected holding; avoid pretending it is full wealth.
+    pp=paper_positions_df()
+    other=0.0
+    if not pp.empty:
+        for _,r in pp.iterrows():
+            if r["ticker"]==ticker: continue
+            hh=history(r["ticker"],"5d")
+            last=float(hh["Close"].iloc[-1]) if not hh.empty else float(r["avg_cost"])
+            other+=float(r["quantity"])*last
+    denom0=mv0+other+cash
+    denom1=mv1+other+max(cash-spend,0)
+    w0=mv0/denom0 if denom0 else np.nan; w1=mv1/denom1 if denom1 else np.nan
+    ms=market_structure(h); conf=confluence_snapshot(h)
+    return {"price":price,"qty0":qty0,"avg0":avg0,"mv0":mv0,"add_qty":add_qty,"spend":spend,
+            "qty1":qty1,"avg1":avg1,"mv1":mv1,"w0":w0,"w1":w1,"market":ms,"confluence":conf}
+
+def attention_items(ticker):
+    items=[]
+    t=thesis_table(ticker)
+    if not t.empty:
+        for _,r in t.iterrows():
+            if str(r["status"])!="Met": items.append(("⚠",f"{r['metric']}: {r['status']}"))
+    h=history(ticker,"1y")
+    if not h.empty:
+        ms=market_structure(h)
+        if pd.notna(ms.get("SMA200",np.nan)) and ms["Price"]<ms["SMA200"]:
+            items.append(("⚠","Price is below the 200-day moving average"))
+        if pd.notna(ms.get("Volume vs 20D",np.nan)) and ms["Volume vs 20D"]>=2:
+            items.append(("●",f"Volume is {ms['Volume vs 20D']:.1f}× its 20-day average"))
+    if not items: items.append(("✓","No stored thesis condition currently requires attention"))
+    return items
+
 st.sidebar.title("Market Investment Analyst")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
@@ -513,7 +621,7 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Company Command Centre","Thesis Scorecard","Catalyst Calendar","Strategy Builder","Risk Centre","Portfolio Intelligence","Alerts","Workspace Settings","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Trade Centre","Orders","Paper Portfolio","Broker Connections","Company Command Centre","Before I Invest","Monitor My Thesis","Thesis Scorecard","Catalyst Calendar","Strategy Builder","Risk Centre","Portfolio Intelligence","Alerts","Workspace Settings","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -523,7 +631,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V16 • Market Investment Analyst • institutional research workstation")
+st.caption("V17 • Market Investment Analyst • decision brief + thesis monitor")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1181,6 +1289,10 @@ Adapter         Adapter
 elif page=="Company Command Centre":
     st.header(f"Company Command Centre — {ticker}")
     st.caption("One-screen research cockpit: price, thesis, fundamentals, technical context, valuation, catalysts, risk and evidence provenance.")
+    st.markdown("**Core workflow:** Before I Invest → make the evidence visible. Monitor My Thesis → check whether the reasons for owning the company remain true.")
+    q1,q2=st.columns(2)
+    q1.info("**BEFORE I INVEST**\n\nWhat do I need to know before committing more capital? Open **Before I Invest** from the sidebar.")
+    q2.info("**MONITOR MY THESIS**\n\nAre the reasons I invested still true? Open **Monitor My Thesis** from the sidebar.")
     h=history(ticker,"1y")
     if h.empty:
         st.warning("No price history available.")
@@ -1215,6 +1327,113 @@ elif page=="Company Command Centre":
             st.write(provenance_badge("Calculated"),"Technical indicators, market structure and model outputs")
             st.write(provenance_badge("Reported"),"Only use this label for values taken directly from company documents.")
             st.write(provenance_badge("AI"),"Interpretation must remain distinguishable from reported facts.")
+
+elif page=="Before I Invest":
+    st.header(f"Before I Invest — {ticker}")
+    st.markdown("### What do I need to know before committing more capital?")
+    st.caption("Decision Brief combines your stored position, thesis conditions, market structure, technical context, portfolio concentration and trade scenario. It does not issue a buy/sell recommendation.")
+    v17_db_upgrade()
+    hold=holding_for(ticker)
+    with st.expander("Your current position",expanded=(hold["quantity"]==0)):
+        a,b=st.columns(2)
+        qty=a.number_input("Shares currently owned",min_value=0.0,value=float(hold["quantity"]),step=1.0,key="v17_hold_qty")
+        avg=b.number_input("Average cost",min_value=0.0,value=float(hold["avg_cost"]),step=0.01,key="v17_hold_avg")
+        if st.button("Save current position",key="v17_save_hold"):
+            save_holding(ticker,qty,avg); st.success("Position saved."); st.rerun()
+
+    amount=st.number_input("Amount you are considering investing",min_value=0.0,value=10000.0,step=500.0,key="v17_amount")
+    d=decision_brief_data(ticker,amount)
+    if not d:
+        st.error("Price history could not be loaded, so the Decision Brief cannot calculate a trade scenario.")
+    else:
+        st.subheader("What requires my attention?")
+        for icon,msg in attention_items(ticker): st.write(f"{icon} {msg}")
+
+        st.subheader("Position & proposed investment")
+        c1,c2,c3,c4=st.columns(4)
+        c1.metric("Current price",f"${d['price']:,.3f}")
+        c2.metric("Current shares",f"{d['qty0']:,.0f}")
+        c3.metric("Average cost",f"${d['avg0']:,.3f}" if d["qty0"] else "—")
+        c4.metric("Market value",f"${d['mv0']:,.0f}")
+        before=pd.DataFrame([
+            {"Measure":"Shares","Before":d["qty0"],"After":d["qty1"]},
+            {"Measure":"Average cost","Before":d["avg0"],"After":d["avg1"]},
+            {"Measure":"Market value @ reference price","Before":d["mv0"],"After":d["mv1"]},
+            {"Measure":"Observed portfolio weight*","Before":d["w0"],"After":d["w1"]},
+        ])
+        st.dataframe(before,use_container_width=True,hide_index=True)
+        st.caption(f"Proposed purchase: {d['add_qty']:,} shares × ${d['price']:,.3f} = ${d['spend']:,.2f}. *Weight uses holdings known to this prototype (saved selected holding + paper positions + paper cash), not your complete external wealth.")
+
+        left,right=st.columns(2)
+        with left:
+            st.subheader("Thesis evidence")
+            t=thesis_table(ticker)
+            if t.empty: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard.")
+            else: st.dataframe(t[["metric","current_value","operator","threshold","status","source"]],use_container_width=True,hide_index=True)
+            st.subheader("Company KPI checklist")
+            cls=classify_company(ticker)
+            st.write(" • ".join(company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))))
+        with right:
+            st.subheader("Technical & market context")
+            st.dataframe(d["confluence"],use_container_width=True,hide_index=True)
+            ms=d["market"]
+            st.write(f"20D support: **${ms['20D support']:,.3f}**  |  20D resistance: **${ms['20D resistance']:,.3f}**")
+            st.write(f"52-week/period range: **${ms['Period low']:,.3f} – ${ms['Period high']:,.3f}**")
+
+        st.subheader("Catalysts")
+        con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT 8",(ticker,),con); con.close()
+        st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts stored yet.")
+
+        st.subheader("Trade scenario")
+        st.write(f"**Add ${amount:,.0f} → {d['add_qty']:,} shares at the latest loaded reference price.**")
+        st.write(f"New holding: **{d['qty1']:,.0f} shares** · New average cost: **${d['avg1']:,.3f}**")
+        x,y,z=st.columns(3)
+        if x.button("Send scenario to Paper Trade",type="primary",use_container_width=True):
+            st.session_state["paper_preview"]={"ticker":ticker,"side":"Buy","order_type":"Market","qty":float(d["add_qty"]),
+                "reference_price":d["price"],"limit_price":None,"stop_price":None,"tif":"DAY",
+                "notes":"Created from Before I Invest Decision Brief"}
+            st.success("Paper-trade scenario prepared. Open Trade Centre to review and explicitly submit it.")
+        if y.button("Add price alert",use_container_width=True):
+            con=ws_db(); con.execute("INSERT INTO alerts(ticker,metric,operator,threshold,enabled,notes) VALUES(?,?,?,?,1,?)",
+                (ticker,"Price","<=",d["price"],"Created from Decision Brief")); con.commit(); con.close(); st.success("Price alert rule saved.")
+        if z.button("Record review",use_container_width=True):
+            con=ws_db(); con.execute("""INSERT INTO review_log(ticker,reviewed_at,amount,price,shares_before,avg_cost_before,shares_after,avg_cost_after,notes)
+                VALUES(?,?,?,?,?,?,?,?,?)""",(ticker,datetime.now(timezone.utc).isoformat(),amount,d["price"],d["qty0"],d["avg0"],d["qty1"],d["avg1"],"Before I Invest review"))
+            con.commit(); con.close(); st.success("Decision review recorded.")
+
+        st.markdown("---")
+        st.caption("Evidence labels: 🟢 company reported · 🔵 exchange/regulatory · 🟣 market data · 🟠 calculated · ⚪ interpretation. V17 never treats an unpopulated KPI as a reported fact.")
+
+elif page=="Monitor My Thesis":
+    st.header(f"Monitor My Thesis — {ticker}")
+    st.markdown("### Are the reasons I invested still true?")
+    st.caption("This monitor compares your current stored thesis conditions with a prior snapshot. It only evaluates evidence you have actually entered or sourced; missing evidence stays missing.")
+    v17_db_upgrade()
+    t=thesis_table(ticker)
+    a,b,c=st.columns(3)
+    a.metric("Conditions tracked",str(len(t)))
+    a_met=int((t["status"]=="Met").sum()) if not t.empty else 0
+    b.metric("Currently met",str(a_met))
+    c.metric("Require attention",str(len(t)-a_met))
+    if t.empty:
+        st.info("No thesis conditions are stored. Add measurable conditions in Thesis Scorecard first.")
+    else:
+        st.subheader("Current thesis")
+        st.dataframe(t[["metric","current_value","operator","threshold","status","source","updated_at"]],use_container_width=True,hide_index=True)
+        if st.button("Save current thesis as monitoring baseline",type="primary"):
+            n=snapshot_thesis(ticker); st.success(f"Saved {n} thesis conditions as the new baseline.")
+        st.subheader("What changed since my last review?")
+        changes=thesis_changes(ticker)
+        st.dataframe(changes,use_container_width=True,hide_index=True)
+        st.info("An increase is not automatically good and a decrease is not automatically bad. Direction must be interpreted in the context of the metric—for example, lower credit losses may be favourable while lower growth may not be.")
+
+    st.subheader("Attention queue")
+    for icon,msg in attention_items(ticker): st.write(f"{icon} {msg}")
+
+    st.subheader("Monitoring controls")
+    st.write("Use **Catalyst Calendar** for expected events, **Alerts** for stored market/technical thresholds, and **Announcements & Reports** to inspect new company evidence and original documents.")
+    st.caption("Background alert delivery is not yet a durable service in this Streamlit prototype; V17 stores the monitoring rules and review baselines.")
+
 
 elif page=="Thesis Scorecard":
     st.header(f"Investment Thesis Scorecard — {ticker}")
