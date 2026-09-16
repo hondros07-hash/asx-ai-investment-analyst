@@ -1,90 +1,70 @@
 
 from __future__ import annotations
 import json, urllib.parse, urllib.request
-import pandas as pd
-import yfinance as yf
-from market_universe import resolve_bare_ticker
+import pandas as pd, yfinance as yf
 
+ALIASES={
+ "coca cola":[("KO","The Coca-Cola Company","NYSE")],
+ "coca-cola":[("KO","The Coca-Cola Company","NYSE")],
+ "apple":[("AAPL","Apple Inc.","NASDAQ")],
+ "qantas":[("QAN.AX","Qantas Airways Limited","ASX")],
+ "zip":[("ZIP.AX","Zip Co Limited","ASX"),("ZIP","ZipRecruiter, Inc.","NYSE")],
+ "bhp":[("BHP.AX","BHP Group Limited","ASX"),("BHP","BHP Group Limited","NYSE")],
+}
 TD="https://api.twelvedata.com"
 
 def _json(path,params):
     url=TD+path+"?"+urllib.parse.urlencode(params)
-    req=urllib.request.Request(url,headers={"User-Agent":"Market-Investment-Analyst/11.3"})
-    with urllib.request.urlopen(req,timeout=15) as r:
-        return json.loads(r.read().decode("utf-8"))
+    req=urllib.request.Request(url,headers={"User-Agent":"Market-Investment-Analyst/11.3.1"})
+    with urllib.request.urlopen(req,timeout=15) as r:return json.loads(r.read().decode())
 
-def provider_search(query,api_key):
-    """Provider-backed symbol/name search. Returns all matches supplied by the provider."""
-    if not api_key or not query.strip(): return pd.DataFrame()
+def _valid(t):
     try:
-        j=_json("/symbol_search",{"symbol":query.strip(),"apikey":api_key,"outputsize":100})
-        rows=j.get("data") or []
-        out=[]
-        for x in rows:
-            out.append({
-                "Symbol":x.get("symbol",""),
-                "Company":x.get("instrument_name") or x.get("name") or "",
-                "Exchange":x.get("exchange",""),
-                "Country":x.get("country",""),
-                "Currency":x.get("currency",""),
-                "Type":x.get("instrument_type") or x.get("type") or "",
-                "Source":"Twelve Data"
-            })
-        return pd.DataFrame(out)
-    except Exception:
-        return pd.DataFrame()
+        h=yf.Ticker(t).history(period="5d",auto_adjust=True)
+        return h is not None and not h.empty
+    except:return False
 
-def _fallback_universe():
-    from sector_peer_engine import ASX_UNIVERSE, US_UNIVERSE
-    rows=[]
-    for t in ASX_UNIVERSE+US_UNIVERSE:
-        try:
-            m=yf.Ticker(t).info
-            m=m if isinstance(m,dict) else {}
-        except Exception:m={}
-        rows.append({
-            "Symbol":t,
-            "Company":m.get("longName") or m.get("shortName") or t,
-            "Exchange":m.get("fullExchangeName") or m.get("exchange") or ("ASX" if t.endswith(".AX") else ""),
-            "Country":m.get("country") or "",
-            "Currency":m.get("currency") or "",
-            "Type":m.get("quoteType") or "EQUITY",
-            "Source":"Curated fallback"
-        })
-    return pd.DataFrame(rows)
-
-def search_securities(query,api_key=""):
-    q=query.strip()
+def search_securities(q,key=""):
+    q=q.strip()
     if not q:return pd.DataFrame()
-    df=provider_search(q,api_key)
-    if df.empty:
-        df=_fallback_universe()
-        mask=(df["Symbol"].astype(str).str.contains(q,case=False,regex=False) |
-              df["Company"].astype(str).str.contains(q,case=False,regex=False))
-        df=df[mask].copy()
+    rows=[]
+    if key:
+        try:
+            j=_json("/symbol_search",{"symbol":q,"apikey":key,"outputsize":100})
+            for x in j.get("data",[]):
+                rows.append({"Symbol":x.get("symbol",""),"Company":x.get("instrument_name") or x.get("name") or "",
+                  "Exchange":x.get("exchange",""),"Country":x.get("country",""),"Currency":x.get("currency",""),"Source":"Twelve Data"})
+        except:pass
+    # Reliable local aliases also ensure common company-name searches work if provider search is unavailable.
+    for sym,name,ex in ALIASES.get(q.lower(),[]):
+        rows.append({"Symbol":sym,"Company":name,"Exchange":ex,"Country":"","Currency":"","Source":"Verified alias"})
+    # Direct ticker candidate.
+    uq=q.upper()
+    candidates=[uq]
+    if "." not in uq:candidates.append(uq+".AX")
+    for t in candidates:
+        if _valid(t):
+            try:m=yf.Ticker(t).info or {}
+            except:m={}
+            rows.append({"Symbol":t,"Company":m.get("longName") or m.get("shortName") or t,
+              "Exchange":m.get("fullExchangeName") or m.get("exchange") or "",
+              "Country":m.get("country") or "","Currency":m.get("currency") or "","Source":"Yahoo"})
+    df=pd.DataFrame(rows)
     if df.empty:return df
-    # Exact ticker/name first, then prefix, then other matches.
-    uq=q.upper(); lq=q.lower()
-    def score(r):
-        s=str(r["Symbol"]).upper(); n=str(r["Company"]).lower()
-        if s==uq:return 0
-        if n==lq:return 1
-        if s.startswith(uq):return 2
-        if n.startswith(lq):return 3
-        return 4
-    df["_rank"]=df.apply(score,axis=1)
-    return df.sort_values(["_rank","Exchange","Symbol"]).drop(columns="_rank").drop_duplicates(
-        subset=["Symbol","Exchange"],keep="first").reset_index(drop=True)
+    return df.drop_duplicates(["Symbol","Exchange"]).reset_index(drop=True)
 
-def yahoo_identity(ticker):
-    t=resolve_bare_ticker(ticker)
-    try:
-        m=yf.Ticker(t).info
-        m=m if isinstance(m,dict) else {}
-    except Exception:m={}
-    return {
-        "ticker":t,
-        "name":m.get("longName") or m.get("shortName") or t,
-        "exchange":m.get("fullExchangeName") or m.get("exchange") or "",
-        "currency":m.get("currency") or "",
-    }
+def resolve_listing(symbol,exchange="",country=""):
+    raw=str(symbol).upper().strip(); ex=str(exchange).upper()
+    candidates=[]
+    if raw.endswith(".AX"): candidates=[raw]
+    elif ex in {"ASX","AUSTRALIAN SECURITIES EXCHANGE","XASX"} or str(country).upper()=="AUSTRALIA":
+        candidates=[raw+".AX",raw]
+    else:candidates=[raw,raw.replace(".","-"),raw.replace("/","-")]
+    for t in dict.fromkeys(candidates):
+        if _valid(t):return t
+    return candidates[0]
+
+def identity(t):
+    try:m=yf.Ticker(t).info or {}
+    except:m={}
+    return m.get("longName") or m.get("shortName") or t

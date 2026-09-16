@@ -15,6 +15,7 @@ from market_universe import BENCHMARKS, resolve_bare_ticker, detect_market
 from sector_peer_engine import classification, find_peers, peer_table, normalized_history, equal_weight_peer_basket, default_benchmark
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
+from security_search import search_securities, resolve_listing, identity
 
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
@@ -90,19 +91,37 @@ def money(v):
     return f"${v:,.0f}"
 
 st.sidebar.title("Market Investment Analyst")
-ticker=st.sidebar.text_input("ASX ticker","ZIP.AX").strip().upper()
-ticker = resolve_bare_ticker(ticker)
+try:
+    _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
+except Exception:
+    _search_key=""
+query=st.sidebar.text_input("Company or ticker","ZIP.AX",
+    help="Search by company name or exchange ticker.")
+matches=search_securities(query,_search_key)
+if not matches.empty:
+    _labels=[]; _map={}
+    for i,r in matches.head(40).iterrows():
+        lab=f"{r['Company']} — {r['Symbol']} — {r['Exchange']}"
+        _labels.append(lab); _map[lab]=i
+    _chosen=st.sidebar.selectbox("Matching listings",_labels)
+    _row=matches.loc[_map[_chosen]]
+    ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
+    st.sidebar.caption(f"Selected: {identity(ticker)} • {ticker}")
+else:
+    ticker=resolve_bare_ticker(query.strip().upper())
+    st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
 page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
-    st.error("No market data returned for this ticker."); st.stop()
+    st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
+    st.stop()
 close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or ticker
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V11.2 • Market Investment Analyst • Global markets + evidence-first research")
+st.caption("V11.3.1 • Market Investment Analyst • company-name and multi-listing search hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
