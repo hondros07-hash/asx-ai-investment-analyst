@@ -120,6 +120,35 @@ def asx_provider_api(code, api_url, api_key="", limit=250):
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
 
+INVESTOR_FORMS={"10-K","10-K/A","10-Q","10-Q/A","8-K","8-K/A","20-F","20-F/A","40-F","6-K","ARS","DEF 14A"}
+
+def _sec_group(form):
+    if form in {"10-K","10-K/A","20-F","20-F/A","40-F","ARS"}: return "Financial Reports"
+    if form in {"10-Q","10-Q/A"}: return "Quarterly Reports"
+    if form in {"8-K","8-K/A","6-K"}: return "Company Announcements"
+    if form=="DEF 14A": return "Proxy / Governance"
+    return "Other Regulatory Filings"
+
+def _sec_filing_base(cik, accession):
+    return f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession.replace('-','')}/"
+
+def _sec_pdf_from_index(cik, accession, headers):
+    """Return a company-filed PDF if the SEC filing index contains one."""
+    base=_sec_filing_base(cik,accession)
+    index_url=base+accession+"-index.html"
+    try:
+        raw,_=_get(index_url,headers)
+        html=raw.decode("utf-8",errors="ignore")
+        hrefs=re.findall(r'href=["\']([^"\']+\.pdf(?:\?[^"\']*)?)["\']',html,flags=re.I)
+        if hrefs:
+            h=hrefs[0]
+            if h.startswith("http"): return h,index_url
+            if h.startswith("/"): return "https://www.sec.gov"+h,index_url
+            return base+h,index_url
+    except Exception:
+        pass
+    return "",index_url
+
 def _sec_label(form, primary):
     labels={
       "10-K":"Annual Report (10-K)","10-K/A":"Annual Report Amendment (10-K/A)",
@@ -142,9 +171,9 @@ def _sec_primary_url(cik, accession, primary):
         raw=raw.rsplit("/",1)[-1]
     return base+raw, base+accession+"-index.html"
 
-def sec_archive(ticker, limit=250):
+def sec_archive(ticker, limit=250, include_regulatory=False):
     headers={"User-Agent":"Market Investment Analyst research contact@example.com",
-             "Accept":"application/json,text/html,application/xml,*/*"}
+             "Accept":"application/json,text/html,application/pdf,*/*"}
     try:
         raw,_=_get("https://www.sec.gov/files/company_tickers.json",headers)
         tickers=json.loads(raw.decode())
@@ -154,12 +183,17 @@ def sec_archive(ticker, limit=250):
         raw,_=_get(f"https://data.sec.gov/submissions/CIK{cik:010d}.json",headers)
         j=json.loads(raw.decode()); r=j["filings"]["recent"]; rows=[]
         for i,form in enumerate(r.get("form",[])):
-            accession=r["accessionNumber"][i]
-            primary=r["primaryDocument"][i]
-            doc_url,index_url=_sec_primary_url(cik,accession,primary)
-            rows.append({"Date":r["filingDate"][i],"Time":str(r.get("acceptanceDateTime",[""]*len(r["form"]))[i])[-8:],
-              "Type":form,"Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
-              "URL":doc_url,"IndexURL":index_url,"ID":accession})
+            if not include_regulatory and form not in INVESTOR_FORMS:
+                continue
+            accession=r["accessionNumber"][i]; primary=r["primaryDocument"][i]
+            base=_sec_filing_base(cik,accession)
+            primary_url=base+primary
+            pdf_url,index_url=_sec_pdf_from_index(cik,accession,headers)
+            rows.append({
+              "Date":r["filingDate"][i],"Time":"","Group":_sec_group(form),"Type":form,
+              "Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
+              "PDFURL":pdf_url,"ReadURL":primary_url,"IndexURL":index_url,
+              "URL":pdf_url or primary_url,"Has PDF":bool(pdf_url),"ID":accession})
             if len(rows)>=limit:break
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
@@ -169,8 +203,16 @@ def announcements(ticker, provider_url="", provider_key="", limit=250):
     if ticker.upper().endswith(".AX"):
         code=ticker[:-3]
         p=asx_provider_api(code,provider_url,provider_key,limit)
-        if not p.empty:return p,"Provider-backed ASX announcements"
-        return asx_public_archive(code,12,limit),"ASX public archive fallback"
+        if not p.empty:p=p.copy()
+        if "PDFURL" not in p:p["PDFURL"]=p["URL"]
+        if "ReadURL" not in p:p["ReadURL"]=p["URL"]
+        if "Has PDF" not in p:p["Has PDF"]=True
+        if "Group" not in p:p["Group"]="ASX Announcements"
+        return p,"Provider-backed ASX announcements"
+        p=asx_public_archive(code,12,limit)
+        if not p.empty:
+            p["PDFURL"]=p["URL"]; p["ReadURL"]=p["URL"]; p["Has PDF"]=True; p["Group"]="ASX Announcements"
+        return p,"ASX public archive fallback"
     return sec_archive(ticker,limit),"SEC EDGAR"
 
 def fetch_document(url, fallback_url=""):

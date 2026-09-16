@@ -123,7 +123,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V12.2 • Market Investment Analyst • SEC document retrieval fix")
+st.caption("V13 • Market Investment Analyst • investor documents + PDF-first workflow")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -370,7 +370,8 @@ elif page=="Announcements & Reports":
 
     c1,c2,c3=st.columns([1,1,2])
     ann_limit=c1.selectbox("Announcements to retrieve",[50,100,250],index=1)
-    category=c2.selectbox("Category",["All","Annual Report","Half-Year Report","Quarterly Report","Results",
+    category=c2.selectbox("Category",["All","Financial Reports","Quarterly Reports","Company Announcements",
+        "Proxy / Governance","ASX Announcements","Annual Report","Half-Year Report","Quarterly Report","Results",
         "Investor Presentation","Trading Update","Guidance","Capital / Funding","Ownership","Director Notice","Corporate Action"])
     query_filter=c3.text_input("Search announcements","",placeholder="results, annual report, buy-back, substantial holder…")
 
@@ -389,7 +390,9 @@ elif page=="Announcements & Reports":
             st.caption("For US securities the app uses the SEC submissions API. If this persists, check the SEC request status/user-agent and the selected ticker-to-CIK mapping.")
     else:
         if category!="All":
-            ann=ann[ann["Type"].astype(str).eq(category)]
+            groupmatch=ann["Group"].astype(str).eq(category) if "Group" in ann.columns else False
+            typematch=ann["Type"].astype(str).eq(category)
+            ann=ann[groupmatch | typematch]
         if query_filter:
             q=query_filter.lower().strip()
             aliases={
@@ -402,44 +405,61 @@ elif page=="Announcements & Reports":
             terms=aliases.get(q,[q])
             ann=ann[ann.apply(lambda r:any(term in (str(r["Title"])+" "+str(r["Type"])).lower() for term in terms),axis=1)]
         st.metric("Announcements found",len(ann))
-        show=ann[["Date","Type","Title","Price Sensitive","Source"]].copy()
+        display_cols=[c for c in ["Date","Group","Type","Title","Has PDF","Price Sensitive","Source"] if c in ann.columns]
+        show=ann[display_cols].copy()
         st.dataframe(show,use_container_width=True,hide_index=True,height=430)
 
         if not ann.empty:
             opts=[]; mapping={}
             for i,r in ann.iterrows():
                 flag=" 🔴" if bool(r.get("Price Sensitive",False)) else ""
-                lab=f"{r['Date']} — {r['Type']} — {r['Title']}{flag}"
+                pdfmark=" 📄 PDF" if bool(r.get("Has PDF",False)) else ""
+                lab=f"{r['Date']} — {r.get('Group',r['Type'])} — {r['Type']}{pdfmark}{flag}"
                 opts.append(lab); mapping[lab]=i
             selected=st.selectbox("Select announcement",opts)
             rr=ann.loc[mapping[selected]]
-            st.subheader(str(rr["Title"]))
+            friendly=str(rr["Title"])
+            if str(rr.get("Source","")).startswith("SEC"):
+                friendly={"10-K":"Annual Report (10-K)","10-Q":"Quarterly Report (10-Q)",
+                          "8-K":"Current Report (8-K)","20-F":"Annual Report (20-F)",
+                          "40-F":"Annual Report (40-F)","6-K":"Foreign Issuer Report (6-K)",
+                          "ARS":"Annual Report to Shareholders","DEF 14A":"Proxy Statement"}.get(str(rr["Type"]),str(rr["Type"]))
+            st.subheader(friendly)
             a,b,c=st.columns(3)
             a.metric("Date",str(rr["Date"])); b.metric("Category",str(rr["Type"]))
             c.metric("Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else ("N/A (SEC filing)" if str(rr.get("Source","")).startswith("SEC") else "No / not supplied"))
 
-            if st.button("Open & summarise",type="primary"):
-                with st.spinner("Downloading and reading the original announcement..."):
-                    doc,ctype=fetch_document(str(rr["URL"]),str(rr.get("IndexURL","")))
+            pdf_url=str(rr.get("PDFURL","") or "")
+            read_url=str(rr.get("ReadURL","") or rr.get("URL",""))
+            b1,b2=st.columns(2)
+            if pdf_url:
+                b1.link_button("View original PDF",pdf_url,use_container_width=True)
+            else:
+                b1.caption("No company-filed PDF was supplied with this filing.")
+
+            if b2.button("Summarise document",type="primary",use_container_width=True):
+                target=pdf_url or read_url
+                with st.spinner("Reading the company document..."):
+                    doc,ctype=fetch_document(target,str(rr.get("IndexURL","")))
                     text=extract_text(doc,ctype)
                     summ=evidence_summary(text)
                 st.session_state["ann_key"]=selected
                 st.session_state["ann_doc"]=doc
                 st.session_state["ann_ctype"]=ctype
                 st.session_state["ann_summary"]=summ
+                st.session_state["ann_is_pdf"]=bool(doc and (doc[:4]==b"%PDF" or "pdf" in ctype.lower()))
+
+            if pdf_url:
+                pdfbytes,pdfctype=fetch_document(pdf_url)
+                if pdfbytes and pdfbytes[:4]==b"%PDF":
+                    fname=re.sub(r"[^A-Za-z0-9_-]+","_",f"{ticker}_{rr['Date']}_{rr['Type']}")[:110]+".pdf"
+                    st.download_button("Download company PDF",pdfbytes,file_name=fname,mime="application/pdf")
 
             if st.session_state.get("ann_key")==selected:
-                st.markdown("#### Evidence-based summary")
+                st.markdown("#### Document summary")
                 st.write(st.session_state.get("ann_summary",""))
-                doc=st.session_state.get("ann_doc")
-                if doc:
-                    ispdf=doc[:4]==b"%PDF" or "pdf" in st.session_state.get("ann_ctype","").lower()
-                    ext=".pdf" if ispdf else ".html"
-                    fname=re.sub(r"[^A-Za-z0-9_-]+","_",f"{ticker}_{rr['Date']}_{rr['Type']}")[:110]+ext
-                    st.download_button("Download original announcement",doc,file_name=fname,
-                        mime=st.session_state.get("ann_ctype") or "application/octet-stream")
-                else:
-                    st.error("The announcement metadata loaded, but the original document could not be retrieved.")
+                if not pdf_url:
+                    st.info("This SEC filing was supplied as an official HTML filing rather than a company-filed PDF. It can be read and summarised here, but the app will not manufacture or label an HTML/XML file as the company's PDF.")
 
 elif page=="Research Report":
     st.header(f"Research Report — {ticker} — {name}")
