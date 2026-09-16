@@ -10,6 +10,7 @@ from portfolio_engine import portfolio_analytics, concentration
 from model_monitor import registry
 from sector_models import SECTOR_KPIS
 from live_data_provider import market_snapshot, twelve_price
+from market_chart_engine import RANGES, range_data, summary as chart_summary, previous_close, price_figure
 
 st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
 
@@ -49,42 +50,121 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.2 • Multi-provider live-data foundation + unified investor research workspace")
+st.caption("V10.3 • Live-data foundation + advanced market dashboard")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
-    cols=st.columns(6)
-    vals=[("Price",f"${price:.3f}"),("Market Cap",money(meta.get("marketCap"))),
-          ("1M","—" if pd.isna(change(close,21)) else f"{change(close,21)*100:.1f}%"),
-          ("3M","—" if pd.isna(change(close,63)) else f"{change(close,63)*100:.1f}%"),
-          ("6M","—" if pd.isna(change(close,126)) else f"{change(close,126)*100:.1f}%"),
-          ("RSI14","—" if pd.isna(rv) else f"{rv:.1f}")]
-    for c,(lab,val) in zip(cols,vals): c.metric(lab,val)
-    st.line_chart(close)
+
+    prev = previous_close(ticker)
+    day_change = price-prev if prev not in (None,0) else np.nan
+    day_pct = day_change/prev if prev not in (None,0) else np.nan
+    day_hist = history(ticker, "5d")
+    day_high = float(day_hist["High"].iloc[-1]) if not day_hist.empty else np.nan
+    day_low = float(day_hist["Low"].iloc[-1]) if not day_hist.empty else np.nan
+    day_vol = float(day_hist["Volume"].iloc[-1]) if not day_hist.empty else np.nan
+    hi52 = float(h.tail(252)["High"].max()) if len(h) else np.nan
+    lo52 = float(h.tail(252)["Low"].min()) if len(h) else np.nan
+
+    q=st.columns(7)
+    q[0].metric("Price",f"${price:.3f}",
+                None if pd.isna(day_change) else f"{day_change:+.3f} ({day_pct*100:+.2f}%)")
+    q[1].metric("Previous close","—" if prev is None else f"${prev:.3f}")
+    q[2].metric("Day high","—" if pd.isna(day_high) else f"${day_high:.3f}")
+    q[3].metric("Day low","—" if pd.isna(day_low) else f"${day_low:.3f}")
+    q[4].metric("Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
+    q[5].metric("52W high","—" if pd.isna(hi52) else f"${hi52:.3f}")
+    q[6].metric("52W low","—" if pd.isna(lo52) else f"${lo52:.3f}")
+
+    st.subheader("Price chart")
+    period = st.radio("Period", list(RANGES.keys()), horizontal=True, index=4)
+    cc1,cc2,cc3=st.columns([1,1,2])
+    mode=cc1.radio("Display",["Price","Percentage"],horizontal=True)
+    volume_on=cc2.checkbox("Show volume",value=True)
+    with cc3:
+        ma_cols=st.columns(3)
+        sma20=ma_cols[0].checkbox("SMA 20")
+        sma50=ma_cols[1].checkbox("SMA 50")
+        sma200=ma_cols[2].checkbox("SMA 200")
+
+    chart_d=range_data(ticker,period)
+    s=chart_summary(chart_d)
+    if chart_d.empty:
+        st.warning("No chart data returned for this period.")
+    else:
+        m=st.columns(6)
+        m[0].metric(f"{period} movement",f"{s['change']:+.3f}",
+                    f"{s['change_pct']*100:+.2f}%")
+        m[1].metric("Period start",f"${s['start']:.3f}")
+        m[2].metric("Latest",f"${s['last']:.3f}")
+        m[3].metric("Period high",f"${s['high']:.3f}")
+        m[4].metric("Period low",f"${s['low']:.3f}")
+        m[5].metric("Period volume","—" if pd.isna(s['volume']) else f"{s['volume']/1e6:.2f}M")
+
+        compare_choice=st.selectbox("Compare performance with",
+            ["None","ASX 200","Nasdaq 100","S&P 500","Another ticker"])
+        compare_map={"ASX 200":"^AXJO","Nasdaq 100":"^NDX","S&P 500":"^GSPC"}
+        compare_ticker=""
+        if compare_choice=="Another ticker":
+            compare_ticker=st.text_input("Comparison ticker","BHP.AX").strip().upper()
+            if compare_ticker and "." not in compare_ticker and compare_ticker.isalpha():
+                compare_ticker += ".AX"
+        elif compare_choice!="None":
+            compare_ticker=compare_map[compare_choice]
+
+        comp=None
+        if compare_ticker:
+            p,i=RANGES[period]
+            try:
+                comp=yf.Ticker(compare_ticker).history(period=p,interval=i,auto_adjust=True)
+                if period=="3D" and not comp.empty:
+                    dates=pd.Index(comp.index.date).unique()
+                    if len(dates)>3: comp=comp[pd.Index(comp.index.date).isin(dates[-3:])]
+            except Exception: comp=None
+            if mode=="Price":
+                st.caption("Comparison is displayed in Percentage mode so instruments with different price scales can be compared.")
+                mode="Percentage"
+
+        st.plotly_chart(price_figure(chart_d,ticker,mode,volume_on,sma20,sma50,sma200,comp,compare_choice),
+                        use_container_width=True)
+
+        if volume_on and "Volume" in chart_d:
+            vol=chart_d[["Volume"]].copy()
+            st.bar_chart(vol,height=150)
+
+    st.caption("Intraday availability and delay depend on the active data provider. The displayed period movement is calculated from the first to last observation returned for the selected range.")
+
+    st.subheader("Performance")
+    perf=st.columns(6)
+    for c,(lab,n) in zip(perf,[("1M",21),("3M",63),("6M",126),("1Y",252)]):
+        v=change(close,n); c.metric(lab,"—" if pd.isna(v) else f"{v*100:+.1f}%")
+    ytd=close[close.index.year==close.index[-1].year]
+    ytdv=(ytd.iloc[-1]/ytd.iloc[0]-1) if len(ytd)>1 else np.nan
+    perf[4].metric("YTD","—" if pd.isna(ytdv) else f"{ytdv*100:+.1f}%")
+    perf[5].metric("RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
+
     st.subheader("Research status")
     a,b,c=st.columns(3)
     a.info("**Thesis status**\n\nMonitoring")
     b.info("**Data confidence**\n\nMarket data connected; specialist KPIs need verified company data.")
     ma=close.rolling(200).mean().iloc[-1] if len(close)>=200 else np.nan
     c.info("**Market structure**\n\n"+("Above 200D MA" if pd.notna(ma) and price>ma else "Below 200D MA"))
+
     st.subheader("Live cross-market snapshot")
-    try:
-        td_key = st.secrets.get("TWELVE_DATA_API_KEY", "")
-    except Exception:
-        td_key = ""
+    try: td_key=st.secrets.get("TWELVE_DATA_API_KEY","")
+    except Exception: td_key=""
     if td_key:
-        snap = market_snapshot(td_key)
-        st.dataframe(snap[["Market","Symbol","Price","Source","Status"]], use_container_width=True, hide_index=True)
-        st.caption("Availability is plan-dependent. Twelve Data is used only for instruments enabled on your account.")
+        snap=market_snapshot(td_key)
+        st.dataframe(snap[["Market","Symbol","Price","Source","Status"]],use_container_width=True,hide_index=True)
     else:
-        st.info("Add TWELVE_DATA_API_KEY to Streamlit Secrets to activate Twelve Data US/FX trial/free-plan data. Commodities require eligible plan coverage.")
+        st.info("Add TWELVE_DATA_API_KEY to Streamlit Secrets to activate supported Twelve Data markets.")
 
     st.subheader("Sector KPI monitor")
     if ticker.startswith("ZIP"):
         labels={"ttv":"TTV / Payment Volume","active_customers":"Active Customers","transaction_margin":"Transaction Margin","credit_losses":"Credit Losses","revenue_growth":"Revenue Growth","cash_ebitda":"Cash EBITDA","operating_margin":"Operating Margin","us_growth":"US Growth","international_growth":"International Growth","regulatory_risk":"Regulatory Risk"}
         rows=[[labels.get(x,x.replace("_"," ").title()),"Awaiting verified company data","Not connected"] for x in SECTOR_KPIS["BNPL/Fintech"]]
         st.dataframe(pd.DataFrame(rows,columns=["KPI","Latest","Status"]),use_container_width=True,hide_index=True)
-    else: st.info("Sector KPI selection will use verified sector metadata when connected.")
+    else:
+        st.info("Sector KPI selection will use verified sector metadata when connected.")
 
 elif page=="Investment Committee":
     st.header(f"{ticker} — Investment Committee"); st.info(thesis)
