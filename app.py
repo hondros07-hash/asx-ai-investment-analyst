@@ -123,7 +123,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V12.1 • Market Investment Analyst • announcement-source reliability fix")
+st.caption("V12.1.1 • Market Investment Analyst • research terminal")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -178,22 +178,6 @@ if page=="Markets":
                     "Open":"{:,.4f}","High":"{:,.4f}","Low":"{:,.4f}","Volume":"{:,.0f}"
                 },na_rep="—"),use_container_width=True,hide_index=True)
                 st.caption("Timestamp and Source are shown per row so delayed/fallback observations are not confused with licensed real-time exchange data.")
-
-    st.divider()
-    st.subheader("Production architecture")
-    st.code("""Exchange / commodity catalogs
-        ↓
-Licensed market-data provider
-        ↓
-Central collector / cache / persistent database
-        ↓
-Market scanner + breadth + alerts
-        ↓
-Streamlit Market Terminal
-        ↓
-Company Research / Portfolio / Models""")
-    st.caption("For thousands of securities, production should stream/update centrally and let the UI read cached observations rather than request every symbol on each page load.")
-
 
 elif page=="Dashboard":
     st.header(f"{ticker} — {name}")
