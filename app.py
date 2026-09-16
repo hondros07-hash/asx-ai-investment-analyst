@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import re
 import yfinance as yf
 from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
@@ -16,7 +17,7 @@ from sector_peer_engine import classification, find_peers, peer_table, normalize
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
-from report_library import report_catalog, report_summary
+from announcement_engine import announcements, fetch_document, extract_text, evidence_summary
 
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
@@ -112,7 +113,7 @@ else:
     ticker=resolve_bare_ticker(query.strip().upper())
     st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Reports & Filings","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Announcements & Reports","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -122,7 +123,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V11.4.1 • Market Investment Analyst • ASX historical-reports hotfix")
+st.caption("V12 • Market Investment Analyst • Announcements Intelligence Engine")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -373,59 +374,76 @@ elif page=="Dashboard":
         st.warning("Insufficient price history to calculate the selected relative-performance period.")
 
 
-elif page=="Reports & Filings":
-    st.header(f"Reports & Filings — {ticker} — {name}")
-    st.caption("Historical company reports and filings are retrieved from the official ASX historical-announcements search for ASX securities or SEC EDGAR for US securities.")
+elif page=="Announcements & Reports":
+    st.header(f"Announcements & Reports — {ticker} — {name}")
+    st.caption("Exchange/regulatory announcement history for the selected listing. ASX can use a licensed provider when configured; SEC EDGAR is used for US listings.")
 
-    rc1,rc2=st.columns([1,2])
-    report_limit=rc1.selectbox("Reports to retrieve",[25,50,100],index=1)
-    report_filter=rc2.text_input("Filter reports","",placeholder="Annual report, quarterly, results, presentation…")
-    with st.spinner("Loading report history..."):
-        reports=report_catalog(ticker,int(report_limit))
+    try:
+        _ann_url=st.secrets.get("ASX_ANNOUNCEMENTS_API_URL","")
+        _ann_key=st.secrets.get("ASX_ANNOUNCEMENTS_API_KEY","")
+    except Exception:
+        _ann_url=_ann_key=""
 
-    if reports.empty:
-        st.warning("No official report history was returned. For ASX securities, check that the selected ticker is the current ASX code; historical code changes can require a separate legacy-code search.")
+    c1,c2,c3=st.columns([1,1,2])
+    ann_limit=c1.selectbox("Announcements to retrieve",[50,100,250],index=1)
+    category=c2.selectbox("Category",["All","Annual Report","Half-Year Report","Quarterly Report","Results",
+        "Investor Presentation","Trading Update","Guidance","Capital / Funding","Ownership","Director Notice","Corporate Action"])
+    query_filter=c3.text_input("Search announcements","",placeholder="results, annual report, buy-back, substantial holder…")
+
+    with st.spinner("Loading exchange announcements..."):
+        ann,coverage=announcements(ticker,_ann_url,_ann_key,int(ann_limit))
+
+    st.caption(f"Data route: {coverage}")
+    if ticker.endswith(".AX") and not _ann_url:
+        st.info("ASX provider credentials are not configured. The app is using the public ASX archive as a fallback. For CommSec-style complete/reliable coverage, connect an authorised ASX ComNews-capable feed in Streamlit Secrets.")
+
+    if ann.empty:
+        st.warning("No announcements were returned by the configured source.")
     else:
-        if report_filter:
-            m=(reports["Title"].astype(str).str.contains(report_filter,case=False,regex=False) |
-               reports["Type"].astype(str).str.contains(report_filter,case=False,regex=False))
-            reports=reports[m]
-        st.metric("Reports found",len(reports))
-        st.dataframe(reports[["Date","Type","Title","Source"]],use_container_width=True,hide_index=True,height=360)
+        if category!="All":
+            ann=ann[ann["Type"].astype(str).eq(category)]
+        if query_filter:
+            q=query_filter.lower()
+            ann=ann[ann.apply(lambda r:q in str(r["Title"]).lower() or q in str(r["Type"]).lower(),axis=1)]
+        st.metric("Announcements found",len(ann))
+        show=ann[["Date","Type","Title","Price Sensitive","Source"]].copy()
+        st.dataframe(show,use_container_width=True,hide_index=True,height=430)
 
-        if not reports.empty:
-            labels=[]
-            idxmap={}
-            for i,r in reports.iterrows():
-                label=f"{r['Date']} — {r['Type']} — {r['Title']}"
-                labels.append(label); idxmap[label]=i
-            selected=st.selectbox("Open a report",labels)
-            rr=reports.loc[idxmap[selected]]
+        if not ann.empty:
+            opts=[]; mapping={}
+            for i,r in ann.iterrows():
+                flag=" 🔴" if bool(r.get("Price Sensitive",False)) else ""
+                lab=f"{r['Date']} — {r['Type']} — {r['Title']}{flag}"
+                opts.append(lab); mapping[lab]=i
+            selected=st.selectbox("Select announcement",opts)
+            rr=ann.loc[mapping[selected]]
             st.subheader(str(rr["Title"]))
-            d1,d2,d3=st.columns(3)
-            d1.metric("Date",str(rr["Date"])); d2.metric("Type",str(rr["Type"])); d3.metric("Source",str(rr["Source"]))
+            a,b,c=st.columns(3)
+            a.metric("Date",str(rr["Date"])); b.metric("Category",str(rr["Type"]))
+            c.metric("Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else "No / not supplied")
 
-            if st.button("Load summary",type="primary"):
-                with st.spinner("Reading and summarising the selected report..."):
-                    summary_text,report_bytes,ctype=report_summary(str(rr["URL"]))
-                st.session_state["report_summary_text"]=summary_text
-                st.session_state["report_bytes"]=report_bytes
-                st.session_state["report_ctype"]=ctype
-                st.session_state["report_key"]=selected
+            if st.button("Open & summarise",type="primary"):
+                with st.spinner("Downloading and reading the original announcement..."):
+                    doc,ctype=fetch_document(str(rr["URL"]))
+                    text=extract_text(doc,ctype)
+                    summ=evidence_summary(text)
+                st.session_state["ann_key"]=selected
+                st.session_state["ann_doc"]=doc
+                st.session_state["ann_ctype"]=ctype
+                st.session_state["ann_summary"]=summ
 
-            if st.session_state.get("report_key")==selected:
-                st.markdown("#### Report summary")
-                st.write(st.session_state.get("report_summary_text",""))
-                b=st.session_state.get("report_bytes")
-                if b:
-                    ext=".pdf" if ("pdf" in st.session_state.get("report_ctype","").lower() or b[:4]==b"%PDF") else ".html"
-                    safe=re.sub(r"[^A-Za-z0-9_-]+","_",f"{ticker}_{rr['Date']}_{rr['Type']}")[:100]+ext
-                    st.download_button("Download original report",data=b,file_name=safe,
-                                       mime=st.session_state.get("report_ctype") or "application/octet-stream")
+            if st.session_state.get("ann_key")==selected:
+                st.markdown("#### Evidence-based summary")
+                st.write(st.session_state.get("ann_summary",""))
+                doc=st.session_state.get("ann_doc")
+                if doc:
+                    ispdf=doc[:4]==b"%PDF" or "pdf" in st.session_state.get("ann_ctype","").lower()
+                    ext=".pdf" if ispdf else ".html"
+                    fname=re.sub(r"[^A-Za-z0-9_-]+","_",f"{ticker}_{rr['Date']}_{rr['Type']}")[:110]+ext
+                    st.download_button("Download original announcement",doc,file_name=fname,
+                        mime=st.session_state.get("ann_ctype") or "application/octet-stream")
                 else:
-                    st.warning("The report metadata was found, but the document could not be downloaded from the source.")
-            elif rr.get("URL"):
-                st.caption("Select Load summary to retrieve the document, create an extractive summary and enable the original-file download.")
+                    st.error("The announcement metadata loaded, but the original document could not be retrieved.")
 
 elif page=="Research Report":
     st.header(f"Research Report — {ticker} — {name}")
