@@ -29,6 +29,24 @@ import json
 
 st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
 
+
+st.markdown('''
+<style>
+/* V18.0.3: prevent quote cards from hiding prices with ellipses */
+[data-testid="stMetricValue"] {
+    font-size: clamp(1.55rem, 2.25vw, 2.35rem) !important;
+    line-height: 1.12 !important;
+}
+[data-testid="stMetricValue"] > div {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+[data-testid="stMetricDelta"] {
+    white-space: nowrap !important;
+}
+</style>
+''', unsafe_allow_html=True)
 st.markdown("""
 <style>
 :root {
@@ -543,6 +561,20 @@ def portfolio_risk_snapshot():
 
 
 
+
+def display_price(value, ticker="", decimals=None):
+    """Compact price formatting that fits metric cards without truncation."""
+    try:
+        x=float(value)
+    except Exception:
+        return "—"
+    if not np.isfinite(x):
+        return "—"
+    if decimals is None:
+        # Keep cents readable for ordinary equities; retain precision for penny stocks.
+        decimals = 3 if abs(x) < 10 else 2
+    return f"${x:,.{decimals}f}"
+
 # ---------------- V18 Investment Intelligence Layer ----------------
 def v18_db_upgrade():
     v17_db_upgrade()
@@ -976,7 +1008,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.0.2 • Market Investment Analyst • full schema migration hotfix")
+st.caption("V18.0.3 • Market Investment Analyst • responsive price display")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1054,15 +1086,17 @@ elif page=="Dashboard":
     hi52 = float(h.tail(252)["High"].max()) if len(h) else np.nan
     lo52 = float(h.tail(252)["Low"].min()) if len(h) else np.nan
 
-    q=st.columns(7)
-    metric_box(q[0], "Price",f"${price:.3f}",
+    # Two rows keep full quote values readable on normal laptop screens.
+    q=st.columns(4)
+    metric_box(q[0], "Price",display_price(price,ticker),
                 None if pd.isna(day_change) else f"{day_change:+.3f} ({day_pct*100:+.2f}%)")
-    metric_box(q[1], "Previous close","—" if prev is None else f"${prev:.3f}")
-    metric_box(q[2], "Day high","—" if pd.isna(day_high) else f"${day_high:.3f}")
-    metric_box(q[3], "Day low","—" if pd.isna(day_low) else f"${day_low:.3f}")
-    metric_box(q[4], "Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
-    metric_box(q[5], "52W high","—" if pd.isna(hi52) else f"${hi52:.3f}")
-    metric_box(q[6], "52W low","—" if pd.isna(lo52) else f"${lo52:.3f}")
+    metric_box(q[1], "Previous close","—" if prev is None else display_price(prev,ticker))
+    metric_box(q[2], "Day high","—" if pd.isna(day_high) else display_price(day_high,ticker))
+    metric_box(q[3], "Day low","—" if pd.isna(day_low) else display_price(day_low,ticker))
+    q2=st.columns(3)
+    metric_box(q2[0], "Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
+    metric_box(q2[1], "52W high","—" if pd.isna(hi52) else display_price(hi52,ticker))
+    metric_box(q2[2], "52W low","—" if pd.isna(lo52) else display_price(lo52,ticker))
 
     st.subheader("Price chart")
     period = st.radio("Period", list(RANGES.keys()), horizontal=True, index=4)
@@ -1325,7 +1359,7 @@ elif page=="Research Report":
     st.subheader("1. Research identity")
     r1,r2,r3,r4=st.columns(4)
     metric_box(r1, "Sector",cls["sector"]); metric_box(r2, "Industry",cls["industry"])
-    metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",f"${price:.3f}")
+    metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",display_price(price,ticker))
 
     st.subheader("2. Fundamental & valuation snapshot")
     rows=[]
@@ -1536,7 +1570,7 @@ elif page=="Trade Centre":
     else:
         ref=float(h["Close"].iloc[-1])
         c1,c2,c3=st.columns(3)
-        metric_box(c1,"Price",f"${ref:,.3f}")
+        metric_box(c1,"Price",display_price(ref,ticker))
         metric_box(c2,"Paper cash",f"${paper_cash_balance():,.2f}")
         pos=paper_positions_df()
         held=float(pos.loc[pos["ticker"]==ticker,"quantity"].iloc[0]) if (not pos.empty and ticker in pos["ticker"].values) else 0
@@ -1658,9 +1692,9 @@ elif page=="Company Command Centre":
     else:
         price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
         p1,p2,p3,p4=st.columns(4)
-        metric_box(p1,"Price",f"${price:,.3f}")
-        metric_box(p2,"52W high",f"${float(h['High'].max()):,.3f}")
-        metric_box(p3,"52W low",f"${float(h['Low'].min()):,.3f}")
+        metric_box(p1,"Price",display_price(price,ticker))
+        metric_box(p2,"52W high",display_price(float(h['High'].max()),ticker))
+        metric_box(p3,"52W low",display_price(float(h['Low'].min()),ticker))
         metric_box(p4,"Volume",f"{market_structure(h).get('Volume vs 20D',np.nan):.2f}× 20D")
 
         st.subheader("Your position")
