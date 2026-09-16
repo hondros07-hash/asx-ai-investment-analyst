@@ -11,6 +11,7 @@ from model_monitor import registry
 from sector_models import SECTOR_KPIS
 from live_data_provider import market_snapshot, twelve_price
 from market_chart_engine import RANGES, range_data, summary as chart_summary, previous_close, price_figure
+from market_universe import BENCHMARKS, resolve_bare_ticker, detect_market
 
 st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
 
@@ -39,7 +40,7 @@ def money(v):
 
 st.sidebar.title("ASX AI Analyst")
 ticker=st.sidebar.text_input("ASX ticker","ZIP.AX").strip().upper()
-if ticker and "." not in ticker: ticker += ".AX"
+ticker = resolve_bare_ticker(ticker)
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
 page=st.sidebar.radio("Research workspace",["Dashboard","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
@@ -50,10 +51,18 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.3 • Live-data foundation + advanced market dashboard")
+st.caption("V10.4 • ASX + NASDAQ + NYSE market intelligence")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
+    market_meta = detect_market(ticker, info)
+    ex1,ex2,ex3,ex4=st.columns(4)
+    ex1.metric("Market", market_meta["market"])
+    ex2.metric("Exchange", market_meta["exchange"])
+    ex3.metric("Currency", market_meta["currency"])
+    ex4.metric("Default benchmark",
+               "ASX 200" if market_meta["benchmark"]=="^AXJO" else
+               "Nasdaq 100" if market_meta["benchmark"]=="^NDX" else "S&P 500")
 
     prev = previous_close(ticker)
     day_change = price-prev if prev not in (None,0) else np.nan
@@ -101,13 +110,12 @@ if page=="Dashboard":
         m[5].metric("Period volume","—" if pd.isna(s['volume']) else f"{s['volume']/1e6:.2f}M")
 
         compare_choice=st.selectbox("Compare performance with",
-            ["None","ASX 200","Nasdaq 100","S&P 500","Another ticker"])
-        compare_map={"ASX 200":"^AXJO","Nasdaq 100":"^NDX","S&P 500":"^GSPC"}
+            ["None","ASX 200","S&P 500","Nasdaq 100","Dow Jones","Another ticker"])
+        compare_map={"ASX 200":"^AXJO","S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI"}
         compare_ticker=""
         if compare_choice=="Another ticker":
             compare_ticker=st.text_input("Comparison ticker","BHP.AX").strip().upper()
-            if compare_ticker and "." not in compare_ticker and compare_ticker.isalpha():
-                compare_ticker += ".AX"
+            compare_ticker=resolve_bare_ticker(compare_ticker)
         elif compare_choice!="None":
             compare_ticker=compare_map[compare_choice]
 
@@ -268,6 +276,14 @@ elif page=="Data & Production":
     c1.metric("Twelve Data API","Connected" if td_key else "Not configured")
     c2.metric("ASX prototype feed","Yahoo/yfinance")
     c3.metric("Provider architecture","Active")
+    st.subheader("Market coverage")
+    st.dataframe(pd.DataFrame([
+        ["ASX","Australian equities","ZIP.AX / BHP.AX","ASX 200"],
+        ["NASDAQ","US equities","AAPL / NVDA","Nasdaq 100 / S&P 500"],
+        ["NYSE","US equities","KO / JPM","S&P 500 / Dow Jones"],
+    ],columns=["Market","Coverage","Example symbols","Benchmarks"]),
+    use_container_width=True,hide_index=True)
+
     st.subheader("Connection test")
     test_symbol=st.text_input("Twelve Data test symbol","AAPL")
     if st.button("Test Twelve Data"):
@@ -279,7 +295,8 @@ elif page=="Data & Production":
     st.subheader("Current routing")
     st.dataframe(pd.DataFrame([
         ["ASX equities","Yahoo/yfinance","Prototype / research","Replace later with licensed ASX feed"],
-        ["US equities","Twelve Data","Real-time where plan permits","Free Basic supports US equities"],
+        ["NASDAQ equities","Twelve Data","Real-time where plan permits","US market feed"],
+        ["NYSE equities","Twelve Data","Real-time where plan permits","US market feed"],
         ["FX","Twelve Data","Real-time where plan permits","Useful for AUD/USD macro signal"],
         ["Commodities","Twelve Data","Plan-dependent","Grow or higher coverage required"],
         ["ASX announcements","Not connected","—","Official/permitted feed required"],
