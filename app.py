@@ -9,6 +9,7 @@ from watchlist_engine import add as watch_add, remove as watch_remove, get as wa
 from portfolio_engine import portfolio_analytics, concentration
 from model_monitor import registry
 from sector_models import SECTOR_KPIS
+from live_data_provider import market_snapshot, twelve_price
 
 st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
 
@@ -48,7 +49,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.1 • Unified investor research workspace")
+st.caption("V10.2 • Multi-provider live-data foundation + unified investor research workspace")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
@@ -66,6 +67,18 @@ if page=="Dashboard":
     b.info("**Data confidence**\n\nMarket data connected; specialist KPIs need verified company data.")
     ma=close.rolling(200).mean().iloc[-1] if len(close)>=200 else np.nan
     c.info("**Market structure**\n\n"+("Above 200D MA" if pd.notna(ma) and price>ma else "Below 200D MA"))
+    st.subheader("Live cross-market snapshot")
+    try:
+        td_key = st.secrets.get("TWELVE_DATA_API_KEY", "")
+    except Exception:
+        td_key = ""
+    if td_key:
+        snap = market_snapshot(td_key)
+        st.dataframe(snap[["Market","Symbol","Price","Source","Status"]], use_container_width=True, hide_index=True)
+        st.caption("Availability is plan-dependent. Twelve Data is used only for instruments enabled on your account.")
+    else:
+        st.info("Add TWELVE_DATA_API_KEY to Streamlit Secrets to activate Twelve Data US/FX trial/free-plan data. Commodities require eligible plan coverage.")
+
     st.subheader("Sector KPI monitor")
     if ticker.startswith("ZIP"):
         labels={"ttv":"TTV / Payment Volume","active_customers":"Active Customers","transaction_margin":"Transaction Margin","credit_losses":"Credit Losses","revenue_growth":"Revenue Growth","cash_ebitda":"Cash EBITDA","operating_margin":"Operating Margin","us_growth":"US Growth","international_growth":"International Growth","regulatory_risk":"Regulatory Risk"}
@@ -166,10 +179,35 @@ elif page=="Model Lab":
     st.write("V6 walk-forward, V7 universe/factors, V8 ensemble and V9 point-in-time architecture remain included.")
 
 elif page=="Data & Production":
-    st.header("Data & Production")
-    st.success("V10.1 investor interface is active.")
-    st.markdown("""**Connected now:** prototype Yahoo/yfinance price/history and local research storage.
+    st.header("Data & Production — V10.2")
+    try:
+        td_key = st.secrets.get("TWELVE_DATA_API_KEY", "")
+    except Exception:
+        td_key = ""
+    c1,c2,c3=st.columns(3)
+    c1.metric("Twelve Data API","Connected" if td_key else "Not configured")
+    c2.metric("ASX prototype feed","Yahoo/yfinance")
+    c3.metric("Provider architecture","Active")
+    st.subheader("Connection test")
+    test_symbol=st.text_input("Twelve Data test symbol","AAPL")
+    if st.button("Test Twelve Data"):
+        q=twelve_price(test_symbol,td_key)
+        if q.price is not None:
+            st.success(f"{q.symbol}: {q.price} • source: {q.source}")
+        else:
+            st.error(q.message or q.status)
+    st.subheader("Current routing")
+    st.dataframe(pd.DataFrame([
+        ["ASX equities","Yahoo/yfinance","Prototype / research","Replace later with licensed ASX feed"],
+        ["US equities","Twelve Data","Real-time where plan permits","Free Basic supports US equities"],
+        ["FX","Twelve Data","Real-time where plan permits","Useful for AUD/USD macro signal"],
+        ["Commodities","Twelve Data","Plan-dependent","Grow or higher coverage required"],
+        ["ASX announcements","Not connected","—","Official/permitted feed required"],
+        ["PIT fundamentals","Not connected","—","Production provider required"],
+    ],columns=["Dataset","Provider","Mode","Next step"]),use_container_width=True,hide_index=True)
+    st.warning("Licensing matters: individual Twelve Data plans are for personal/internal use and do not permit commercial redistribution. Twelve Data states ASX market data is restricted to internal use. Keep this build for your own research unless your data licences permit external display.")
+    st.markdown("""**Streamlit secret required**
 
-**Production integrations still required:** licensed ASX real-time data, official announcements, point-in-time fundamentals/estimates, delisted universe, corporate actions, macro/commodity feeds, short interest/director transactions, persistent cloud database, authentication and automated alerts.
+Create a secret named `TWELVE_DATA_API_KEY` in your Streamlit app settings. Do not commit the API key to GitHub.
 
-Missing data is deliberately shown as missing rather than treated as negative evidence.""")
+V10.2 intentionally keeps the provider layer separate from the analytical engines, so a licensed ASX provider can later replace the ASX prototype feed without rewriting the application.""")
