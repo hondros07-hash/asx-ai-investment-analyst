@@ -127,6 +127,159 @@ def metric_box(target, label, value, delta=None, **kwargs):
         kwargs["help"] = help_text
     return target.metric(label, value, delta=delta, **kwargs)
 
+
+# ---------------- Technical Analysis Lab ----------------
+TECH_INDICATOR_HELP = {
+    "SMA 20":"20-session simple moving average. Tracks the short-term trend by averaging closing prices.",
+    "SMA 50":"50-session simple moving average. Common intermediate-trend reference.",
+    "SMA 200":"200-session simple moving average. Common long-term trend reference.",
+    "EMA 20":"20-session exponential moving average. Similar to an SMA but gives more weight to recent prices.",
+    "Bollinger Bands":"20-session moving average with bands two standard deviations away. Tracks price location and changing volatility.",
+    "RSI":"14-period Relative Strength Index. Momentum oscillator from 0–100; 70/30 are commonly watched zones.",
+    "MACD":"Difference between 12- and 26-period EMAs plus a 9-period signal line. Tracks trend and momentum changes.",
+    "Stochastic":"Compares the close with the recent 14-period trading range. Shows where price sits within that range.",
+    "ADX / DMI":"ADX estimates trend strength; +DI and -DI estimate positive versus negative directional pressure.",
+    "ATR":"14-period Average True Range. Measures volatility in price units, not bullish or bearish direction.",
+    "CCI":"20-period Commodity Channel Index. Measures how far price is from its recent statistical average.",
+    "Williams %R":"14-period oscillator showing where the close sits within the recent high-low range.",
+    "ROC":"12-period Rate of Change. Percentage change from the price 12 sessions earlier.",
+    "Momentum":"Current close minus the close 10 sessions earlier.",
+    "OBV":"On-Balance Volume adds volume on up sessions and subtracts it on down sessions to track participation.",
+    "MFI":"Money Flow Index combines price and volume into a 0–100 momentum/flow oscillator.",
+    "CMF":"Chaikin Money Flow estimates buying or selling pressure from close location and volume.",
+    "VWAP 20":"Rolling 20-session volume-weighted average price. Compares price with the average level weighted by trading activity.",
+    "Donchian Channels":"Highest high and lowest low over 20 sessions. Tracks range boundaries and breakouts.",
+    "Keltner Channels":"20-period EMA surrounded by ATR-based bands. Tracks trend and volatility.",
+    "Ichimoku Cloud":"Trend system combining conversion/base lines and projected support/resistance cloud.",
+    "Parabolic SAR":"Trend-following stop-and-reversal points plotted above or below price.",
+    "Volume":"Trading volume. Used to assess participation behind price moves."
+}
+TECH_OVERLAYS={"SMA 20","SMA 50","SMA 200","EMA 20","Bollinger Bands","VWAP 20",
+               "Donchian Channels","Keltner Channels","Ichimoku Cloud","Parabolic SAR"}
+TECH_PANELS={"RSI","MACD","Stochastic","ADX / DMI","ATR","CCI","Williams %R","ROC",
+             "Momentum","OBV","MFI","CMF","Volume"}
+
+def technical_indicators(df):
+    x=df.copy()
+    c=x["Close"].astype(float); h=x["High"].astype(float); l=x["Low"].astype(float); v=x["Volume"].astype(float)
+    t=pd.DataFrame(index=x.index); t["Price"]=c; t["Volume"]=v
+    for n in (20,50,200): t[f"SMA {n}"]=c.rolling(n).mean()
+    t["EMA 20"]=c.ewm(span=20,adjust=False).mean()
+    mid=c.rolling(20).mean(); sd=c.rolling(20).std()
+    t["BB Upper"]=mid+2*sd; t["BB Middle"]=mid; t["BB Lower"]=mid-2*sd
+    d=c.diff(); gain=d.clip(lower=0); loss=-d.clip(upper=0)
+    ag=gain.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
+    al=loss.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
+    t["RSI"]=100-(100/(1+ag/al.replace(0,np.nan)))
+    e12=c.ewm(span=12,adjust=False).mean(); e26=c.ewm(span=26,adjust=False).mean()
+    t["MACD"]=e12-e26; t["MACD Signal"]=t["MACD"].ewm(span=9,adjust=False).mean(); t["MACD Hist"]=t["MACD"]-t["MACD Signal"]
+    lo14=l.rolling(14).min(); hi14=h.rolling(14).max()
+    t["Stoch %K"]=100*(c-lo14)/(hi14-lo14).replace(0,np.nan); t["Stoch %D"]=t["Stoch %K"].rolling(3).mean()
+    t["Williams %R"]=-100*(hi14-c)/(hi14-lo14).replace(0,np.nan)
+    t["ROC"]=c.pct_change(12)*100; t["Momentum"]=c-c.shift(10)
+    tr=pd.concat([h-l,(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1)
+    t["ATR"]=tr.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
+    up=h.diff(); down=-l.diff()
+    plusdm=up.where((up>down)&(up>0),0.0); minusdm=down.where((down>up)&(down>0),0.0)
+    atr=t["ATR"].replace(0,np.nan)
+    t["+DI"]=100*plusdm.ewm(alpha=1/14,adjust=False).mean()/atr
+    t["-DI"]=100*minusdm.ewm(alpha=1/14,adjust=False).mean()/atr
+    dx=100*(t["+DI"]-t["-DI"]).abs()/(t["+DI"]+t["-DI"]).replace(0,np.nan)
+    t["ADX"]=dx.ewm(alpha=1/14,adjust=False).mean()
+    tp=(h+l+c)/3; ma=tp.rolling(20).mean()
+    md=tp.rolling(20).apply(lambda z: np.mean(np.abs(z-z.mean())),raw=True)
+    t["CCI"]=(tp-ma)/(0.015*md.replace(0,np.nan))
+    t["OBV"]=(np.sign(c.diff()).fillna(0)*v).cumsum()
+    money=tp*v
+    pos=money.where(tp.diff()>0,0).rolling(14).sum(); neg=money.where(tp.diff()<0,0).rolling(14).sum()
+    t["MFI"]=100-(100/(1+pos/neg.replace(0,np.nan)))
+    mfm=((c-l)-(h-c))/(h-l).replace(0,np.nan)
+    t["CMF"]=(mfm*v).rolling(20).sum()/v.rolling(20).sum().replace(0,np.nan)
+    t["VWAP 20"]=(tp*v).rolling(20).sum()/v.rolling(20).sum().replace(0,np.nan)
+    t["Donchian Upper"]=h.rolling(20).max(); t["Donchian Lower"]=l.rolling(20).min()
+    t["Keltner Upper"]=t["EMA 20"]+2*t["ATR"]; t["Keltner Lower"]=t["EMA 20"]-2*t["ATR"]
+    conv=(h.rolling(9).max()+l.rolling(9).min())/2; base=(h.rolling(26).max()+l.rolling(26).min())/2
+    t["Ichimoku Conversion"]=conv; t["Ichimoku Base"]=base
+    t["Ichimoku Span A"]=((conv+base)/2).shift(26)
+    t["Ichimoku Span B"]=((h.rolling(52).max()+l.rolling(52).min())/2).shift(26)
+    sar=pd.Series(np.nan,index=x.index)
+    if len(x):
+        bull=True; af=.02; ep=h.iloc[0]; sar.iloc[0]=l.iloc[0]
+        for i in range(1,len(x)):
+            cur=sar.iloc[i-1]+af*(ep-sar.iloc[i-1])
+            if bull:
+                cur=min(cur,l.iloc[i-1],l.iloc[i-2] if i>1 else l.iloc[i-1])
+                if l.iloc[i]<cur: bull=False; cur=ep; ep=l.iloc[i]; af=.02
+                elif h.iloc[i]>ep: ep=h.iloc[i]; af=min(.2,af+.02)
+            else:
+                cur=max(cur,h.iloc[i-1],h.iloc[i-2] if i>1 else h.iloc[i-1])
+                if h.iloc[i]>cur: bull=True; cur=ep; ep=h.iloc[i]; af=.02
+                elif l.iloc[i]<ep: ep=l.iloc[i]; af=min(.2,af+.02)
+            sar.iloc[i]=cur
+    t["Parabolic SAR"]=sar
+    return t
+
+def technical_reading(name,t,px):
+    z=t.iloc[-1]
+    def q(k): return z.get(k,np.nan)
+    if name.startswith("SMA") or name=="EMA 20":
+        m=q(name); return f"Price is {abs(px/m-1)*100:.1f}% {'above' if px>=m else 'below'} {name}." if pd.notna(m) and m else "Not enough history yet."
+    if name=="RSI":
+        r=q("RSI"); state="above the commonly watched 70 zone" if r>=70 else "below the commonly watched 30 zone" if r<=30 else "between the 30 and 70 zones"
+        return f"RSI is {r:.1f}, {state}."
+    if name=="MACD":
+        return f"MACD is {'above' if q('MACD')>q('MACD Signal') else 'below'} its signal line; histogram is {q('MACD Hist'):.3f}."
+    if name=="Stochastic": return f"%K is {q('Stoch %K'):.1f} and %D is {q('Stoch %D'):.1f}; %K is {'above' if q('Stoch %K')>q('Stoch %D') else 'below'} %D."
+    if name=="ADX / DMI": return f"ADX is {q('ADX'):.1f}; {'+DI is above -DI' if q('+DI')>q('-DI') else '-DI is above +DI'}. ADX measures strength rather than direction."
+    if name=="ATR": return f"ATR is {q('ATR'):.3f}, equivalent to about {q('ATR')/px*100:.1f}% of the current price."
+    if name=="CCI": return f"CCI is {q('CCI'):.1f}; +100 and -100 are commonly watched reference levels."
+    if name=="Williams %R": return f"Williams %R is {q('Williams %R'):.1f}; -20 and -80 are commonly watched range-position levels."
+    if name=="ROC": return f"12-session ROC is {q('ROC'):.2f}%."
+    if name=="Momentum": return f"10-session momentum is {q('Momentum'):.3f} price units."
+    if name=="OBV":
+        d=t["OBV"].diff(10).iloc[-1]; return f"OBV has {'risen' if d>0 else 'fallen'} over the latest 10 sessions, showing {'positive' if d>0 else 'negative'} volume participation."
+    if name=="MFI": return f"MFI is {q('MFI'):.1f} on its 0–100 scale."
+    if name=="CMF": return f"CMF is {q('CMF'):.3f}; it is currently {'positive' if q('CMF')>0 else 'negative'}."
+    if name=="VWAP 20":
+        m=q("VWAP 20"); return f"Price is {abs(px/m-1)*100:.1f}% {'above' if px>=m else 'below'} the rolling 20-session VWAP."
+    if name=="Bollinger Bands":
+        u,lw=q("BB Upper"),q("BB Lower"); where="above the upper band" if px>u else "below the lower band" if px<lw else "inside the bands"
+        return f"Price is {where}. Band width is {(u-lw)/px*100:.1f}% of price."
+    if name=="Donchian Channels":
+        u,lw=q("Donchian Upper"),q("Donchian Lower")
+        return f"Price is {(px-lw)/(u-lw)*100:.0f}% of the way from the 20-session channel low to high." if pd.notna(u) and u>lw else "Channel unavailable."
+    if name=="Keltner Channels":
+        u,lw=q("Keltner Upper"),q("Keltner Lower"); return f"Price is {'above' if px>u else 'below' if px<lw else 'inside'} the Keltner channel."
+    if name=="Ichimoku Cloud":
+        a,b=q("Ichimoku Span A"),q("Ichimoku Span B")
+        if pd.isna(a) or pd.isna(b): return "Not enough history for the projected cloud."
+        return f"Price is {'above' if px>max(a,b) else 'below' if px<min(a,b) else 'inside'} the Ichimoku cloud."
+    if name=="Parabolic SAR": return f"Parabolic SAR is {'below' if q('Parabolic SAR')<px else 'above'} price."
+    if name=="Volume":
+        av=t["Volume"].rolling(20).mean().iloc[-1]; return f"Latest volume is {q('Volume')/av:.2f}× its 20-session average." if av else "Volume comparison unavailable."
+    return ""
+
+def combined_technical_reading(selected,t,px):
+    z=t.iloc[-1]; parts=[]
+    trend_votes=[]
+    for n in selected:
+        if n.startswith("SMA") or n=="EMA 20" or n=="VWAP 20":
+            if pd.notna(z.get(n,np.nan)): trend_votes.append(1 if px>z[n] else -1)
+    if trend_votes:
+        parts.append(f"Trend references are {'mostly positive' if sum(trend_votes)>0 else 'mostly negative' if sum(trend_votes)<0 else 'mixed'} ({sum(v>0 for v in trend_votes)} above-price vs {sum(v<0 for v in trend_votes)} below-price readings).")
+    mom=[]
+    if "RSI" in selected and pd.notna(z["RSI"]): mom.append(1 if z["RSI"]>50 else -1)
+    if "MACD" in selected: mom.append(1 if z["MACD"]>z["MACD Signal"] else -1)
+    if "Stochastic" in selected: mom.append(1 if z["Stoch %K"]>z["Stoch %D"] else -1)
+    if "ROC" in selected and pd.notna(z["ROC"]): mom.append(1 if z["ROC"]>0 else -1)
+    if mom: parts.append(f"Selected momentum readings are {'mostly positive' if sum(mom)>0 else 'mostly negative' if sum(mom)<0 else 'mixed'}.")
+    if any(n in selected for n in {"OBV","MFI","CMF","Volume"}):
+        parts.append("Use the selected volume/flow readings as confirmation: price and participation moving together generally provide more consistent evidence than price moving without participation.")
+    if any(n in selected for n in {"ADX / DMI","ATR"}):
+        parts.append("ADX and ATR add context rather than a direction call: ADX addresses trend strength and ATR addresses movement size/volatility.")
+    parts.append("Do not count correlated indicators as independent confirmation. RSI, Stochastic, Williams %R and CCI overlap; moving averages and MACD also share price-trend information. A more balanced combination uses different families: trend + momentum + volume/flow + volatility/strength.")
+    return " ".join(parts)
+
 st.sidebar.title("Market Investment Analyst")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
@@ -158,7 +311,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V13.1.1 • Market Investment Analyst • hover-help hotfix")
+st.caption("V14 • Market Investment Analyst • multi-indicator technical analysis lab")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -594,13 +747,101 @@ elif page=="Valuation":
     st.caption("Outputs are assumption-sensitive; validated inputs are required.")
 
 elif page=="Technical":
-    st.header("Technical")
-    d=pd.DataFrame({"Price":close,"SMA20":close.rolling(20).mean(),"SMA50":close.rolling(50).mean(),"SMA200":close.rolling(200).mean()})
-    st.line_chart(d)
-    cs=st.columns(4)
-    metric_box(cs[0], "RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
-    for c,n in zip(cs[1:],[20,50,200]):
-        m=close.rolling(n).mean().iloc[-1]; metric_box(c, f"vs SMA{n}",f"{(price/m-1)*100:.1f}%")
+    st.header(f"Technical Analysis Lab — {ticker}")
+    st.caption("Select one or several indicators and compare them directly with the selected share. The readings describe historical price and volume behaviour, not guaranteed future direction.")
+
+    a,b=st.columns([1,2])
+    period=a.selectbox("History",["6mo","1y","2y","5y"],index=1,help="Amount of price history used for the chart and indicators.")
+    selected=b.multiselect("Indicators",list(TECH_INDICATOR_HELP),
+        default=["SMA 20","SMA 50","RSI","MACD","Volume"],
+        help="Select multiple indicators. For broader confirmation, combine indicators from different families rather than several that measure the same thing.")
+
+    th=history(ticker,period)
+    if th.empty:
+        st.warning("No price history returned for technical analysis.")
+    else:
+        ti=technical_indicators(th); px=float(th["Close"].iloc[-1])
+        overlays=[x for x in selected if x in TECH_OVERLAYS]
+        panels=[x for x in selected if x in TECH_PANELS]
+        rows=1+len(panels)
+        heights=[0.55]+([0.45/len(panels)]*len(panels) if panels else [])
+        fig=make_subplots(rows=rows,cols=1,shared_xaxes=True,vertical_spacing=.025,row_heights=heights)
+        fig.add_trace(go.Candlestick(x=th.index,open=th["Open"],high=th["High"],low=th["Low"],close=th["Close"],name="Price"),row=1,col=1)
+
+        def overlay(col,name=None,mode="lines"):
+            fig.add_trace(go.Scatter(x=ti.index,y=ti[col],name=name or col,mode=mode),row=1,col=1)
+
+        for ind in overlays:
+            if ind.startswith("SMA") or ind in {"EMA 20","VWAP 20"}: overlay(ind)
+            elif ind=="Bollinger Bands":
+                for c in ["BB Upper","BB Middle","BB Lower"]: overlay(c)
+            elif ind=="Donchian Channels":
+                overlay("Donchian Upper"); overlay("Donchian Lower")
+            elif ind=="Keltner Channels":
+                overlay("Keltner Upper"); overlay("Keltner Lower")
+            elif ind=="Ichimoku Cloud":
+                for c in ["Ichimoku Conversion","Ichimoku Base","Ichimoku Span A","Ichimoku Span B"]: overlay(c)
+            elif ind=="Parabolic SAR": overlay("Parabolic SAR",mode="markers")
+
+        for r,ind in enumerate(panels,start=2):
+            if ind=="RSI":
+                fig.add_trace(go.Scatter(x=ti.index,y=ti["RSI"],name="RSI"),row=r,col=1)
+                fig.add_hline(y=70,line_dash="dot",row=r,col=1); fig.add_hline(y=30,line_dash="dot",row=r,col=1)
+            elif ind=="MACD":
+                fig.add_trace(go.Scatter(x=ti.index,y=ti["MACD"],name="MACD"),row=r,col=1)
+                fig.add_trace(go.Scatter(x=ti.index,y=ti["MACD Signal"],name="MACD Signal"),row=r,col=1)
+                fig.add_trace(go.Bar(x=ti.index,y=ti["MACD Hist"],name="MACD Histogram"),row=r,col=1)
+            elif ind=="Stochastic":
+                for c in ["Stoch %K","Stoch %D"]: fig.add_trace(go.Scatter(x=ti.index,y=ti[c],name=c),row=r,col=1)
+                fig.add_hline(y=80,line_dash="dot",row=r,col=1); fig.add_hline(y=20,line_dash="dot",row=r,col=1)
+            elif ind=="ADX / DMI":
+                for c in ["ADX","+DI","-DI"]: fig.add_trace(go.Scatter(x=ti.index,y=ti[c],name=c),row=r,col=1)
+                fig.add_hline(y=25,line_dash="dot",row=r,col=1)
+            elif ind in {"ATR","CCI","Williams %R","ROC","Momentum","OBV","MFI","CMF"}:
+                fig.add_trace(go.Scatter(x=ti.index,y=ti[ind],name=ind),row=r,col=1)
+                if ind=="MFI":
+                    fig.add_hline(y=80,line_dash="dot",row=r,col=1); fig.add_hline(y=20,line_dash="dot",row=r,col=1)
+                elif ind=="CCI":
+                    fig.add_hline(y=100,line_dash="dot",row=r,col=1); fig.add_hline(y=-100,line_dash="dot",row=r,col=1)
+                elif ind=="Williams %R":
+                    fig.add_hline(y=-20,line_dash="dot",row=r,col=1); fig.add_hline(y=-80,line_dash="dot",row=r,col=1)
+                elif ind in {"ROC","Momentum","CMF"}: fig.add_hline(y=0,line_dash="dot",row=r,col=1)
+            elif ind=="Volume":
+                fig.add_trace(go.Bar(x=ti.index,y=ti["Volume"],name="Volume"),row=r,col=1)
+
+        fig.update_layout(height=max(650,390+185*len(panels)),hovermode="x unified",
+                          xaxis_rangeslider_visible=False,legend_orientation="h",margin=dict(l=20,r=20,t=40,b=20))
+        st.plotly_chart(fig,use_container_width=True)
+
+        st.subheader("What each selected indicator is doing")
+        if not selected:
+            st.info("Select one or more indicators above.")
+        for ind in selected:
+            with st.expander(f"{ind} — current reading",expanded=len(selected)<=4):
+                st.write(TECH_INDICATOR_HELP[ind])
+                st.markdown("**How it is tracking this share now:**")
+                st.write(technical_reading(ind,ti,px))
+
+        if len(selected)>1:
+            st.subheader("How to read the selected indicators together")
+            st.info(combined_technical_reading(selected,ti,px))
+            st.markdown("""**Multi-indicator reading order:**  
+1. **Trend** — start with moving averages, Ichimoku, Donchian, Keltner or Parabolic SAR.  
+2. **Momentum** — check RSI, MACD, Stochastic, CCI, Williams %R or ROC.  
+3. **Participation** — use Volume, OBV, MFI or CMF to see whether trading activity supports the move.  
+4. **Strength & volatility** — use ADX and ATR to understand trend strength and the size of price movement.  
+
+Agreement across different families is more informative than several similar indicators saying the same thing. Conflicting families should be treated as a mixed technical picture.""")
+
+        st.subheader("Technical indicator library")
+        guide=[]
+        for name,desc in TECH_INDICATOR_HELP.items():
+            family=("Trend / price overlay" if name in TECH_OVERLAYS else
+                    "Volume / money flow" if name in {"OBV","MFI","CMF","Volume"} else
+                    "Volatility / trend strength" if name in {"ATR","ADX / DMI"} else "Momentum / oscillator")
+            guide.append({"Indicator":name,"Family":family,"What it tracks":desc})
+        st.dataframe(pd.DataFrame(guide),use_container_width=True,hide_index=True)
+
 
 elif page=="Quant":
     st.header("Quant")
