@@ -92,6 +92,38 @@ def money(v):
     if abs(v)>=1e6:return f"${v/1e6:.1f}M"
     return f"${v:,.0f}"
 
+
+METRIC_HELP = {
+    "Market": "The primary market classification detected for the selected security, such as ASX, NASDAQ or NYSE.",
+    "Exchange": "The exchange reported for the selected security. This identifies the trading venue where its shares are listed.",
+    "Currency": "The currency in which the selected security is quoted and traded.",
+    "Default benchmark": "The broad market index used as the default reference for comparing this security's performance.",
+    "Price": "The latest available price returned by the active market-data source. Data timing can vary by provider.",
+    "Day high": "The highest price in the latest available trading session.",
+    "Day low": "The lowest price in the latest available trading session.",
+    "Volume": "The number of shares traded in the latest available session. Volume helps show the level of market participation.",
+    "52W high": "The highest price observed over approximately the last 52 trading weeks.",
+    "52W low": "The lowest price observed over approximately the last 52 trading weeks.",
+    "RSI14": "14-period Relative Strength Index. It measures recent price momentum on a 0–100 scale. Above 70 is commonly considered overbought and below 30 oversold, but RSI should not be used by itself.",
+    "1M": "Percentage price change over approximately one trading month (21 sessions).",
+    "3M": "Percentage price change over approximately three trading months (63 sessions).",
+    "6M": "Percentage price change over approximately six trading months (126 sessions).",
+    "1Y": "Percentage price change over approximately one trading year (252 sessions).",
+    "YTD": "Year-to-date price performance from the first available trading observation of the calendar year to the latest observation.",
+    "Sector": "The broad business sector assigned to the company by the available classification data.",
+    "Industry": "The more specific business industry assigned to the company by the available classification data.",
+    "Market benchmark": "The market index used as a reference when comparing the company's performance.",
+    "vs market": "The company's performance minus its benchmark performance over the same period, expressed in percentage points.",
+    "Reverse-DCF implied 5Y FCF growth": "The approximate annual free-cash-flow growth rate required by the reverse DCF assumptions to reconcile the model with the current share price.",
+    "Annualised volatility": "Historical variability of daily returns scaled to a 252-trading-day year. Higher values indicate larger historical price fluctuations.",
+    "Max drawdown": "The largest historical peak-to-trough decline in the selected price history.",
+    "Sharpe (0% RF)": "Annualised historical return divided by annualised volatility, using a 0% risk-free rate in this screen. It is a risk-adjusted performance measure, not a forecast.",
+    "12M momentum": "Price performance over approximately the previous 252 trading sessions.",
+}
+def metric_box(target, label, value, delta=None, **kwargs):
+    help_text = METRIC_HELP.get(label)
+    return metric_box(target, label, value, delta=delta, help=help_text, **kwargs)
+
 st.sidebar.title("Market Investment Analyst")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
@@ -123,7 +155,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V13 • Market Investment Analyst • investor documents + PDF-first workflow")
+st.caption("V13.1 • Market Investment Analyst • contextual hover help")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -184,10 +216,10 @@ elif page=="Dashboard":
     _market_info = meta if isinstance(meta, dict) else {}
     market_meta = detect_market(ticker, _market_info)
     ex1,ex2,ex3,ex4=st.columns(4)
-    ex1.metric("Market", market_meta["market"])
-    ex2.metric("Exchange", market_meta["exchange"])
-    ex3.metric("Currency", market_meta["currency"])
-    ex4.metric("Default benchmark",
+    metric_box(ex1, "Market", market_meta["market"])
+    metric_box(ex2, "Exchange", market_meta["exchange"])
+    metric_box(ex3, "Currency", market_meta["currency"])
+    metric_box(ex4, "Default benchmark",
                "ASX 200" if market_meta["benchmark"]=="^AXJO" else
                "Nasdaq 100" if market_meta["benchmark"]=="^NDX" else "S&P 500")
 
@@ -202,14 +234,14 @@ elif page=="Dashboard":
     lo52 = float(h.tail(252)["Low"].min()) if len(h) else np.nan
 
     q=st.columns(7)
-    q[0].metric("Price",f"${price:.3f}",
+    metric_box(q[0], "Price",f"${price:.3f}",
                 None if pd.isna(day_change) else f"{day_change:+.3f} ({day_pct*100:+.2f}%)")
-    q[1].metric("Previous close","—" if prev is None else f"${prev:.3f}")
-    q[2].metric("Day high","—" if pd.isna(day_high) else f"${day_high:.3f}")
-    q[3].metric("Day low","—" if pd.isna(day_low) else f"${day_low:.3f}")
-    q[4].metric("Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
-    q[5].metric("52W high","—" if pd.isna(hi52) else f"${hi52:.3f}")
-    q[6].metric("52W low","—" if pd.isna(lo52) else f"${lo52:.3f}")
+    metric_box(q[1], "Previous close","—" if prev is None else f"${prev:.3f}")
+    metric_box(q[2], "Day high","—" if pd.isna(day_high) else f"${day_high:.3f}")
+    metric_box(q[3], "Day low","—" if pd.isna(day_low) else f"${day_low:.3f}")
+    metric_box(q[4], "Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
+    metric_box(q[5], "52W high","—" if pd.isna(hi52) else f"${hi52:.3f}")
+    metric_box(q[6], "52W low","—" if pd.isna(lo52) else f"${lo52:.3f}")
 
     st.subheader("Price chart")
     period = st.radio("Period", list(RANGES.keys()), horizontal=True, index=4)
@@ -229,13 +261,13 @@ elif page=="Dashboard":
         st.warning("No chart data returned for this period.")
     else:
         m=st.columns(6)
-        m[0].metric(f"{period} movement",f"{s['change']:+.3f}",
+        metric_box(m[0], f"{period} movement",f"{s['change']:+.3f}",
                     f"{s['change_pct']*100:+.2f}%")
-        m[1].metric("Period start",f"${s['start']:.3f}")
-        m[2].metric("Latest",f"${s['last']:.3f}")
-        m[3].metric("Period high",f"${s['high']:.3f}")
-        m[4].metric("Period low",f"${s['low']:.3f}")
-        m[5].metric("Period volume","—" if pd.isna(s['volume']) else f"{s['volume']/1e6:.2f}M")
+        metric_box(m[1], "Period start",f"${s['start']:.3f}")
+        metric_box(m[2], "Latest",f"${s['last']:.3f}")
+        metric_box(m[3], "Period high",f"${s['high']:.3f}")
+        metric_box(m[4], "Period low",f"${s['low']:.3f}")
+        metric_box(m[5], "Period volume","—" if pd.isna(s['volume']) else f"{s['volume']/1e6:.2f}M")
 
         compare_choice=st.selectbox("Compare performance with",
             ["None","ASX 200","S&P 500","Nasdaq 100","Dow Jones","Another ticker"])
@@ -276,11 +308,11 @@ elif page=="Dashboard":
     st.subheader("Performance")
     perf=st.columns(6)
     for c,(lab,n) in zip(perf,[("1M",21),("3M",63),("6M",126),("1Y",252)]):
-        v=change(close,n); c.metric(lab,"—" if pd.isna(v) else f"{v*100:+.1f}%")
+        v=change(close,n); metric_box(c, lab,"—" if pd.isna(v) else f"{v*100:+.1f}%")
     ytd=close[close.index.year==close.index[-1].year]
     ytdv=(ytd.iloc[-1]/ytd.iloc[0]-1) if len(ytd)>1 else np.nan
-    perf[4].metric("YTD","—" if pd.isna(ytdv) else f"{ytdv*100:+.1f}%")
-    perf[5].metric("RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
+    metric_box(perf[4], "YTD","—" if pd.isna(ytdv) else f"{ytdv*100:+.1f}%")
+    metric_box(perf[5], "RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
 
     st.subheader("Research status")
     a,b,c=st.columns(3)
@@ -312,9 +344,9 @@ elif page=="Dashboard":
     cls=classification(ticker,meta)
     bm_ticker,bm_name=default_benchmark(ticker,meta)
     pc1,pc2,pc3=st.columns(3)
-    pc1.metric("Sector",cls["sector"])
-    pc2.metric("Industry",cls["industry"])
-    pc3.metric("Market benchmark",bm_name)
+    metric_box(pc1, "Sector",cls["sector"])
+    metric_box(pc2, "Industry",cls["industry"])
+    metric_box(pc3, "Market benchmark",bm_name)
 
     with st.spinner("Identifying comparable companies and calculating relative performance..."):
         peers=find_peers(ticker,meta,max_peers=8)
@@ -349,11 +381,11 @@ elif page=="Dashboard":
         latest_peer=float(basket.dropna().iloc[-1]) if not basket.empty and not basket.dropna().empty else np.nan
         latest_bm=float(perf[bm_ticker].dropna().iloc[-1]) if bm_ticker in perf and not perf[bm_ticker].dropna().empty else np.nan
         rr=st.columns(5)
-        rr[0].metric(f"{ticker} return",f"{latest_company:+.2f}%")
-        rr[1].metric("Peer basket", "—" if pd.isna(latest_peer) else f"{latest_peer:+.2f}%")
-        rr[2].metric(bm_name, "—" if pd.isna(latest_bm) else f"{latest_bm:+.2f}%")
-        rr[3].metric("vs peers","—" if pd.isna(latest_peer) else f"{latest_company-latest_peer:+.2f} pp")
-        rr[4].metric("vs market","—" if pd.isna(latest_bm) else f"{latest_company-latest_bm:+.2f} pp")
+        metric_box(rr[0], f"{ticker} return",f"{latest_company:+.2f}%")
+        metric_box(rr[1], "Peer basket", "—" if pd.isna(latest_peer) else f"{latest_peer:+.2f}%")
+        metric_box(rr[2], bm_name, "—" if pd.isna(latest_bm) else f"{latest_bm:+.2f}%")
+        metric_box(rr[3], "vs peers","—" if pd.isna(latest_peer) else f"{latest_company-latest_peer:+.2f} pp")
+        metric_box(rr[4], "vs market","—" if pd.isna(latest_bm) else f"{latest_company-latest_bm:+.2f} pp")
     else:
         st.warning("Insufficient price history to calculate the selected relative-performance period.")
 
@@ -404,7 +436,7 @@ elif page=="Announcements & Reports":
             }
             terms=aliases.get(q,[q])
             ann=ann[ann.apply(lambda r:any(term in (str(r["Title"])+" "+str(r["Type"])).lower() for term in terms),axis=1)]
-        st.metric("Announcements found",len(ann))
+        metric_box(st, "Announcements found",len(ann))
         display_cols=[c for c in ["Date","Group","Type","Title","Has PDF","Price Sensitive","Source"] if c in ann.columns]
         show=ann[display_cols].copy()
         st.dataframe(show,use_container_width=True,hide_index=True,height=430)
@@ -426,8 +458,8 @@ elif page=="Announcements & Reports":
                           "ARS":"Annual Report to Shareholders","DEF 14A":"Proxy Statement"}.get(str(rr["Type"]),str(rr["Type"]))
             st.subheader(friendly)
             a,b,c=st.columns(3)
-            a.metric("Date",str(rr["Date"])); b.metric("Category",str(rr["Type"]))
-            c.metric("Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else ("N/A (SEC filing)" if str(rr.get("Source","")).startswith("SEC") else "No / not supplied"))
+            metric_box(a, "Date",str(rr["Date"])); metric_box(b, "Category",str(rr["Type"]))
+            metric_box(c, "Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else ("N/A (SEC filing)" if str(rr.get("Source","")).startswith("SEC") else "No / not supplied"))
 
             pdf_url=str(rr.get("PDFURL","") or "")
             read_url=str(rr.get("ReadURL","") or rr.get("URL",""))
@@ -471,8 +503,8 @@ elif page=="Research Report":
 
     st.subheader("1. Research identity")
     r1,r2,r3,r4=st.columns(4)
-    r1.metric("Sector",cls["sector"]); r2.metric("Industry",cls["industry"])
-    r3.metric("Market benchmark",bm_name); r4.metric("Price",f"${price:.3f}")
+    metric_box(r1, "Sector",cls["sector"]); metric_box(r2, "Industry",cls["industry"])
+    metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",f"${price:.3f}")
 
     st.subheader("2. Fundamental & valuation snapshot")
     rows=[]
@@ -555,7 +587,7 @@ elif page=="Valuation":
     v=scenarios(fcf,shares,debt,assumptions); v["margin_of_safety"]=v.value_per_share.map(lambda x:margin_of_safety(price,x))
     st.dataframe(v,use_container_width=True,hide_index=True)
     ig=implied_growth(price,fcf,shares,debt,.10,.03)
-    st.metric("Reverse-DCF implied 5Y FCF growth","—" if pd.isna(ig) else f"{ig*100:.1f}%")
+    metric_box(st, "Reverse-DCF implied 5Y FCF growth","—" if pd.isna(ig) else f"{ig*100:.1f}%")
     st.caption("Outputs are assumption-sensitive; validated inputs are required.")
 
 elif page=="Technical":
@@ -563,16 +595,16 @@ elif page=="Technical":
     d=pd.DataFrame({"Price":close,"SMA20":close.rolling(20).mean(),"SMA50":close.rolling(50).mean(),"SMA200":close.rolling(200).mean()})
     st.line_chart(d)
     cs=st.columns(4)
-    cs[0].metric("RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
+    metric_box(cs[0], "RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
     for c,n in zip(cs[1:],[20,50,200]):
-        m=close.rolling(n).mean().iloc[-1]; c.metric(f"vs SMA{n}",f"{(price/m-1)*100:.1f}%")
+        m=close.rolling(n).mean().iloc[-1]; metric_box(c, f"vs SMA{n}",f"{(price/m-1)*100:.1f}%")
 
 elif page=="Quant":
     st.header("Quant")
     ret=close.pct_change().dropna(); curve=(1+ret).cumprod(); dd=curve/curve.cummax()-1
-    cs=st.columns(4); cs[0].metric("Annualised volatility",f"{ret.std()*np.sqrt(252)*100:.1f}%"); cs[1].metric("Max drawdown",f"{dd.min()*100:.1f}%")
-    sh=ret.mean()/ret.std()*np.sqrt(252) if ret.std() else np.nan; cs[2].metric("Sharpe (0% RF)","—" if pd.isna(sh) else f"{sh:.2f}")
-    cs[3].metric("12M momentum","—" if len(close)<253 else f"{change(close,252)*100:.1f}%")
+    cs=st.columns(4); metric_box(cs[0], "Annualised volatility",f"{ret.std()*np.sqrt(252)*100:.1f}%"); metric_box(cs[1], "Max drawdown",f"{dd.min()*100:.1f}%")
+    sh=ret.mean()/ret.std()*np.sqrt(252) if ret.std() else np.nan; metric_box(cs[2], "Sharpe (0% RF)","—" if pd.isna(sh) else f"{sh:.2f}")
+    metric_box(cs[3], "12M momentum","—" if len(close)<253 else f"{change(close,252)*100:.1f}%")
     st.info("V6–V9 backtest, factor, ML ensemble and point-in-time modules remain packaged.")
 
 elif page=="Forecasts":
@@ -607,7 +639,7 @@ elif page=="Portfolio":
             if not x.empty:px[t]=x.Close
         if px:
             a=portfolio_analytics(pd.DataFrame(px),w); cs=st.columns(4)
-            cs[0].metric("Annualised return",f"{a['annualised_return']*100:.1f}%"); cs[1].metric("Volatility",f"{a['annualised_volatility']*100:.1f}%"); cs[2].metric("Max drawdown",f"{a['max_drawdown']*100:.1f}%"); cs[3].metric("HHI",f"{concentration(w):.3f}")
+            metric_box(cs[0], "Annualised return",f"{a['annualised_return']*100:.1f}%"); metric_box(cs[1], "Volatility",f"{a['annualised_volatility']*100:.1f}%"); metric_box(cs[2], "Max drawdown",f"{a['max_drawdown']*100:.1f}%"); metric_box(cs[3], "HHI",f"{concentration(w):.3f}")
             st.dataframe(a["correlation"],use_container_width=True)
 
 elif page=="Watchlist":
@@ -627,9 +659,9 @@ elif page=="Data & Production":
     except Exception:
         td_key = ""
     c1,c2,c3=st.columns(3)
-    c1.metric("Twelve Data API","Connected" if td_key else "Not configured")
-    c2.metric("ASX prototype feed","Yahoo/yfinance")
-    c3.metric("Provider architecture","Active")
+    metric_box(c1, "Twelve Data API","Connected" if td_key else "Not configured")
+    metric_box(c2, "ASX prototype feed","Yahoo/yfinance")
+    metric_box(c3, "Provider architecture","Active")
     st.subheader("Market coverage")
     st.dataframe(pd.DataFrame([
         ["ASX","Australian equities","ZIP.AX / BHP.AX","ASX 200"],
