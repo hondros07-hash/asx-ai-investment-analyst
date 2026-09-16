@@ -571,6 +571,32 @@ def v18_db_upgrade():
         "ticker":"TEXT","metric":"TEXT","operator":"TEXT","threshold":"REAL",
         "enabled":"INTEGER","notes":"TEXT"
     })
+    ensure_columns("kpi_observations", {
+        "ticker":"TEXT","metric":"TEXT","period":"TEXT","value":"REAL","unit":"TEXT",
+        "source":"TEXT","source_url":"TEXT","evidence_note":"TEXT","observed_at":"TEXT"
+    })
+    ensure_columns("valuation_profiles", {
+        "ticker":"TEXT","fcf":"REAL","shares":"REAL","net_debt":"REAL",
+        "bear_growth":"REAL","base_growth":"REAL","bull_growth":"REAL",
+        "bear_wacc":"REAL","base_wacc":"REAL","bull_wacc":"REAL",
+        "bear_terminal":"REAL","base_terminal":"REAL","bull_terminal":"REAL",
+        "updated_at":"TEXT"
+    })
+    ensure_columns("report_reviews", {
+        "ticker":"TEXT","reviewed_at":"TEXT","title":"TEXT","source":"TEXT","notes":"TEXT"
+    })
+    ensure_columns("portfolio_holdings", {
+        "ticker":"TEXT","quantity":"REAL","avg_cost":"REAL","source":"TEXT","updated_at":"TEXT"
+    })
+    ensure_columns("thesis_snapshots", {
+        "ticker":"TEXT","snapshot_at":"TEXT","metric":"TEXT","current_value":"REAL",
+        "status":"TEXT","source":"TEXT"
+    })
+    ensure_columns("review_log", {
+        "ticker":"TEXT","reviewed_at":"TEXT","amount":"REAL","price":"REAL",
+        "shares_before":"REAL","avg_cost_before":"REAL","shares_after":"REAL",
+        "avg_cost_after":"REAL","notes":"TEXT"
+    })
 
     con.execute("""CREATE TABLE IF NOT EXISTS kpi_observations(
         id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,period TEXT,value REAL,
@@ -585,11 +611,16 @@ def v18_db_upgrade():
 
 def kpi_observations(ticker):
     v18_db_upgrade(); con=ws_db()
+    cols=["id","metric","period","value","unit","source","source_url","evidence_note","observed_at"]
     try:
         d=pd.read_sql_query("""SELECT id,metric,period,value,unit,source,source_url,evidence_note,observed_at
-                               FROM kpi_observations WHERE ticker=? ORDER BY metric,observed_at DESC,id DESC""",(ticker,),con)
-    finally: con.close()
-    return d
+                               FROM kpi_observations WHERE ticker=? ORDER BY metric,observed_at DESC,id DESC""",
+                            con,params=(ticker,))
+        return d
+    except Exception:
+        return pd.DataFrame(columns=cols)
+    finally:
+        con.close()
 
 def kpi_latest_comparison(ticker):
     d=kpi_observations(ticker)
@@ -945,7 +976,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.0.1 • Market Investment Analyst • schema migration hotfix")
+st.caption("V18.0.2 • Market Investment Analyst • full schema migration hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
