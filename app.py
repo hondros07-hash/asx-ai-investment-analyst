@@ -1245,7 +1245,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.2.1 • Market Investment Analyst • sector card layout fix")
+st.caption("V18.2.2 • Market Investment Analyst • Command Centre forecast")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1931,6 +1931,8 @@ elif page=="Company Command Centre":
         company_snapshot_header(ticker, meta, h, cls)
         st.subheader("Investment Command Centre")
         render_analyst_consensus(ticker,price)
+        st.divider()
+        render_forecast_tool(ticker,h)
         st.divider()
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
