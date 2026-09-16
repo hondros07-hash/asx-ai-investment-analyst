@@ -12,6 +12,7 @@ from sector_models import SECTOR_KPIS
 from live_data_provider import market_snapshot, twelve_price
 from market_chart_engine import RANGES, range_data, summary as chart_summary, previous_close, price_figure
 from market_universe import BENCHMARKS, resolve_bare_ticker, detect_market
+from sector_peer_engine import classification, find_peers, peer_table, normalized_history, equal_weight_peer_basket, default_benchmark
 
 st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
 
@@ -51,14 +52,11 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("ASX AI Investment Analyst")
-st.caption("V10.5.1 • ASX + NASDAQ + NYSE • ticker-resolution hotfix")
+st.caption("V10.6 • ASX + NASDAQ + NYSE • universal sector & peer intelligence")
 
 if page=="Dashboard":
     st.header(f"{ticker} — {name}")
-    try:
-        _market_info = info if isinstance(info, dict) else {}
-    except Exception:
-        _market_info = {}
+    _market_info = meta if isinstance(meta, dict) else {}
     market_meta = detect_market(ticker, _market_info)
     ex1,ex2,ex3,ex4=st.columns(4)
     ex1.metric("Market", market_meta["market"])
@@ -182,6 +180,58 @@ if page=="Dashboard":
         st.dataframe(pd.DataFrame(rows,columns=["KPI","Latest","Status"]),use_container_width=True,hide_index=True)
     else:
         st.info("Sector KPI selection will use verified sector metadata when connected.")
+
+
+    st.divider()
+    st.subheader("Sector & Peer Intelligence")
+    cls=classification(ticker,meta)
+    bm_ticker,bm_name=default_benchmark(ticker,meta)
+    pc1,pc2,pc3=st.columns(3)
+    pc1.metric("Sector",cls["sector"])
+    pc2.metric("Industry",cls["industry"])
+    pc3.metric("Market benchmark",bm_name)
+
+    with st.spinner("Identifying comparable companies and calculating relative performance..."):
+        peers=find_peers(ticker,meta,max_peers=8)
+
+    if not peers:
+        st.info("No sufficiently matched peers were found in the current curated universe. The company can still be compared with its market benchmark.")
+    else:
+        st.caption("Peers are selected automatically by industry first, then sector. Review the peer group before using it for investment decisions.")
+        pt=peer_table(ticker,peers)
+        fmt={"Price":"${:,.3f}","1M":"{:+.2%}","3M":"{:+.2%}","6M":"{:+.2%}","1Y":"{:+.2%}"}
+        st.dataframe(pt.style.format(fmt,na_rep="—"),use_container_width=True,hide_index=True)
+
+    peer_period_label=st.radio("Relative performance period",["1M","3M","6M","1Y","3Y","5Y"],horizontal=True,index=2)
+    pp={"1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}[peer_period_label]
+    selected_peer_tickers=[x["ticker"] for x in peers]
+    perf=normalized_history([ticker]+selected_peer_tickers+[bm_ticker],pp)
+    if not perf.empty and ticker in perf.columns:
+        import plotly.graph_objects as go
+        figp=go.Figure()
+        figp.add_trace(go.Scatter(x=perf.index,y=perf[ticker],mode="lines",name=ticker))
+        basket=equal_weight_peer_basket(perf.drop(columns=[bm_ticker],errors="ignore"),ticker)
+        if not basket.empty:
+            figp.add_trace(go.Scatter(x=basket.index,y=basket,mode="lines",name="Peer basket"))
+        if bm_ticker in perf.columns:
+            figp.add_trace(go.Scatter(x=perf.index,y=perf[bm_ticker],mode="lines",name=bm_name))
+        figp.update_layout(height=430,margin=dict(l=10,r=10,t=20,b=10),
+                           yaxis_title="Return (%)",hovermode="x unified",
+                           legend=dict(orientation="h"))
+        st.plotly_chart(figp,use_container_width=True)
+
+        latest_company=float(perf[ticker].dropna().iloc[-1])
+        latest_peer=float(basket.dropna().iloc[-1]) if not basket.empty and not basket.dropna().empty else np.nan
+        latest_bm=float(perf[bm_ticker].dropna().iloc[-1]) if bm_ticker in perf and not perf[bm_ticker].dropna().empty else np.nan
+        rr=st.columns(5)
+        rr[0].metric(f"{ticker} return",f"{latest_company:+.2f}%")
+        rr[1].metric("Peer basket", "—" if pd.isna(latest_peer) else f"{latest_peer:+.2f}%")
+        rr[2].metric(bm_name, "—" if pd.isna(latest_bm) else f"{latest_bm:+.2f}%")
+        rr[3].metric("vs peers","—" if pd.isna(latest_peer) else f"{latest_company-latest_peer:+.2f} pp")
+        rr[4].metric("vs market","—" if pd.isna(latest_bm) else f"{latest_company-latest_bm:+.2f} pp")
+    else:
+        st.warning("Insufficient price history to calculate the selected relative-performance period.")
+
 
 elif page=="Investment Committee":
     st.header(f"{ticker} — Investment Committee"); st.info(thesis)
