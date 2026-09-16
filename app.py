@@ -311,7 +311,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V14 • Market Investment Analyst • multi-indicator technical analysis lab")
+st.caption("V14.1 • Market Investment Analyst • technical lab + announcements hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")

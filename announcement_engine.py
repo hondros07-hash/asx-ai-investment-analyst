@@ -210,8 +210,22 @@ def announcements(ticker, provider_url="", provider_key="", limit=250):
         if "Group" not in p:p["Group"]="ASX Announcements"
         return p,"Provider-backed ASX announcements"
         p=asx_public_archive(code,12,limit)
-        if not p.empty:
-            p["PDFURL"]=p["URL"]; p["ReadURL"]=p["URL"]; p["Has PDF"]=True; p["Group"]="ASX Announcements"
+        # Empty ASX fallback frames may have no columns at all. Never index URL
+        # until rows/columns actually exist.
+        if p is None or p.empty:
+            return pd.DataFrame(columns=["Date","Time","Group","Type","Title","Price Sensitive",
+                                         "Source","URL","PDFURL","ReadURL","Has PDF","ID"]), "ASX public archive fallback"
+        p=p.copy()
+        if "URL" not in p.columns:
+            p["URL"]=""
+        if "PDFURL" not in p.columns:
+            p["PDFURL"]=p["URL"]
+        if "ReadURL" not in p.columns:
+            p["ReadURL"]=p["URL"]
+        if "Has PDF" not in p.columns:
+            p["Has PDF"]=p["PDFURL"].astype(str).str.lower().str.contains(r"\.pdf(?:$|\?)",regex=True)
+        if "Group" not in p.columns:
+            p["Group"]="ASX Announcements"
         return p,"ASX public archive fallback"
     return sec_archive(ticker,limit),"SEC EDGAR"
 
