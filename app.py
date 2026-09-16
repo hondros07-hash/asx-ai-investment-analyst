@@ -91,6 +91,13 @@ div[data-testid="stMetric"] {
   background-color: #4169E1 !important;
 }
 a { color: #4169E1; }
+
+.company-logo-fallback {width:78px;height:78px;border:1px solid #D9E2FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#2747A8;background:#F7F9FF;}
+.range-row {display:flex;align-items:center;gap:12px;font-size:.92rem;color:#334155;}
+.range-track {position:relative;height:10px;background:#E5E7EB;border-radius:99px;flex:1;overflow:visible;}
+.range-fill {height:10px;background:#4169E1;border-radius:99px;}
+.range-dot {position:absolute;top:50%;width:16px;height:16px;background:#0F172A;border:3px solid white;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px #94A3B8;}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -575,6 +582,105 @@ def display_price(value, ticker="", decimals=None):
         decimals = 3 if abs(x) < 10 else 2
     return f"${x:,.{decimals}f}"
 
+
+def compact_number(value, prefix="", suffix=""):
+    try: x=float(value)
+    except Exception: return "—"
+    if not np.isfinite(x): return "—"
+    ax=abs(x)
+    if ax>=1e12: body=f"{x/1e12:.2f}T"
+    elif ax>=1e9: body=f"{x/1e9:.2f}B"
+    elif ax>=1e6: body=f"{x/1e6:.2f}M"
+    elif ax>=1e3: body=f"{x/1e3:.1f}K"
+    else: body=f"{x:,.0f}"
+    return f"{prefix}{body}{suffix}"
+
+
+def company_logo_url(meta):
+    # Best-effort company logo; header still works without it.
+    if not isinstance(meta,dict): return ""
+    direct=str(meta.get("logo_url") or meta.get("logoUrl") or "").strip()
+    if direct.startswith("http"): return direct
+    website=str(meta.get("website") or "").strip()
+    if website.startswith("http"):
+        try:
+            from urllib.parse import urlparse, quote
+            domain=urlparse(website).netloc
+            if domain: return f"https://www.google.com/s2/favicons?domain={quote(domain)}&sz=128"
+        except Exception: pass
+    return ""
+
+
+def company_snapshot_header(ticker, meta, h, classification_data=None):
+    # Reusable security identity + market snapshot.
+    if h is None or h.empty: return
+    meta=meta if isinstance(meta,dict) else {}
+    cls=classification_data or {}
+    name=meta.get("longName") or meta.get("shortName") or cls.get("name") or ticker
+    sector=meta.get("sector") or cls.get("sector") or "Sector unavailable"
+    industry=meta.get("industry") or cls.get("industry") or ""
+    market=detect_market(ticker,meta)
+    exchange=market.get("exchange") or meta.get("exchange") or "—"
+    currency=market.get("currency") or meta.get("currency") or ""
+    price=float(h["Close"].iloc[-1])
+    prev=float(h["Close"].iloc[-2]) if len(h)>1 else np.nan
+    chg=price-prev if np.isfinite(prev) else np.nan
+    pct=chg/prev if np.isfinite(prev) and prev else np.nan
+    hi=float(h["High"].max()); lo=float(h["Low"].min())
+    yr=float(h["Close"].iloc[-1]/h["Close"].iloc[0]-1) if len(h)>1 else np.nan
+    vol=float(h["Volume"].iloc[-1]) if "Volume" in h and pd.notna(h["Volume"].iloc[-1]) else meta.get("regularMarketVolume")
+    mcap=meta.get("marketCap")
+    shares=meta.get("sharesOutstanding") or meta.get("impliedSharesOutstanding")
+    pe=meta.get("trailingPE")
+    div=meta.get("dividendYield")
+    if div is not None:
+        try:
+            div=float(div)
+            if abs(div)>1: div=div/100.0
+        except Exception: div=None
+    logo=company_logo_url(meta)
+    initials="".join([x[0] for x in str(name).split()[:2] if x])[:2].upper() or str(ticker)[:2]
+
+    top=st.container(border=True)
+    with top:
+        left,right=st.columns([4.6,1.4])
+        with left:
+            ident_logo,ident_text=st.columns([0.55,5.45],vertical_alignment="center")
+            with ident_logo:
+                if logo: st.image(logo,width=78)
+                else: st.markdown(f'<div class="company-logo-fallback">{initials}</div>',unsafe_allow_html=True)
+            with ident_text:
+                st.markdown(f"### {name} ({str(ticker).replace('.AX','')})")
+                subtitle=f"{ticker} · {exchange} · {sector}"
+                st.caption(subtitle + (f" · {industry}" if industry and industry!=sector else ""))
+        with right:
+            b1,b2=st.columns([3,1])
+            if b1.button("＋ Add to Watchlist",key=f"header_watch_{ticker}",use_container_width=True):
+                watch_add(ticker,""); st.toast(f"{ticker} added to Watchlist")
+            if b2.button("🔔",key=f"header_alert_{ticker}",help="Use Alerts to set a monitoring trigger.",use_container_width=True):
+                st.session_state["header_alert_requested"]=ticker; st.toast("Use the Alerts workspace to set the trigger condition.")
+
+        st.caption(f"Market data: Yahoo/yfinance fallback · not exchange-grade real-time · currency {currency or '—'}")
+        price_col,m1,m2,m3,m4,m5=st.columns([1.65,1,1,1,1.15,1])
+        delta="—" if pd.isna(chg) else f"{chg:+.3f} ({pct:+.2%})"
+        price_col.metric("Price",display_price(price,ticker),delta)
+        m1.metric("Volume",compact_number(vol)); m2.metric("Market cap",compact_number(mcap,prefix="$"))
+        m3.metric("P/E ratio","—" if pe is None or pd.isna(pe) else f"{float(pe):.2f}")
+        m4.metric("Dividend yield","—" if div is None or pd.isna(div) else f"{div:.2%}")
+        m5.metric("1Y return","—" if pd.isna(yr) else f"{yr:+.2%}")
+
+        st.markdown("**52-week range**")
+        pos=50.0 if hi<=lo else max(0.0,min(100.0,(price-lo)/(hi-lo)*100))
+        range_html=f'<div class="range-row"><span>{display_price(lo,ticker)}</span><div class="range-track"><div class="range-fill" style="width:{pos:.2f}%"></div><div class="range-dot" style="left:{pos:.2f}%"></div></div><span>{display_price(hi,ticker)}</span></div>'
+        st.markdown(range_html,unsafe_allow_html=True)
+        st.caption(f"Current price is {pos:.0f}% of the way from the 52-week low to the 52-week high.")
+
+        k1,k2,k3,k4=st.columns(4)
+        k1.metric("Ordinary shares",compact_number(shares)); k2.metric("Sector",str(sector)); k3.metric("Exchange",str(exchange))
+        try: stamp_text=pd.Timestamp(h.index[-1]).strftime("%d %b %Y")
+        except Exception: stamp_text="Latest loaded session"
+        k4.metric("Latest session",stamp_text)
+
 # ---------------- V18 Investment Intelligence Layer ----------------
 def v18_db_upgrade():
     v17_db_upgrade()
@@ -1008,7 +1114,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.0.5 • Market Investment Analyst • Streamlit magic render fix")
+st.caption("V18.1 • Market Investment Analyst • company snapshot header")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1685,18 +1791,13 @@ Adapter         Adapter
 elif page=="Company Command Centre":
     v18_db_upgrade()
     cls=safe_company_classification(ticker)
-    st.header(f"{cls.get('name') or ticker} — Investment Command Centre")
     h=history(ticker,"1y")
     if h.empty:
         st.warning("No price history available.")
     else:
         price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
-        p1,p2,p3,p4=st.columns(4)
-        metric_box(p1,"Price",display_price(price,ticker))
-        metric_box(p2,"52W high",display_price(float(h['High'].max()),ticker))
-        metric_box(p3,"52W low",display_price(float(h['Low'].min()),ticker))
-        metric_box(p4,"Volume",f"{market_structure(h).get('Volume vs 20D',np.nan):.2f}× 20D")
-
+        company_snapshot_header(ticker, meta, h, cls)
+        st.subheader("Investment Command Centre")
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
         a.metric("Shares",f"{hold['quantity']:,.0f}")
