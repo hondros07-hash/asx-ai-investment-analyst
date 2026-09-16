@@ -627,18 +627,26 @@ def compact_number(value, prefix="", suffix=""):
     return f"{prefix}{body}{suffix}"
 
 
-def company_logo_url(meta):
-    # Best-effort company logo; header still works without it.
-    if not isinstance(meta,dict): return ""
-    direct=str(meta.get("logo_url") or meta.get("logoUrl") or "").strip()
-    if direct.startswith("http"): return direct
+def company_logo_url(meta, size=256):
+    """Best-effort current company brand icon, derived from the company's current website."""
+    if not isinstance(meta,dict):
+        return ""
     website=str(meta.get("website") or "").strip()
     if website.startswith("http"):
         try:
             from urllib.parse import urlparse, quote
-            domain=urlparse(website).netloc
-            if domain: return f"https://www.google.com/s2/favicons?domain={quote(domain)}&sz=128"
-        except Exception: pass
+            domain=urlparse(website).netloc.lower().split(":")[0]
+            if domain.startswith("www."):
+                domain=domain[4:]
+            if domain:
+                # Google refreshes favicons from the live company website and is more
+                # likely to follow a recent rebrand than a static bundled asset.
+                return f"https://www.google.com/s2/favicons?domain_url={quote(website, safe=':/')}&sz={int(size)}"
+        except Exception:
+            pass
+    direct=str(meta.get("logo_url") or meta.get("logoUrl") or "").strip()
+    if direct.startswith("http"):
+        return direct
     return ""
 
 
@@ -669,7 +677,7 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
             div=float(div)
             if abs(div)>1: div=div/100.0
         except Exception: div=None
-    logo=company_logo_url(meta)
+    logo=company_logo_url(meta, size=256)
     initials="".join([x[0] for x in str(name).split()[:2] if x])[:2].upper() or str(ticker)[:2]
 
     top=st.container(border=True)
@@ -1271,11 +1279,22 @@ h=history(ticker); meta=info(ticker)
 if h.empty:
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
     st.stop()
-close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or ticker
+close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or meta.get("shortName") or ticker
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
+# Dynamic browser-tab branding for the security currently being researched.
+_tab_symbol=str(ticker).replace(".AX","")
+_tab_logo=company_logo_url(meta, size=128)
+_tab_title=f"{name} ({_tab_symbol}) | Market Investment Analyst"
+try:
+    st.set_page_config(page_title=_tab_title, page_icon=(_tab_logo or "📈"))
+except Exception:
+    # Older Streamlit versions may not support successive page-config calls.
+    # The app still renders normally with the default title/icon.
+    pass
+
 st.title("Market Investment Analyst")
-st.caption("V18.2.4 • Market Investment Analyst • forecast chart hotfix")
+st.caption("V18.3 • Market Investment Analyst • dynamic company branding")
 
 if page=="Markets":
     st.header("Global Market Terminal")
