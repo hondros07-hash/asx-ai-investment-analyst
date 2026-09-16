@@ -122,7 +122,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V11.4 • Market Investment Analyst • historical reports, summaries + downloads")
+st.caption("V11.4.1 • Market Investment Analyst • ASX historical-reports hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -375,7 +375,7 @@ elif page=="Dashboard":
 
 elif page=="Reports & Filings":
     st.header(f"Reports & Filings — {ticker} — {name}")
-    st.caption("Historical company reports and filings are retrieved from the official ASX announcements feed for ASX securities or SEC EDGAR for US securities when available.")
+    st.caption("Historical company reports and filings are retrieved from the official ASX historical-announcements search for ASX securities or SEC EDGAR for US securities.")
 
     rc1,rc2=st.columns([1,2])
     report_limit=rc1.selectbox("Reports to retrieve",[25,50,100],index=1)
@@ -384,7 +384,7 @@ elif page=="Reports & Filings":
         reports=report_catalog(ticker,int(report_limit))
 
     if reports.empty:
-        st.warning("No official report history was returned for this listing. The source may not expose this security through the current adapter.")
+        st.warning("No official report history was returned. For ASX securities, check that the selected ticker is the current ASX code; historical code changes can require a separate legacy-code search.")
     else:
         if report_filter:
             m=(reports["Title"].astype(str).str.contains(report_filter,case=False,regex=False) |

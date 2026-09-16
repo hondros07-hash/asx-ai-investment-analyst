@@ -42,22 +42,96 @@ def sec_reports(ticker, cik=None, limit=100):
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
 
+def _asx_html(url):
+    req=urllib.request.Request(url,headers={
+        "User-Agent":"Mozilla/5.0 Market Investment Analyst",
+        "Accept":"text/html,application/xhtml+xml"
+    })
+    with urllib.request.urlopen(req,timeout=25) as r:
+        return r.read().decode("utf-8",errors="ignore")
+
+def _parse_asx_rows(html, code):
+    """Parse official ASX historical-announcement result rows and preserve PDF links."""
+    from html.parser import HTMLParser
+    from urllib.parse import urljoin
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.rows=[]; self.row=None; self.cell=None
+        def handle_starttag(self,tag,attrs):
+            attrs=dict(attrs)
+            if tag=="tr":
+                self.row={"cells":[],"links":[]}
+            elif tag in ("td","th") and self.row is not None:
+                self.cell=[]
+            elif tag=="a" and self.row is not None:
+                href=attrs.get("href","")
+                if href:self.row["links"].append(href)
+        def handle_data(self,data):
+            if self.cell is not None:self.cell.append(data)
+        def handle_endtag(self,tag):
+            if tag in ("td","th") and self.row is not None and self.cell is not None:
+                self.row["cells"].append(re.sub(r"\s+"," "," ".join(self.cell)).strip())
+                self.cell=None
+            elif tag=="tr" and self.row is not None:
+                self.rows.append(self.row); self.row=None; self.cell=None
+
+    p=P(); p.feed(html)
+    out=[]
+    date_re=re.compile(r"\b(\d{1,2}/\d{1,2}/\d{4})\b")
+    for row in p.rows:
+        text=" | ".join(x for x in row["cells"] if x)
+        dm=date_re.search(text)
+        pdfs=[u for u in row["links"] if "asxpdf" in u.lower() or u.lower().endswith(".pdf")]
+        if not dm or not pdfs: continue
+        # Headline is generally the longest non-date, non-size/time cell.
+        candidates=[]
+        for c in row["cells"]:
+            if not c or date_re.search(c): continue
+            if re.fullmatch(r"\d{1,2}:\d{2}\s*(am|pm)?",c,re.I): continue
+            if re.fullmatch(r"[\d.]+\s*(kb|mb|pages?)?.*",c,re.I): continue
+            if c.upper()==code.upper(): continue
+            candidates.append(c)
+        title=max(candidates,key=len) if candidates else "ASX announcement"
+        href=pdfs[0]
+        if href.startswith("//"): href="https:"+href
+        elif href.startswith("/"): href=urljoin("https://www.asx.com.au",href)
+        out.append({"Date":dm.group(1),"Type":_asx_report_type(title),
+                    "Title":title,"Source":"ASX","URL":href,"Accession":href.rsplit("/",1)[-1]})
+    return out
+
+def _asx_report_type(title):
+    t=(title or "").lower()
+    if "annual report" in t or "appendix 4e" in t:return "Annual Report / FY Results"
+    if "half year" in t or "half-year" in t or "appendix 4d" in t:return "Half-Year Report"
+    if "quarter" in t:return "Quarterly Report"
+    if "presentation" in t:return "Results / Investor Presentation"
+    if "trading update" in t:return "Trading Update"
+    if "results" in t or "result" in t:return "Results"
+    return "ASX Announcement"
+
 def asx_reports(ticker, limit=100):
-    """ASX announcements endpoint. Availability can change; returns official announcement metadata when accessible."""
-    code=ticker.upper().replace(".AX","")
-    try:
-        j=_get_json(f"https://www.asx.com.au/asx/1/company/{code}/announcements?count={int(limit)}")
-        data=j.get("data",j) if isinstance(j,dict) else j
-        rows=[]
-        for x in data or []:
-            url=x.get("url") or x.get("document_url") or x.get("documentUrl") or ""
-            if url.startswith("/"):url="https://www.asx.com.au"+url
-            rows.append({"Date":x.get("document_date") or x.get("date") or "",
-                         "Type":x.get("header") or x.get("type") or "Announcement",
-                         "Title":x.get("header") or x.get("headline") or x.get("title") or "ASX announcement",
-                         "Source":"ASX","URL":url,"Accession":x.get("id","")})
-        return pd.DataFrame(rows)
-    except Exception:return pd.DataFrame()
+    """Official ASX historical-announcement search, including direct ASX PDF links."""
+    code=ticker.upper().replace(".AX","")[:3]
+    current=datetime.now().year
+    rows=[]
+    # Query calendar years individually so the history is not restricted to the recent window.
+    for year in range(current,current-12,-1):
+        try:
+            params=urllib.parse.urlencode({
+                "asxCode":code,"by":"asxCode","timeframe":"Y","year":year
+            })
+            html=_asx_html("https://www.asx.com.au/asx/v2/statistics/announcements.do?"+params)
+            rows.extend(_parse_asx_rows(html,code))
+        except Exception:
+            continue
+        if len(rows)>=int(limit): break
+    if not rows:return pd.DataFrame()
+    df=pd.DataFrame(rows).drop_duplicates(subset=["URL"])
+    dt=pd.to_datetime(df["Date"],dayfirst=True,errors="coerce")
+    df=df.assign(_date=dt).sort_values("_date",ascending=False).drop(columns="_date")
+    return df.head(int(limit)).reset_index(drop=True)
+
 
 def report_catalog(ticker,limit=100):
     return asx_reports(ticker,limit) if ticker.upper().endswith(".AX") else sec_reports(ticker,limit=limit)
