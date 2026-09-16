@@ -823,12 +823,24 @@ def render_forecast_tool(ticker,df):
     # Visual forecast path using horizon medians.
     valid=fc.dropna(subset=["Median forecast"])
     if not valid.empty:
-        chart=pd.DataFrame({"Months":[0,1,3,6,12],"Price":[float(fc["Current price"].iloc[0])]+valid["Median forecast"].tolist()})
-        # Ensure lengths align even if a horizon is unavailable.
-        if len(chart)!=len(valid)+1:
-            months=[0]+[{"1 Month":1,"3 Months":3,"6 Months":6,"12 Months":12}[x] for x in valid["Horizon"]]
-            chart=pd.DataFrame({"Months":months,"Price":[float(fc["Current price"].iloc[0])]+valid["Median forecast"].tolist()})
-        st.line_chart(chart.set_index("Months"))
+        # Build the month axis from the horizons that actually have a forecast.
+        # This avoids unequal-length arrays when one or more horizons are unavailable.
+        horizon_months={"1 Month":1,"3 Months":3,"6 Months":6,"12 Months":12}
+        current_price=float(fc["Current price"].iloc[0])
+        months=[0]
+        prices=[current_price]
+        for _, row in valid.iterrows():
+            month=horizon_months.get(str(row["Horizon"]))
+            forecast_price=row["Median forecast"]
+            if month is not None and pd.notna(forecast_price):
+                months.append(month)
+                prices.append(float(forecast_price))
+        if len(months)>1 and len(months)==len(prices):
+            chart=pd.DataFrame({"Months":months,"Price":prices})
+            chart=chart.sort_values("Months").drop_duplicates("Months",keep="last")
+            st.line_chart(chart.set_index("Months"))
+        else:
+            st.info("A forecast path chart is not available for the current data, but the forecast table above remains valid.")
 
 # ---------------- V18 Investment Intelligence Layer ----------------
 def v18_db_upgrade():
@@ -1263,7 +1275,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.2.3 • Market Investment Analyst • responsive metric cards")
+st.caption("V18.2.4 • Market Investment Analyst • forecast chart hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
