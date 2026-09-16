@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst — Unified Build
+# Market Investment Analyst — Unified Build
 
 This package consolidates the V6–V10 research architecture and adds the remaining major
 calculation/framework layers identified in the design review.

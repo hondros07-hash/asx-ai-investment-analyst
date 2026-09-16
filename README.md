@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst V5
+# Market Investment Analyst V5
 
 This build includes:
 - 5-year market data and charts

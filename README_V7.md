@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst V7 — Multi-Stock Factor Lab
+# Market Investment Analyst V7 — Multi-Stock Factor Lab
 
 V7 adds a multi-stock ASX research universe and cross-sectional strategy testing.
 

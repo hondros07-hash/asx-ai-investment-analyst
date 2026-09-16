@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst V9
+# Market Investment Analyst V9
 
 V9 builds the point-in-time data bridge required before historical fundamentals can safely enter the ML ensemble.
 

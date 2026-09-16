@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst V8 — Competing ML Models + Ensemble
+# Market Investment Analyst V8 — Competing ML Models + Ensemble
 
 V8 adds the first statistical competing-model architecture.
 

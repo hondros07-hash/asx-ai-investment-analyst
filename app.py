@@ -14,8 +14,57 @@ from market_chart_engine import RANGES, range_data, summary as chart_summary, pr
 from market_universe import BENCHMARKS, resolve_bare_ticker, detect_market
 from sector_peer_engine import classification, find_peers, peer_table, normalized_history, equal_weight_peer_basket, default_benchmark
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
+from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 
-st.set_page_config(page_title="ASX AI Investment Analyst", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
+
+st.markdown("""
+<style>
+:root {
+  --royal-blue: #4169E1;
+  --royal-blue-dark: #2747A8;
+  --white: #FFFFFF;
+}
+.stApp { background: #FFFFFF; color: #111827; }
+[data-testid="stSidebar"] {
+  background: #4169E1;
+}
+[data-testid="stSidebar"] * {
+  color: #FFFFFF !important;
+}
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea {
+  color: #111827 !important;
+  background: #FFFFFF !important;
+}
+h1, h2, h3 {
+  color: #2747A8;
+}
+div[data-testid="stMetric"] {
+  background: #FFFFFF;
+  border: 1px solid #D9E2FF;
+  border-top: 4px solid #4169E1;
+  border-radius: 10px;
+  padding: 10px;
+}
+.stButton > button {
+  background: #4169E1;
+  color: #FFFFFF;
+  border: 1px solid #4169E1;
+  border-radius: 8px;
+}
+.stButton > button:hover {
+  background: #2747A8;
+  color: #FFFFFF;
+  border-color: #2747A8;
+}
+[data-baseweb="tab-highlight"] {
+  background-color: #4169E1 !important;
+}
+a { color: #4169E1; }
+</style>
+""", unsafe_allow_html=True)
+
 
 @st.cache_data(ttl=300)
 def history(t, period="5y"):
@@ -40,11 +89,11 @@ def money(v):
     if abs(v)>=1e6:return f"${v/1e6:.1f}M"
     return f"${v:,.0f}"
 
-st.sidebar.title("ASX AI Analyst")
+st.sidebar.title("Market Investment Analyst")
 ticker=st.sidebar.text_input("ASX ticker","ZIP.AX").strip().upper()
 ticker = resolve_bare_ticker(ticker)
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
-page=st.sidebar.radio("Research workspace",["Dashboard","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
+page=st.sidebar.radio("Research workspace",["Markets","Dashboard","Research Report","Investment Committee","Fundamentals","Valuation","Technical","Quant","Forecasts","News & Events","Evidence & Thesis","Portfolio","Watchlist","Model Lab","Data & Production"])
 
 h=history(ticker); meta=info(ticker)
 if h.empty:
@@ -52,10 +101,80 @@ if h.empty:
 close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or ticker
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
-st.title("ASX AI Investment Analyst")
-st.caption("V11 • Serious Investment Research System • evidence-first, multi-market")
+st.title("Market Investment Analyst")
+st.caption("V11.2 • Market Investment Analyst • Global markets + evidence-first research")
 
-if page=="Dashboard":
+if page=="Markets":
+    st.header("Global Market Terminal")
+    st.caption("Browse exchange instrument catalogs and track selected symbols. Data labelled live is provider-dependent; Yahoo/yfinance fallback is not presented as exchange-grade real-time.")
+
+    try:
+        td_key=st.secrets.get("TWELVE_DATA_API_KEY","")
+    except Exception:
+        td_key=""
+
+    source_msg=("Twelve Data connected — catalog and quote requests use your API entitlement."
+                if td_key else
+                "Twelve Data API key not configured — showing curated catalog fallback and Yahoo/yfinance prices. This is not a complete live exchange feed.")
+    st.info(source_msg)
+
+    market=st.radio("Market",["ASX","NASDAQ","NYSE","Commodities"],horizontal=True)
+    c1,c2,c3=st.columns([1,1,2])
+    page_no=c1.number_input("Catalog page",1,1000,1,1)
+    page_size=c2.selectbox("Rows per page",[25,50,100,250],index=2)
+    search=c3.text_input("Search symbol or company","").strip().lower()
+
+    if market=="Commodities":
+        catalog=commodity_catalog(td_key)
+    else:
+        catalog=td_catalog(td_key,market,int(page_no),int(page_size)) if td_key else fallback_catalog(market)
+
+    if catalog.empty:
+        st.warning("No catalog data returned by the configured provider.")
+    else:
+        if search:
+            mask=pd.Series(False,index=catalog.index)
+            for col in [x for x in ["symbol","name","instrument_name"] if x in catalog.columns]:
+                mask=mask | catalog[col].astype(str).str.lower().str.contains(search,regex=False)
+            catalog=catalog[mask]
+        showcols=[c for c in ["symbol","name","instrument_name","exchange","country","currency","type","category"] if c in catalog.columns]
+        st.subheader(f"{market} instrument catalog")
+        st.dataframe(catalog[showcols] if showcols else catalog,use_container_width=True,hide_index=True,height=420)
+
+        symbols=catalog["symbol"].astype(str).tolist() if "symbol" in catalog.columns else []
+        defaults=symbols[:min(8,len(symbols))]
+        selected=st.multiselect("Track prices",symbols,default=defaults,
+                                help="Select a manageable group to avoid exhausting provider API credits.")
+        refresh=st.button("Refresh tracked prices",type="primary")
+        if selected:
+            st.subheader("Tracked market data")
+            quotes=live_rows(selected,td_key,market if market!="Commodities" else None,asx_suffix=(market=="ASX" and not td_key))
+            if quotes.empty:
+                st.warning("No quote data returned for the selected instruments.")
+            else:
+                st.dataframe(quotes.style.format({
+                    "Price":"{:,.4f}","Change":"{:+,.4f}","% Change":"{:+.2f}",
+                    "Open":"{:,.4f}","High":"{:,.4f}","Low":"{:,.4f}","Volume":"{:,.0f}"
+                },na_rep="—"),use_container_width=True,hide_index=True)
+                st.caption("Timestamp and Source are shown per row so delayed/fallback observations are not confused with licensed real-time exchange data.")
+
+    st.divider()
+    st.subheader("Production architecture")
+    st.code("""Exchange / commodity catalogs
+        ↓
+Licensed market-data provider
+        ↓
+Central collector / cache / persistent database
+        ↓
+Market scanner + breadth + alerts
+        ↓
+Streamlit Market Terminal
+        ↓
+Company Research / Portfolio / Models""")
+    st.caption("For thousands of securities, production should stream/update centrally and let the UI read cached observations rather than request every symbol on each page load.")
+
+
+elif page=="Dashboard":
     st.header(f"{ticker} — {name}")
     _market_info = meta if isinstance(meta, dict) else {}
     market_meta = detect_market(ticker, _market_info)

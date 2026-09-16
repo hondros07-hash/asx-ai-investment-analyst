@@ -1,4 +1,4 @@
-# ASX AI Investment Analyst V10 — Research Operating System
+# Market Investment Analyst V10 — Research Operating System
 
 V10 intentionally combines the major missing layers identified after V9.
 
