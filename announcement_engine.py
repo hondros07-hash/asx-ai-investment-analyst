@@ -41,7 +41,7 @@ def _parse_asx(html, code):
     tr_blocks=re.findall(r"<tr\b[^>]*>(.*?)</tr>",html,flags=re.I|re.S)
     for tr in tr_blocks:
         hrefs=re.findall(r'href=["\']([^"\']+)["\']',tr,flags=re.I)
-        pdfs=[h for h in hrefs if "asxpdf" in h.lower() or ".pdf" in h.lower()]
+        pdfs=[h for h in hrefs if "asxpdf" in h.lower() or ".pdf" in h.lower() or "displayannouncement.do" in h.lower()]
         if not pdfs: continue
         text=re.sub(r"<[^>]+>"," ",tr)
         text=re.sub(r"&nbsp;|&#160;"," ",text,flags=re.I)
@@ -67,21 +67,29 @@ def _parse_asx(html, code):
     return rows
 
 def asx_public_archive(code, years=12, limit=250):
+    """Best-effort ASX website metadata fallback.
+    Uses the public per-code announcements page rather than the invalid V12 year query.
+    This is intentionally not presented as a licensed ComNews feed.
+    """
     code=code.upper().replace(".AX","")[:3]
+    urls=[
+      f"https://www.asx.com.au/markets/trade-our-cash-market/announcements.{code}",
+      ASX_ARCHIVE+"?"+urllib.parse.urlencode({"asx":code,"by":"asxCode","period":"M6","timeframe":"D"})
+    ]
     rows=[]
-    now=datetime.now().year
-    for year in range(now,now-years,-1):
-        params=urllib.parse.urlencode({"asxCode":code,"by":"asxCode","timeframe":"Y","year":year})
+    for url in urls:
         try:
-            raw,_=_get(ASX_ARCHIVE+"?"+params)
-            rows.extend(_parse_asx(raw.decode("utf-8",errors="ignore"),code))
+            raw,_=_get(url)
+            html=raw.decode("utf-8",errors="ignore")
+            rows.extend(_parse_asx(html,code))
+            if rows:break
         except Exception:
             continue
-        if len(rows)>=limit: break
     if not rows:return pd.DataFrame()
     df=pd.DataFrame(rows).drop_duplicates("URL")
     df["_d"]=pd.to_datetime(df["Date"],dayfirst=True,errors="coerce")
     return df.sort_values("_d",ascending=False).drop(columns="_d").head(limit).reset_index(drop=True)
+
 
 def asx_provider_api(code, api_url, api_key="", limit=250):
     """Generic adapter for a licensed/authorised ASX announcement vendor.
@@ -113,7 +121,7 @@ def asx_provider_api(code, api_url, api_key="", limit=250):
     except Exception:return pd.DataFrame()
 
 def sec_archive(ticker, limit=250):
-    headers={"User-Agent":"Market Investment Analyst research contact@example.com","Accept-Encoding":"gzip, deflate"}
+    headers={"User-Agent":"Market Investment Analyst research contact@example.com","Accept":"application/json,text/html,*/*"}
     try:
         raw,_=_get("https://www.sec.gov/files/company_tickers.json",headers)
         tickers=json.loads(raw.decode())

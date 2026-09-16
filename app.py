@@ -123,7 +123,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V12 • Market Investment Analyst • Announcements Intelligence Engine")
+st.caption("V12.1 • Market Investment Analyst • announcement-source reliability fix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -398,13 +398,25 @@ elif page=="Announcements & Reports":
         st.info("ASX provider credentials are not configured. The app is using the public ASX archive as a fallback. For CommSec-style complete/reliable coverage, connect an authorised ASX ComNews-capable feed in Streamlit Secrets.")
 
     if ann.empty:
-        st.warning("No announcements were returned by the configured source.")
+        st.warning("No announcements were returned by this data route.")
+        if ticker.endswith(".AX") and not _ann_url:
+            st.error("ASX's public website is not a dependable application data feed. Connect an authorised ASX ComNews-capable provider for complete in-app ASX history, summaries and downloads.")
+        elif not ticker.endswith(".AX"):
+            st.caption("For US securities the app uses the SEC submissions API. If this persists, check the SEC request status/user-agent and the selected ticker-to-CIK mapping.")
     else:
         if category!="All":
             ann=ann[ann["Type"].astype(str).eq(category)]
         if query_filter:
-            q=query_filter.lower()
-            ann=ann[ann.apply(lambda r:q in str(r["Title"]).lower() or q in str(r["Type"]).lower(),axis=1)]
+            q=query_filter.lower().strip()
+            aliases={
+                "annual report":["annual report","10-k","20-f","40-f"],
+                "quarterly":["quarterly","10-q"],
+                "quarterly report":["quarterly","10-q"],
+                "current report":["8-k","6-k"],
+                "results":["results","10-k","10-q","20-f","40-f"],
+            }
+            terms=aliases.get(q,[q])
+            ann=ann[ann.apply(lambda r:any(term in (str(r["Title"])+" "+str(r["Type"])).lower() for term in terms),axis=1)]
         st.metric("Announcements found",len(ann))
         show=ann[["Date","Type","Title","Price Sensitive","Source"]].copy()
         st.dataframe(show,use_container_width=True,hide_index=True,height=430)
