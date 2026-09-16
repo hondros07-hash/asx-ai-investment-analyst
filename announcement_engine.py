@@ -120,8 +120,31 @@ def asx_provider_api(code, api_url, api_key="", limit=250):
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
 
+def _sec_label(form, primary):
+    labels={
+      "10-K":"Annual Report (10-K)","10-K/A":"Annual Report Amendment (10-K/A)",
+      "10-Q":"Quarterly Report (10-Q)","10-Q/A":"Quarterly Report Amendment (10-Q/A)",
+      "8-K":"Current Report (8-K)","8-K/A":"Current Report Amendment (8-K/A)",
+      "20-F":"Annual Report (20-F)","20-F/A":"Annual Report Amendment (20-F/A)",
+      "40-F":"Annual Report (40-F)","6-K":"Foreign Issuer Report (6-K)",
+      "DEF 14A":"Proxy Statement","4":"Insider Transaction (Form 4)",
+      "3":"Initial Insider Ownership (Form 3)","5":"Annual Insider Statement (Form 5)"
+    }
+    return labels.get(form,form)+(f" — {primary}" if primary else "")
+
+def _sec_primary_url(cik, accession, primary):
+    base=f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession.replace('-','')}/"
+    # SEC primaryDocument can contain an XSL display path such as xslF345X06/form4.xml.
+    # That display URL is valid in a browser, but for programmatic retrieval the raw XML
+    # is more reliable and machine-readable.
+    raw=primary or ""
+    if "/" in raw and raw.lower().endswith(".xml"):
+        raw=raw.rsplit("/",1)[-1]
+    return base+raw, base+accession+"-index.html"
+
 def sec_archive(ticker, limit=250):
-    headers={"User-Agent":"Market Investment Analyst research contact@example.com","Accept":"application/json,text/html,*/*"}
+    headers={"User-Agent":"Market Investment Analyst research contact@example.com",
+             "Accept":"application/json,text/html,application/xml,*/*"}
     try:
         raw,_=_get("https://www.sec.gov/files/company_tickers.json",headers)
         tickers=json.loads(raw.decode())
@@ -131,14 +154,16 @@ def sec_archive(ticker, limit=250):
         raw,_=_get(f"https://data.sec.gov/submissions/CIK{cik:010d}.json",headers)
         j=json.loads(raw.decode()); r=j["filings"]["recent"]; rows=[]
         for i,form in enumerate(r.get("form",[])):
-            accession=r["accessionNumber"][i]; primary=r["primaryDocument"][i]
-            url=f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession.replace('-','')}/{primary}"
-            rows.append({"Date":r["filingDate"][i],"Time":"","Type":form,
-              "Title":f"{form} — {primary}","Price Sensitive":False,"Source":"SEC EDGAR",
-              "URL":url,"ID":accession})
+            accession=r["accessionNumber"][i]
+            primary=r["primaryDocument"][i]
+            doc_url,index_url=_sec_primary_url(cik,accession,primary)
+            rows.append({"Date":r["filingDate"][i],"Time":str(r.get("acceptanceDateTime",[""]*len(r["form"]))[i])[-8:],
+              "Type":form,"Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
+              "URL":doc_url,"IndexURL":index_url,"ID":accession})
             if len(rows)>=limit:break
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
+
 
 def announcements(ticker, provider_url="", provider_key="", limit=250):
     if ticker.upper().endswith(".AX"):
@@ -148,10 +173,19 @@ def announcements(ticker, provider_url="", provider_key="", limit=250):
         return asx_public_archive(code,12,limit),"ASX public archive fallback"
     return sec_archive(ticker,limit),"SEC EDGAR"
 
-def fetch_document(url):
+def fetch_document(url, fallback_url=""):
     if not url:return None,""
-    try:return _get(url,timeout=40)
-    except Exception:return None,""
+    candidates=[url]
+    # If raw XML is unavailable, try the filing index page rather than failing outright.
+    if fallback_url:candidates.append(fallback_url)
+    for candidate in candidates:
+        try:
+            data,ctype=_get(candidate,timeout=40)
+            if data:return data,ctype
+        except Exception:
+            continue
+    return None,""
+
 
 def extract_text(data,ctype="",max_pages=60):
     if not data:return ""
@@ -161,9 +195,12 @@ def extract_text(data,ctype="",max_pages=60):
             return "\n".join((p.extract_text() or "") for p in r.pages[:max_pages])
         except:return ""
     text=data.decode("utf-8",errors="ignore")
+    # Preserve readable values from SEC XML/HTML rather than treating XML as an error.
     text=re.sub(r"<script.*?</script>|<style.*?</style>"," ",text,flags=re.I|re.S)
+    text=re.sub(r"</(?:name|value|issuerName|rptOwnerName|transactionCode|transactionShares|transactionPricePerShare)>","; ",text,flags=re.I)
     text=re.sub(r"<[^>]+>"," ",text)
-    return re.sub(r"\s+"," ",text)
+    text=text.replace("&amp;","&").replace("&lt;","<").replace("&gt;",">")
+    return re.sub(r"\s+"," ",text).strip()
 
 def evidence_summary(text, max_chars=3500):
     if not text:return "No machine-readable text could be extracted from this document."

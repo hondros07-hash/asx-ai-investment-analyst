@@ -123,7 +123,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V12.1.1 • Market Investment Analyst • research terminal")
+st.caption("V12.2 • Market Investment Analyst • SEC document retrieval fix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -416,11 +416,11 @@ elif page=="Announcements & Reports":
             st.subheader(str(rr["Title"]))
             a,b,c=st.columns(3)
             a.metric("Date",str(rr["Date"])); b.metric("Category",str(rr["Type"]))
-            c.metric("Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else "No / not supplied")
+            c.metric("Price sensitive","Yes" if bool(rr.get("Price Sensitive",False)) else ("N/A (SEC filing)" if str(rr.get("Source","")).startswith("SEC") else "No / not supplied"))
 
             if st.button("Open & summarise",type="primary"):
                 with st.spinner("Downloading and reading the original announcement..."):
-                    doc,ctype=fetch_document(str(rr["URL"]))
+                    doc,ctype=fetch_document(str(rr["URL"]),str(rr.get("IndexURL","")))
                     text=extract_text(doc,ctype)
                     summ=evidence_summary(text)
                 st.session_state["ann_key"]=selected
