@@ -1008,7 +1008,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18.0.4 • Market Investment Analyst • UI render hotfix")
+st.caption("V18.0.5 • Market Investment Analyst • Streamlit magic render fix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1742,7 +1742,10 @@ elif page=="Company Command Centre":
 
         st.subheader("Catalysts")
         cats=catalysts_safe(ticker,6)
-        st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded yet.")
+        if not cats.empty:
+            st.dataframe(cats,use_container_width=True,hide_index=True)
+        else:
+            st.info("No catalysts recorded yet.")
 
         st.markdown("---")
         st.markdown("### Core workflows")
@@ -1816,15 +1819,24 @@ elif page=="Before I Invest":
 
         st.subheader("Latest KPI evidence")
         kc=kpi_latest_comparison(ticker)
-        st.dataframe(kc,use_container_width=True,hide_index=True) if not kc.empty else st.info("No company KPI evidence captured yet.")
+        if not kc.empty:
+            st.dataframe(kc,use_container_width=True,hide_index=True)
+        else:
+            st.info("No company KPI evidence captured yet.")
 
         st.subheader("Latest announcements")
         aa=latest_announcements_safe(ticker,3)
-        st.dataframe(aa,use_container_width=True,hide_index=True) if not aa.empty else st.info("No announcement rows available from the current provider.")
+        if not aa.empty:
+            st.dataframe(aa,use_container_width=True,hide_index=True)
+        else:
+            st.info("No announcement rows available from the current provider.")
 
         st.subheader("Catalysts")
         cats=catalysts_safe(ticker,8)
-        st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts stored yet.")
+        if not cats.empty:
+            st.dataframe(cats,use_container_width=True,hide_index=True)
+        else:
+            st.info("No catalysts stored yet.")
 
         st.subheader("Trade scenario")
         st.write(f"**Add ${amount:,.0f} → {d['add_qty']:,} shares at the latest loaded reference price.**")
@@ -1921,7 +1933,10 @@ elif page=="Thesis Scorecard":
         con.commit(); st.success("Condition added."); st.rerun()
     df=pd.read_sql_query("SELECT id,metric,operator,threshold,current_value,status,source,updated_at FROM thesis_rules WHERE ticker=? ORDER BY id",(ticker,),con)
     con.close()
-    st.dataframe(df,use_container_width=True,hide_index=True) if not df.empty else st.info("No measurable thesis conditions yet.")
+    if not df.empty:
+        st.dataframe(df,use_container_width=True,hide_index=True)
+    else:
+        st.info("No measurable thesis conditions yet.")
 
 elif page=="Catalyst Calendar":
     st.header(f"Catalyst Calendar — {ticker}")
@@ -1939,7 +1954,10 @@ elif page=="Catalyst Calendar":
         con.execute("INSERT INTO catalysts(ticker,event_date,event,category,source,status) VALUES(?,?,?,?,?,?)",
                     (ticker,str(event_date),event,category,source,status)); con.commit(); st.success("Catalyst added."); st.rerun()
     cats=pd.read_sql_query("SELECT id,event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,),con); con.close()
-    st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded.")
+    if not cats.empty:
+        st.dataframe(cats,use_container_width=True,hide_index=True)
+    else:
+        st.info("No catalysts recorded.")
 
 elif page=="Strategy Builder":
     st.header(f"No-Code Strategy Builder — {ticker}")
@@ -2023,7 +2041,10 @@ elif page=="Alerts":
         con.execute("INSERT INTO alerts(ticker,metric,operator,threshold,enabled,notes) VALUES(?,?,?,?,1,?)",(ticker,metric,op,threshold,notes))
         con.commit(); st.success("Alert rule saved."); st.rerun()
     adf=pd.read_sql_query("SELECT id,metric,operator,threshold,enabled,notes FROM alerts WHERE ticker=? ORDER BY id",(ticker,),con); con.close()
-    st.dataframe(adf,use_container_width=True,hide_index=True) if not adf.empty else st.info("No alert rules saved.")
+    if not adf.empty:
+        st.dataframe(adf,use_container_width=True,hide_index=True)
+    else:
+        st.info("No alert rules saved.")
 
 elif page=="Workspace Settings":
     st.header("Workspace Customisation")
