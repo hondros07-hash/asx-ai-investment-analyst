@@ -547,6 +547,31 @@ def portfolio_risk_snapshot():
 def v18_db_upgrade():
     v17_db_upgrade()
     con=ws_db()
+
+    # Forward-compatible SQLite migrations. CREATE TABLE IF NOT EXISTS does not
+    # add columns to an existing table from an older deployed version.
+    def ensure_columns(table, columns):
+        try:
+            existing={r[1] for r in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for name, sql_type in columns.items():
+                if name not in existing:
+                    con.execute(f'ALTER TABLE {table} ADD COLUMN "{name}" {sql_type}')
+        except Exception:
+            pass
+
+    ensure_columns("catalysts", {
+        "ticker":"TEXT","event_date":"TEXT","event":"TEXT","category":"TEXT",
+        "status":"TEXT","source":"TEXT"
+    })
+    ensure_columns("thesis_rules", {
+        "ticker":"TEXT","metric":"TEXT","operator":"TEXT","threshold":"REAL",
+        "current_value":"REAL","status":"TEXT","source":"TEXT","updated_at":"TEXT"
+    })
+    ensure_columns("alerts", {
+        "ticker":"TEXT","metric":"TEXT","operator":"TEXT","threshold":"REAL",
+        "enabled":"INTEGER","notes":"TEXT"
+    })
+
     con.execute("""CREATE TABLE IF NOT EXISTS kpi_observations(
         id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,metric TEXT,period TEXT,value REAL,
         unit TEXT,source TEXT,source_url TEXT,evidence_note TEXT,observed_at TEXT)""")
@@ -675,6 +700,21 @@ def portfolio_impact(ticker,amount,price):
     d0=mv0+other+cash; d1=mv1+other+max(cash-spend,0)
     return {"qty0":qty0,"avg0":avg0,"mv0":mv0,"add":add,"spend":spend,"qty1":qty1,"avg1":avg1,"mv1":mv1,
             "weight0":mv0/d0 if d0 else np.nan,"weight1":mv1/d1 if d1 else np.nan}
+
+def catalysts_safe(ticker,limit=8):
+    v18_db_upgrade()
+    cols=["event_date","event","category","status","source"]
+    con=ws_db()
+    try:
+        d=pd.read_sql_query(
+            f"""SELECT event_date,event,category,status,source
+                FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT {int(limit)}""",
+            con, params=(ticker,))
+        return d
+    except Exception:
+        return pd.DataFrame(columns=cols)
+    finally:
+        con.close()
 
 def latest_announcements_safe(ticker,limit=5):
     try:
@@ -905,7 +945,7 @@ close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or tick
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
 st.title("Market Investment Analyst")
-st.caption("V18 • Market Investment Analyst • investment command centre")
+st.caption("V18.0.1 • Market Investment Analyst • schema migration hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -1636,7 +1676,7 @@ elif page=="Company Command Centre":
         else: st.dataframe(aa,use_container_width=True,hide_index=True)
 
         st.subheader("Catalysts")
-        con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT 6",(ticker,),con); con.close()
+        cats=catalysts_safe(ticker,6)
         st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts recorded yet.")
 
         st.markdown("---")
@@ -1718,7 +1758,7 @@ elif page=="Before I Invest":
         st.dataframe(aa,use_container_width=True,hide_index=True) if not aa.empty else st.info("No announcement rows available from the current provider.")
 
         st.subheader("Catalysts")
-        con=ws_db(); cats=pd.read_sql_query("SELECT event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date LIMIT 8",(ticker,),con); con.close()
+        cats=catalysts_safe(ticker,8)
         st.dataframe(cats,use_container_width=True,hide_index=True) if not cats.empty else st.info("No catalysts stored yet.")
 
         st.subheader("Trade scenario")
