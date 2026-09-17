@@ -1298,7 +1298,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.0 • Market Investment Analyst • Global Investment Research")
+st.caption("V19.1 • Market Investment Analyst • Phase 2 Research Intelligence")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -1336,6 +1336,194 @@ def opportunity_snapshot(symbol, market):
         "Model 1M":fmap.get("1 Month",np.nan),"Model 3M":fmap.get("3 Months",np.nan),
         "Model 6M":fmap.get("6 Months",np.nan),"Model 12M":fmap.get("12 Months",np.nan),
     }
+
+
+def analyst_evidence(ticker, limit=12):
+    """Best-effort dated analyst actions. Kept separate from the app's own models."""
+    cols=["Date","Firm","Action","From","To"]
+    try:
+        t=yf.Ticker(ticker)
+        d=t.upgrades_downgrades
+        if d is None or d.empty:
+            return pd.DataFrame(columns=cols)
+        d=d.reset_index()
+        date_col=next((c for c in d.columns if str(c).lower() in ["gradedate","date","index"]),d.columns[0])
+        firm_col=next((c for c in d.columns if str(c).lower() in ["firm","researchfirm"]),None)
+        action_col=next((c for c in d.columns if str(c).lower() in ["action","actiontext"]),None)
+        from_col=next((c for c in d.columns if str(c).lower() in ["fromgrade","from"]),None)
+        to_col=next((c for c in d.columns if str(c).lower() in ["tograde","to"]),None)
+        out=pd.DataFrame({
+            "Date":d[date_col] if date_col else "—",
+            "Firm":d[firm_col] if firm_col else "—",
+            "Action":d[action_col] if action_col else "—",
+            "From":d[from_col] if from_col else "—",
+            "To":d[to_col] if to_col else "—",
+        })
+        out["Date"]=pd.to_datetime(out["Date"],errors="coerce").dt.strftime("%Y-%m-%d")
+        return out.head(limit)
+    except Exception:
+        return pd.DataFrame(columns=cols)
+
+def forecast_driver_snapshot(ticker, h, meta=None):
+    """Explainable observations used to contextualise the statistical forecast."""
+    rows=[]
+    if h is None or h.empty:
+        return pd.DataFrame(columns=["Area","Evidence","Reading","Interpretation"])
+    px=pd.to_numeric(h["Close"],errors="coerce").dropna()
+    if px.empty:
+        return pd.DataFrame(columns=["Area","Evidence","Reading","Interpretation"])
+    price=float(px.iloc[-1])
+    def add(area,evidence,reading,interpretation):
+        rows.append({"Area":area,"Evidence":evidence,"Reading":reading,"Interpretation":interpretation})
+    for n,label in [(21,"1M momentum"),(63,"3M momentum"),(126,"6M momentum"),(252,"12M momentum")]:
+        if len(px)>n:
+            r=float(price/px.iloc[-n-1]-1)
+            add("Momentum",label,f"{r:+.1%}","Positive trailing return" if r>0 else "Negative trailing return" if r<0 else "Flat")
+    ms=market_structure(h)
+    if pd.notna(ms.get("SMA50",np.nan)):
+        d=price/ms["SMA50"]-1
+        add("Trend","Price vs 50D average",f"{d:+.1%}","Above trend average" if d>0 else "Below trend average")
+    if pd.notna(ms.get("SMA200",np.nan)):
+        d=price/ms["SMA200"]-1
+        add("Trend","Price vs 200D average",f"{d:+.1%}","Above long-term average" if d>0 else "Below long-term average")
+    if pd.notna(ms.get("Volume vs 20D",np.nan)):
+        vr=ms["Volume vs 20D"]
+        add("Participation","Volume vs 20D average",f"{vr:.2f}×","Elevated participation" if vr>=1.5 else "Normal/lower participation")
+    if meta is None:
+        try: meta=yf.Ticker(ticker).info or {}
+        except Exception: meta={}
+    for key,label in [("revenueGrowth","Revenue growth"),("earningsGrowth","Earnings growth"),
+                      ("profitMargins","Profit margin"),("operatingMargins","Operating margin"),
+                      ("debtToEquity","Debt / equity")]:
+        v=meta.get(key) if isinstance(meta,dict) else None
+        if v is None or pd.isna(v): continue
+        if key=="debtToEquity":
+            reading=f"{float(v):.1f}"
+            interp="Balance-sheet leverage observation"
+        else:
+            reading=f"{float(v):+.1%}"
+            interp="Provider-reported fundamental input"
+        add("Fundamentals",label,reading,interp)
+    return pd.DataFrame(rows)
+
+def disagreement_snapshot(ticker, price, h):
+    """Identify where market, analysts, quant and user DCF differ materially."""
+    a=analyst_consensus_snapshot(ticker)
+    fc=research_forecast(h)
+    q12=np.nan
+    if fc is not None and not fc.empty:
+        q=fc.loc[fc["Horizon"]=="12 Months","Median forecast"]
+        if len(q) and pd.notna(q.iloc[0]): q12=float(q.iloc[0])
+    vals=valuation_snapshot(ticker,price)
+    base=np.nan
+    if vals is not None and not vals.empty:
+        sc=next((c for c in vals.columns if str(c).lower()=="scenario"),None)
+        vc=next((c for c in vals.columns if str(c).lower()=="value_per_share"),None)
+        if sc and vc:
+            q=vals[vals[sc].astype(str).str.lower()=="base"]
+            if not q.empty:
+                base=pd.to_numeric(q[vc],errors="coerce").iloc[0]
+    points={"Market":price,"Analysts":a.get("target_mean",np.nan),"Quant 12M":q12,"User DCF":base}
+    valid={k:float(v) for k,v in points.items() if v is not None and pd.notna(v) and float(v)>0}
+    rows=[]
+    for k,v in valid.items():
+        if k=="Market": continue
+        gap=v/price-1
+        rows.append({"Evidence source":k,"Reference value":v,"Difference vs market":gap,
+                     "What differs":("Above current market price" if gap>0 else "Below current market price" if gap<0 else "Aligned with market")})
+    return pd.DataFrame(rows)
+
+def render_whats_market_missing(ticker, price, h):
+    st.subheader("What's the market disagreement?")
+    st.caption("This section identifies differences between evidence sources. It does not claim that the market or any model is wrong.")
+    d=disagreement_snapshot(ticker,price,h)
+    if d.empty:
+        st.info("Not enough independent valuation/forecast evidence is available to compare.")
+        return
+    st.dataframe(d.style.format({"Reference value":"{:,.3f}","Difference vs market":"{:+.1%}"},na_rep="—"),
+                 use_container_width=True,hide_index=True)
+    biggest=d.loc[d["Difference vs market"].abs().idxmax()]
+    st.write(f"The largest currently measurable disagreement is **{biggest['Evidence source']}**, "
+             f"which is {biggest['Difference vs market']:+.1%} relative to the current market price. "
+             "Open the underlying valuation, analyst evidence and forecast sections to inspect the assumptions behind that difference.")
+
+def render_phase2_company_research(ticker, h, price=None, meta=None, compact=False):
+    """Expandable evidence-first research panel used by Markets and Command Centre."""
+    if h is None or h.empty:
+        st.warning("Historical market data is unavailable for this company.")
+        return
+    if price is None:
+        price=float(pd.to_numeric(h["Close"],errors="coerce").dropna().iloc[-1])
+    if meta is None:
+        try: meta=yf.Ticker(ticker).info or {}
+        except Exception: meta={}
+    name=(meta.get("longName") or meta.get("shortName") or identity(ticker)) if isinstance(meta,dict) else identity(ticker)
+
+    st.subheader(f"{name} — Research Intelligence")
+    tabs=st.tabs(["Market","Performance & Forecast","Analysts","Forecast Drivers","Market Disagreement","Evidence"])
+    with tabs[0]:
+        ms=market_structure(h)
+        c=st.columns(4)
+        metric_box(c[0],"Price",display_price(price,ticker))
+        metric_box(c[1],"52W low","—" if pd.isna(ms.get("Period low",np.nan)) else display_price(ms["Period low"],ticker))
+        metric_box(c[2],"52W high","—" if pd.isna(ms.get("Period high",np.nan)) else display_price(ms["Period high"],ticker))
+        beta=meta.get("beta") if isinstance(meta,dict) else None
+        metric_box(c[3],"Beta","—" if beta is None or pd.isna(beta) else f"{float(beta):.2f}")
+        c=st.columns(4)
+        mc=meta.get("marketCap") if isinstance(meta,dict) else None
+        av=meta.get("averageVolume") if isinstance(meta,dict) else None
+        dy=meta.get("dividendYield") if isinstance(meta,dict) else None
+        vol=pd.to_numeric(h["Close"],errors="coerce").pct_change().tail(252).std()*np.sqrt(252)
+        metric_box(c[0],"Market cap","—" if mc is None else compact_number(mc))
+        metric_box(c[1],"Average volume","—" if av is None else compact_number(av))
+        metric_box(c[2],"Annualised volatility","—" if pd.isna(vol) else f"{vol:.1%}")
+        metric_box(c[3],"Dividend yield","—" if dy is None or pd.isna(dy) else f"{float(dy):.2%}")
+
+    with tabs[1]:
+        fc=research_forecast(h)
+        px=pd.to_numeric(h["Close"],errors="coerce").dropna()
+        actual={}
+        for n,label in [(21,"1 Month"),(63,"3 Months"),(126,"6 Months"),(252,"12 Months")]:
+            actual[label]=np.nan if len(px)<=n else float(px.iloc[-1]/px.iloc[-n-1]-1)
+        if fc.empty:
+            st.info("Insufficient history for forecast research.")
+        else:
+            show=fc[["Horizon","Median forecast","Low case (20%)","High case (80%)","Median return","Positive-return frequency","Sample size"]].copy()
+            show.insert(1,"Actual trailing return",show["Horizon"].map(actual))
+            st.dataframe(show.style.format({
+                "Median forecast":"{:,.3f}","Low case (20%)":"{:,.3f}","High case (80%)":"{:,.3f}",
+                "Actual trailing return":"{:+.1%}","Median return":"{:+.1%}",
+                "Positive-return frequency":"{:.1%}"},na_rep="—"),use_container_width=True,hide_index=True)
+            st.caption("Positive-return frequency is a weighted historical frequency, not a calibrated probability of the future.")
+
+    with tabs[2]:
+        render_analyst_consensus(ticker,price)
+        ev=analyst_evidence(ticker)
+        st.markdown("**Recent analyst actions**")
+        if ev.empty:
+            st.info("No dated analyst upgrade/downgrade evidence was returned by the current provider.")
+        else:
+            st.dataframe(ev,use_container_width=True,hide_index=True)
+            st.caption("Dated analyst actions are provider-supplied external evidence and are separate from Market Investment Analyst's models.")
+
+    with tabs[3]:
+        drivers=forecast_driver_snapshot(ticker,h,meta)
+        if drivers.empty:
+            st.info("No explainable forecast context is available.")
+        else:
+            st.dataframe(drivers,use_container_width=True,hide_index=True)
+        st.caption("These are observable context factors, not hidden AI weights. The current forecast itself is based on historical horizon-return distributions.")
+
+    with tabs[4]:
+        render_whats_market_missing(ticker,price,h)
+
+    with tabs[5]:
+        st.markdown("**Evidence provenance**")
+        st.write("Market history: Yahoo Finance/yfinance fallback unless another configured provider supplies the observation.")
+        st.write("Analyst consensus/actions: Yahoo Finance via yfinance when available.")
+        st.write("Quant forecast: deterministic recency-weighted historical horizon-return distribution calculated inside this app.")
+        st.write("DCF: the app's saved valuation assumptions. Review those assumptions before interpreting the output.")
+        st.write("Fundamental driver observations: provider-reported fields and should be verified against company filings for material decisions.")
 
 def render_market_vs_model(ticker, price, h):
     st.subheader("Market vs Model")
@@ -1427,7 +1615,14 @@ if page=="Markets":
                 metric_box(q2,"52W position","—" if pd.isna(row["52W position"]) else f"{row['52W position']:.0%}")
                 metric_box(q3,"12M actual","—" if pd.isna(row["Actual 12M"]) else f"{row['Actual 12M']:+.1%}")
                 metric_box(q4,"12M model","—" if pd.isna(row["Model 12M"]) else f"{row['Model 12M']:+.1%}")
-                st.info("For the full evidence trail, enter this ticker in the sidebar and open Company Command Centre.")
+                with st.expander(f"Deep research — {focus}",expanded=True):
+                    fh=history(focus,"2y")
+                    try:
+                        fm=yf.Ticker(focus).info or {}
+                    except Exception:
+                        fm={}
+                    render_phase2_company_research(focus,fh,float(row["Price"]),fm,compact=True)
+                st.info("For portfolio/thesis tools, enter this ticker in the sidebar and open Company Command Centre.")
             else:
                 st.warning("No historical data was returned for the selected companies.")
         elif selected:
@@ -2068,6 +2263,8 @@ elif page=="Company Command Centre":
         render_forecast_tool(ticker,h)
         st.divider()
         render_market_vs_model(ticker,price,h)
+        st.divider()
+        render_phase2_company_research(ticker,h,price,meta)
         st.divider()
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
