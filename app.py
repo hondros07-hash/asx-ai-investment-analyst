@@ -199,13 +199,14 @@ a{color:#2457D6;}
 """, unsafe_allow_html=True)
 
 
-# V19.8.5 — robust fixed terminal shell. This deliberately avoids negative offsets.
+# V19.8.7 — aligned fixed terminal shell. Sidebar and main canvas use explicit desktop columns.
 st.markdown(r"""
 <style>
 html,body,.stApp,[data-testid="stAppViewContainer"]{margin:0!important;padding:0!important;}
 header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu{display:none!important;height:0!important;}
 [data-testid="stAppViewContainer"]>.main{padding-top:0!important;}
-.main .block-container{max-width:none!important;width:100%!important;padding:115px .72rem 1rem!important;margin:0!important;}
+.main{margin-left:214px!important;width:calc(100vw - 214px)!important;max-width:calc(100vw - 214px)!important;}
+.main .block-container{max-width:none!important;width:100%!important;padding:115px .72rem 1rem!important;margin:0!important;box-sizing:border-box!important;}
 
 /* The hero is fixed to the viewport, so it truly spans above BOTH main and sidebar. */
 .chrimata-terminal-hero{position:fixed!important;left:0!important;right:0!important;top:0!important;width:100vw!important;height:108px!important;margin:0!important;border-radius:0!important;overflow:hidden!important;background:#062f59!important;box-shadow:none!important;z-index:1000000!important;}
@@ -245,6 +246,7 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
  .chrimata-quote{display:none!important;}
  [data-testid="stSidebar"]{width:190px!important;min-width:190px!important;max-width:190px!important;}
  [data-testid="stSidebar"]>div:first-child{width:190px!important;}
+ .main{margin-left:190px!important;width:calc(100vw - 190px)!important;max-width:calc(100vw - 190px)!important;}
  .main div[data-testid="stRadio"] div[role="radiogroup"]{flex-wrap:wrap!important;}
 }
 </style>
@@ -2311,7 +2313,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V19.8.5 • Chrímata • Fixed Full-Width Terminal UI")
+    st.caption("V19.8.7 • Chrímata • Fixed Full-Width Terminal UI")
 
 
 
