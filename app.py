@@ -814,7 +814,7 @@ def render_analyst_consensus(ticker,price):
     if a["analysts"]==0 and all(pd.isna(a[k]) for k in ["target_low","target_mean","target_median","target_high"]):
         st.info("No analyst consensus or price-target data is available from the current provider for this security.")
 
-def render_forecast_tool(ticker,df):
+def render_forecast_tool(ticker,h):
     st.header("Forecast Research")
     st.caption("1M / 3M / 6M / 12M scenario research based on historical horizon returns. It is not a price promise or investment recommendation.")
     fc=research_forecast(df)
@@ -1298,7 +1298,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V18.3.1 • Market Investment Analyst • thesis scorecard hotfix")
+st.caption("V18.3.2 • Market Investment Analyst • runtime hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -2241,6 +2241,8 @@ elif page=="Thesis Scorecard":
 
 elif page=="Catalyst Calendar":
     st.header(f"Catalyst Calendar — {ticker}")
+    # Ensure retained Cloud databases have the current catalyst schema.
+    v18_db_upgrade()
     st.caption("Track company events, results, AGMs, dividends, index events, macro releases and your own thesis checkpoints.")
     con=ws_db()
     with st.form("cat_form"):
@@ -2254,7 +2256,16 @@ elif page=="Catalyst Calendar":
     if submit and event:
         con.execute("INSERT INTO catalysts(ticker,event_date,event,category,source,status) VALUES(?,?,?,?,?,?)",
                     (ticker,str(event_date),event,category,source,status)); con.commit(); st.success("Catalyst added."); st.rerun()
-    cats=pd.read_sql_query("SELECT id,event_date,event,category,status,source FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,),con); con.close()
+    catalyst_cols=["id","event_date","event","category","status","source"]
+    try:
+        rows=con.execute(
+            "SELECT id,event_date,event,category,status,source "
+            "FROM catalysts WHERE ticker=? ORDER BY event_date",(ticker,)
+        ).fetchall()
+        cats=pd.DataFrame(rows,columns=catalyst_cols)
+    except Exception as exc:
+        cats=pd.DataFrame(columns=catalyst_cols)
+        st.warning(f"Catalysts could not be loaded: {exc}"); con.close()
     if not cats.empty:
         st.dataframe(cats,use_container_width=True,hide_index=True)
     else:
@@ -2373,7 +2384,7 @@ elif page=="Quant":
     st.info("V6–V9 backtest, factor, ML ensemble and point-in-time modules remain packaged.")
 
 elif page=="Forecasts":
-    render_forecast_tool(ticker,df)
+    render_forecast_tool(ticker,h)
     st.divider()
     render_analyst_consensus(ticker,price)
 
