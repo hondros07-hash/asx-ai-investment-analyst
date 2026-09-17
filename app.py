@@ -1841,21 +1841,32 @@ try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
     _search_key=""
-query=st.sidebar.text_input("Company or ticker","ZIP.AX",
-    help="Search by company name or exchange ticker.")
+
+st.sidebar.markdown("#### 🔎 Symbol search")
+query=st.sidebar.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),
+    placeholder="Pepsi, PEP, Qantas, QAN, Zip…",
+    help="Search by company name or ticker across global listings.",
+    label_visibility="collapsed")
+st.session_state["mia_search_query"]=query
 matches=search_securities(query,_search_key)
 if not matches.empty:
     _labels=[]; _map={}
-    for i,r in matches.head(40).iterrows():
-        lab=f"{r['Company']} — {r['Symbol']} — {r['Exchange']}"
+    for i,r in matches.head(30).iterrows():
+        lab=f"{r.get('Symbol','')}  ·  {r.get('Company','')}  ·  {r.get('Exchange','')}  ·  {r.get('Type','Stock')}"
         _labels.append(lab); _map[lab]=i
-    _chosen=st.sidebar.selectbox("Matching listings",_labels)
+    _chosen=st.sidebar.selectbox("Matching listings",_labels,key="mia_symbol_result")
     _row=matches.loc[_map[_chosen]]
     ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
-    st.sidebar.caption(f"Selected: {identity(ticker)} • {ticker}")
+    _selected_name=str(_row.get("Company") or identity(ticker))
+    try:_selected_meta=yf.Ticker(ticker).info or {}
+    except Exception:_selected_meta={}
+    st.sidebar.markdown(company_logo_html(ticker,_selected_meta,_selected_name,52),unsafe_allow_html=True)
+    st.sidebar.markdown(f"**{ticker}** · {_selected_name}")
+    st.sidebar.caption(f"{_row.get('Exchange','')} · {_row.get('Type','Stock')}")
 else:
-    ticker=resolve_bare_ticker(query.strip().upper())
-    st.sidebar.caption("No company-directory match found; trying the entry as a ticker.")
+    ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"
+    st.sidebar.info("No directory match. Try the company name or exchange ticker.")
+
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
 NAV_GROUPS = {
     "Home": ["Dashboard"],
@@ -1969,7 +1980,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.5.1 • Market Investment Analyst • Universal Logo Fallback")
+st.caption("V19.6 • Market Investment Analyst • Universal Symbol Search")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -2222,6 +2233,25 @@ def render_market_vs_model(ticker, price, h):
 
 if page=="Markets":
     st.header("Global Market Opportunity Dashboard")
+    with st.expander("🔎 Universal symbol search",expanded=False):
+        _uq=st.text_input("Find any company or ticker",placeholder="Pepsi, PEP, Qantas, QAN, Zip, ZIP…",key="market_universal_query")
+        if _uq.strip():
+            _um=search_securities(_uq,_search_key)
+            if _um.empty:
+                st.info("No matching listing was returned.")
+            else:
+                _display=_um.head(20).copy()
+                _cols=[c for c in ["Symbol","Company","Exchange","Type","Country","Currency","Source"] if c in _display.columns]
+                st.dataframe(_display[_cols],use_container_width=True,hide_index=True)
+                _opts=[f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}" for _,r in _display.iterrows()]
+                _open=st.selectbox("Select listing",_opts,key="market_universal_open")
+                if st.button("Set as current company",key="market_use_company"):
+                    _rr=_display.iloc[_opts.index(_open)]
+                    _tt=resolve_listing(_rr["Symbol"],_rr.get("Exchange",""),_rr.get("Country",""))
+                    st.session_state["mia_search_query"]=_tt
+                    st.success(f"Current-company search set to {_tt}. The sidebar will use this listing on the next rerun.")
+                    st.rerun()
+
     st.caption("Discover and compare companies across markets. Forecast columns are model research, not promises or recommendations.")
 
     try:

@@ -24,10 +24,31 @@ def _valid(t):
         return h is not None and not h.empty
     except:return False
 
+def yahoo_search(q, limit=30):
+    """Broad global company/ticker discovery using Yahoo Finance search."""
+    q=str(q).strip()
+    if not q:return []
+    try:
+        url="https://query1.finance.yahoo.com/v1/finance/search?"+urllib.parse.urlencode(
+            {"q":q,"quotesCount":int(limit),"newsCount":0,"enableFuzzyQuery":"true"})
+        req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 Market-Investment-Analyst"})
+        with urllib.request.urlopen(req,timeout=10) as r:j=json.loads(r.read().decode())
+        rows=[]
+        for x in j.get("quotes",[]):
+            qt=str(x.get("quoteType") or "").upper()
+            if qt not in {"EQUITY","ETF","MUTUALFUND","INDEX"}:continue
+            rows.append({"Symbol":x.get("symbol",""),
+                "Company":x.get("longname") or x.get("shortname") or x.get("symbol",""),
+                "Exchange":x.get("exchDisp") or x.get("exchange") or "",
+                "Country":"","Currency":"","Type":qt.title(),"Source":"Yahoo Search"})
+        return rows
+    except Exception:return []
+
 def search_securities(q,key=""):
     q=q.strip()
     if not q:return pd.DataFrame()
     rows=[]
+    rows.extend(yahoo_search(q,30))
     if key:
         try:
             j=_json("/symbol_search",{"symbol":q,"apikey":key,"outputsize":100})
@@ -51,6 +72,8 @@ def search_securities(q,key=""):
               "Country":m.get("country") or "","Currency":m.get("currency") or "","Source":"Yahoo"})
     df=pd.DataFrame(rows)
     if df.empty:return df
+    if "Type" not in df.columns: df["Type"]="Stock"
+    else: df["Type"]=df["Type"].fillna("Stock")
     return df.drop_duplicates(["Symbol","Exchange"]).reset_index(drop=True)
 
 def resolve_listing(symbol,exchange="",country=""):
