@@ -1229,6 +1229,171 @@ def technical_regime(df,ticker):
     return {"Trend":trend,"Support":ms.get("20D support"),"Resistance":ms.get("20D resistance"),
             "Volume ratio":ms.get("Volume vs 20D"),"Annualised volatility":vol,**rs}
 
+
+def _mia_num(v):
+    try:
+        x=float(v)
+        return x if np.isfinite(x) else np.nan
+    except Exception:
+        return np.nan
+
+def _mia_component(label, value, score, evidence, source="Market/fundamental provider"):
+    return {"Metric":label,"Value":value,"Points":float(max(0,min(100,score))),
+            "Evidence":evidence,"Source":source}
+
+def _mia_linear(v, bad, good, reverse=False):
+    """Transparent bounded 0-100 linear score. No hidden model weights."""
+    v=_mia_num(v)
+    if not np.isfinite(v): return np.nan
+    if good==bad:return 50.0
+    z=(v-bad)/(good-bad)
+    z=max(0.0,min(1.0,z))
+    out=100*z
+    return 100-out if reverse else out
+
+def mia_research_score(ticker,h,meta=None):
+    """Explainable research score. Missing evidence stays N/A; it is not a recommendation."""
+    if meta is None:
+        try: meta=yf.Ticker(ticker).info or {}
+        except Exception: meta={}
+    meta=meta if isinstance(meta,dict) else {}
+    evidence={}
+    scores={}
+    px=pd.to_numeric(h["Close"],errors="coerce").dropna() if h is not None and not h.empty and "Close" in h else pd.Series(dtype=float)
+    price=float(px.iloc[-1]) if not px.empty else np.nan
+
+    # 1. Financial quality
+    rows=[]
+    pm=_mia_num(meta.get("profitMargins")); om=_mia_num(meta.get("operatingMargins"))
+    roe=_mia_num(meta.get("returnOnEquity")); roa=_mia_num(meta.get("returnOnAssets"))
+    if np.isfinite(pm): rows.append(_mia_component("Profit margin",f"{pm:.1%}",_mia_linear(pm,-.05,.25),f"Provider-reported profit margin {pm:.1%}."))
+    if np.isfinite(om): rows.append(_mia_component("Operating margin",f"{om:.1%}",_mia_linear(om,-.05,.25),f"Provider-reported operating margin {om:.1%}."))
+    if np.isfinite(roe): rows.append(_mia_component("Return on equity",f"{roe:.1%}",_mia_linear(roe,-.05,.30),f"Provider-reported ROE {roe:.1%}."))
+    if np.isfinite(roa): rows.append(_mia_component("Return on assets",f"{roa:.1%}",_mia_linear(roa,-.03,.15),f"Provider-reported ROA {roa:.1%}."))
+    evidence["Financial Quality"]=pd.DataFrame(rows)
+    scores["Financial Quality"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=2 else np.nan
+
+    # 2. Growth
+    rows=[]
+    rg=_mia_num(meta.get("revenueGrowth")); eg=_mia_num(meta.get("earningsGrowth"))
+    if np.isfinite(rg): rows.append(_mia_component("Revenue growth",f"{rg:+.1%}",_mia_linear(rg,-.10,.30),f"Provider-reported revenue growth {rg:+.1%}."))
+    if np.isfinite(eg): rows.append(_mia_component("Earnings growth",f"{eg:+.1%}",_mia_linear(eg,-.20,.40),f"Provider-reported earnings growth {eg:+.1%}."))
+    if len(px)>252:
+        r12=float(price/px.iloc[-253]-1)
+        rows.append(_mia_component("12M market performance",f"{r12:+.1%}",_mia_linear(r12,-.30,.50),f"Trailing 252-session price return {r12:+.1%}.","Price history"))
+    evidence["Growth"]=pd.DataFrame(rows)
+    scores["Growth"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=2 else np.nan
+
+    # 3. Valuation — uses observable multiples/yield only; DCF remains a separate user model.
+    rows=[]
+    pe=_mia_num(meta.get("trailingPE")); fpe=_mia_num(meta.get("forwardPE"))
+    ev=_mia_num(meta.get("enterpriseToEbitda")); fcf=_mia_num(meta.get("freeCashflow")); mcap=_mia_num(meta.get("marketCap"))
+    if np.isfinite(pe) and pe>0: rows.append(_mia_component("Trailing P/E",f"{pe:.1f}×",_mia_linear(pe,45,10,False),f"Trailing P/E {pe:.1f}×; lower positive multiples receive more points under this generic rule."))
+    if np.isfinite(fpe) and fpe>0: rows.append(_mia_component("Forward P/E",f"{fpe:.1f}×",_mia_linear(fpe,40,10,False),f"Forward P/E {fpe:.1f}×; lower positive multiples receive more points under this generic rule."))
+    if np.isfinite(ev) and ev>0: rows.append(_mia_component("EV / EBITDA",f"{ev:.1f}×",_mia_linear(ev,30,6,False),f"EV/EBITDA {ev:.1f}×; lower positive multiples receive more points under this generic rule."))
+    if np.isfinite(fcf) and np.isfinite(mcap) and mcap>0:
+        fy=fcf/mcap
+        rows.append(_mia_component("FCF / market cap",f"{fy:.1%}",_mia_linear(fy,-.02,.10),f"Free cash flow divided by market capitalisation is {fy:.1%}."))
+    evidence["Valuation"]=pd.DataFrame(rows)
+    scores["Valuation"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=2 else np.nan
+
+    # 4. Momentum — price-only, reproducible.
+    rows=[]
+    for n,label,bad,good in [(21,"1M return",-0.15,0.15),(63,"3M return",-0.25,0.25),(126,"6M return",-0.35,0.40),(252,"12M return",-0.50,0.60)]:
+        if len(px)>n:
+            r=float(price/px.iloc[-n-1]-1)
+            rows.append(_mia_component(label,f"{r:+.1%}",_mia_linear(r,bad,good),f"Trailing {n}-session return {r:+.1%}.","Price history"))
+    if len(px)>=200:
+        sma50=float(px.tail(50).mean()); sma200=float(px.tail(200).mean())
+        gap=price/sma200-1
+        rows.append(_mia_component("Price vs 200D",f"{gap:+.1%}",_mia_linear(gap,-.25,.25),f"Price is {gap:+.1%} versus its 200-session average.","Price history"))
+        cross=sma50/sma200-1
+        rows.append(_mia_component("50D vs 200D",f"{cross:+.1%}",_mia_linear(cross,-.15,.15),f"50-session average is {cross:+.1%} versus 200-session average.","Price history"))
+    evidence["Momentum"]=pd.DataFrame(rows)
+    scores["Momentum"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=3 else np.nan
+
+    # 5. Balance sheet & risk
+    rows=[]
+    de=_mia_num(meta.get("debtToEquity")); cr=_mia_num(meta.get("currentRatio")); qr=_mia_num(meta.get("quickRatio"))
+    beta=_mia_num(meta.get("beta"))
+    if np.isfinite(de): rows.append(_mia_component("Debt / equity",f"{de:.1f}",_mia_linear(de,250,20,False),f"Provider-reported debt/equity {de:.1f}; lower leverage receives more points under this generic rule."))
+    if np.isfinite(cr): rows.append(_mia_component("Current ratio",f"{cr:.2f}",_mia_linear(cr,.5,2.0),f"Provider-reported current ratio {cr:.2f}."))
+    if np.isfinite(qr): rows.append(_mia_component("Quick ratio",f"{qr:.2f}",_mia_linear(qr,.4,1.5),f"Provider-reported quick ratio {qr:.2f}."))
+    if len(px)>63:
+        vol=float(px.pct_change().tail(63).std()*np.sqrt(252))
+        rows.append(_mia_component("63D annualised volatility",f"{vol:.1%}",_mia_linear(vol,.80,.15,False),f"Annualised volatility from the latest 63 daily returns is {vol:.1%}.","Price history"))
+    if np.isfinite(beta): rows.append(_mia_component("Beta",f"{beta:.2f}",_mia_linear(abs(beta-1),1.0,0.0,False),f"Provider beta is {beta:.2f}; this metric rewards proximity to market-like beta, not investment merit."))
+    evidence["Balance Sheet & Risk"]=pd.DataFrame(rows)
+    scores["Balance Sheet & Risk"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=2 else np.nan
+
+    # 6. Earnings & Thesis Trend — only uses measurable stored/current evidence.
+    rows=[]
+    try:
+        tt=thesis_table(ticker)
+    except Exception:
+        tt=pd.DataFrame()
+    if tt is not None and not tt.empty and "status" in tt:
+        total=len(tt); met=int((tt["status"].astype(str)=="Met").sum())
+        ratio=met/total if total else np.nan
+        if np.isfinite(ratio):
+            rows.append(_mia_component("Stored thesis conditions",f"{met}/{total}",ratio*100,
+                f"{met} of {total} stored measurable thesis conditions are currently marked Met.","User thesis ledger"))
+    if np.isfinite(eg): rows.append(_mia_component("Current earnings growth",f"{eg:+.1%}",_mia_linear(eg,-.20,.40),f"Provider-reported earnings growth {eg:+.1%}."))
+    try:
+        ae=analyst_evidence(ticker,limit=12)
+    except Exception:
+        ae=pd.DataFrame()
+    if ae is not None and not ae.empty and "Action" in ae:
+        acts=ae["Action"].astype(str).str.lower()
+        ups=int(acts.str.contains("up|raise|initiated|reiterated").sum())
+        downs=int(acts.str.contains("down|lower").sum())
+        if ups+downs:
+            trend=(ups-downs)/(ups+downs)
+            rows.append(_mia_component("Recent analyst actions",f"{ups} positive / {downs} negative",
+                _mia_linear(trend,-1,1),f"Directional count from available recent analyst-action records: {ups} positive, {downs} negative.","Analyst action feed"))
+    evidence["Earnings & Thesis Trend"]=pd.DataFrame(rows)
+    scores["Earnings & Thesis Trend"]=float(np.mean([r["Points"] for r in rows])) if len(rows)>=2 else np.nan
+
+    # Equal-weight available category scores, but require broad coverage.
+    available={k:v for k,v in scores.items() if np.isfinite(v)}
+    overall=float(np.mean(list(available.values()))) if len(available)>=4 else np.nan
+    return {"Overall":overall,"Scores":scores,"Evidence":evidence,"Available":len(available),"Total":len(scores)}
+
+def mia_score_label(score):
+    if not np.isfinite(_mia_num(score)):return "N/A"
+    if score>=80:return "Very high"
+    if score>=65:return "High"
+    if score>=50:return "Middle"
+    if score>=35:return "Low"
+    return "Very low"
+
+def render_mia_research_score(ticker,h,meta=None):
+    r=mia_research_score(ticker,h,meta)
+    st.subheader("MIA Research Score")
+    st.caption("Explainable research scorecard — not a Buy/Sell recommendation. Every category is calculated from visible evidence; insufficient data is shown as N/A.")
+    overall=r["Overall"]
+    c1,c2,c3=st.columns([1.2,1,2])
+    c1.metric("Overall research score",f"{overall:.0f} / 100" if np.isfinite(_mia_num(overall)) else "N/A")
+    c2.metric("Evidence coverage",f"{r['Available']} / {r['Total']} categories")
+    c3.info("Scores are equal-weighted across available categories only when at least four categories have enough evidence. Generic thresholds are disclosed below and are not sector-specific fair-value rules.")
+    cats=list(r["Scores"].keys())
+    cols=st.columns(3)
+    for j,cat in enumerate(cats):
+        sc=r["Scores"][cat]
+        with cols[j%3]:
+            st.metric(cat,f"{sc:.0f} / 100" if np.isfinite(_mia_num(sc)) else "N/A",
+                      mia_score_label(sc) if np.isfinite(_mia_num(sc)) else "Insufficient evidence")
+    with st.expander("Show score evidence and calculations",expanded=False):
+        for cat in cats:
+            st.markdown(f"#### {cat}")
+            d=r["Evidence"].get(cat,pd.DataFrame())
+            if d is None or d.empty:
+                st.caption("N/A — not enough supported inputs to calculate this category.")
+            else:
+                st.dataframe(d,use_container_width=True,hide_index=True)
+        st.markdown("**Methodology:** each input is mapped to a disclosed 0–100 bounded rule, then category inputs are averaged. Categories with insufficient evidence remain N/A. The overall score is the equal-weight average of available category scores only when at least four categories are supported. Valuation thresholds are generic, so the separate valuation/peer tools should be used for sector-specific interpretation.")
+    return r
+
 def portfolio_impact(ticker,amount,price):
     hold=holding_for(ticker); qty0=hold["quantity"]; avg0=hold["avg_cost"]
     add=int(float(amount)//price) if price>0 else 0; spend=add*price; qty1=qty0+add
@@ -1980,7 +2145,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.6 • Market Investment Analyst • Universal Symbol Search")
+st.caption("V19.7 • Market Investment Analyst • MIA Research Score")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -3001,6 +3166,9 @@ elif page=="Company Command Centre":
           <div class="mia-hero-sub">Price {display_price(price,ticker)} · Evidence, valuation, forecasting, thesis and change monitoring in one workspace.</div>
         </div>""",unsafe_allow_html=True)
         company_snapshot_header(ticker, meta, h, cls)
+        st.markdown('<div class="mia-section-label">Research scorecard</div>',unsafe_allow_html=True)
+        render_mia_research_score(ticker,h,meta)
+        st.divider()
         st.markdown('<div class="mia-section-label">Research stack</div>',unsafe_allow_html=True)
         st.subheader("Investment Command Centre")
         render_analyst_consensus(ticker,price)
