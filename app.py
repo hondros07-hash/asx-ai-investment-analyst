@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 
 import json
 
-st.set_page_config(page_title="Market Investment Analyst", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Market Investment Analyst", page_icon="assets/parthenon_icon.png", layout="wide")
 
 st.markdown("""
 <style>
@@ -182,6 +182,42 @@ METRIC_HELP = {
     "Paper shares held": "Number of simulated shares currently held for the selected ticker.",
     "Paper account value": "Simulated cash plus the latest estimated market value of all paper positions.",
 }
+st.markdown("""
+<style>
+.mia-identity-card{
+  min-height:92px;
+  height:100%;
+  box-sizing:border-box;
+  padding:14px 17px;
+  background:#fff;
+  border:1px solid #E2E8F0;
+  border-radius:14px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.035);
+  overflow:hidden;
+}
+.mia-identity-label{
+  color:#64748B;
+  font-size:.86rem;
+  font-weight:500;
+  line-height:1.2;
+  margin-bottom:7px;
+}
+.mia-identity-value{
+  color:#0F172A;
+  font-size:clamp(1.05rem,1.55vw,1.65rem);
+  font-weight:400;
+  line-height:1.15;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  max-width:100%;
+}
+@media(max-width:1100px){
+  .mia-identity-value{font-size:1.05rem;}
+}
+</style>
+""",unsafe_allow_html=True)
+
 def metric_box(target, label, value, delta=None, **kwargs):
     """Render a Streamlit metric card with contextual hover help."""
     help_text = METRIC_HELP.get(label)
@@ -190,9 +226,20 @@ def metric_box(target, label, value, delta=None, **kwargs):
     return target.metric(label, value, delta=delta, **kwargs)
 
 def text_metric_box(target, label, value, delta=None, **kwargs):
-    """Metric card for categorical/text values. Global responsive CSS allows wrapping."""
+    """Metric card for categorical/text values."""
     value = "—" if value is None or str(value).strip() == "" else str(value)
     return metric_box(target, label, value, delta=delta, **kwargs)
+
+def identity_text_card(target, label, value):
+    """Responsive categorical card that wraps long industry/sector names inside its box."""
+    import html
+    value="—" if value is None or str(value).strip()=="" else str(value)
+    help_text=METRIC_HELP.get(label,"")
+    target.markdown(
+        f"""<div class="mia-identity-card" title="{html.escape(help_text,quote=True)}">
+          <div class="mia-identity-label">{html.escape(str(label))}</div>
+          <div class="mia-identity-value">{html.escape(value)}</div>
+        </div>""", unsafe_allow_html=True)
 
 
 # ---------------- Technical Analysis Lab ----------------
@@ -2054,7 +2101,7 @@ NAV_ICONS={
 }
 st.sidebar.markdown("### MARKET IA")
 st.sidebar.caption("Investment Research Terminal")
-primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2,
+primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=0,
                            format_func=lambda x:f"{NAV_ICONS.get(x,'•')}  {x}")
 st.sidebar.markdown("---")
 
@@ -2120,33 +2167,235 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Market Investment Analyst research workspace")
-st.markdown(f"""<div class="mia-shell-head">
+if page!="Dashboard":
+    st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Market Investment Analyst / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
 <div class="mia-live"><span class="mia-dot"></span> Research workspace</div>
 </div>""",unsafe_allow_html=True)
 
 h=history(ticker); meta=info(ticker)
-if h.empty:
+if h.empty and page!="Dashboard":
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
     st.stop()
-close=h["Close"]; price=float(close.iloc[-1]); name=meta.get("longName") or meta.get("shortName") or ticker
+if h.empty:
+    h=history("^AXJO","1mo")
+    meta={}
+close=h["Close"] if not h.empty and "Close" in h else pd.Series(dtype=float)
+price=float(close.iloc[-1]) if not close.empty else np.nan
+name=meta.get("longName") or meta.get("shortName") or ticker
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
-# Dynamic browser-tab branding for the security currently being researched.
-_tab_symbol=str(ticker).replace(".AX","")
-_tab_logo=company_logo_url(meta, size=128, ticker=ticker)
-_tab_title=f"{name} ({_tab_symbol}) | Market Investment Analyst"
-try:
-    st.set_page_config(page_title=_tab_title, page_icon=(_tab_logo or "📈"))
-except Exception:
-    # Older Streamlit versions may not support successive page-config calls.
-    # The app still renders normally with the default title/icon.
-    pass
+# Browser-tab branding is intentionally static in V19.8: Market Investment Analyst + Parthenon icon.
 
-st.title("Market Investment Analyst")
-st.caption("V19.7 • Market Investment Analyst • MIA Research Score")
+if page!="Dashboard":
+    st.title("Market Investment Analyst")
+    st.caption("V19.8 • Market Investment Analyst • Global Market Overview")
 
+
+
+MARKET_OVERVIEW_CONFIG={
+ "Australia":{"flag":"🇦🇺","indices":{"S&P/ASX 200":"^AXJO","All Ordinaries":"^AORD","All Technology":"^AXTX"},"benchmark":"^AXJO","vol":"^AXVI","currency":"AUDUSD=X","universe":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX"],"sectors":{"Financials":"QFN.AX","Materials":"QRE.AX","Health Care":"QHL.AX","Technology":"ATEC.AX","Resources":"QRE.AX","Property":"VAP.AX"}},
+ "United States":{"flag":"🇺🇸","indices":{"S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI"},"benchmark":"^GSPC","vol":"^VIX","currency":"AUDUSD=X","universe":["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","V","WMT","XOM","MA","NFLX","COST","AMD","PEP","KO","DIS","CAT"],"sectors":{"Technology":"XLK","Financials":"XLF","Health Care":"XLV","Consumer Discretionary":"XLY","Industrials":"XLI","Energy":"XLE","Materials":"XLB","Utilities":"XLU","Real Estate":"XLRE","Staples":"XLP","Communication":"XLC"}},
+ "United Kingdom":{"flag":"🇬🇧","indices":{"FTSE 100":"^FTSE","FTSE 250":"^FTMC","FTSE All-Share":"^FTAS"},"benchmark":"^FTSE","vol":None,"currency":"GBPUSD=X","universe":["SHEL.L","AZN.L","HSBA.L","ULVR.L","BP.L","RIO.L","GSK.L","REL.L","LSEG.L","DGE.L","BARC.L","VOD.L"],"sectors":{}},
+ "Japan":{"flag":"🇯🇵","indices":{"Nikkei 225":"^N225","TOPIX":"^TOPX","JPX-Nikkei 400":"^JPXNK400"},"benchmark":"^N225","vol":None,"currency":"JPY=X","universe":["7203.T","6758.T","9984.T","8306.T","6861.T","8035.T","9432.T","7974.T","6501.T","7267.T","6098.T","9983.T"],"sectors":{}},
+ "Hong Kong":{"flag":"🇭🇰","indices":{"Hang Seng":"^HSI","Hang Seng China Ent.":"^HSCE","Hang Seng Tech":"^HSTECH"},"benchmark":"^HSI","vol":None,"currency":"HKD=X","universe":["0700.HK","9988.HK","3690.HK","1299.HK","0005.HK","0388.HK","1810.HK","9618.HK","2318.HK","0883.HK","0941.HK","9999.HK"],"sectors":{}},
+ "Canada":{"flag":"🇨🇦","indices":{"S&P/TSX Composite":"^GSPTSE","TSX 60":"^TX60","TSX Venture":"^SPCDNX"},"benchmark":"^GSPTSE","vol":None,"currency":"CAD=X","universe":["RY.TO","TD.TO","SHOP.TO","ENB.TO","CNR.TO","BNS.TO","CP.TO","SU.TO","BMO.TO","CNQ.TO","TRI.TO","MFC.TO"],"sectors":{}}
+}
+GLOBAL_MARKET_TICKERS={"S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI","ASX 200":"^AXJO","Nikkei 225":"^N225","Hang Seng":"^HSI","FTSE 100":"^FTSE","TSX Composite":"^GSPTSE"}
+COMMODITY_TICKERS={"Gold":"GC=F","Silver":"SI=F","Brent Crude":"BZ=F","WTI Crude":"CL=F","Copper":"HG=F"}
+FX_TICKERS={"AUD / USD":"AUDUSD=X","EUR / USD":"EURUSD=X","GBP / USD":"GBPUSD=X","USD / JPY":"JPY=X","USD / CAD":"CAD=X","USD / HKD":"HKD=X"}
+
+def _ov_close_series(df,ticker=None):
+    if df is None or df.empty:return pd.Series(dtype=float)
+    try:
+        if isinstance(df.columns,pd.MultiIndex):
+            if ticker is not None and ("Close",ticker) in df.columns:return pd.to_numeric(df[("Close",ticker)],errors="coerce").dropna()
+            c=df["Close"]
+            if isinstance(c,pd.DataFrame):c=c.iloc[:,0]
+            return pd.to_numeric(c,errors="coerce").dropna()
+        return pd.to_numeric(df["Close"],errors="coerce").dropna()
+    except Exception:return pd.Series(dtype=float)
+
+@st.cache_data(ttl=300)
+def overview_quote(ticker,period="5d"):
+    try:
+        d=yf.Ticker(ticker).history(period=period,auto_adjust=True)
+        c=_ov_close_series(d,ticker)
+        if c.empty:return None
+        last=float(c.iloc[-1]); prev=float(c.iloc[-2]) if len(c)>1 else np.nan
+        return {"last":last,"change":last-prev if np.isfinite(prev) else np.nan,"pct":last/prev-1 if np.isfinite(prev) and prev else np.nan,"series":c}
+    except Exception:return None
+
+@st.cache_data(ttl=600)
+def overview_batch(tickers):
+    rows=[]
+    for t in list(tickers):
+        q=overview_quote(t,"5d")
+        if not q:continue
+        try:m=info(t); nm=m.get("shortName") or m.get("longName") or t
+        except Exception:nm=t
+        rows.append({"Ticker":t,"Company":nm,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
+    return pd.DataFrame(rows)
+
+def overview_fmt_price(x):
+    return "—" if not np.isfinite(_mia_num(x)) else f"{float(x):,.2f}"
+
+def render_change_table(df,n=8):
+    if df is None or df.empty:
+        st.caption("No market data returned by the active provider.");return
+    d=df.head(n).copy()
+    d["Last"]=d["Last"].map(lambda x:f"{x:,.2f}")
+    d["Change"]=d["Change"].map(lambda x:f"{x:+,.2f}")
+    d["% Chg"]=d["% Chg"].map(lambda x:f"{x:+.2%}")
+    st.dataframe(d,use_container_width=True,hide_index=True)
+
+@st.cache_data(ttl=1800)
+def overview_calendar(tickers):
+    earnings=[]; dividends=[]
+    now=pd.Timestamp.now(tz="UTC")
+    for t in list(tickers)[:12]:
+        try:
+            tk=yf.Ticker(t); m=tk.info or {}; nm=m.get("shortName") or t
+            cal=tk.calendar
+            if isinstance(cal,dict):
+                ed=cal.get("Earnings Date") or cal.get("EarningsDate")
+                if isinstance(ed,(list,tuple)) and ed:ed=ed[0]
+                if ed is not None:
+                    dt=pd.to_datetime(ed,utc=True,errors="coerce")
+                    if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat()})
+            ex=m.get("exDividendDate")
+            if ex:
+                dt=pd.to_datetime(ex,unit="s",utc=True,errors="coerce")
+                if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):dividends.append({"Ticker":t,"Company":nm,"Ex-Date":dt.date().isoformat(),"Dividend Rate":m.get("dividendRate")})
+        except Exception:pass
+    return pd.DataFrame(earnings),pd.DataFrame(dividends)
+
+def render_global_market_overview():
+    st.image("assets/parthenon_banner.png",use_container_width=True)
+    st.markdown("<div style='margin-top:-8px'><h1 style='margin-bottom:0'>Market Investment Analyst</h1><p style='color:#64748B;margin-top:4px'>Global markets, company research and investment intelligence in one workspace.</p></div>",unsafe_allow_html=True)
+    market=st.radio("Market",list(MARKET_OVERVIEW_CONFIG.keys()),horizontal=True,index=0,key="home_market")
+    cfg=MARKET_OVERVIEW_CONFIG[market]
+    st.markdown(f"## {cfg['flag']} Market Overview — {market}")
+    st.caption("Latest available provider data. Exchange data may be delayed depending on source and market.")
+
+    # Major market cards
+    cols=st.columns(len(cfg["indices"]))
+    index_rows=[]
+    for col,(label,t) in zip(cols,cfg["indices"].items()):
+        q=overview_quote(t,"5d")
+        if q:
+            col.metric(label,overview_fmt_price(q["last"]),f"{q['change']:+,.2f} ({q['pct']:+.2%})")
+            index_rows.append({"Code":t,"Name":label,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
+        else:col.metric(label,"N/A")
+
+    left,right=st.columns([1.65,1])
+    with left:
+        st.subheader("Major market chart")
+        horizon=st.radio("Chart period",["5d","1mo","3mo","6mo","1y","5y"],horizontal=True,index=1,key="home_chart_period")
+        chart=pd.DataFrame()
+        for label,t in cfg["indices"].items():
+            q=overview_quote(t,horizon)
+            if q and not q["series"].empty:
+                ser=q["series"]; chart[label]=(ser/ser.iloc[0]-1)*100
+        if not chart.empty:st.line_chart(chart,use_container_width=True,height=360)
+        else:st.info("No index chart data returned.")
+    with right:
+        st.subheader("Index performance")
+        if index_rows:
+            d=pd.DataFrame(index_rows); d["Last"]=d["Last"].map(lambda x:f"{x:,.2f}"); d["Change"]=d["Change"].map(lambda x:f"{x:+,.2f}"); d["% Chg"]=d["% Chg"].map(lambda x:f"{x:+.2%}")
+            st.dataframe(d,use_container_width=True,hide_index=True,height=360)
+
+    # Sector performance where supported
+    st.subheader("Sector performance")
+    if cfg["sectors"]:
+        sr=[]
+        for label,t in cfg["sectors"].items():
+            q=overview_quote(t,"5d")
+            if q:sr.append({"Sector":label,"% Change":q["pct"]*100})
+        if sr:
+            sdf=pd.DataFrame(sr).sort_values("% Change")
+            st.bar_chart(sdf.set_index("Sector"),horizontal=True,use_container_width=True,height=340)
+        else:st.caption("Sector ETF data was not returned.")
+    else:
+        st.info("A consistent sector-index feed is not configured for this market yet; no sector values are fabricated.")
+
+    # Movers + watchlist
+    movers=overview_batch(tuple(cfg["universe"]))
+    if not movers.empty:movers=movers.sort_values("% Chg",ascending=False)
+    g,f,w=st.columns([1,1,1])
+    with g:
+        st.subheader("Top Gainers (sampled universe)")
+        render_change_table(movers.head(8) if not movers.empty else movers)
+    with f:
+        st.subheader("Biggest Fallers (sampled universe)")
+        render_change_table(movers.sort_values("% Chg").head(8) if not movers.empty else movers)
+    with w:
+        st.subheader("Watchlist")
+        try:wl=watch_get()
+        except Exception:wl=[]
+        wt=[]
+        if isinstance(wl,pd.DataFrame):
+            for c in ["ticker","Ticker","symbol","Symbol"]:
+                if c in wl.columns:wt=wl[c].astype(str).tolist();break
+        elif isinstance(wl,(list,tuple)):wt=[str(x) for x in wl]
+        if wt:render_change_table(overview_batch(tuple(wt)),8)
+        else:st.caption("Your saved watchlist is empty.")
+
+    # Global indices / FX / commodities
+    st.markdown("## Global Markets")
+    gi,fx,co=st.columns(3)
+    with gi:
+        st.subheader("Foreign indices")
+        rows=[]
+        for label,t in GLOBAL_MARKET_TICKERS.items():
+            q=overview_quote(t,"5d")
+            if q:rows.append({"Name":label,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
+        render_change_table(pd.DataFrame(rows),10)
+    with fx:
+        st.subheader("Foreign exchange")
+        rows=[]
+        for label,t in FX_TICKERS.items():
+            q=overview_quote(t,"5d")
+            if q:rows.append({"Company":label,"Ticker":t,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
+        render_change_table(pd.DataFrame(rows),10)
+    with co:
+        st.subheader("Commodities")
+        rows=[]
+        for label,t in COMMODITY_TICKERS.items():
+            q=overview_quote(t,"5d")
+            if q:rows.append({"Company":label,"Ticker":t,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
+        render_change_table(pd.DataFrame(rows),10)
+
+    # Calendar
+    st.markdown("## Market Calendar")
+    earnings,dividends=overview_calendar(tuple(cfg["universe"]))
+    c1,c2,c3=st.columns(3)
+    with c1:
+        st.subheader("Upcoming earnings")
+        if earnings.empty:st.caption("No upcoming earnings dates were returned for the sampled market leaders.")
+        else:st.dataframe(earnings,use_container_width=True,hide_index=True)
+    with c2:
+        st.subheader("Upcoming dividends")
+        if dividends.empty:st.caption("No upcoming ex-dividend dates were returned for the sampled market leaders.")
+        else:st.dataframe(dividends,use_container_width=True,hide_index=True)
+    with c3:
+        st.subheader("Upcoming IPOs / listings")
+        st.info("No reliable cross-market IPO calendar is configured yet. This panel intentionally stays source-empty rather than showing unverified listings.")
+
+    # Volatility / risk
+    st.markdown("## Volatility & Risk")
+    v=cfg.get("vol")
+    if v:
+        q=overview_quote(v,"1y")
+        if q:
+            vc1,vc2=st.columns([1,2])
+            vc1.metric("Volatility index",f"{q['last']:.2f}",f"{q['change']:+.2f} ({q['pct']:+.2%})")
+            ser=q["series"]
+            vc2.line_chart(ser,use_container_width=True,height=220)
+            st.caption("A volatility index reflects option-implied market volatility. Higher readings indicate greater expected volatility; they are not, by themselves, a Buy/Sell signal.")
+        else:st.caption("Volatility-index data was not returned.")
+    else:st.info("A directly comparable volatility index is not configured for this market yet.")
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()
@@ -2531,189 +2780,7 @@ elif page=="Something Changed":
         st.caption("Events are descriptive threshold/crossing detections. Review the underlying company evidence before drawing an investment conclusion.")
 
 elif page=="Dashboard":
-    st.markdown(f"""<div class="mia-hero">
-      <div class="mia-hero-kicker">Research Home</div>
-      <div class="mia-hero-title">{name} · {ticker}</div>
-      <div class="mia-hero-sub">Market snapshot, charting and research context for the security currently in focus.</div>
-    </div>""",unsafe_allow_html=True)
-    _market_info = meta if isinstance(meta, dict) else {}
-    market_meta = detect_market(ticker, _market_info)
-    ex1,ex2,ex3,ex4=st.columns(4)
-    text_metric_box(ex1, "Market", market_meta["market"])
-    text_metric_box(ex2, "Exchange", market_meta["exchange"])
-    text_metric_box(ex3, "Currency", market_meta["currency"])
-    metric_box(ex4, "Default benchmark",
-               "ASX 200" if market_meta["benchmark"]=="^AXJO" else
-               "Nasdaq 100" if market_meta["benchmark"]=="^NDX" else "S&P 500")
-
-    prev = previous_close(ticker)
-    day_change = price-prev if prev not in (None,0) else np.nan
-    day_pct = day_change/prev if prev not in (None,0) else np.nan
-    day_hist = history(ticker, "5d")
-    day_high = float(day_hist["High"].iloc[-1]) if not day_hist.empty else np.nan
-    day_low = float(day_hist["Low"].iloc[-1]) if not day_hist.empty else np.nan
-    day_vol = float(day_hist["Volume"].iloc[-1]) if not day_hist.empty else np.nan
-    hi52 = float(h.tail(252)["High"].max()) if len(h) else np.nan
-    lo52 = float(h.tail(252)["Low"].min()) if len(h) else np.nan
-
-    # Two rows keep full quote values readable on normal laptop screens.
-    q=st.columns(4)
-    metric_box(q[0], "Price",display_price(price,ticker),
-                None if pd.isna(day_change) else f"{day_change:+.3f} ({day_pct*100:+.2f}%)")
-    metric_box(q[1], "Previous close","—" if prev is None else display_price(prev,ticker))
-    metric_box(q[2], "Day high","—" if pd.isna(day_high) else display_price(day_high,ticker))
-    metric_box(q[3], "Day low","—" if pd.isna(day_low) else display_price(day_low,ticker))
-    q2=st.columns(3)
-    metric_box(q2[0], "Volume","—" if pd.isna(day_vol) else f"{day_vol/1e6:.2f}M")
-    metric_box(q2[1], "52W high","—" if pd.isna(hi52) else display_price(hi52,ticker))
-    metric_box(q2[2], "52W low","—" if pd.isna(lo52) else display_price(lo52,ticker))
-
-    st.subheader("Price chart")
-    period = st.radio("Period", list(RANGES.keys()), horizontal=True, index=4)
-    cc0,cc1,cc2,cc3=st.columns([1.2,1.2,1,2])
-    chart_type=cc0.radio("Chart type",["Line","Candlestick"],horizontal=True)
-    mode=cc1.radio("Display",["Price","Percentage"],horizontal=True)
-    volume_on=cc2.checkbox("Show volume",value=True)
-    with cc3:
-        ma_cols=st.columns(3)
-        sma20=ma_cols[0].checkbox("SMA 20")
-        sma50=ma_cols[1].checkbox("SMA 50")
-        sma200=ma_cols[2].checkbox("SMA 200")
-
-    chart_d=range_data(ticker,period)
-    s=chart_summary(chart_d)
-    if chart_d.empty:
-        st.warning("No chart data returned for this period.")
-    else:
-        m=st.columns(6)
-        metric_box(m[0], f"{period} movement",f"{s['change']:+.3f}",
-                    f"{s['change_pct']*100:+.2f}%")
-        metric_box(m[1], "Period start",f"${s['start']:.3f}")
-        metric_box(m[2], "Latest",f"${s['last']:.3f}")
-        metric_box(m[3], "Period high",f"${s['high']:.3f}")
-        metric_box(m[4], "Period low",f"${s['low']:.3f}")
-        metric_box(m[5], "Period volume","—" if pd.isna(s['volume']) else f"{s['volume']/1e6:.2f}M")
-
-        compare_choice=st.selectbox("Compare performance with",
-            ["None","ASX 200","S&P 500","Nasdaq 100","Dow Jones","Another ticker"])
-        compare_map={"ASX 200":"^AXJO","S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI"}
-        compare_ticker=""
-        if compare_choice=="Another ticker":
-            compare_ticker=st.text_input("Comparison ticker","BHP.AX").strip().upper()
-            compare_ticker=resolve_bare_ticker(compare_ticker)
-        elif compare_choice!="None":
-            compare_ticker=compare_map[compare_choice]
-
-        comp=None
-        if compare_ticker:
-            p,i=RANGES[period]
-            try:
-                comp=yf.Ticker(compare_ticker).history(period=p,interval=i,auto_adjust=True)
-                if period=="3D" and not comp.empty:
-                    dates=pd.Index(comp.index.date).unique()
-                    if len(dates)>3: comp=comp[pd.Index(comp.index.date).isin(dates[-3:])]
-            except Exception: comp=None
-            if mode=="Price":
-                st.caption("Comparison is displayed in Percentage mode so instruments with different price scales can be compared.")
-                mode="Percentage"
-
-        if chart_type=="Candlestick" and mode=="Percentage":
-            st.info("Candlesticks use OHLC prices, so Percentage mode is displayed as a line chart.")
-        st.plotly_chart(price_figure(
-            chart_d,ticker,mode,volume_on,sma20,sma50,sma200,
-            comp,compare_choice,chart_type
-        ),use_container_width=True)
-
-        if volume_on and "Volume" in chart_d:
-            vol=chart_d[["Volume"]].copy()
-            st.bar_chart(vol,height=150)
-
-    st.caption("Intraday availability and delay depend on the active data provider. The displayed period movement is calculated from the first to last observation returned for the selected range.")
-
-    st.subheader("Performance")
-    perf=st.columns(6)
-    for c,(lab,n) in zip(perf,[("1M",21),("3M",63),("6M",126),("1Y",252)]):
-        v=change(close,n); metric_box(c, lab,"—" if pd.isna(v) else f"{v*100:+.1f}%")
-    ytd=close[close.index.year==close.index[-1].year]
-    ytdv=(ytd.iloc[-1]/ytd.iloc[0]-1) if len(ytd)>1 else np.nan
-    metric_box(perf[4], "YTD","—" if pd.isna(ytdv) else f"{ytdv*100:+.1f}%")
-    metric_box(perf[5], "RSI14","—" if pd.isna(rv) else f"{rv:.1f}")
-
-    st.subheader("Research status")
-    a,b,c=st.columns(3)
-    a.info("**Thesis status**\n\nMonitoring")
-    b.info("**Data confidence**\n\nMarket data connected; specialist KPIs need verified company data.")
-    ma=close.rolling(200).mean().iloc[-1] if len(close)>=200 else np.nan
-    c.info("**Market structure**\n\n"+("Above 200D MA" if pd.notna(ma) and price>ma else "Below 200D MA"))
-
-    st.subheader("Live cross-market snapshot")
-    try: td_key=st.secrets.get("TWELVE_DATA_API_KEY","")
-    except Exception: td_key=""
-    if td_key:
-        snap=market_snapshot(td_key)
-        st.dataframe(snap[["Market","Symbol","Price","Source","Status"]],use_container_width=True,hide_index=True)
-    else:
-        st.info("Add TWELVE_DATA_API_KEY to Streamlit Secrets to activate supported Twelve Data markets.")
-
-    st.subheader("Sector KPI monitor")
-    if ticker.startswith("ZIP"):
-        labels={"ttv":"TTV / Payment Volume","active_customers":"Active Customers","transaction_margin":"Transaction Margin","credit_losses":"Credit Losses","revenue_growth":"Revenue Growth","cash_ebitda":"Cash EBITDA","operating_margin":"Operating Margin","us_growth":"US Growth","international_growth":"International Growth","regulatory_risk":"Regulatory Risk"}
-        rows=[[labels.get(x,x.replace("_"," ").title()),"Awaiting verified company data","Not connected"] for x in SECTOR_KPIS["BNPL/Fintech"]]
-        st.dataframe(pd.DataFrame(rows,columns=["KPI","Latest","Status"]),use_container_width=True,hide_index=True)
-    else:
-        st.info("Sector KPI selection will use verified sector metadata when connected.")
-
-
-    st.divider()
-    st.subheader("Sector & Peer Intelligence")
-    cls=classification(ticker,meta)
-    bm_ticker,bm_name=default_benchmark(ticker,meta)
-    pc1,pc2,pc3=st.columns(3)
-    text_metric_box(pc1, "Sector", cls["sector"])
-    text_metric_box(pc2, "Industry",cls["industry"])
-    text_metric_box(pc3, "Market benchmark",bm_name)
-
-    with st.spinner("Identifying comparable companies and calculating relative performance..."):
-        peers=find_peers(ticker,meta,max_peers=8)
-
-    if not peers:
-        st.info("No sufficiently matched peers were found in the current curated universe. The company can still be compared with its market benchmark.")
-    else:
-        st.caption("Peers are selected automatically by industry first, then sector. Review the peer group before using it for investment decisions.")
-        pt=peer_table(ticker,peers)
-        fmt={"Price":"${:,.3f}","1M":"{:+.2%}","3M":"{:+.2%}","6M":"{:+.2%}","1Y":"{:+.2%}"}
-        st.dataframe(pt.style.format(fmt,na_rep="—"),use_container_width=True,hide_index=True)
-
-    peer_period_label=st.radio("Relative performance period",["1M","3M","6M","1Y","3Y","5Y"],horizontal=True,index=2)
-    pp={"1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}[peer_period_label]
-    selected_peer_tickers=[x["ticker"] for x in peers]
-    perf=normalized_history([ticker]+selected_peer_tickers+[bm_ticker],pp)
-    if not perf.empty and ticker in perf.columns:
-        import plotly.graph_objects as go
-        figp=go.Figure()
-        figp.add_trace(go.Scatter(x=perf.index,y=perf[ticker],mode="lines",name=ticker))
-        basket=equal_weight_peer_basket(perf.drop(columns=[bm_ticker],errors="ignore"),ticker)
-        if not basket.empty:
-            figp.add_trace(go.Scatter(x=basket.index,y=basket,mode="lines",name="Peer basket"))
-        if bm_ticker in perf.columns:
-            figp.add_trace(go.Scatter(x=perf.index,y=perf[bm_ticker],mode="lines",name=bm_name))
-        figp.update_layout(height=430,margin=dict(l=10,r=10,t=20,b=10),
-                           yaxis_title="Return (%)",hovermode="x unified",
-                           legend=dict(orientation="h"))
-        st.plotly_chart(figp,use_container_width=True)
-
-        latest_company=float(perf[ticker].dropna().iloc[-1])
-        latest_peer=float(basket.dropna().iloc[-1]) if not basket.empty and not basket.dropna().empty else np.nan
-        latest_bm=float(perf[bm_ticker].dropna().iloc[-1]) if bm_ticker in perf and not perf[bm_ticker].dropna().empty else np.nan
-        rr=st.columns(5)
-        metric_box(rr[0], f"{ticker} return",f"{latest_company:+.2f}%")
-        metric_box(rr[1], "Peer basket", "—" if pd.isna(latest_peer) else f"{latest_peer:+.2f}%")
-        metric_box(rr[2], bm_name, "—" if pd.isna(latest_bm) else f"{latest_bm:+.2f}%")
-        metric_box(rr[3], "vs peers","—" if pd.isna(latest_peer) else f"{latest_company-latest_peer:+.2f} pp")
-        metric_box(rr[4], "vs market","—" if pd.isna(latest_bm) else f"{latest_company-latest_bm:+.2f} pp")
-    else:
-        st.warning("Insufficient price history to calculate the selected relative-performance period.")
-
+    render_global_market_overview()
 
 elif page=="Announcements & Reports":
     st.header(f"Announcements & Reports — {ticker} — {name}")
@@ -2828,8 +2895,8 @@ elif page=="Research Report":
 
     st.subheader("1. Research identity")
     r1,r2,r3,r4=st.columns(4)
-    text_metric_box(r1, "Sector",cls["sector"]); text_metric_box(r2, "Industry",cls["industry"])
-    text_metric_box(r3, "Market benchmark",bm_name); metric_box(r4, "Price",display_price(price,ticker))
+    identity_text_card(r1, "Sector",cls["sector"]); identity_text_card(r2, "Industry",cls["industry"])
+    identity_text_card(r3, "Market benchmark",bm_name); metric_box(r4, "Price",display_price(price,ticker))
 
     st.subheader("2. Fundamental & valuation snapshot")
     rows=[]
