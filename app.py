@@ -817,7 +817,7 @@ def render_analyst_consensus(ticker,price):
 def render_forecast_tool(ticker,h):
     st.header("Forecast Research")
     st.caption("1M / 3M / 6M / 12M scenario research based on historical horizon returns. It is not a price promise or investment recommendation.")
-    fc=research_forecast(df)
+    fc=research_forecast(h)
     if fc.empty:
         st.info("Not enough price history is available to calculate forecast scenarios.")
         return
@@ -1298,7 +1298,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V18.3.2 • Market Investment Analyst • runtime hotfix")
+st.caption("V18.3.3 • Market Investment Analyst • forecast function fix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
