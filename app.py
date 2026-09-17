@@ -2217,7 +2217,7 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-# V20.0.4 — custom HTML sidebar navigation (no Streamlit radio controls).
+# V20.0.5 — custom HTML sidebar navigation (no Streamlit radio controls).
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
@@ -2235,11 +2235,11 @@ st.markdown(r"""
 .chr-nav-item{display:grid;grid-template-columns:42px 1fr;align-items:center;min-height:68px;padding:8px 8px;border-radius:6px;background:transparent;transition:background .12s ease,box-shadow .12s ease;box-sizing:border-box;}
 .chr-nav-item:hover{background:rgba(255,255,255,.055);}
 .chr-nav-item.active{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.08);}
-.chr-nav-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:27px;font-family:"Segoe UI Symbol","Arial Unicode MS",sans-serif;font-weight:300;line-height:1;}
+.chr-nav-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;line-height:1}.chr-nav-icon svg{width:27px;height:27px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
 .chr-nav-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.2;}
 .chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:14px;font-weight:500;color:#fff;white-space:nowrap;}
-.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:11.5px;font-weight:400;color:#82b7e4;margin-top:5px;white-space:nowrap;}
-.chr-nav-item.active .chr-nav-sub{color:#a8d0f4;}
+.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:11.5px;font-weight:400;color:#e6bd68;margin-top:5px;white-space:nowrap;}
+.chr-nav-item.active .chr-nav-sub{color:#f3d58f;}
 [data-testid="stSidebar"] details{margin-top:8px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:6px!important;}
 [data-testid="stSidebar"] details summary{font-size:10.5px!important;font-weight:650!important;color:#fff!important;}
 [data-testid="stSidebar"] [data-testid="stSelectbox"] label p{font-size:9px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#8fbce2!important;}
@@ -2247,22 +2247,22 @@ st.markdown(r"""
 .chr-side-wealth{margin:22px 6px 4px;padding:15px 12px;border:1px solid rgba(55,151,221,.30);border-radius:6px;background:rgba(2,32,58,.35);display:flex;gap:14px;align-items:center;color:#fff}
 .chr-side-wealth .pillar{font-size:38px;color:#e6bd68;line-height:1}.chr-side-wealth .wealth-copy{font:12.5px Georgia,serif;letter-spacing:1.6px;line-height:1.72;color:#fff}
 .chr-side-version{font-size:10px;color:#d7e8f7;text-align:right;margin:7px 7px 0}
-/* V20.0.4: the primary sidebar is HTML links, therefore there are no radio circles to leak through. */
+/* V20.0.5: the primary sidebar is HTML links, therefore there are no radio circles to leak through. */
 </style>
 """,unsafe_allow_html=True)
 
 NAV_ITEMS=[
-("Home","⌂","Home","Global Market Overview"),
-("Company Search","⌕","Company Search","Find & Analyse Stocks"),
-("Company Command Centre","▤","Company Command Centre","Deep Analysis & Reports"),
-("Markets","▥","Markets","Indices, Sectors & Heatmaps"),
-("Watchlist","☆","Watchlist","Track Your Stocks"),
-("Portfolio","▣","Portfolio","Performance & Analytics"),
-("Screening","⌁","Screening","Find Opportunities"),
-("Alerts","♧","Alerts","Price & News Alerts"),
-("Calendar","▦","Calendar","Dividends, Earnings & IPOs"),
-("Research Tools","◉","Research Tools","Valuation, Forecasts & Scores"),
-("Settings","⚙","Settings","Preferences")]
+("Home","home","Home","Global Market Overview"),
+("Company Search","search","Company Search","Find & Analyse Stocks"),
+("Company Command Centre","document","Company Command Centre","Deep Analysis & Reports"),
+("Markets","chart","Markets","Indices, Sectors & Heatmaps"),
+("Watchlist","star","Watchlist","Track Your Stocks"),
+("Portfolio","briefcase","Portfolio","Performance & Analytics"),
+("Screening","screen","Screening","Find Opportunities"),
+("Alerts","bell","Alerts","Price & News Alerts"),
+("Calendar","calendar","Calendar","Dividends, Earnings & IPOs"),
+("Research Tools","research","Research Tools","Valuation, Forecasts & Scores"),
+("Settings","settings","Settings","Preferences")]
 _valid_nav={x[0] for x in NAV_ITEMS}
 try:
     _qp=st.query_params
@@ -2274,23 +2274,37 @@ if primary not in _valid_nav: primary="Home"
 st.session_state["chr_primary_nav"]=primary
 
 from urllib.parse import quote as _urlquote
+def _chr_nav_svg(name):
+    icons={
+    "home": '<svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
+    "search": '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>',
+    "document": '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg>',
+    "chart": '<svg viewBox="0 0 24 24"><path d="M4 20V10M9 20V14M14 20V7M19 20V4"/><path d="M3 8l5-4 5 4 7-6"/><path d="M17 2h3v3"/></svg>',
+    "star": '<svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg>',
+    "briefcase": '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M8 7V4h8v3M3 12h18M10 12v2h4v-2"/></svg>',
+    "screen": '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5M4 4h12M4 7h8"/></svg>',
+    "bell": '<svg viewBox="0 0 24 24"><path d="M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z"/><path d="M10 20h4"/></svg>',
+    "calendar": '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2M15 17h2"/></svg>',
+    "research": '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5M10 7v6M7 10h6"/></svg>',
+    "settings": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/><circle cx="12" cy="12" r="7"/></svg>'}
+    return icons.get(name,icons["home"])
 _nav_html=['<nav class="chr-nav" aria-label="Chrímata navigation">']
 for _key,_icon,_title,_sub in NAV_ITEMS:
     _active=' active' if _key==primary else ''
-    _nav_html.append(f'<a href="?chr_nav={_urlquote(_key)}" target="_self"><div class="chr-nav-item{_active}"><div class="chr-nav-icon">{_icon}</div><div class="chr-nav-copy"><div class="chr-nav-title">{_title}</div><div class="chr-nav-sub">{_sub}</div></div></div></a>')
+    _nav_html.append(f'<a href="?chr_nav={_urlquote(_key)}" target="_self"><div class="chr-nav-item{_active}"><div class="chr-nav-icon">{_chr_nav_svg(_icon)}</div><div class="chr-nav-copy"><div class="chr-nav-title">{_title}</div><div class="chr-nav-sub">{_sub}</div></div></div></a>')
 _nav_html.append('</nav>')
 st.sidebar.markdown(''.join(_nav_html),unsafe_allow_html=True)
 
 # Keep company selection available without changing the clean reference navigation rail.
 with st.sidebar.expander("Current company", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v204")
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v205")
     st.session_state["mia_search_query"]=query
     matches=search_securities(query,_search_key)
     if not matches.empty:
         _labels=[]; _map={}
         for i,r in matches.head(20).iterrows():
             lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}"; _labels.append(lab); _map[lab]=i
-        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v204",label_visibility="collapsed")
+        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v205",label_visibility="collapsed")
         _row=matches.loc[_map[_chosen]]; ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
         st.caption(f"Current · {ticker} · {str(_row.get('Company') or identity(ticker))}")
     else:
@@ -2314,10 +2328,10 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v204_{primary}"); page=PAGE_MAP[(primary,sub)]
+    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v205_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.4</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.5</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
