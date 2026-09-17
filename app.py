@@ -2217,7 +2217,7 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-# V20.0.3 — reference-matched sidebar navigation rebuild.
+# V20.0.4 — custom HTML sidebar navigation (no Streamlit radio controls).
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
@@ -2228,47 +2228,69 @@ ticker=resolve_bare_ticker(str(_query_default).strip().upper()) if str(_query_de
 st.markdown(r"""
 <style>
 :root{--chr-side:220px;--chr-head:108px;}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#05345e 0%,#063d6c 54%,#042c50 100%)!important;border-right:1px solid #0b568b!important;}
-[data-testid="stSidebar"] .block-container{padding:10px 8px 12px!important;min-height:100%!important;display:flex!important;flex-direction:column!important;}
-.chr-side-brand{display:none!important;}
-[data-testid="stSidebar"] div[role="radiogroup"]{display:flex!important;flex-direction:column!important;gap:4px!important;margin:0!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] label{min-height:54px!important;padding:8px 10px!important;border-radius:6px!important;background:transparent!important;border:0!important;box-shadow:none!important;align-items:center!important;margin:0!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] label:hover{background:rgba(255,255,255,.055)!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] label>div:first-child{display:none!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] p{white-space:pre-line!important;line-height:1.34!important;font-size:11.2px!important;font-weight:500!important;color:#fff!important;margin:0!important;letter-spacing:0!important;}
-[data-testid="stSidebar"] div[role="radiogroup"] p::first-line{font-size:12.5px!important;font-weight:650!important;}
-[data-testid="stSidebar"] [data-testid="stSelectbox"]{margin-top:5px!important;}
-[data-testid="stSidebar"] [data-testid="stSelectbox"] label p{font-size:9px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#8fbce2!important;}
-[data-testid="stSidebar"] details{margin-top:7px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:6px!important;}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#04345e 0%,#063c69 54%,#032b4d 100%)!important;border-right:1px solid #0b568b!important;}
+[data-testid="stSidebar"] .block-container{padding:10px 9px 12px!important;min-height:100%!important;display:flex!important;flex-direction:column!important;}
+.chr-nav{display:flex;flex-direction:column;gap:3px;width:100%;margin:0;padding:0;}
+.chr-nav a,.chr-nav a:visited{text-decoration:none!important;color:#fff!important;}
+.chr-nav-item{display:grid;grid-template-columns:42px 1fr;align-items:center;min-height:68px;padding:8px 8px;border-radius:6px;background:transparent;transition:background .12s ease,box-shadow .12s ease;box-sizing:border-box;}
+.chr-nav-item:hover{background:rgba(255,255,255,.055);}
+.chr-nav-item.active{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.08);}
+.chr-nav-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:27px;font-family:"Segoe UI Symbol","Arial Unicode MS",sans-serif;font-weight:300;line-height:1;}
+.chr-nav-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.2;}
+.chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:14px;font-weight:500;color:#fff;white-space:nowrap;}
+.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:11.5px;font-weight:400;color:#82b7e4;margin-top:5px;white-space:nowrap;}
+.chr-nav-item.active .chr-nav-sub{color:#a8d0f4;}
+[data-testid="stSidebar"] details{margin-top:8px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:6px!important;}
 [data-testid="stSidebar"] details summary{font-size:10.5px!important;font-weight:650!important;color:#fff!important;}
-.chr-side-spacer{height:28px;}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] label p{font-size:9px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#8fbce2!important;}
+.chr-side-spacer{height:24px;flex:1 1 auto;min-height:24px;}
 .chr-side-wealth{margin:22px 6px 4px;padding:15px 12px;border:1px solid rgba(55,151,221,.30);border-radius:6px;background:rgba(2,32,58,.35);display:flex;gap:14px;align-items:center;color:#fff}
-.chr-side-wealth .pillar{font-size:36px;color:#e6bd68;line-height:1}.chr-side-wealth .wealth-copy{font:12.5px Georgia,serif;letter-spacing:1.6px;line-height:1.72;color:#fff}
+.chr-side-wealth .pillar{font-size:38px;color:#e6bd68;line-height:1}.chr-side-wealth .wealth-copy{font:12.5px Georgia,serif;letter-spacing:1.6px;line-height:1.72;color:#fff}
 .chr-side-version{font-size:10px;color:#d7e8f7;text-align:right;margin:7px 7px 0}
+/* V20.0.4: the primary sidebar is HTML links, therefore there are no radio circles to leak through. */
 </style>
 """,unsafe_allow_html=True)
 
 NAV_ITEMS=[
-("Home","⌂    Home\n      Global Market Overview"),("Company Search","⌕    Company Search\n      Find & Analyse Stocks"),
-("Company Command Centre","▣    Company Command Centre\n      Deep Analysis & Reports"),("Markets","▥    Markets\n      Indices, Sectors & Heatmaps"),
-("Watchlist","☆    Watchlist\n      Track Your Stocks"),("Portfolio","▣    Portfolio\n      Performance & Analytics"),
-("Screening","⌁    Screening\n      Find Opportunities"),("Alerts","♧    Alerts\n      Price & News Alerts"),
-("Calendar","▦    Calendar\n      Dividends, Earnings & IPOs"),("Research Tools","◉    Research Tools\n      Valuation, Forecasts & Scores"),
-("Settings","⚙    Settings\n      Preferences")]
-_nav_label=dict(NAV_ITEMS)
-primary=st.sidebar.radio("Workspace",[k for k,_ in NAV_ITEMS],index=0,format_func=lambda x:_nav_label[x],label_visibility="collapsed",key="chrimata_primary_nav")
+("Home","⌂","Home","Global Market Overview"),
+("Company Search","⌕","Company Search","Find & Analyse Stocks"),
+("Company Command Centre","▤","Company Command Centre","Deep Analysis & Reports"),
+("Markets","▥","Markets","Indices, Sectors & Heatmaps"),
+("Watchlist","☆","Watchlist","Track Your Stocks"),
+("Portfolio","▣","Portfolio","Performance & Analytics"),
+("Screening","⌁","Screening","Find Opportunities"),
+("Alerts","♧","Alerts","Price & News Alerts"),
+("Calendar","▦","Calendar","Dividends, Earnings & IPOs"),
+("Research Tools","◉","Research Tools","Valuation, Forecasts & Scores"),
+("Settings","⚙","Settings","Preferences")]
+_valid_nav={x[0] for x in NAV_ITEMS}
+try:
+    _qp=st.query_params
+    primary=_qp.get("chr_nav",st.session_state.get("chr_primary_nav","Home"))
+    if isinstance(primary,list): primary=primary[0] if primary else "Home"
+except Exception:
+    primary=st.session_state.get("chr_primary_nav","Home")
+if primary not in _valid_nav: primary="Home"
+st.session_state["chr_primary_nav"]=primary
 
-# Keep company selection available without disrupting the reference navigation rail.
+from urllib.parse import quote as _urlquote
+_nav_html=['<nav class="chr-nav" aria-label="Chrímata navigation">']
+for _key,_icon,_title,_sub in NAV_ITEMS:
+    _active=' active' if _key==primary else ''
+    _nav_html.append(f'<a href="?chr_nav={_urlquote(_key)}" target="_self"><div class="chr-nav-item{_active}"><div class="chr-nav-icon">{_icon}</div><div class="chr-nav-copy"><div class="chr-nav-title">{_title}</div><div class="chr-nav-sub">{_sub}</div></div></div></a>')
+_nav_html.append('</nav>')
+st.sidebar.markdown(''.join(_nav_html),unsafe_allow_html=True)
+
+# Keep company selection available without changing the clean reference navigation rail.
 with st.sidebar.expander("Current company", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v203")
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v204")
     st.session_state["mia_search_query"]=query
     matches=search_securities(query,_search_key)
     if not matches.empty:
         _labels=[]; _map={}
         for i,r in matches.head(20).iterrows():
             lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}"; _labels.append(lab); _map[lab]=i
-        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v203",label_visibility="collapsed")
+        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v204",label_visibility="collapsed")
         _row=matches.loc[_map[_chosen]]; ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
         st.caption(f"Current · {ticker} · {str(_row.get('Company') or identity(ticker))}")
     else:
@@ -2292,10 +2314,10 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_{primary}"); page=PAGE_MAP[(primary,sub)]
+    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v204_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.3</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.4</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
