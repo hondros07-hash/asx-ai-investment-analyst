@@ -1,13 +1,13 @@
-# Chrímata V20.0.0 — Rebuilt Terminal UI
+# Chrímata V20.0.1 — Persistent Terminal Shell
 
-This build preserves the existing Chrímata research engines and rebuilds the landing-page shell to match the approved terminal concept more closely.
+This build corrects the V20.0.0 shell issues seen after deployment.
 
-Key UI fixes:
-- exact supplied panoramic Chrímata banner, with no crop/overlay substitution
-- main content reserves the sidebar width so the dashboard is not clipped
-- reduced banner-to-dashboard whitespace
-- denser search/market controls and market cards
-- light research-terminal canvas with navy sidebar
-- responsive fallback for narrower screens
+- Chrímata panoramic masthead now renders on every workspace page, not only Home.
+- Header artwork is pre-scaled/sharpened for a 1536px desktop viewport and displayed without the previous dark overlay/filter.
+- Main Streamlit canvas explicitly reserves the sidebar width using current `stMain` selectors plus legacy fallbacks.
+- Sidebar remains below the masthead and no longer intentionally overlays the dashboard canvas.
+- Main content starts immediately below the masthead with reduced whitespace.
+- Home cards/tables receive a tighter white/navy terminal treatment while existing live-data and research engines remain intact.
+- Python cache/build artefacts remain excluded by `.gitignore`.
 
-Deployment: copy the extracted contents into the local Git repository, commit in GitHub Desktop, then Push origin.
+Deployment: replace the contents of the local Git repository with this package, commit to `main`, then push origin.

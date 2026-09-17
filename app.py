@@ -2248,6 +2248,54 @@ with st.sidebar.expander("🔎 Company Search", expanded=False):
         ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"
         st.info("No directory match. Try the company name or exchange ticker.")
 
+
+
+# V20.0.1 — structural shell correction: persistent header + true sidebar/main columns.
+st.markdown(r"""
+<style>
+:root{--chr-side:220px;--chr-head:108px;}
+/* Use current Streamlit test IDs as well as legacy class names. */
+[data-testid="stAppViewContainer"]{padding:0!important;margin:0!important;background:#f7faff!important;}
+[data-testid="stAppViewContainer"] > section[data-testid="stMain"],
+section[data-testid="stMain"],
+[data-testid="stMain"],
+.main{
+  margin-left:var(--chr-side)!important;
+  width:calc(100vw - var(--chr-side))!important;
+  max-width:calc(100vw - var(--chr-side))!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+section[data-testid="stMain"] .block-container,
+[data-testid="stMain"] .block-container,
+.main .block-container{
+  width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  padding:calc(var(--chr-head) + 8px) 12px 18px!important;margin:0!important;
+}
+[data-testid="stSidebar"]{top:var(--chr-head)!important;width:var(--chr-side)!important;min-width:var(--chr-side)!important;max-width:var(--chr-side)!important;height:calc(100vh - var(--chr-head))!important;}
+[data-testid="stSidebar"]>div:first-child{width:var(--chr-side)!important;}
+.chrimata-terminal-hero{height:var(--chr-head)!important;}
+.chrimata-terminal-hero img{height:var(--chr-head)!important;object-fit:cover!important;object-position:center center!important;filter:none!important;}
+.chrimata-terminal-hero:after{display:none!important;background:none!important;}
+/* Home terminal: denser, brighter, closer to approved mockup. */
+[data-testid="stMain"]{background:#f7faff!important;}
+[data-testid="stMain"] div[data-testid="stMetric"]{background:#fff!important;border:1px solid #d8e4f1!important;border-radius:7px!important;box-shadow:0 1px 2px rgba(15,42,78,.04)!important;}
+[data-testid="stMain"] [data-testid="stDataFrame"]{background:#fff!important;border:1px solid #d8e4f1!important;border-radius:7px!important;}
+[data-testid="stMain"] h2,[data-testid="stMain"] h3{color:#0a2b62!important;}
+.mia-shell-head{margin-top:0!important;}
+@media(max-width:900px){:root{--chr-side:190px;} }
+</style>
+""",unsafe_allow_html=True)
+
+def render_chrimata_persistent_header():
+    """Viewport-wide Chrímata masthead rendered on every workspace page."""
+    banner_path = Path(__file__).resolve().parent / "assets" / "chrimata_banner_crisp.jpg"
+    try:
+        banner_b64 = base64.b64encode(banner_path.read_bytes()).decode("ascii")
+        st.markdown(f"""<div class="chrimata-terminal-hero chrimata-exact-hero"><img src="data:image/jpeg;base64,{banner_b64}" alt="Chrímata — Market Investment Analyst"></div>""", unsafe_allow_html=True)
+    except Exception:
+        st.markdown("<div class='chrimata-terminal-hero chrimata-banner-fallback'><b>CHRÍMATA</b><span>Market Investment Analyst · Global Markets. Smarter Decisions.</span></div>", unsafe_allow_html=True)
+
 with st.sidebar.expander("◇ Investment Thesis", expanded=False):
     thesis=st.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=105,label_visibility="collapsed")
 NAV_GROUPS = {
@@ -2321,6 +2369,8 @@ elif primary in SUBPAGES:
     page = PAGE_MAP[(primary,sub)]
 else:
     page = primary
+
+render_chrimata_persistent_header()
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
@@ -2440,12 +2490,6 @@ def overview_calendar(tickers):
     return pd.DataFrame(earnings),pd.DataFrame(dividends)
 
 def render_global_market_overview():
-    banner_path = Path(__file__).resolve().parent / "assets" / "chrimata_banner_exact.png"
-    try:
-        banner_b64 = base64.b64encode(banner_path.read_bytes()).decode("ascii")
-        st.markdown(f"""<div class="chrimata-terminal-hero chrimata-exact-hero"><img src="data:image/png;base64,{banner_b64}" alt="Chrímata — Market Investment Analyst"></div>""", unsafe_allow_html=True)
-    except Exception:
-        st.markdown("<div class='chrimata-terminal-hero chrimata-banner-fallback'><b>CHRÍMATA</b><span>Market Investment Analyst · Global Markets. Smarter Decisions.</span></div>", unsafe_allow_html=True)
     search_col, market_col = st.columns([1.05,1.55], gap="small")
     with search_col:
         home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index…",label_visibility="collapsed",key="home_global_search")
@@ -2569,7 +2613,7 @@ def render_global_market_overview():
         st.subheader("Upcoming IPOs / Listings")
         st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
 
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.0.0 · Rebuilt Chrímata Terminal UI</span></div>",unsafe_allow_html=True)
+    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.0.1 · Persistent Terminal Shell</span></div>",unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()
