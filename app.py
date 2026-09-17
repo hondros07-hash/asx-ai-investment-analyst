@@ -1062,6 +1062,439 @@ def latest_announcements_safe(ticker,limit=5):
     except Exception:
         return pd.DataFrame()
 
+
+
+def v19_phase4_db_upgrade():
+    """Persistent report metadata, extracted evidence and user-confirmed KPI observations."""
+    v18_db_upgrade()
+    con=ws_db()
+    con.execute("""CREATE TABLE IF NOT EXISTS report_intelligence(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,created_at TEXT,title TEXT,period TEXT,
+        source TEXT,source_url TEXT,file_name TEXT,document_hash TEXT,summary TEXT,
+        raw_text TEXT,confirmed INTEGER DEFAULT 0)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS report_kpi_candidates(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,report_id INTEGER,ticker TEXT,metric TEXT,
+        value REAL,unit TEXT,evidence TEXT,page_hint TEXT,confirmed INTEGER DEFAULT 0)""")
+    con.execute("""CREATE INDEX IF NOT EXISTS idx_report_intel_ticker ON report_intelligence(ticker,id)""")
+    con.execute("""CREATE INDEX IF NOT EXISTS idx_report_kpi_report ON report_kpi_candidates(report_id,id)""")
+    con.commit(); con.close()
+
+def report_pages_from_pdf(data,max_pages=80):
+    """Extract text page-by-page so evidence can retain a page reference."""
+    if not data or data[:4]!=b"%PDF": return []
+    try:
+        import io, hashlib
+        from pypdf import PdfReader
+        reader=PdfReader(io.BytesIO(data))
+        return [{"page":i+1,"text":(p.extract_text() or "").strip()} for i,p in enumerate(reader.pages[:max_pages])]
+    except Exception:
+        return []
+
+def _report_number(text):
+    if text is None:return np.nan
+    z=str(text).replace(",","").replace("$","").strip()
+    mult=1.0
+    if z.lower().endswith("bn"): mult=1e9; z=z[:-2]
+    elif z.lower().endswith("b"): mult=1e9; z=z[:-1]
+    elif z.lower().endswith("m"): mult=1e6; z=z[:-1]
+    elif z.lower().endswith("k"): mult=1e3; z=z[:-1]
+    try:return float(z)*mult
+    except:return np.nan
+
+def extract_report_kpi_candidates(ticker,pages,sector="",industry=""):
+    """Conservative deterministic extraction. Candidates require user confirmation."""
+    metrics=company_kpi_template(ticker,sector,industry)
+    aliases={
+      "Transaction / TTV growth":["ttv growth","transaction volume growth","total transaction volume growth"],
+      "Revenue growth":["revenue growth","revenue increased","revenue rose"],
+      "Revenue margin":["revenue margin"],
+      "Credit losses / bad debts":["credit losses","credit loss","bad debts","bad debt"],
+      "Cash EBITDA / EBTDA":["cash ebitda","cash ebtda","ebitda"],
+      "Operating margin":["operating margin"],
+      "Active customers":["active customers","active customer"],
+      "Cash generation":["cash generation","operating cash flow","free cash flow"],
+      "Earnings growth":["earnings growth","profit growth","net profit growth"],
+      "Free cash flow":["free cash flow"],
+      "Net debt":["net debt"],
+      "Guidance":["guidance"],
+    }
+    rows=[]; seen=set()
+    number=r"([-+]?\$?\d[\d,]*(?:\.\d+)?\s*(?:%|bn|b|m|k)?)"
+    for page in pages:
+        txt=re.sub(r"\s+"," ",page.get("text",""))
+        low=txt.lower()
+        for metric in metrics:
+            terms=aliases.get(metric,[metric.lower()])
+            for term in terms:
+                pos=low.find(term)
+                if pos<0: continue
+                snippet=txt[max(0,pos-130):min(len(txt),pos+260)]
+                # Prefer a nearby percentage for growth/margins/losses; otherwise first nearby number.
+                matches=re.findall(number,snippet,flags=re.I)
+                if not matches: continue
+                raw=matches[0].strip()
+                val=_report_number(raw.replace("%",""))
+                if pd.isna(val): continue
+                unit="%" if "%" in raw else ("$" if "$" in raw else "")
+                key=(metric,page["page"],round(float(val),6),unit)
+                if key in seen: continue
+                seen.add(key)
+                rows.append({"Metric":metric,"Value":float(val),"Unit":unit,
+                             "Page":page["page"],"Evidence":snippet[:500]})
+                break
+    return pd.DataFrame(rows)
+
+def save_report_intelligence(ticker,title,period,source,source_url,file_name,data,pages,candidates):
+    import hashlib
+    v19_phase4_db_upgrade()
+    raw="\n\n".join(f"[Page {p['page']}] {p['text']}" for p in pages)
+    summary=evidence_summary(raw,3500)
+    digest=hashlib.sha256(data or raw.encode("utf-8")).hexdigest()
+    con=ws_db()
+    existing=con.execute("SELECT id FROM report_intelligence WHERE ticker=? AND document_hash=?",
+                         (ticker,digest)).fetchone()
+    if existing:
+        rid=int(existing[0])
+    else:
+        cur=con.execute("""INSERT INTO report_intelligence
+          (ticker,created_at,title,period,source,source_url,file_name,document_hash,summary,raw_text,confirmed)
+          VALUES(?,?,?,?,?,?,?,?,?,?,0)""",
+          (ticker,datetime.now(timezone.utc).isoformat(),title,period,source,source_url,file_name,digest,summary,raw))
+        rid=cur.lastrowid
+        for _,r in candidates.iterrows():
+            con.execute("""INSERT INTO report_kpi_candidates
+              (report_id,ticker,metric,value,unit,evidence,page_hint,confirmed)
+              VALUES(?,?,?,?,?,?,?,0)""",
+              (rid,ticker,r["Metric"],float(r["Value"]),r["Unit"],r["Evidence"],str(r["Page"])))
+    con.commit(); con.close()
+    return rid
+
+def report_history(ticker):
+    v19_phase4_db_upgrade(); con=ws_db()
+    rows=con.execute("""SELECT id,created_at,title,period,source,source_url,file_name,summary
+                        FROM report_intelligence WHERE ticker=? ORDER BY id DESC""",(ticker,)).fetchall()
+    con.close()
+    return pd.DataFrame(rows,columns=["id","created_at","title","period","source","source_url","file_name","summary"])
+
+def report_candidates(report_id):
+    v19_phase4_db_upgrade(); con=ws_db()
+    rows=con.execute("""SELECT id,metric,value,unit,evidence,page_hint,confirmed
+                        FROM report_kpi_candidates WHERE report_id=? ORDER BY id""",(int(report_id),)).fetchall()
+    con.close()
+    return pd.DataFrame(rows,columns=["id","metric","value","unit","evidence","page","confirmed"])
+
+def confirm_report_candidate(candidate_id,ticker,period,source,source_url):
+    v19_phase4_db_upgrade(); con=ws_db()
+    row=con.execute("""SELECT metric,value,unit,evidence,page_hint FROM report_kpi_candidates WHERE id=?""",
+                    (int(candidate_id),)).fetchone()
+    if not row:
+        con.close(); return False
+    metric,value,unit,evidence,page=row
+    con.execute("""INSERT INTO kpi_observations
+      (ticker,metric,period,value,unit,source,source_url,evidence_note,observed_at)
+      VALUES(?,?,?,?,?,?,?,?,?)""",
+      (ticker,metric,period,float(value),unit,source,source_url,
+       f"Report Intelligence page {page}: {evidence}",datetime.now(timezone.utc).isoformat()))
+    con.execute("UPDATE report_kpi_candidates SET confirmed=1 WHERE id=?",(int(candidate_id),))
+    con.commit(); con.close(); return True
+
+def compare_report_kpis(ticker):
+    """Compare confirmed company KPI observations by metric; never invent missing periods."""
+    d=kpi_observations(ticker)
+    if d is None or d.empty:return pd.DataFrame(columns=["Metric","Previous period","Previous","Latest period","Latest","Change"])
+    rows=[]
+    for metric,g in d.sort_values("observed_at").groupby("metric"):
+        if len(g)<2: continue
+        a,b=g.iloc[-2],g.iloc[-1]
+        change=np.nan if float(a["value"])==0 else float(b["value"])/float(a["value"])-1
+        rows.append({"Metric":metric,"Previous period":a["period"],"Previous":a["value"],
+                     "Latest period":b["period"],"Latest":b["value"],"Change":change,
+                     "Latest source":b["source"]})
+    return pd.DataFrame(rows)
+
+def render_report_intelligence(ticker):
+    st.header(f"Report Intelligence — {ticker}")
+    st.caption("Extract, verify and compare company-reported evidence. Extracted KPI values are candidates until you confirm them.")
+    v19_phase4_db_upgrade()
+    mode=st.radio("Document source",["Upload company PDF","Latest announcement"],horizontal=True,key="ri_source_mode")
+    data=None; source=""; source_url=""; file_name=""; default_title=""
+    if mode=="Upload company PDF":
+        up=st.file_uploader("Upload annual report, results presentation or trading update",type=["pdf"],key="ri_pdf")
+        if up is not None:
+            data=up.getvalue(); file_name=up.name; source="Uploaded company document"; default_title=up.name
+    else:
+        anns=latest_announcements_safe(ticker,20)
+        if anns is None or anns.empty:
+            st.info("No announcement metadata is currently available.")
+        else:
+            label_col="Title" if "Title" in anns.columns else anns.columns[0]
+            options=list(range(len(anns)))
+            pick=st.selectbox("Announcement",options,format_func=lambda i:str(anns.iloc[i][label_col]),key="ri_ann")
+            row=anns.iloc[pick]
+            source_url=str(row.get("URL","")); default_title=str(row.get(label_col,"Company announcement"))
+            source=str(row.get("Source","Company announcement"))
+            if st.button("Fetch selected report",key="ri_fetch"):
+                data,ctype=fetch_document(source_url)
+                if data:
+                    st.session_state["ri_fetched"]=(data,source,source_url,default_title)
+                else: st.error("The selected document could not be fetched from the source.")
+            if "ri_fetched" in st.session_state:
+                data,source,source_url,default_title=st.session_state["ri_fetched"]
+                file_name=default_title+".pdf"
+
+    if data:
+        pages=report_pages_from_pdf(data)
+        if not pages:
+            st.warning("No machine-readable PDF text was extracted. Scanned/image-only PDFs require OCR, which is not enabled in this Streamlit build.")
+        else:
+            cls=safe_company_classification(ticker)
+            candidates=extract_report_kpi_candidates(ticker,pages,cls.get("sector",""),cls.get("industry",""))
+            title=st.text_input("Report title",value=default_title,key="ri_title")
+            period=st.text_input("Reporting period",placeholder="e.g. FY26 / H1 FY27",key="ri_period")
+            st.subheader("Evidence summary")
+            st.write(evidence_summary("\n".join(p["text"] for p in pages),3500))
+            st.subheader("Extracted KPI candidates")
+            if candidates.empty:
+                st.info("No conservative KPI candidates were detected. You can still save the report for review.")
+            else:
+                st.dataframe(candidates,use_container_width=True,hide_index=True)
+                st.caption("These are machine-extracted candidates, not verified facts. Confirm against the cited page/snippet before storing.")
+            if st.button("Save report intelligence",type="primary",key="ri_save"):
+                if not period.strip():
+                    st.error("Enter the reporting period before saving.")
+                else:
+                    rid=save_report_intelligence(ticker,title,period,source,source_url,file_name,data,pages,candidates)
+                    st.session_state["ri_report_id"]=rid
+                    st.success(f"Report saved as research record #{rid}.")
+                    st.rerun()
+
+    hist=report_history(ticker)
+    if not hist.empty:
+        st.divider(); st.subheader("Saved reports")
+        st.dataframe(hist[["id","created_at","title","period","source","file_name"]],use_container_width=True,hide_index=True)
+        rid=st.selectbox("Review saved report",hist["id"].astype(int).tolist(),key="ri_review_id")
+        report=hist[hist["id"]==rid].iloc[0]
+        st.markdown("**Saved evidence summary**"); st.write(report["summary"])
+        cand=report_candidates(rid)
+        if not cand.empty:
+            st.markdown("**KPI candidates requiring verification**")
+            st.dataframe(cand,use_container_width=True,hide_index=True)
+            pending=cand[cand["confirmed"]==0]
+            if not pending.empty:
+                cid=st.selectbox("Candidate to confirm",pending["id"].astype(int).tolist(),
+                    format_func=lambda x:f"{pending[pending['id']==x].iloc[0]['metric']} - {pending[pending['id']==x].iloc[0]['value']} {pending[pending['id']==x].iloc[0]['unit']}",
+                    key="ri_confirm_candidate")
+                if st.button("Confirm this KPI into evidence ledger",key="ri_confirm"):
+                    if confirm_report_candidate(cid,ticker,report["period"],report["title"],report["source_url"]):
+                        st.success("Verified candidate added to the KPI evidence ledger."); st.rerun()
+
+    comp=compare_report_kpis(ticker)
+    st.divider(); st.subheader("What changed between confirmed reports?")
+    if comp.empty:
+        st.info("At least two confirmed observations for the same KPI are required before a report-to-report comparison can be shown.")
+    else:
+        st.dataframe(comp.style.format({"Change":"{:+.1%}"},na_rep="—"),use_container_width=True,hide_index=True)
+        st.caption("Direction is descriptive. Whether a rise or fall supports the thesis depends on the KPI.")
+
+def v19_phase3_db_upgrade():
+    """Durable local snapshots for change detection. Safe forward migration."""
+    v18_db_upgrade()
+    con=ws_db()
+    con.execute("""CREATE TABLE IF NOT EXISTS monitoring_snapshots(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT, captured_at TEXT, price REAL, volume REAL, sma50 REAL, sma200 REAL,
+        rsi REAL, analyst_target REAL, analyst_count INTEGER, analyst_label TEXT,
+        quant_12m REAL, market_cap REAL, revenue_growth REAL, earnings_growth REAL,
+        operating_margin REAL, debt_to_equity REAL, announcement_key TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS monitoring_events(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT, detected_at TEXT, category TEXT, severity TEXT, headline TEXT,
+        old_value TEXT, new_value TEXT, evidence TEXT, acknowledged INTEGER DEFAULT 0)""")
+    con.execute("""CREATE INDEX IF NOT EXISTS idx_monitor_snap_ticker_time
+                   ON monitoring_snapshots(ticker,captured_at)""")
+    con.execute("""CREATE INDEX IF NOT EXISTS idx_monitor_events_ticker_time
+                   ON monitoring_events(ticker,detected_at)""")
+    con.commit(); con.close()
+
+def _safe_float(v):
+    try:
+        x=float(v)
+        return x if np.isfinite(x) else np.nan
+    except Exception:
+        return np.nan
+
+def monitoring_snapshot_now(ticker, h=None, meta=None):
+    """Build a point-in-time evidence snapshot without inventing unavailable fields."""
+    if h is None: h=history(ticker,"2y")
+    if meta is None:
+        try: meta=yf.Ticker(ticker).info or {}
+        except Exception: meta={}
+    if h is None or h.empty:
+        return {}
+    px=pd.to_numeric(h["Close"],errors="coerce").dropna()
+    if px.empty: return {}
+    price=float(px.iloc[-1])
+    ms=market_structure(h)
+    ti=technical_indicators(h)
+    rsi_now=np.nan
+    if ti is not None and not ti.empty and "RSI" in ti:
+        rsi_now=_safe_float(ti["RSI"].iloc[-1])
+    a=analyst_consensus_snapshot(ticker)
+    fc=research_forecast(h)
+    q12=np.nan
+    if fc is not None and not fc.empty:
+        z=fc.loc[fc["Horizon"]=="12 Months","Median forecast"]
+        if len(z): q12=_safe_float(z.iloc[0])
+    ann=latest_announcements_safe(ticker,1)
+    ann_key=""
+    if ann is not None and not ann.empty:
+        ann_key=" | ".join(str(x) for x in ann.iloc[0].tolist()[:4])
+    vol=np.nan
+    if "Volume" in h and len(h):
+        vol=_safe_float(h["Volume"].iloc[-1])
+    return {
+        "ticker":ticker,"captured_at":datetime.now(timezone.utc).isoformat(),
+        "price":price,"volume":vol,"sma50":_safe_float(ms.get("SMA50")),
+        "sma200":_safe_float(ms.get("SMA200")),"rsi":rsi_now,
+        "analyst_target":_safe_float(a.get("target_mean")),"analyst_count":int(a.get("analysts") or 0),
+        "analyst_label":str(a.get("label") or "Unavailable"),"quant_12m":q12,
+        "market_cap":_safe_float(meta.get("marketCap")) if isinstance(meta,dict) else np.nan,
+        "revenue_growth":_safe_float(meta.get("revenueGrowth")) if isinstance(meta,dict) else np.nan,
+        "earnings_growth":_safe_float(meta.get("earningsGrowth")) if isinstance(meta,dict) else np.nan,
+        "operating_margin":_safe_float(meta.get("operatingMargins")) if isinstance(meta,dict) else np.nan,
+        "debt_to_equity":_safe_float(meta.get("debtToEquity")) if isinstance(meta,dict) else np.nan,
+        "announcement_key":ann_key,
+    }
+
+def latest_monitoring_snapshot(ticker):
+    v19_phase3_db_upgrade(); con=ws_db()
+    row=con.execute("""SELECT ticker,captured_at,price,volume,sma50,sma200,rsi,analyst_target,
+                      analyst_count,analyst_label,quant_12m,market_cap,revenue_growth,earnings_growth,
+                      operating_margin,debt_to_equity,announcement_key
+                      FROM monitoring_snapshots WHERE ticker=? ORDER BY id DESC LIMIT 1""",(ticker,)).fetchone()
+    con.close()
+    cols=["ticker","captured_at","price","volume","sma50","sma200","rsi","analyst_target",
+          "analyst_count","analyst_label","quant_12m","market_cap","revenue_growth","earnings_growth",
+          "operating_margin","debt_to_equity","announcement_key"]
+    return dict(zip(cols,row)) if row else None
+
+def detect_monitoring_changes(previous,current):
+    """Material-change rules. Thresholds are explicit and descriptive."""
+    if not previous or not current: return []
+    events=[]
+    def pct_change(field,category,label,threshold=.05,severity="Info"):
+        old=_safe_float(previous.get(field)); new=_safe_float(current.get(field))
+        if pd.isna(old) or pd.isna(new) or old==0:return
+        ch=new/old-1
+        if abs(ch)>=threshold:
+            direction="increased" if ch>0 else "decreased"
+            events.append({"category":category,"severity":severity,
+                "headline":f"{label} {direction} {abs(ch):.1%}",
+                "old_value":str(old),"new_value":str(new),
+                "evidence":f"Point-in-time comparison; threshold {threshold:.0%}."})
+    pct_change("price","Market","Price",.05,"Watch")
+    pct_change("analyst_target","Analysts","Analyst mean target",.05,"Watch")
+    pct_change("quant_12m","Forecast","Quant 12M scenario",.05,"Info")
+    pct_change("revenue_growth","Fundamentals","Revenue growth field",.20,"Watch")
+    pct_change("earnings_growth","Fundamentals","Earnings growth field",.20,"Watch")
+    pct_change("operating_margin","Fundamentals","Operating margin",.10,"Watch")
+    pct_change("debt_to_equity","Balance sheet","Debt-to-equity",.15,"Watch")
+
+    # Technical state crossings are more useful than tiny numeric changes.
+    for field,label in [("sma50","50-day average"),("sma200","200-day average")]:
+        oldp=_safe_float(previous.get("price")); newp=_safe_float(current.get("price"))
+        oldm=_safe_float(previous.get(field)); newm=_safe_float(current.get(field))
+        if all(pd.notna(x) for x in [oldp,newp,oldm,newm]):
+            was=oldp>=oldm; now=newp>=newm
+            if was!=now:
+                events.append({"category":"Technical","severity":"Watch",
+                    "headline":f"Price crossed {'above' if now else 'below'} the {label}",
+                    "old_value":f"{oldp:.4f} vs {oldm:.4f}","new_value":f"{newp:.4f} vs {newm:.4f}",
+                    "evidence":"Closing-price state compared with moving average."})
+
+    old_label=str(previous.get("analyst_label") or "")
+    new_label=str(current.get("analyst_label") or "")
+    if old_label and new_label and old_label!=new_label:
+        events.append({"category":"Analysts","severity":"Watch",
+            "headline":"Analyst consensus category changed","old_value":old_label,"new_value":new_label,
+            "evidence":"Yahoo/yfinance analyst distribution summary."})
+
+    old_ann=str(previous.get("announcement_key") or "")
+    new_ann=str(current.get("announcement_key") or "")
+    if new_ann and old_ann and new_ann!=old_ann:
+        events.append({"category":"Announcement","severity":"New",
+            "headline":"A different latest company announcement was detected","old_value":old_ann,
+            "new_value":new_ann,"evidence":"Latest announcement identity changed between snapshots."})
+    return events
+
+def save_monitoring_snapshot(ticker,h=None,meta=None):
+    v19_phase3_db_upgrade()
+    current=monitoring_snapshot_now(ticker,h,meta)
+    if not current:return 0,[]
+    previous=latest_monitoring_snapshot(ticker)
+    events=detect_monitoring_changes(previous,current)
+    con=ws_db()
+    fields=["ticker","captured_at","price","volume","sma50","sma200","rsi","analyst_target",
+            "analyst_count","analyst_label","quant_12m","market_cap","revenue_growth","earnings_growth",
+            "operating_margin","debt_to_equity","announcement_key"]
+    con.execute(f"""INSERT INTO monitoring_snapshots({",".join(fields)})
+                    VALUES({",".join(["?"]*len(fields))})""",[current.get(k) for k in fields])
+    for e in events:
+        con.execute("""INSERT INTO monitoring_events
+            (ticker,detected_at,category,severity,headline,old_value,new_value,evidence,acknowledged)
+            VALUES(?,?,?,?,?,?,?,?,0)""",
+            (ticker,current["captured_at"],e["category"],e["severity"],e["headline"],
+             e["old_value"],e["new_value"],e["evidence"]))
+    con.commit(); con.close()
+    return 1,events
+
+def monitoring_events(ticker=None,limit=100,unacknowledged_only=False):
+    v19_phase3_db_upgrade(); con=ws_db()
+    sql="""SELECT id,ticker,detected_at,category,severity,headline,old_value,new_value,evidence,acknowledged
+           FROM monitoring_events"""
+    params=[]
+    clauses=[]
+    if ticker:
+        clauses.append("ticker=?"); params.append(ticker)
+    if unacknowledged_only:
+        clauses.append("acknowledged=0")
+    if clauses: sql+=" WHERE "+" AND ".join(clauses)
+    sql+=" ORDER BY id DESC LIMIT ?"; params.append(int(limit))
+    rows=con.execute(sql,params).fetchall(); con.close()
+    cols=["id","ticker","detected_at","category","severity","headline","old_value","new_value","evidence","acknowledged"]
+    return pd.DataFrame(rows,columns=cols)
+
+def acknowledge_monitoring_events(ticker):
+    v19_phase3_db_upgrade(); con=ws_db()
+    con.execute("UPDATE monitoring_events SET acknowledged=1 WHERE ticker=?",(ticker,))
+    con.commit(); con.close()
+
+def render_something_changed(ticker,h=None,meta=None):
+    st.subheader("Something Changed")
+    st.caption("Point-in-time monitoring compares saved snapshots. It only reports changes observed between snapshots; it is not a background notification service.")
+    current=monitoring_snapshot_now(ticker,h,meta)
+    previous=latest_monitoring_snapshot(ticker)
+    if previous is None:
+        st.info("No monitoring baseline exists yet. Save today's snapshot to start change detection.")
+    else:
+        changes=detect_monitoring_changes(previous,current)
+        if changes:
+            st.dataframe(pd.DataFrame(changes),use_container_width=True,hide_index=True)
+        else:
+            st.success("No configured material-change rule is triggered by the current snapshot.")
+        st.caption(f"Previous monitoring snapshot: {previous.get('captured_at','—')}")
+    c1,c2=st.columns(2)
+    if c1.button("Save current monitoring snapshot",type="primary",key=f"save_monitor_{ticker}"):
+        n,events=save_monitoring_snapshot(ticker,h,meta)
+        st.success(f"Snapshot saved. {len(events)} change event(s) recorded.")
+        st.rerun()
+    if c2.button("Acknowledge recorded changes",key=f"ack_monitor_{ticker}"):
+        acknowledge_monitoring_events(ticker); st.success("Recorded changes acknowledged."); st.rerun()
+    ev=monitoring_events(ticker,50,False)
+    if not ev.empty:
+        st.markdown("**Change history**")
+        st.dataframe(ev,use_container_width=True,hide_index=True)
+
 def v18_attention(ticker,amount=0,price=None):
     rows=[]
     t=thesis_table(ticker)
@@ -1220,20 +1653,20 @@ else:
 thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
 NAV_GROUPS = {
     "Home": ["Dashboard"],
-    "Research": ["Markets","Company Command Centre","Before I Invest","Monitor My Thesis"],
+    "Research": ["Markets","Company Command Centre","Report Intelligence","Before I Invest","Monitor My Thesis"],
     "Portfolio": ["Portfolio"],
     "Trading": ["Trade Centre"],
     "Tools": ["Research Tools"],
     "System": ["Settings"],
 }
 
-PRIMARY_NAV = ["Home","Markets","Company Command Centre","Before I Invest",
+PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Before I Invest",
                "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
 
 primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2)
 
 SUBPAGES = {
-    "Company Command Centre": ["Overview","Fundamentals","Valuation","Technical","Announcements & Reports",
+    "Company Command Centre": ["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence",
                                "News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
     "Portfolio": ["Portfolio Overview","Portfolio Intelligence","Risk Centre","Watchlist","Paper Portfolio"],
     "Trade Centre": ["Trade Ticket","Orders","Strategy Builder"],
@@ -1244,7 +1677,7 @@ SUBPAGES = {
 # Map the simplified navigation back to the existing engines. No analytical page is deleted.
 if primary == "Home":
     page = "Dashboard"
-elif primary in ["Markets","Before I Invest","Monitor My Thesis"]:
+elif primary in ["Markets","Something Changed","Report Intelligence","Before I Invest","Monitor My Thesis"]:
     page = primary
 elif primary in SUBPAGES:
     sub = st.sidebar.selectbox("Inside this workspace", SUBPAGES[primary])
@@ -1254,6 +1687,7 @@ elif primary in SUBPAGES:
         ("Company Command Centre","Valuation"):"Valuation",
         ("Company Command Centre","Technical"):"Technical",
         ("Company Command Centre","Announcements & Reports"):"Announcements & Reports",
+        ("Company Command Centre","Report Intelligence"):"Report Intelligence",
         ("Company Command Centre","News & Events"):"News & Events",
         ("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",
         ("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",
@@ -1298,7 +1732,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.1 • Market Investment Analyst • Phase 2 Research Intelligence")
+st.caption("V19.3 • Market Investment Analyst • Report Intelligence")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -1590,6 +2024,17 @@ if page=="Markets":
             help="Choose a manageable set. Each company requires historical-data calculations.",key="v19_research_symbols")
 
         if selected and market!="Commodities":
+            if st.button("Scan selected companies for changes",key="v19_phase3_scan"):
+                scanned=0; detected=0
+                with st.spinner("Comparing selected companies with their last saved monitoring snapshots…"):
+                    for _sym in selected[:12]:
+                        _ys=global_yahoo_symbol(_sym,market)
+                        _h=history(_ys,"2y")
+                        try: _m=yf.Ticker(_ys).info or {}
+                        except Exception: _m={}
+                        _n,_events=save_monitoring_snapshot(_ys,_h,_m)
+                        scanned+=_n; detected+=len(_events)
+                st.success(f"Scanned {scanned} companies and recorded {detected} material change event(s).")
             if len(selected)>12:
                 st.warning("V19 limits deep opportunity research to the first 12 selected companies to reduce provider throttling.")
                 selected=selected[:12]
@@ -1629,6 +2074,26 @@ if page=="Markets":
             st.subheader("Tracked commodity data")
             quotes=live_rows(selected,td_key,None,False)
             st.dataframe(quotes,use_container_width=True,hide_index=True)
+
+elif page=="Report Intelligence":
+    render_report_intelligence(ticker)
+
+elif page=="Something Changed":
+    st.header("Something Changed")
+    st.caption("Material changes recorded by your saved point-in-time monitoring snapshots.")
+    v19_phase3_db_upgrade()
+    all_events=monitoring_events(None,200,False)
+    if all_events.empty:
+        st.info("No change events have been recorded yet. Use Markets → Scan selected companies for changes, or save snapshots from a Company Command Centre.")
+    else:
+        c1,c2,c3=st.columns(3)
+        c1.metric("Recorded changes",str(len(all_events)))
+        c2.metric("Unacknowledged",str(int((all_events["acknowledged"]==0).sum())))
+        c3.metric("Companies",str(all_events["ticker"].nunique()))
+        category=st.multiselect("Category",sorted(all_events["category"].dropna().unique().tolist()),key="phase3_event_categories")
+        show=all_events if not category else all_events[all_events["category"].isin(category)]
+        st.dataframe(show,use_container_width=True,hide_index=True,height=520)
+        st.caption("Events are descriptive threshold/crossing detections. Review the underlying company evidence before drawing an investment conclusion.")
 
 elif page=="Dashboard":
     st.header(f"{ticker} — {name}")
@@ -2266,6 +2731,8 @@ elif page=="Company Command Centre":
         st.divider()
         render_phase2_company_research(ticker,h,price,meta)
         st.divider()
+        render_something_changed(ticker,h,meta)
+        st.divider()
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
         a.metric("Shares",f"{hold['quantity']:,.0f}")
@@ -2431,6 +2898,8 @@ elif page=="Monitor My Thesis":
     st.header(f"Monitor My Thesis — {ticker}")
     st.markdown("### Are the reasons I invested still true?")
     st.caption("This monitor compares your current stored thesis conditions with a prior snapshot. It only evaluates evidence you have actually entered or sourced; missing evidence stays missing.")
+    render_something_changed(ticker,h,meta)
+    st.divider()
     v17_db_upgrade()
     t=thesis_table(ticker)
     a,b,c=st.columns(3)
@@ -2450,6 +2919,12 @@ elif page=="Monitor My Thesis":
         st.dataframe(changes,use_container_width=True,hide_index=True)
         st.info("An increase is not automatically good and a decrease is not automatically bad. Direction must be interpreted in the context of the metric—for example, lower credit losses may be favourable while lower growth may not be.")
 
+    st.subheader("Confirmed report-to-report KPI changes")
+    _ri_comp=compare_report_kpis(ticker)
+    if _ri_comp.empty:
+        st.info("No confirmed report-to-report KPI comparison is available yet. Use Report Intelligence to ingest and verify company reports.")
+    else:
+        st.dataframe(_ri_comp.style.format({"Change":"{:+.1%}"},na_rep="—"),use_container_width=True,hide_index=True)
     st.subheader("Company KPI evidence")
     cls=safe_company_classification(ticker)
     kpis=company_kpi_template(ticker,cls.get("sector",""),cls.get("industry",""))
