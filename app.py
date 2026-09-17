@@ -199,6 +199,57 @@ a{color:#2457D6;}
 """, unsafe_allow_html=True)
 
 
+# V19.8.5 — robust fixed terminal shell. This deliberately avoids negative offsets.
+st.markdown(r"""
+<style>
+html,body,.stApp,[data-testid="stAppViewContainer"]{margin:0!important;padding:0!important;}
+header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu{display:none!important;height:0!important;}
+[data-testid="stAppViewContainer"]>.main{padding-top:0!important;}
+.main .block-container{max-width:none!important;width:100%!important;padding:115px .72rem 1rem!important;margin:0!important;}
+
+/* The hero is fixed to the viewport, so it truly spans above BOTH main and sidebar. */
+.chrimata-terminal-hero{position:fixed!important;left:0!important;right:0!important;top:0!important;width:100vw!important;height:108px!important;margin:0!important;border-radius:0!important;overflow:hidden!important;background:#062f59!important;box-shadow:none!important;z-index:1000000!important;}
+.chrimata-terminal-hero img{display:block!important;width:100%!important;height:108px!important;object-fit:cover!important;object-position:center 47%!important;}
+.chrimata-terminal-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,30,63,.91) 0%,rgba(4,30,63,.46) 29%,rgba(4,30,63,.06) 61%,rgba(4,30,63,.60) 100%)!important;}
+.chrimata-brand{position:absolute!important;z-index:2!important;left:28px!important;top:17px!important;color:white!important}.chrimata-brand-title{font-size:29px!important;line-height:1!important}.chrimata-brand-sub{font-size:13px!important;margin-top:6px!important}.chrimata-quote{position:absolute!important;z-index:2!important;right:32px!important;top:18px!important;font-size:17px!important;width:285px!important;color:white!important}
+
+/* Keep Streamlit sidebar permanently visible below the banner on desktop. */
+[data-testid="stSidebar"]{display:block!important;visibility:visible!important;opacity:1!important;transform:none!important;position:fixed!important;left:0!important;top:108px!important;bottom:0!important;height:calc(100vh - 108px)!important;width:214px!important;min-width:214px!important;max-width:214px!important;background:linear-gradient(180deg,#06355f 0%,#073c69 55%,#052e55 100%)!important;border-right:1px solid #0c4b78!important;z-index:999998!important;}
+[data-testid="stSidebar"]>div:first-child{display:block!important;width:214px!important;height:100%!important;padding-top:0!important;overflow-y:auto!important;}
+[data-testid="stSidebar"] .block-container{padding:.48rem .62rem .8rem!important;}
+[data-testid="stSidebarCollapsedControl"],button[data-testid="stSidebarCollapseButton"]{display:none!important;}
+[data-testid="stSidebar"] h1{font-size:1.05rem!important;margin:.12rem 0 .35rem!important;color:#fff!important;}
+[data-testid="stSidebar"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] span{color:#f8fbff!important;}
+[data-testid="stSidebar"] div[role="radiogroup"]{display:flex!important;flex-direction:column!important;gap:2px!important;margin:0!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:5px!important;min-height:32px!important;padding:.34rem .45rem!important;color:#fff!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){background:#1269b5!important;color:#fff!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] p{font-size:.71rem!important;font-weight:650!important;color:#fff!important;white-space:normal!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label>div:first-child{display:none!important;}
+[data-testid="stSidebar"] details{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.12)!important;}
+[data-testid="stSidebar"] input,[data-testid="stSidebar"] textarea{background:#fff!important;color:#0f172a!important;}
+
+/* Main market controls and terminal density. */
+.main div[data-testid="stRadio"] div[role="radiogroup"]{display:flex!important;flex-direction:row!important;gap:5px!important;flex-wrap:nowrap!important;margin:0 0 4px!important;}
+.main div[data-testid="stRadio"] div[role="radiogroup"] label{background:#fff!important;border:1px solid #dbe4f0!important;border-radius:6px!important;box-shadow:none!important;min-height:35px!important;padding:5px 10px!important;}
+.main div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked){background:#edf5ff!important;border-color:#1675e5!important;color:#0b63ce!important;}
+.main div[data-testid="stRadio"] div[role="radiogroup"] p{font-size:.71rem!important;font-weight:700!important;white-space:nowrap!important;}
+.main div[data-testid="stHorizontalBlock"]{gap:.46rem!important;}
+.main [data-testid="stTextInput"] input{height:35px!important;min-height:35px!important;border-radius:6px!important;font-size:.76rem!important;}
+.main div[data-testid="stMetric"]{min-height:76px!important;padding:7px 10px!important;border:1px solid #dce5ef!important;border-radius:6px!important;box-shadow:none!important;background:#fff!important;}
+.main div[data-testid="stMetricValue"]{font-size:1.28rem!important;line-height:1.05!important}.main div[data-testid="stMetricDelta"]{font-size:.68rem!important}.main div[data-testid="stMetricLabel"] p{font-size:.71rem!important;color:#60738b!important;}
+.main h2{font-size:1.15rem!important;margin:.18rem 0 .3rem!important}.main h3{font-size:.81rem!important;margin:.16rem 0 .24rem!important;color:#143f88!important;}
+.main [data-testid="stDataFrame"]{border:1px solid #e1e8f0!important;border-radius:6px!important;overflow:hidden!important}.main [data-testid="stDataFrame"] *{font-size:10.3px!important;}
+.chrimata-market-title{margin:1px 0 0!important}.chrimata-market-name{font-size:22px!important}.chrimata-market-flag{font-size:23px!important}.chrimata-market-note{font-size:10px!important;margin:0 0 5px 35px!important;}
+
+@media(max-width:900px){
+ .chrimata-quote{display:none!important;}
+ [data-testid="stSidebar"]{width:190px!important;min-width:190px!important;max-width:190px!important;}
+ [data-testid="stSidebar"]>div:first-child{width:190px!important;}
+ .main div[data-testid="stRadio"] div[role="radiogroup"]{flex-wrap:wrap!important;}
+}
+</style>
+""", unsafe_allow_html=True)
+
 @st.cache_data(ttl=300)
 def history(t, period="5y"):
     try: return yf.Ticker(t).history(period=period, auto_adjust=True)
@@ -2260,7 +2311,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V19.8.3 • Chrímata • Precision Terminal UI")
+    st.caption("V19.8.5 • Chrímata • Fixed Full-Width Terminal UI")
 
 
 
@@ -2466,7 +2517,7 @@ def render_global_market_overview():
         st.subheader("Upcoming IPOs / Listings")
         st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
 
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V19.8.3 · Precision Terminal UI</span></div>",unsafe_allow_html=True)
+    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V19.8.5 · Fixed Full-Width Terminal UI</span></div>",unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()
