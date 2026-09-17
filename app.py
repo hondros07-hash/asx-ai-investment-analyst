@@ -2217,158 +2217,91 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-st.sidebar.title("🏛️ Chrímata")
+# V20.0.2 — persistent terminal sidebar navigation rebuild.
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
     _search_key=""
+_query_default=st.session_state.get("mia_search_query","ZIP")
+ticker=resolve_bare_ticker(str(_query_default).strip().upper()) if str(_query_default).strip() else "ZIP.AX"
 
-with st.sidebar.expander("🔎 Company Search", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),
-        placeholder="Pepsi, PEP, Qantas, QAN, Zip…",
-        help="Search by company name or ticker across global listings.",
-        label_visibility="collapsed", key="sidebar_company_search")
+st.markdown(r"""
+<style>
+:root{--chr-side:220px;--chr-head:108px;}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#062f59 0%,#073c68 58%,#052b4e 100%)!important;border-right:1px solid #0b4c7d!important;}
+[data-testid="stSidebar"] .block-container{padding:14px 10px 18px!important;}
+.chr-side-brand{display:flex;align-items:center;gap:10px;color:#fff;margin:2px 5px 12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.14)}
+.chr-side-brand .temple{font-size:22px;color:#f3d39a}.chr-side-brand b{font:700 17px Georgia,serif;letter-spacing:.2px}
+[data-testid="stSidebar"] div[role="radiogroup"]{display:flex!important;flex-direction:column!important;gap:3px!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label{min-height:48px!important;padding:7px 9px!important;border-radius:7px!important;background:transparent!important;border:0!important;box-shadow:none!important;align-items:flex-start!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover{background:rgba(255,255,255,.08)!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){background:linear-gradient(90deg,#0878e8,#1266bd)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] label>div:first-child{display:none!important;}
+[data-testid="stSidebar"] div[role="radiogroup"] p{white-space:pre-line!important;line-height:1.28!important;font-size:11px!important;font-weight:650!important;color:#fff!important;margin:0!important;}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] label p{font-size:10px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#9fc5e8!important;}
+[data-testid="stSidebar"] details{margin-top:7px!important;background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:7px!important;}
+[data-testid="stSidebar"] details summary{font-size:11px!important;font-weight:700!important;color:#fff!important;}
+.chr-side-wealth{margin:14px 4px 4px;padding:13px 11px;border:1px solid rgba(105,181,242,.25);border-radius:7px;background:rgba(1,28,53,.26);display:flex;gap:11px;align-items:center;color:#fff}
+.chr-side-wealth .pillar{font-size:28px;color:#e6c27b}.chr-side-wealth span{font:12px Georgia,serif;letter-spacing:1.4px;line-height:1.65}
+.chr-side-version{font-size:9px;color:#9fc5e8;text-align:right;margin:4px 7px 0}
+</style>
+<div class="chr-side-brand"><span class="temple">🏛</span><b>Chrímata</b></div>
+""",unsafe_allow_html=True)
+
+NAV_ITEMS=[
+("Home","⌂  Home\nGlobal Market Overview"),("Company Search","⌕  Company Search\nFind & Analyse Stocks"),
+("Company Command Centre","▣  Company Command Centre\nDeep Analysis & Reports"),("Markets","▥  Markets\nIndices, Sectors & Heatmaps"),
+("Watchlist","☆  Watchlist\nTrack Your Stocks"),("Portfolio","▣  Portfolio\nPerformance & Analytics"),
+("Screening","⌁  Screening\nFind Opportunities"),("Alerts","♧  Alerts\nPrice & News Alerts"),
+("Calendar","▦  Calendar\nDividends, Earnings & IPOs"),("Research Tools","⌕  Research Tools\nValuation, Forecasts & Scores"),
+("Settings","⚙  Settings\nPreferences")]
+_nav_label=dict(NAV_ITEMS)
+primary=st.sidebar.radio("Workspace",[k for k,_ in NAV_ITEMS],index=0,format_func=lambda x:_nav_label[x],label_visibility="collapsed",key="chrimata_primary_nav")
+
+with st.sidebar.expander("⌕  Current company", expanded=(primary=="Company Search")):
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v202")
     st.session_state["mia_search_query"]=query
     matches=search_securities(query,_search_key)
     if not matches.empty:
         _labels=[]; _map={}
-        for i,r in matches.head(30).iterrows():
-            lab=f"{r.get('Symbol','')}  ·  {r.get('Company','')}  ·  {r.get('Exchange','')}  ·  {r.get('Type','Stock')}"
-            _labels.append(lab); _map[lab]=i
-        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result")
-        _row=matches.loc[_map[_chosen]]
-        ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
-        _selected_name=str(_row.get("Company") or identity(ticker))
-        try:_selected_meta=yf.Ticker(ticker).info or {}
-        except Exception:_selected_meta={}
-        st.markdown(company_logo_html(ticker,_selected_meta,_selected_name,42),unsafe_allow_html=True)
-        st.markdown(f"**{ticker}** · {_selected_name}")
-        st.caption(f"{_row.get('Exchange','')} · {_row.get('Type','Stock')}")
+        for i,r in matches.head(20).iterrows():
+            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}"; _labels.append(lab); _map[lab]=i
+        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v202",label_visibility="collapsed")
+        _row=matches.loc[_map[_chosen]]; ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
+        st.caption(f"Current · {ticker} · {str(_row.get('Company') or identity(ticker))}")
     else:
-        ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"
-        st.info("No directory match. Try the company name or exchange ticker.")
+        ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"; st.caption(f"Current · {ticker}")
 
+SUBPAGES={
+"Company Command Centre":["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence","News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
+"Portfolio":["Portfolio Overview","Portfolio Intelligence","Risk Centre","Watchlist","Paper Portfolio"],
+"Research Tools":["Research Report","Investment Committee","Evidence & Thesis","Before I Invest","Monitor My Thesis","Something Changed","Report Intelligence","Advanced Forecasting","Model Lab"],
+"Settings":["Workspace Settings","Data & Production","Broker Connections"]}
+PAGE_MAP={
+("Company Command Centre","Overview"):"Company Command Centre",("Company Command Centre","Fundamentals"):"Fundamentals",("Company Command Centre","Valuation"):"Valuation",("Company Command Centre","Technical"):"Technical",("Company Command Centre","Announcements & Reports"):"Announcements & Reports",("Company Command Centre","Report Intelligence"):"Report Intelligence",("Company Command Centre","News & Events"):"News & Events",("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",("Company Command Centre","Quant"):"Quant",("Company Command Centre","Forecasts"):"Forecasts",
+("Portfolio","Portfolio Overview"):"Portfolio",("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",("Portfolio","Risk Centre"):"Risk Centre",("Portfolio","Watchlist"):"Watchlist",("Portfolio","Paper Portfolio"):"Paper Portfolio",
+("Research Tools","Research Report"):"Research Report",("Research Tools","Investment Committee"):"Investment Committee",("Research Tools","Evidence & Thesis"):"Evidence & Thesis",("Research Tools","Before I Invest"):"Before I Invest",("Research Tools","Monitor My Thesis"):"Monitor My Thesis",("Research Tools","Something Changed"):"Something Changed",("Research Tools","Report Intelligence"):"Report Intelligence",("Research Tools","Advanced Forecasting"):"Advanced Forecasting",("Research Tools","Model Lab"):"Model Lab",
+("Settings","Workspace Settings"):"Workspace Settings",("Settings","Data & Production"):"Data & Production",("Settings","Broker Connections"):"Broker Connections"}
+if primary=="Home": page="Dashboard"
+elif primary=="Company Search": page="Dashboard"
+elif primary=="Markets": page="Markets"
+elif primary=="Watchlist": page="Watchlist"
+elif primary=="Screening": page="Markets"
+elif primary=="Alerts": page="Something Changed"
+elif primary=="Calendar": page="Catalyst Calendar"
+elif primary in SUBPAGES:
+    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_{primary}"); page=PAGE_MAP[(primary,sub)]
+else: page=primary
 
-
-# V20.0.1 — structural shell correction: persistent header + true sidebar/main columns.
-st.markdown(r"""
-<style>
-:root{--chr-side:220px;--chr-head:108px;}
-/* Use current Streamlit test IDs as well as legacy class names. */
-[data-testid="stAppViewContainer"]{padding:0!important;margin:0!important;background:#f7faff!important;}
-[data-testid="stAppViewContainer"] > section[data-testid="stMain"],
-section[data-testid="stMain"],
-[data-testid="stMain"],
-.main{
-  margin-left:var(--chr-side)!important;
-  width:calc(100vw - var(--chr-side))!important;
-  max-width:calc(100vw - var(--chr-side))!important;
-  min-width:0!important;
-  box-sizing:border-box!important;
-}
-section[data-testid="stMain"] .block-container,
-[data-testid="stMain"] .block-container,
-.main .block-container{
-  width:100%!important;max-width:none!important;box-sizing:border-box!important;
-  padding:calc(var(--chr-head) + 8px) 12px 18px!important;margin:0!important;
-}
-[data-testid="stSidebar"]{top:var(--chr-head)!important;width:var(--chr-side)!important;min-width:var(--chr-side)!important;max-width:var(--chr-side)!important;height:calc(100vh - var(--chr-head))!important;}
-[data-testid="stSidebar"]>div:first-child{width:var(--chr-side)!important;}
-.chrimata-terminal-hero{height:var(--chr-head)!important;}
-.chrimata-terminal-hero img{height:var(--chr-head)!important;object-fit:cover!important;object-position:center center!important;filter:none!important;}
-.chrimata-terminal-hero:after{display:none!important;background:none!important;}
-/* Home terminal: denser, brighter, closer to approved mockup. */
-[data-testid="stMain"]{background:#f7faff!important;}
-[data-testid="stMain"] div[data-testid="stMetric"]{background:#fff!important;border:1px solid #d8e4f1!important;border-radius:7px!important;box-shadow:0 1px 2px rgba(15,42,78,.04)!important;}
-[data-testid="stMain"] [data-testid="stDataFrame"]{background:#fff!important;border:1px solid #d8e4f1!important;border-radius:7px!important;}
-[data-testid="stMain"] h2,[data-testid="stMain"] h3{color:#0a2b62!important;}
-.mia-shell-head{margin-top:0!important;}
-@media(max-width:900px){:root{--chr-side:190px;} }
-</style>
-""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-wealth"><span class="pillar">▥</span><span>KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.2</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
-    """Viewport-wide Chrímata masthead rendered on every workspace page."""
-    banner_path = Path(__file__).resolve().parent / "assets" / "chrimata_banner_crisp.jpg"
+    banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
-        banner_b64 = base64.b64encode(banner_path.read_bytes()).decode("ascii")
-        st.markdown(f"""<div class="chrimata-terminal-hero chrimata-exact-hero"><img src="data:image/jpeg;base64,{banner_b64}" alt="Chrímata — Market Investment Analyst"></div>""", unsafe_allow_html=True)
+        banner_b64=base64.b64encode(banner_path.read_bytes()).decode("ascii")
+        st.markdown(f"""<div class="chrimata-terminal-hero chrimata-exact-hero"><img src="data:image/jpeg;base64,{banner_b64}" alt="Chrímata — Market Investment Analyst"></div>""",unsafe_allow_html=True)
     except Exception:
-        st.markdown("<div class='chrimata-terminal-hero chrimata-banner-fallback'><b>CHRÍMATA</b><span>Market Investment Analyst · Global Markets. Smarter Decisions.</span></div>", unsafe_allow_html=True)
-
-with st.sidebar.expander("◇ Investment Thesis", expanded=False):
-    thesis=st.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=105,label_visibility="collapsed")
-NAV_GROUPS = {
-    "Home": ["Dashboard"],
-    "Research": ["Markets","Company Command Centre","Report Intelligence","Before I Invest","Monitor My Thesis"],
-    "Portfolio": ["Portfolio"],
-    "Trading": ["Trade Centre"],
-    "Tools": ["Research Tools"],
-    "System": ["Settings"],
-}
-
-PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Advanced Forecasting","Before I Invest",
-               "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
-
-st.sidebar.caption(f"Current · {ticker} · {identity(ticker)}")
-NAV_ICONS={
-    "Home":"⌂","Markets":"◫","Something Changed":"●","Company Command Centre":"▣",
-    "Report Intelligence":"▤","Advanced Forecasting":"⌁","Before I Invest":"◇",
-    "Monitor My Thesis":"◎","Portfolio":"◈","Trade Centre":"⇄","Research Tools":"⌕","Settings":"⚙"
-}
-st.sidebar.caption("GLOBAL MARKETS · SMARTER DECISIONS")
-primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=0,
-                           format_func=lambda x:f"{NAV_ICONS.get(x,'•')}  {x}")
-st.sidebar.markdown("---")
-
-SUBPAGES = {
-    "Company Command Centre": ["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence",
-                               "News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
-    "Portfolio": ["Portfolio Overview","Portfolio Intelligence","Risk Centre","Watchlist","Paper Portfolio"],
-    "Trade Centre": ["Trade Ticket","Orders","Strategy Builder"],
-    "Research Tools": ["Research Report","Investment Committee","Evidence & Thesis","Advanced Forecasting","Model Lab"],
-    "Settings": ["Workspace Settings","Data & Production","Broker Connections"],
-}
-
-# Map the simplified navigation back to the existing engines. No analytical page is deleted.
-if primary == "Home":
-    page = "Dashboard"
-elif primary in ["Markets","Something Changed","Report Intelligence","Advanced Forecasting","Before I Invest","Monitor My Thesis"]:
-    page = primary
-elif primary in SUBPAGES:
-    sub = st.sidebar.selectbox("Inside this workspace", SUBPAGES[primary])
-    PAGE_MAP = {
-        ("Company Command Centre","Overview"):"Company Command Centre",
-        ("Company Command Centre","Fundamentals"):"Fundamentals",
-        ("Company Command Centre","Valuation"):"Valuation",
-        ("Company Command Centre","Technical"):"Technical",
-        ("Company Command Centre","Announcements & Reports"):"Announcements & Reports",
-        ("Company Command Centre","Report Intelligence"):"Report Intelligence",
-        ("Company Command Centre","News & Events"):"News & Events",
-        ("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",
-        ("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",
-        ("Company Command Centre","Quant"):"Quant",
-        ("Company Command Centre","Forecasts"):"Forecasts",
-        ("Portfolio","Portfolio Overview"):"Portfolio",
-        ("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",
-        ("Portfolio","Risk Centre"):"Risk Centre",
-        ("Portfolio","Watchlist"):"Watchlist",
-        ("Portfolio","Paper Portfolio"):"Paper Portfolio",
-        ("Trade Centre","Trade Ticket"):"Trade Centre",
-        ("Trade Centre","Orders"):"Orders",
-        ("Trade Centre","Strategy Builder"):"Strategy Builder",
-        ("Research Tools","Research Report"):"Research Report",
-        ("Research Tools","Investment Committee"):"Investment Committee",
-        ("Research Tools","Evidence & Thesis"):"Evidence & Thesis",
-        ("Research Tools","Advanced Forecasting"):"Advanced Forecasting",
-        ("Research Tools","Model Lab"):"Model Lab",
-        ("Settings","Workspace Settings"):"Workspace Settings",
-        ("Settings","Data & Production"):"Data & Production",
-        ("Settings","Broker Connections"):"Broker Connections",
-    }
-    page = PAGE_MAP[(primary,sub)]
-else:
-    page = primary
+        st.markdown("<div class='chrimata-terminal-hero chrimata-banner-fallback'><b>CHRÍMATA</b><span>Market Investment Analyst · Global Markets. Smarter Decisions.</span></div>",unsafe_allow_html=True)
 
 render_chrimata_persistent_header()
 

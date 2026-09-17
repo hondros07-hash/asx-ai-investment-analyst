@@ -1,13 +1,12 @@
-# Chrímata V20.0.1 — Persistent Terminal Shell
+# Chrímata V20.0.2 — Sidebar Navigation Rebuild
 
-This build corrects the V20.0.0 shell issues seen after deployment.
+Preserves the V20.0.1 persistent panoramic banner and rebuilds the left navigation to match the approved Chrímata terminal concept more closely.
 
-- Chrímata panoramic masthead now renders on every workspace page, not only Home.
-- Header artwork is pre-scaled/sharpened for a 1536px desktop viewport and displayed without the previous dark overlay/filter.
-- Main Streamlit canvas explicitly reserves the sidebar width using current `stMain` selectors plus legacy fallbacks.
-- Sidebar remains below the masthead and no longer intentionally overlays the dashboard canvas.
-- Main content starts immediately below the masthead with reduced whitespace.
-- Home cards/tables receive a tighter white/navy terminal treatment while existing live-data and research engines remain intact.
-- Python cache/build artefacts remain excluded by `.gitignore`.
-
-Deployment: replace the contents of the local Git repository with this package, commit to `main`, then push origin.
+- dark navy 220px persistent sidebar below the banner
+- clean blue active-page state; Streamlit radio circles hidden
+- two-line navigation labels with descriptive subtitles
+- Home, Company Search, Company Command Centre, Markets, Watchlist, Portfolio, Screening, Alerts, Calendar, Research Tools, Settings
+- specialist research workspaces retained within Research Tools and Company Command Centre
+- compact current-company selector
+- Knowledge Compounds Wealth footer panel
+- existing analytics and research engines retained
