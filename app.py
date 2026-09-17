@@ -58,6 +58,50 @@ div[data-testid="stMetric"]{border-radius:8px!important;padding:10px 13px!import
 
 st.markdown("""
 <style>
+/* V19.8.3 — precision terminal shell: tuned to the approved Chrímata visual specification */
+header[data-testid="stHeader"]{height:0!important;min-height:0!important;background:transparent!important}
+[data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu{visibility:hidden!important;height:0!important}
+[data-testid="stSidebar"]{width:214px!important;min-width:214px!important;max-width:214px!important;border-right:1px solid #0d4774!important}
+[data-testid="stSidebar"] > div:first-child{width:214px!important;padding-top:.35rem!important}
+[data-testid="stSidebar"] .block-container{padding:.55rem .72rem 1rem!important}
+[data-testid="stSidebar"] h1{font-size:1.25rem!important;margin:.2rem 0 .45rem!important;color:white!important}
+[data-testid="stSidebar"] h3{font-size:.78rem!important;color:white!important}
+[data-testid="stSidebar"] p,[data-testid="stSidebar"] label{font-size:.72rem!important}
+[data-testid="stSidebar"] div[role="radiogroup"]{gap:1px!important}
+[data-testid="stSidebar"] div[role="radiogroup"] label{padding:.42rem .52rem!important;border-radius:6px!important;color:#f8fbff!important}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){background:#1766aa!important}
+[data-testid="stSidebar"] div[role="radiogroup"] p{font-size:.73rem!important;font-weight:650!important}
+[data-testid="stSidebar"] details{border:1px solid rgba(255,255,255,.14)!important;border-radius:7px!important;background:rgba(255,255,255,.035)!important}
+[data-testid="stSidebar"] details summary{font-size:.72rem!important;color:#fff!important;padding:.4rem!important}
+[data-testid="stSidebar"] input,[data-testid="stSidebar"] textarea{font-size:.72rem!important}
+.stApp > .main{margin-left:0!important}
+.main .block-container{max-width:none!important;width:100%!important;padding:.05rem .75rem 1.2rem!important}
+.chrimata-terminal-hero{height:108px!important;margin:0 -.75rem 6px!important;width:calc(100% + 1.5rem)!important;border-radius:0!important;box-shadow:none!important}
+.chrimata-brand{left:24px!important;top:17px!important}.chrimata-brand-title{font-size:28px!important}.chrimata-brand-sub{font-size:13px!important;margin-top:6px!important}
+.chrimata-quote{right:26px!important;top:18px!important;font-size:17px!important;width:270px!important}
+.chrimata-market-title{margin:1px 0 0!important}.chrimata-market-name{font-size:22px!important}.chrimata-market-flag{font-size:23px!important}.chrimata-market-note{font-size:10px!important;margin:0 0 5px 35px!important}
+div[data-testid="stHorizontalBlock"]{gap:.48rem!important}
+[data-testid="stTextInput"]{margin-bottom:0!important}
+[data-testid="stTextInput"] input{height:35px!important;min-height:35px!important;border-radius:6px!important;font-size:.78rem!important}
+div[data-testid="stRadio"] div[role="radiogroup"]{gap:4px!important;margin:0 0 4px!important;flex-wrap:nowrap!important}
+div[data-testid="stRadio"] div[role="radiogroup"] label{padding:5px 9px!important;border-radius:6px!important;min-height:35px!important;display:flex!important;align-items:center!important}
+div[data-testid="stRadio"] div[role="radiogroup"] p{font-size:.72rem!important;white-space:nowrap!important}
+div[data-testid="stMetric"]{min-height:76px!important;padding:7px 10px!important;border-radius:6px!important;background:#fff!important}
+div[data-testid="stMetricLabel"] p{font-size:.72rem!important;color:#60738b!important}
+div[data-testid="stMetricValue"]{font-size:1.30rem!important;line-height:1.05!important}
+div[data-testid="stMetricDelta"]{font-size:.69rem!important}
+.stApp h2{font-size:1.15rem!important;margin:.18rem 0 .3rem!important}.stApp h3{font-size:.82rem!important;margin:.18rem 0 .25rem!important;color:#143f88!important}
+[data-testid="stDataFrame"]{border:1px solid #e1e8f0!important;border-radius:6px!important;overflow:hidden!important}
+[data-testid="stDataFrame"] *{font-size:10.5px!important}
+[data-testid="stArrowVegaLiteChart"],[data-testid="stVegaLiteChart"]{border:1px solid #e1e8f0!important;border-radius:6px!important;padding:3px!important}
+[data-testid="stAlert"]{padding:.45rem .55rem!important;font-size:.7rem!important}
+.chrimata-section-rule{margin:3px 0 5px!important}.chrimata-terminal-footer{margin-top:7px!important;padding:6px 1px!important;font-size:9px!important}
+@media(max-width:1100px){[data-testid="stSidebar"]{width:190px!important;min-width:190px!important}.chrimata-quote{display:none!important}div[data-testid="stRadio"] div[role="radiogroup"]{flex-wrap:wrap!important}}
+</style>
+""",unsafe_allow_html=True)
+
+st.markdown("""
+<style>
 /* V18.2.1 — text metric cards: allow long labels such as Financial Services to fit */
 .mia-text-metric-value {
     font-size: clamp(1.15rem, 1.65vw, 1.65rem) !important;
@@ -2075,38 +2119,39 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-st.sidebar.title("Chrímata")
+st.sidebar.title("🏛️ Chrímata")
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
     _search_key=""
 
-st.sidebar.markdown("#### 🔎 Symbol search")
-query=st.sidebar.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),
-    placeholder="Pepsi, PEP, Qantas, QAN, Zip…",
-    help="Search by company name or ticker across global listings.",
-    label_visibility="collapsed")
-st.session_state["mia_search_query"]=query
-matches=search_securities(query,_search_key)
-if not matches.empty:
-    _labels=[]; _map={}
-    for i,r in matches.head(30).iterrows():
-        lab=f"{r.get('Symbol','')}  ·  {r.get('Company','')}  ·  {r.get('Exchange','')}  ·  {r.get('Type','Stock')}"
-        _labels.append(lab); _map[lab]=i
-    _chosen=st.sidebar.selectbox("Matching listings",_labels,key="mia_symbol_result")
-    _row=matches.loc[_map[_chosen]]
-    ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
-    _selected_name=str(_row.get("Company") or identity(ticker))
-    try:_selected_meta=yf.Ticker(ticker).info or {}
-    except Exception:_selected_meta={}
-    st.sidebar.markdown(company_logo_html(ticker,_selected_meta,_selected_name,52),unsafe_allow_html=True)
-    st.sidebar.markdown(f"**{ticker}** · {_selected_name}")
-    st.sidebar.caption(f"{_row.get('Exchange','')} · {_row.get('Type','Stock')}")
-else:
-    ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"
-    st.sidebar.info("No directory match. Try the company name or exchange ticker.")
+with st.sidebar.expander("🔎 Company Search", expanded=False):
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),
+        placeholder="Pepsi, PEP, Qantas, QAN, Zip…",
+        help="Search by company name or ticker across global listings.",
+        label_visibility="collapsed", key="sidebar_company_search")
+    st.session_state["mia_search_query"]=query
+    matches=search_securities(query,_search_key)
+    if not matches.empty:
+        _labels=[]; _map={}
+        for i,r in matches.head(30).iterrows():
+            lab=f"{r.get('Symbol','')}  ·  {r.get('Company','')}  ·  {r.get('Exchange','')}  ·  {r.get('Type','Stock')}"
+            _labels.append(lab); _map[lab]=i
+        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result")
+        _row=matches.loc[_map[_chosen]]
+        ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
+        _selected_name=str(_row.get("Company") or identity(ticker))
+        try:_selected_meta=yf.Ticker(ticker).info or {}
+        except Exception:_selected_meta={}
+        st.markdown(company_logo_html(ticker,_selected_meta,_selected_name,42),unsafe_allow_html=True)
+        st.markdown(f"**{ticker}** · {_selected_name}")
+        st.caption(f"{_row.get('Exchange','')} · {_row.get('Type','Stock')}")
+    else:
+        ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"
+        st.info("No directory match. Try the company name or exchange ticker.")
 
-thesis=st.sidebar.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=125)
+with st.sidebar.expander("◇ Investment Thesis", expanded=False):
+    thesis=st.text_area("Investment thesis","Revenue and earnings continue growing, margins improve, cash generation strengthens and key operating KPIs remain healthy.",height=105,label_visibility="collapsed")
 NAV_GROUPS = {
     "Home": ["Dashboard"],
     "Research": ["Markets","Company Command Centre","Report Intelligence","Before I Invest","Monitor My Thesis"],
@@ -2119,15 +2164,13 @@ NAV_GROUPS = {
 PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Advanced Forecasting","Before I Invest",
                "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
 
-st.sidebar.markdown("**Current security**")
-st.sidebar.caption(f"{ticker} · {identity(ticker)}")
+st.sidebar.caption(f"Current · {ticker} · {identity(ticker)}")
 NAV_ICONS={
     "Home":"⌂","Markets":"◫","Something Changed":"●","Company Command Centre":"▣",
     "Report Intelligence":"▤","Advanced Forecasting":"⌁","Before I Invest":"◇",
     "Monitor My Thesis":"◎","Portfolio":"◈","Trade Centre":"⇄","Research Tools":"⌕","Settings":"⚙"
 }
-st.sidebar.markdown("### 🏛️ CHRÍMATA")
-st.sidebar.caption("Market Investment Analyst")
+st.sidebar.caption("GLOBAL MARKETS · SMARTER DECISIONS")
 primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=0,
                            format_func=lambda x:f"{NAV_ICONS.get(x,'•')}  {x}")
 st.sidebar.markdown("---")
@@ -2217,7 +2260,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V19.8.2 • Chrímata • Terminal Landing Page")
+    st.caption("V19.8.3 • Chrímata • Precision Terminal UI")
 
 
 
@@ -2423,7 +2466,7 @@ def render_global_market_overview():
         st.subheader("Upcoming IPOs / Listings")
         st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
 
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V19.8.2 · Terminal Landing Page</span></div>",unsafe_allow_html=True)
+    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V19.8.3 · Precision Terminal UI</span></div>",unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()
