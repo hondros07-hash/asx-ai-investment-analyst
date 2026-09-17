@@ -75,55 +75,55 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 st.markdown("""
 <style>
-:root {
-  --royal-blue: #4169E1;
-  --royal-blue-dark: #2747A8;
-  --white: #FFFFFF;
+:root{
+ --mia-blue:#2457D6; --mia-blue2:#173B91; --mia-ink:#0F172A; --mia-muted:#64748B;
+ --mia-line:#E2E8F0; --mia-soft:#F8FAFC; --mia-card:#FFFFFF; --mia-green:#067647;
 }
-.stApp { background: #FFFFFF; color: #111827; }
-[data-testid="stSidebar"] {
-  background: #4169E1;
-}
-[data-testid="stSidebar"] * {
-  color: #FFFFFF !important;
-}
-[data-testid="stSidebar"] input,
-[data-testid="stSidebar"] textarea {
-  color: #111827 !important;
-  background: #FFFFFF !important;
-}
-h1, h2, h3 {
-  color: #2747A8;
-}
-div[data-testid="stMetric"] {
-  background: #FFFFFF;
-  border: 1px solid #D9E2FF;
-  border-top: 4px solid #4169E1;
-  border-radius: 10px;
-  padding: 10px;
-}
-.stButton > button {
-  background: #4169E1;
-  color: #FFFFFF;
-  border: 1px solid #4169E1;
-  border-radius: 8px;
-}
-.stButton > button:hover {
-  background: #2747A8;
-  color: #FFFFFF;
-  border-color: #2747A8;
-}
-[data-baseweb="tab-highlight"] {
-  background-color: #4169E1 !important;
-}
-a { color: #4169E1; }
-
-.company-logo-fallback {width:78px;height:78px;border:1px solid #D9E2FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#2747A8;background:#F7F9FF;}
-.range-row {display:flex;align-items:center;gap:12px;font-size:.92rem;color:#334155;}
-.range-track {position:relative;height:10px;background:#E5E7EB;border-radius:99px;flex:1;overflow:visible;}
-.range-fill {height:10px;background:#4169E1;border-radius:99px;}
-.range-dot {position:absolute;top:50%;width:16px;height:16px;background:#0F172A;border:3px solid white;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px #94A3B8;}
-
+.stApp{background:linear-gradient(180deg,#F8FAFC 0,#FFFFFF 240px);color:var(--mia-ink);}
+.block-container{max-width:1500px;padding-top:1.35rem;padding-bottom:4rem;}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#153B96 0%,#2457D6 58%,#173B91 100%);border-right:0;}
+[data-testid="stSidebar"] *{color:#fff!important;}
+[data-testid="stSidebar"] input,[data-testid="stSidebar"] textarea{
+ color:#0F172A!important;background:#fff!important;border-radius:10px!important;}
+[data-testid="stSidebar"] [role="radiogroup"] label{
+ padding:.48rem .58rem;border-radius:9px;margin:.08rem 0;transition:.15s ease;}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover{background:rgba(255,255,255,.12);}
+[data-testid="stSidebar"] hr{border-color:rgba(255,255,255,.18);}
+h1{font-size:2rem!important;letter-spacing:-.035em;color:#0F172A!important;}
+h2{font-size:1.35rem!important;letter-spacing:-.02em;color:#172554!important;}
+h3{font-size:1.05rem!important;color:#1E3A8A!important;}
+div[data-testid="stMetric"]{
+ background:rgba(255,255,255,.96);border:1px solid var(--mia-line);border-top:0;
+ border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.035);}
+div[data-testid="stMetric"]:hover{border-color:#BFDBFE;box-shadow:0 8px 28px rgba(37,87,214,.08);}
+[data-testid="stMetricLabel"]{color:#64748B!important;font-weight:650!important;}
+.stButton>button{background:#2457D6;color:#fff;border:1px solid #2457D6;border-radius:10px;font-weight:650;min-height:2.55rem;}
+.stButton>button:hover{background:#173B91;color:#fff;border-color:#173B91;box-shadow:0 5px 14px rgba(36,87,214,.18);}
+.stDownloadButton>button{border-radius:10px;}
+[data-baseweb="tab-list"]{gap:.35rem;border-bottom:1px solid #E2E8F0;}
+button[data-baseweb="tab"]{border-radius:9px 9px 0 0;padding-left:1rem;padding-right:1rem;}
+[data-baseweb="tab-highlight"]{background:#2457D6!important;}
+[data-testid="stDataFrame"]{border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;}
+[data-testid="stExpander"]{border:1px solid #E2E8F0!important;border-radius:12px!important;background:#fff;}
+[data-testid="stAlert"]{border-radius:12px;}
+a{color:#2457D6;}
+.mia-shell-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:2px 0 16px;border-bottom:1px solid #E2E8F0;margin-bottom:18px;}
+.mia-eyebrow{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:#2457D6;}
+.mia-shell-title{font-size:1.62rem;line-height:1.1;font-weight:800;letter-spacing:-.035em;color:#0F172A;margin-top:4px;}
+.mia-shell-sub{font-size:.88rem;color:#64748B;margin-top:5px;}
+.mia-live{display:inline-flex;align-items:center;gap:7px;border:1px solid #DCE7FF;background:#F4F7FF;border-radius:999px;padding:6px 10px;font-size:.76rem;font-weight:700;color:#2457D6;}
+.mia-dot{width:7px;height:7px;border-radius:50%;background:#16A34A;display:inline-block;}
+.mia-hero{background:linear-gradient(135deg,#0F2E75,#2457D6);border-radius:18px;padding:22px 24px;color:#fff;margin:2px 0 18px;box-shadow:0 14px 35px rgba(23,59,145,.18);}
+.mia-hero-kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800;opacity:.76;}
+.mia-hero-title{font-size:1.65rem;font-weight:800;letter-spacing:-.025em;margin-top:5px;}
+.mia-hero-sub{font-size:.9rem;opacity:.82;margin-top:5px;}
+.mia-section-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.10em;font-weight:800;color:#64748B;margin:8px 0 2px;}
+.company-logo-fallback{width:78px;height:78px;border:1px solid #D9E2FF;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#2747A8;background:#F7F9FF;}
+.range-row{display:flex;align-items:center;gap:12px;font-size:.92rem;color:#334155;}
+.range-track{position:relative;height:10px;background:#E5E7EB;border-radius:99px;flex:1;overflow:visible;}
+.range-fill{height:10px;background:#2457D6;border-radius:99px;}
+.range-dot{position:absolute;top:50%;width:16px;height:16px;background:#0F172A;border:3px solid white;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px #94A3B8;}
+@media(max-width:900px){.block-container{padding-left:1rem;padding-right:1rem}.mia-shell-head{align-items:flex-start;flex-direction:column}.mia-hero{padding:18px}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1844,7 +1844,18 @@ NAV_GROUPS = {
 PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Advanced Forecasting","Before I Invest",
                "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
 
-primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2)
+st.sidebar.markdown("**Current security**")
+st.sidebar.caption(f"{ticker} · {identity(ticker)}")
+NAV_ICONS={
+    "Home":"⌂","Markets":"◫","Something Changed":"●","Company Command Centre":"▣",
+    "Report Intelligence":"▤","Advanced Forecasting":"⌁","Before I Invest":"◇",
+    "Monitor My Thesis":"◎","Portfolio":"◈","Trade Centre":"⇄","Research Tools":"⌕","Settings":"⚙"
+}
+st.sidebar.markdown("### MARKET IA")
+st.sidebar.caption("Investment Research Terminal")
+primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2,
+                           format_func=lambda x:f"{NAV_ICONS.get(x,'•')}  {x}")
+st.sidebar.markdown("---")
 
 SUBPAGES = {
     "Company Command Centre": ["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence",
@@ -1895,6 +1906,25 @@ elif primary in SUBPAGES:
 else:
     page = primary
 
+_PAGE_SUBTITLES={
+ "Dashboard":"Market overview and research starting point",
+ "Markets":"Discover and compare opportunities across global markets",
+ "Something Changed":"Your material-change research inbox",
+ "Company Command Centre":"One-company investment research workspace",
+ "Report Intelligence":"Extract, verify and compare company-reported evidence",
+ "Advanced Forecasting":"Walk-forward tested multi-model forecast research",
+ "Before I Invest":"Pre-investment evidence and portfolio-impact review",
+ "Monitor My Thesis":"Track whether the reasons for owning remain supported",
+ "Portfolio":"Holdings, concentration and portfolio analytics",
+ "Trade Centre":"Paper-trade planning and execution workflow",
+}
+_shell_sub=_PAGE_SUBTITLES.get(page,"Market Investment Analyst research workspace")
+st.markdown(f"""<div class="mia-shell-head">
+<div><div class="mia-eyebrow">Market Investment Analyst / {primary}</div>
+<div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
+<div class="mia-live"><span class="mia-dot"></span> Research workspace</div>
+</div>""",unsafe_allow_html=True)
+
 h=history(ticker); meta=info(ticker)
 if h.empty:
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
@@ -1914,7 +1944,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.4 • Market Investment Analyst • Advanced Forecasting")
+st.caption("V19.5 • Market Investment Analyst • Interface Refresh")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -2281,7 +2311,11 @@ elif page=="Something Changed":
         st.caption("Events are descriptive threshold/crossing detections. Review the underlying company evidence before drawing an investment conclusion.")
 
 elif page=="Dashboard":
-    st.header(f"{ticker} — {name}")
+    st.markdown(f"""<div class="mia-hero">
+      <div class="mia-hero-kicker">Research Home</div>
+      <div class="mia-hero-title">{name} · {ticker}</div>
+      <div class="mia-hero-sub">Market snapshot, charting and research context for the security currently in focus.</div>
+    </div>""",unsafe_allow_html=True)
     _market_info = meta if isinstance(meta, dict) else {}
     market_meta = detect_market(ticker, _market_info)
     ex1,ex2,ex3,ex4=st.columns(4)
@@ -2906,7 +2940,13 @@ elif page=="Company Command Centre":
         st.warning("No price history available.")
     else:
         price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
+        st.markdown(f"""<div class="mia-hero">
+          <div class="mia-hero-kicker">Company Command Centre</div>
+          <div class="mia-hero-title">{name} · {ticker}</div>
+          <div class="mia-hero-sub">Price {display_price(price,ticker)} · Evidence, valuation, forecasting, thesis and change monitoring in one workspace.</div>
+        </div>""",unsafe_allow_html=True)
         company_snapshot_header(ticker, meta, h, cls)
+        st.markdown('<div class="mia-section-label">Research stack</div>',unsafe_allow_html=True)
         st.subheader("Investment Command Centre")
         render_analyst_consensus(ticker,price)
         st.divider()
