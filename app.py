@@ -627,28 +627,54 @@ def compact_number(value, prefix="", suffix=""):
     return f"{prefix}{body}{suffix}"
 
 
-def company_logo_url(meta, size=256):
-    """Best-effort current company brand icon, derived from the company's current website."""
-    if not isinstance(meta,dict):
-        return ""
-    website=str(meta.get("website") or "").strip()
-    if website.startswith("http"):
-        try:
-            from urllib.parse import urlparse, quote
-            domain=urlparse(website).netloc.lower().split(":")[0]
-            if domain.startswith("www."):
-                domain=domain[4:]
-            if domain:
-                # Google refreshes favicons from the live company website and is more
-                # likely to follow a recent rebrand than a static bundled asset.
-                return f"https://www.google.com/s2/favicons?domain_url={quote(website, safe=':/')}&sz={int(size)}"
-        except Exception:
-            pass
+def company_logo_candidates(ticker, meta, size=256):
+    """Several independent brand-icon candidates for stronger global coverage."""
+    from urllib.parse import urlparse, quote
+    meta=meta if isinstance(meta,dict) else {}
+    urls=[]
     direct=str(meta.get("logo_url") or meta.get("logoUrl") or "").strip()
     if direct.startswith("http"):
-        return direct
-    return ""
+        urls.append(direct)
+    website=str(meta.get("website") or "").strip()
+    domain=""
+    if website.startswith("http"):
+        try:
+            domain=urlparse(website).netloc.lower().split(":")[0]
+            if domain.startswith("www."): domain=domain[4:]
+        except Exception:
+            domain=""
+    if domain:
+        urls.extend([
+            f"https://www.google.com/s2/favicons?domain={quote(domain)}&sz={int(size)}",
+            f"https://icons.duckduckgo.com/ip3/{quote(domain)}.ico",
+            f"https://{domain}/favicon.ico",
+            f"https://logo.clearbit.com/{quote(domain)}?size={int(size)}",
+        ])
+    return list(dict.fromkeys([u for u in urls if u]))
 
+def company_logo_url(meta, size=256, ticker=""):
+    c=company_logo_candidates(ticker,meta,size)
+    return c[0] if c else ""
+
+def company_logo_html(ticker, meta, name, size=78):
+    """Try each real logo source in the browser, then fall back to company initials."""
+    import html
+    candidates=company_logo_candidates(ticker,meta,max(128,size*2))
+    initials="".join([x[0] for x in str(name).split()[:2] if x])[:2].upper() or str(ticker)[:2].upper()
+    if not candidates:
+        return '<div class="company-logo-fallback">'+html.escape(initials)+'</div>'
+    src=html.escape(candidates[0],quote=True)
+    rest=html.escape("|".join(candidates[1:]),quote=True)
+    return (
+        '<div class="mia-logo-wrap">'
+        '<img src="'+src+'" width="'+str(int(size))+'" height="'+str(int(size))+'" '
+        'style="object-fit:contain;border-radius:14px;background:white;padding:5px;border:1px solid #E2E8F0;" '
+        'data-fallbacks="'+rest+'" '
+        'onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];'
+        'if(a.length){this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}'
+        'else{this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';}">'
+        '<div class="company-logo-fallback" style="display:none">'+html.escape(initials)+'</div></div>'
+    )
 
 def company_snapshot_header(ticker, meta, h, classification_data=None):
     # Reusable security identity + market snapshot.
@@ -677,7 +703,7 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
             div=float(div)
             if abs(div)>1: div=div/100.0
         except Exception: div=None
-    logo=company_logo_url(meta, size=256)
+    logo=company_logo_url(meta, size=256, ticker=ticker)
     initials="".join([x[0] for x in str(name).split()[:2] if x])[:2].upper() or str(ticker)[:2]
 
     top=st.container(border=True)
@@ -686,8 +712,7 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
         with left:
             ident_logo,ident_text=st.columns([0.55,5.45],vertical_alignment="center")
             with ident_logo:
-                if logo: st.image(logo,width=78)
-                else: st.markdown(f'<div class="company-logo-fallback">{initials}</div>',unsafe_allow_html=True)
+                st.markdown(company_logo_html(ticker,meta,name,78),unsafe_allow_html=True)
             with ident_text:
                 st.markdown(f"### {name} ({str(ticker).replace('.AX','')})")
                 subtitle=f"{ticker} · {exchange} · {sector}"
@@ -1934,7 +1959,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 # Dynamic browser-tab branding for the security currently being researched.
 _tab_symbol=str(ticker).replace(".AX","")
-_tab_logo=company_logo_url(meta, size=128)
+_tab_logo=company_logo_url(meta, size=128, ticker=ticker)
 _tab_title=f"{name} ({_tab_symbol}) | Market Investment Analyst"
 try:
     st.set_page_config(page_title=_tab_title, page_icon=(_tab_logo or "📈"))
@@ -1944,7 +1969,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.5 • Market Investment Analyst • Interface Refresh")
+st.caption("V19.5.1 • Market Investment Analyst • Universal Logo Fallback")
 
 
 def global_yahoo_symbol(symbol, market):
