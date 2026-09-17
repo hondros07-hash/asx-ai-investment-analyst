@@ -724,6 +724,187 @@ def company_snapshot_header(ticker, meta, h, classification_data=None):
 # ---------------- V18.2 Forecast + Analyst Consensus ----------------
 FORECAST_HORIZONS={"1 Month":21,"3 Months":63,"6 Months":126,"12 Months":252}
 
+
+def _forecast_price_series(df):
+    if df is None or len(df)==0 or "Close" not in df:return pd.Series(dtype=float)
+    x=df["Close"]
+    if isinstance(x,pd.DataFrame):
+        x=x.iloc[:,0]
+    return pd.to_numeric(x,errors="coerce").replace([np.inf,-np.inf],np.nan).dropna()
+
+def _forecast_features(px):
+    """Lagged, price-only features available at forecast origin; no look-ahead inputs."""
+    r=px.pct_change()
+    f=pd.DataFrame(index=px.index)
+    for n in [5,21,63,126,252]:
+        f[f"ret_{n}"]=px.pct_change(n)
+    f["vol_21"]=r.rolling(21).std()*np.sqrt(252)
+    f["vol_63"]=r.rolling(63).std()*np.sqrt(252)
+    f["ma_20_gap"]=px/px.rolling(20).mean()-1
+    f["ma_50_gap"]=px/px.rolling(50).mean()-1
+    f["ma_200_gap"]=px/px.rolling(200).mean()-1
+    f["drawdown_252"]=px/px.rolling(252).max()-1
+    return f.replace([np.inf,-np.inf],np.nan)
+
+def _ridge_fit_predict(X,y,x0,alpha=10.0):
+    """Small deterministic ridge model with training-only standardisation."""
+    X=np.asarray(X,dtype=float); y=np.asarray(y,dtype=float); x0=np.asarray(x0,dtype=float)
+    mu=np.nanmean(X,axis=0); sd=np.nanstd(X,axis=0); sd=np.where(sd<1e-10,1.0,sd)
+    Xs=(X-mu)/sd; x=(x0-mu)/sd
+    X1=np.column_stack([np.ones(len(Xs)),Xs])
+    reg=np.eye(X1.shape[1])*alpha; reg[0,0]=0
+    beta=np.linalg.pinv(X1.T@X1+reg)@(X1.T@y)
+    return float(np.r_[1.0,x]@beta)
+
+def _regime_label(px):
+    if len(px)<200:return "Insufficient history"
+    p=float(px.iloc[-1]); m50=float(px.rolling(50).mean().iloc[-1]); m200=float(px.rolling(200).mean().iloc[-1])
+    v=float(px.pct_change().tail(21).std()*np.sqrt(252))
+    histv=px.pct_change().rolling(21).std().dropna()*np.sqrt(252)
+    highvol=(len(histv)>40 and v>histv.quantile(.70))
+    trend="Uptrend" if p>m50>m200 else "Downtrend" if p<m50<m200 else "Mixed trend"
+    return f"{trend} / {'High' if highvol else 'Normal'} volatility"
+
+def _walk_forward_horizon(px,h,min_train=252,step=21):
+    """Expanding-window out-of-sample test. Every prediction uses only data available at that date."""
+    feat=_forecast_features(px)
+    target=px.shift(-h)/px-1
+    valid=pd.concat([feat,target.rename("y")],axis=1).dropna()
+    if len(valid)<min_train+20:return pd.DataFrame()
+    rows=[]
+    start=min_train
+    for i in range(start,len(valid),step):
+        train=valid.iloc[:i]
+        test=valid.iloc[i]
+        if i>=len(valid):break
+        X=train[feat.columns].values; y=train["y"].values
+        x0=test[feat.columns].values
+        try:
+            ridge=_ridge_fit_predict(X,y,x0)
+            # Momentum model is deliberately simple and independently auditable.
+            mom=float(np.nanmean([test.get("ret_21",np.nan),test.get("ret_63",np.nan),test.get("ret_126",np.nan)]))
+            # Historical base rate/median from training outcomes.
+            hist=float(np.nanmedian(y))
+            ensemble=float(np.nanmean([ridge,mom,hist]))
+            actual=float(test["y"])
+            rows.append({"Date":valid.index[i],"Actual":actual,"Ridge":ridge,"Momentum":mom,
+                         "Historical":hist,"Ensemble":ensemble})
+        except Exception:
+            continue
+    return pd.DataFrame(rows)
+
+def _forecast_diagnostics(bt):
+    if bt is None or bt.empty:return {"n":0,"mae":np.nan,"rmse":np.nan,"direction":np.nan,"corr":np.nan}
+    a=pd.to_numeric(bt["Actual"],errors="coerce"); p=pd.to_numeric(bt["Ensemble"],errors="coerce")
+    ok=a.notna()&p.notna(); a=a[ok]; p=p[ok]
+    if len(a)==0:return {"n":0,"mae":np.nan,"rmse":np.nan,"direction":np.nan,"corr":np.nan}
+    return {"n":len(a),"mae":float(np.mean(np.abs(a-p))),
+            "rmse":float(np.sqrt(np.mean((a-p)**2))),
+            "direction":float(np.mean((a>0)==(p>0))),
+            "corr":float(a.corr(p)) if len(a)>2 else np.nan}
+
+def _calibration_table(bt,bins=5):
+    """Empirical calibration diagnostic; displayed as diagnostic, never promoted to a future probability."""
+    if bt is None or len(bt)<20:return pd.DataFrame()
+    x=bt.copy()
+    # Convert ensemble scores to percentile ranks learned from the backtest sample.
+    x["score_pct"]=x["Ensemble"].rank(pct=True)
+    try:x["bucket"]=pd.qcut(x["score_pct"],q=min(bins,len(x)//5),duplicates="drop")
+    except Exception:return pd.DataFrame()
+    out=x.groupby("bucket",observed=True).agg(
+        Observations=("Actual","size"),
+        Mean_model_score=("Ensemble","mean"),
+        Realised_mean_return=("Actual","mean"),
+        Realised_positive_frequency=("Actual",lambda z:float((z>0).mean()))
+    ).reset_index()
+    out["Score bucket"]=out["bucket"].astype(str)
+    return out.drop(columns=["bucket"])
+
+def advanced_forecast_snapshot(df):
+    """Walk-forward tested multi-model research forecast for 1M/3M/6M/12M."""
+    px=_forecast_price_series(df)
+    cols=["Horizon","Days","Current price","Ensemble expected return","Estimated price",
+          "Historical 20%","Historical 80%","Backtest N","MAE","RMSE","Direction accuracy",
+          "Return correlation","Regime","Status"]
+    if len(px)<300:return pd.DataFrame(columns=cols),{}
+    current=float(px.iloc[-1]); feat=_forecast_features(px).dropna()
+    if feat.empty:return pd.DataFrame(columns=cols),{}
+    x0=feat.iloc[-1]
+    rows=[]; backtests={}
+    for label,h in FORECAST_HORIZONS.items():
+        target=px.shift(-h)/px-1
+        train=pd.concat([_forecast_features(px),target.rename("y")],axis=1).dropna()
+        # Exclude last h rows where outcome is not known at current origin.
+        train=train.loc[train.index<=px.index[-min(h+1,len(px))]]
+        if len(train)<150:
+            rows.append([label,h,current,np.nan,np.nan,np.nan,np.nan,0,np.nan,np.nan,np.nan,np.nan,_regime_label(px),"Insufficient history"])
+            continue
+        try:
+            ridge=_ridge_fit_predict(train.drop(columns=["y"]).values,train["y"].values,x0.values)
+            mom=float(np.nanmean([x0.get("ret_21",np.nan),x0.get("ret_63",np.nan),x0.get("ret_126",np.nan)]))
+            hist=float(np.nanmedian(train["y"].values))
+            pred=float(np.nanmean([ridge,mom,hist]))
+            vals=train["y"].to_numpy(float)
+            lo=float(np.nanquantile(vals,.20)); hi=float(np.nanquantile(vals,.80))
+            bt=_walk_forward_horizon(px,h); backtests[label]=bt
+            d=_forecast_diagnostics(bt)
+            status="Research model" if d["n"]>=12 else "Limited validation"
+            rows.append([label,h,current,pred,current*(1+pred),current*(1+lo),current*(1+hi),
+                         d["n"],d["mae"],d["rmse"],d["direction"],d["corr"],_regime_label(px),status])
+        except Exception:
+            rows.append([label,h,current,np.nan,np.nan,np.nan,np.nan,0,np.nan,np.nan,np.nan,np.nan,_regime_label(px),"Model unavailable"])
+    return pd.DataFrame(rows,columns=cols),backtests
+
+def render_advanced_forecasting(ticker,h):
+    st.header(f"Advanced Forecasting — {ticker}")
+    st.caption("Walk-forward tested ensemble research. Outputs are model estimates, not price promises or investment recommendations.")
+    fc,bts=advanced_forecast_snapshot(h)
+    if fc.empty:
+        st.info("At least roughly 300 trading sessions are required for the advanced model.")
+        return
+    show=fc.copy()
+    for c in ["Current price","Estimated price","Historical 20%","Historical 80%"]:
+        show[c]=show[c].map(lambda x:"—" if pd.isna(x) else display_price(x,ticker))
+    for c in ["Ensemble expected return","MAE","RMSE","Direction accuracy","Return correlation"]:
+        show[c]=show[c].map(lambda x:"—" if pd.isna(x) else (f"{x:.2f}" if c=="Return correlation" else f"{x:.1%}"))
+    st.dataframe(show,use_container_width=True,hide_index=True)
+    st.caption("Ensemble = ridge regression + momentum model + historical median. Features are lagged price/volatility/trend observations available at the forecast origin.")
+
+    horizon=st.selectbox("Validation horizon",list(FORECAST_HORIZONS.keys()),key="adv_fc_horizon")
+    bt=bts.get(horizon,pd.DataFrame())
+    st.subheader("Walk-forward validation")
+    if bt is None or bt.empty:
+        st.info("Not enough out-of-sample observations for this horizon.")
+    else:
+        d=_forecast_diagnostics(bt)
+        c=st.columns(4)
+        metric_box(c[0],"Out-of-sample tests",str(d["n"]))
+        metric_box(c[1],"MAE",f"{d['mae']:.1%}" if pd.notna(d["mae"]) else "—")
+        metric_box(c[2],"Direction accuracy",f"{d['direction']:.1%}" if pd.notna(d["direction"]) else "—")
+        metric_box(c[3],"Return correlation",f"{d['corr']:.2f}" if pd.notna(d["corr"]) else "—")
+        chart=bt[["Actual","Ensemble"]].copy()
+        st.line_chart(chart)
+        with st.expander("Out-of-sample predictions"):
+            st.dataframe(bt,use_container_width=True,hide_index=True)
+
+        st.subheader("Calibration diagnostic")
+        cal=_calibration_table(bt)
+        if cal.empty:
+            st.info("There are too few out-of-sample observations to show a useful calibration diagnostic.")
+        else:
+            st.dataframe(cal.style.format({
+                "Mean_model_score":"{:+.1%}","Realised_mean_return":"{:+.1%}",
+                "Realised_positive_frequency":"{:.1%}"},na_rep="—"),use_container_width=True,hide_index=True)
+            st.warning("Realised positive frequency is a historical out-of-sample diagnostic. V19.4 does NOT label it as a calibrated future probability.")
+
+    st.subheader("Model architecture")
+    st.write("Ridge model: lagged 1W/1M/3M/6M/12M returns, 21D/63D volatility, moving-average gaps and trailing drawdown.")
+    st.write("Momentum model: independent recent-return signal.")
+    st.write("Historical model: median known forward return at the forecast horizon.")
+    st.write("Validation: expanding-window walk-forward tests; each test prediction uses only information available at that test date.")
+    st.write("Regime context: trend relative to 50D/200D averages plus current volatility relative to its own history.")
+    st.info("Fundamental/report and analyst data remain displayed as separate evidence in V19.4 rather than being forced into the price model without reliable point-in-time historical datasets. This avoids look-ahead bias.")
+
 def research_forecast(df):
     """Transparent historical-distribution forecast; research only, not a recommendation."""
     cols=["Horizon","Days","Current price","Median forecast","Low case (20%)","High case (80%)",
@@ -1660,7 +1841,7 @@ NAV_GROUPS = {
     "System": ["Settings"],
 }
 
-PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Before I Invest",
+PRIMARY_NAV = ["Home","Markets","Something Changed","Company Command Centre","Report Intelligence","Advanced Forecasting","Before I Invest",
                "Monitor My Thesis","Portfolio","Trade Centre","Research Tools","Settings"]
 
 primary = st.sidebar.radio("Workspace", PRIMARY_NAV, index=2)
@@ -1670,14 +1851,14 @@ SUBPAGES = {
                                "News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
     "Portfolio": ["Portfolio Overview","Portfolio Intelligence","Risk Centre","Watchlist","Paper Portfolio"],
     "Trade Centre": ["Trade Ticket","Orders","Strategy Builder"],
-    "Research Tools": ["Research Report","Investment Committee","Evidence & Thesis","Model Lab"],
+    "Research Tools": ["Research Report","Investment Committee","Evidence & Thesis","Advanced Forecasting","Model Lab"],
     "Settings": ["Workspace Settings","Data & Production","Broker Connections"],
 }
 
 # Map the simplified navigation back to the existing engines. No analytical page is deleted.
 if primary == "Home":
     page = "Dashboard"
-elif primary in ["Markets","Something Changed","Report Intelligence","Before I Invest","Monitor My Thesis"]:
+elif primary in ["Markets","Something Changed","Report Intelligence","Advanced Forecasting","Before I Invest","Monitor My Thesis"]:
     page = primary
 elif primary in SUBPAGES:
     sub = st.sidebar.selectbox("Inside this workspace", SUBPAGES[primary])
@@ -1704,6 +1885,7 @@ elif primary in SUBPAGES:
         ("Research Tools","Research Report"):"Research Report",
         ("Research Tools","Investment Committee"):"Investment Committee",
         ("Research Tools","Evidence & Thesis"):"Evidence & Thesis",
+        ("Research Tools","Advanced Forecasting"):"Advanced Forecasting",
         ("Research Tools","Model Lab"):"Model Lab",
         ("Settings","Workspace Settings"):"Workspace Settings",
         ("Settings","Data & Production"):"Data & Production",
@@ -1732,7 +1914,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V19.3 • Market Investment Analyst • Report Intelligence")
+st.caption("V19.4 • Market Investment Analyst • Advanced Forecasting")
 
 
 def global_yahoo_symbol(symbol, market):
@@ -2074,6 +2256,9 @@ if page=="Markets":
             st.subheader("Tracked commodity data")
             quotes=live_rows(selected,td_key,None,False)
             st.dataframe(quotes,use_container_width=True,hide_index=True)
+
+elif page=="Advanced Forecasting":
+    render_advanced_forecasting(ticker,h)
 
 elif page=="Report Intelligence":
     render_report_intelligence(ticker)
@@ -3140,6 +3325,8 @@ elif page=="Quant":
 
 elif page=="Forecasts":
     render_forecast_tool(ticker,h)
+    st.divider()
+    render_advanced_forecasting(ticker,h)
     st.divider()
     render_analyst_consensus(ticker,price)
 
