@@ -1111,11 +1111,15 @@ def thesis_table(ticker):
     # before some V17 pages have explicitly run the database upgrade.
     v17_db_upgrade()
     con=ws_db()
+    cols=["id","metric","operator","threshold","current_value","status","source","updated_at"]
     try:
-        d=pd.read_sql_query("""SELECT id,metric,operator,threshold,current_value,status,source,updated_at
-                               FROM thesis_rules WHERE ticker=? ORDER BY id""",(ticker,),con)
+        rows=con.execute(
+            "SELECT id,metric,operator,threshold,current_value,status,source,updated_at "
+            "FROM thesis_rules WHERE ticker=? ORDER BY id",(ticker,)
+        ).fetchall()
+        d=pd.DataFrame(rows,columns=cols)
     except Exception:
-        d=pd.DataFrame(columns=["id","metric","operator","threshold","current_value","status","source","updated_at"])
+        d=pd.DataFrame(columns=cols)
     finally:
         con.close()
     return d
@@ -1294,7 +1298,7 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V18.3 • Market Investment Analyst • dynamic company branding")
+st.caption("V18.3.1 • Market Investment Analyst • thesis scorecard hotfix")
 
 if page=="Markets":
     st.header("Global Market Terminal")
@@ -2201,6 +2205,8 @@ elif page=="Monitor My Thesis":
 elif page=="Thesis Scorecard":
     st.header(f"Investment Thesis Scorecard — {ticker}")
     st.caption("Convert the investment thesis into measurable conditions. Status is descriptive; it is not an investment recommendation.")
+    # Migrate the retained Streamlit Cloud DB before this page reads it.
+    v18_db_upgrade()
     con=ws_db()
     with st.form("thesis_rule"):
         c1,c2,c3,c4=st.columns(4)
@@ -2216,8 +2222,18 @@ elif page=="Thesis Scorecard":
         con.execute("INSERT INTO thesis_rules(ticker,metric,operator,threshold,current_value,status,source,updated_at) VALUES(?,?,?,?,?,?,?,?)",
                     (ticker,metric,operator,threshold,current,status,source,datetime.now(timezone.utc).isoformat()))
         con.commit(); st.success("Condition added."); st.rerun()
-    df=pd.read_sql_query("SELECT id,metric,operator,threshold,current_value,status,source,updated_at FROM thesis_rules WHERE ticker=? ORDER BY id",(ticker,),con)
-    con.close()
+    thesis_cols=["id","metric","operator","threshold","current_value","status","source","updated_at"]
+    try:
+        rows=con.execute(
+            "SELECT id,metric,operator,threshold,current_value,status,source,updated_at "
+            "FROM thesis_rules WHERE ticker=? ORDER BY id",(ticker,)
+        ).fetchall()
+        df=pd.DataFrame(rows,columns=thesis_cols)
+    except Exception as exc:
+        df=pd.DataFrame(columns=thesis_cols)
+        st.warning(f"Thesis conditions could not be loaded: {exc}")
+    finally:
+        con.close()
     if not df.empty:
         st.dataframe(df,use_container_width=True,hide_index=True)
     else:
