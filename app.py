@@ -2217,7 +2217,7 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-# V20.0.6 — sidebar alignment, collapse-control removal, gold subtitles (no Streamlit radio controls).
+# V20.0.7 — sidebar alignment, collapse-control removal, gold subtitles (no Streamlit radio controls).
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
@@ -2237,8 +2237,8 @@ st.markdown(r"""
 .chr-nav-item.active{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.08);}
 .chr-nav-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;line-height:1}.chr-nav-icon svg{width:27px;height:27px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
 .chr-nav-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.2;}
-.chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:14px;font-weight:500;color:#fff;white-space:nowrap;}
-.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:10.25px;font-weight:400;color:#d9ad55;margin-top:4px;white-space:nowrap;}
+.chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:12.5px;font-weight:500;color:#fff;white-space:nowrap;line-height:1.12;letter-spacing:-.01em;}
+.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:9px;font-weight:400;color:#d9ad55;margin-top:3px;white-space:nowrap;line-height:1.1;letter-spacing:-.01em;}
 .chr-nav-item.active .chr-nav-sub{color:#f3d58f;}
 [data-testid="stSidebar"] details{margin-top:8px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:6px!important;}
 [data-testid="stSidebar"] details summary{font-size:10.5px!important;font-weight:650!important;color:#fff!important;}
@@ -2247,7 +2247,7 @@ st.markdown(r"""
 .chr-side-wealth{margin:22px 6px 4px;padding:15px 12px;border:1px solid rgba(55,151,221,.30);border-radius:6px;background:rgba(2,32,58,.35);display:flex;gap:14px;align-items:center;color:#fff}
 .chr-side-wealth .pillar{font-size:38px;color:#e6bd68;line-height:1}.chr-side-wealth .wealth-copy{font:12.5px Georgia,serif;letter-spacing:1.6px;line-height:1.72;color:#fff}
 .chr-side-version{font-size:10px;color:#d7e8f7;text-align:right;margin:7px 7px 0}
-/* V20.0.6: remove Streamlit sidebar chrome/collapse arrow and align navigation to the top. */
+/* V20.0.7: remove Streamlit sidebar chrome/collapse arrow and align navigation to the top. */
 [data-testid="stSidebarHeader"],
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapseButton"],
@@ -2258,8 +2258,10 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] .block-container{padding-top:0!important;margin-top:0!important;}
 [data-testid="stSidebar"] .chr-nav{margin-top:0!important;padding-top:0!important;}
 .chr-nav a .chr-nav-title,.chr-nav a:visited .chr-nav-title{color:#ffffff!important;}
-.chr-nav a .chr-nav-sub,.chr-nav a:visited .chr-nav-sub{color:#d9ad55!important;font-size:10.25px!important;line-height:1.15!important;margin-top:4px!important;font-weight:400!important;letter-spacing:.01em!important;}
+.chr-nav a .chr-nav-sub,.chr-nav a:visited .chr-nav-sub{color:#d9ad55!important;font-size:9px!important;line-height:1.1!important;margin-top:3px!important;font-weight:400!important;letter-spacing:.01em!important;}
 .chr-nav-item.active .chr-nav-sub{color:#f0c86e!important;}
+.chr-nav-copy{min-width:0!important;max-width:calc(var(--chr-sidebar) - 62px)!important;overflow:hidden!important;}
+.chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2309,7 +2311,7 @@ st.sidebar.markdown(''.join(_nav_html),unsafe_allow_html=True)
 
 # Keep company selection available without changing the clean reference navigation rail.
 with st.sidebar.expander("Current company", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v206")
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v207")
     st.session_state["mia_search_query"]=query
     matches=search_securities(query,_search_key)
     if not matches.empty:
@@ -2340,10 +2342,10 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v206_{primary}"); page=PAGE_MAP[(primary,sub)]
+    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v207_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.6</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="pillar">▥</span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.7</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
