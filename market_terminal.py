@@ -85,9 +85,23 @@ def commodity_catalog(api_key=""):
     return pd.DataFrame(COMMODITY_FALLBACK,columns=["symbol","name","category"])
 
 def fallback_catalog(exchange):
-    # Deliberately labelled fallback: not an exhaustive exchange list.
+    """Curated discovery fallback when a licensed/full exchange catalog is unavailable."""
     from sector_peer_engine import ASX_UNIVERSE, US_UNIVERSE
-    syms=ASX_UNIVERSE if exchange=="ASX" else US_UNIVERSE
-    return pd.DataFrame({"symbol":[s.replace(".AX","") for s in syms],
-                         "name":[s for s in syms],"exchange":exchange,
-                         "type":"Curated fallback"})
+    curated={
+        "ASX": [(s.replace(".AX",""),s) for s in ASX_UNIVERSE],
+        "NASDAQ": [(s,s) for s in US_UNIVERSE],
+        "NYSE": [("KO","Coca-Cola"),("JPM","JPMorgan Chase"),("V","Visa"),("MA","Mastercard"),
+                 ("WMT","Walmart"),("DIS","Walt Disney"),("CAT","Caterpillar"),("XOM","Exxon Mobil")],
+        "LSE": [("SHEL","Shell"),("AZN","AstraZeneca"),("HSBA","HSBC"),("ULVR","Unilever"),
+                ("BP","BP"),("RIO","Rio Tinto"),("GSK","GSK"),("REL","RELX")],
+        "HKEX": [("0700","Tencent"),("9988","Alibaba"),("3690","Meituan"),("1299","AIA"),
+                 ("0005","HSBC Holdings"),("0388","HKEX"),("1810","Xiaomi"),("9618","JD.com")],
+        "TSE": [("7203","Toyota"),("6758","Sony Group"),("9984","SoftBank Group"),("8306","Mitsubishi UFJ"),
+                ("6861","Keyence"),("8035","Tokyo Electron"),("9432","NTT"),("7974","Nintendo")],
+        "TSX": [("RY","Royal Bank of Canada"),("TD","Toronto-Dominion Bank"),("SHOP","Shopify"),
+                ("ENB","Enbridge"),("CNR","Canadian National Railway"),("BNS","Bank of Nova Scotia"),
+                ("CP","Canadian Pacific Kansas City"),("SU","Suncor Energy")],
+    }
+    rows=curated.get(exchange,[(s,s) for s in US_UNIVERSE])
+    return pd.DataFrame({"symbol":[x[0] for x in rows],"name":[x[1] for x in rows],
+                         "exchange":exchange,"type":"Curated fallback"})

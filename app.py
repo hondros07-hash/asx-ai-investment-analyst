@@ -1298,61 +1298,142 @@ except Exception:
     pass
 
 st.title("Market Investment Analyst")
-st.caption("V18.3.3 • Market Investment Analyst • forecast function fix")
+st.caption("V19.0 • Market Investment Analyst • Global Investment Research")
+
+
+def global_yahoo_symbol(symbol, market):
+    s=str(symbol).strip().upper()
+    suffix={"ASX":".AX","LSE":".L","HKEX":".HK","TSE":".T","TSX":".TO"}.get(market,"")
+    if suffix and not s.endswith(suffix):
+        if market=="HKEX":
+            s=s.zfill(4)
+        s+=suffix
+    return s
+
+def opportunity_snapshot(symbol, market):
+    """Compact, explainable discovery snapshot. Missing provider data stays missing."""
+    ys=global_yahoo_symbol(symbol,market)
+    h0=history(ys,"2y")
+    if h0 is None or h0.empty or "Close" not in h0:
+        return None
+    px=pd.to_numeric(h0["Close"],errors="coerce").dropna()
+    if px.empty: return None
+    price=float(px.iloc[-1])
+    def ret(n):
+        return np.nan if len(px)<=n else float(price/px.iloc[-n-1]-1)
+    low=float(px.tail(252).min()) if len(px) else np.nan
+    high=float(px.tail(252).max()) if len(px) else np.nan
+    pos=(price-low)/(high-low) if pd.notna(low) and pd.notna(high) and high>low else np.nan
+    fc=research_forecast(h0)
+    fmap={}
+    if fc is not None and not fc.empty:
+        for _,r in fc.iterrows():
+            fmap[str(r["Horizon"])]=r["Median return"]
+    return {
+        "Company":identity(ys),"Ticker":ys,"Price":price,
+        "52W low":low,"52W high":high,"52W position":pos,
+        "Actual 1M":ret(21),"Actual 3M":ret(63),"Actual 6M":ret(126),"Actual 12M":ret(252),
+        "Model 1M":fmap.get("1 Month",np.nan),"Model 3M":fmap.get("3 Months",np.nan),
+        "Model 6M":fmap.get("6 Months",np.nan),"Model 12M":fmap.get("12 Months",np.nan),
+    }
+
+def render_market_vs_model(ticker, price, h):
+    st.subheader("Market vs Model")
+    st.caption("Compares independent evidence sources. Differences are analytical disagreements, not a recommendation.")
+    a=analyst_consensus_snapshot(ticker)
+    fc=research_forecast(h)
+    f12=np.nan
+    if fc is not None and not fc.empty:
+        z=fc.loc[fc["Horizon"]=="12 Months","Median forecast"]
+        if len(z): f12=float(z.iloc[0]) if pd.notna(z.iloc[0]) else np.nan
+    vals=valuation_snapshot(ticker,price)
+    base=np.nan
+    if vals is not None and not vals.empty:
+        scen_col=next((c for c in vals.columns if str(c).lower()=="scenario"),None)
+        val_col=next((c for c in vals.columns if str(c).lower()=="value_per_share"),None)
+        if scen_col and val_col:
+            q=vals[vals[scen_col].astype(str).str.lower()=="base"]
+            if not q.empty: base=pd.to_numeric(q[val_col],errors="coerce").iloc[0]
+    c=st.columns(4)
+    metric_box(c[0],"Market price",display_price(price,ticker))
+    metric_box(c[1],"Analyst mean target","—" if pd.isna(a["target_mean"]) else display_price(a["target_mean"],ticker))
+    metric_box(c[2],"Quant 12M scenario","—" if pd.isna(f12) else display_price(f12,ticker))
+    metric_box(c[3],"User-model base DCF","—" if pd.isna(base) else display_price(base,ticker))
+    st.caption("Analyst target = external analyst data. Quant scenario = historical return-distribution model. DCF = saved user assumptions; generic defaults must be replaced before relying on it.")
 
 if page=="Markets":
-    st.header("Global Market Terminal")
-    st.caption("Browse exchange instrument catalogs and track selected symbols. Data labelled live is provider-dependent; Yahoo/yfinance fallback is not presented as exchange-grade real-time.")
+    st.header("Global Market Opportunity Dashboard")
+    st.caption("Discover and compare companies across markets. Forecast columns are model research, not promises or recommendations.")
 
     try:
         td_key=st.secrets.get("TWELVE_DATA_API_KEY","")
     except Exception:
         td_key=""
 
-    source_msg=("Twelve Data connected — catalog and quote requests use your API entitlement."
-                if td_key else
-                "Twelve Data API key not configured — showing curated catalog fallback and Yahoo/yfinance prices. This is not a complete live exchange feed.")
-    st.info(source_msg)
-
-    market=st.radio("Market",["ASX","NASDAQ","NYSE","Commodities"],horizontal=True)
+    market=st.radio("Market",["ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX","Commodities"],horizontal=True)
     c1,c2,c3=st.columns([1,1,2])
-    page_no=c1.number_input("Catalog page",1,1000,1,1)
-    page_size=c2.selectbox("Rows per page",[25,50,100,250],index=2)
-    search=c3.text_input("Search symbol or company","").strip().lower()
+    page_no=c1.number_input("Catalog page",1,1000,1,1,key="v19_catalog_page")
+    page_size=c2.selectbox("Rows per page",[25,50,100,250],index=1,key="v19_page_size")
+    search=c3.text_input("Search this market","",key="v19_market_search").strip().lower()
 
     if market=="Commodities":
         catalog=commodity_catalog(td_key)
     else:
         catalog=td_catalog(td_key,market,int(page_no),int(page_size)) if td_key else fallback_catalog(market)
+        if catalog is None or catalog.empty:
+            catalog=fallback_catalog(market)
 
-    if catalog.empty:
-        st.warning("No catalog data returned by the configured provider.")
+    if catalog is None or catalog.empty:
+        st.warning("No catalog data returned for this market.")
     else:
         if search:
             mask=pd.Series(False,index=catalog.index)
             for col in [x for x in ["symbol","name","instrument_name"] if x in catalog.columns]:
                 mask=mask | catalog[col].astype(str).str.lower().str.contains(search,regex=False)
             catalog=catalog[mask]
+
         showcols=[c for c in ["symbol","name","instrument_name","exchange","country","currency","type","category"] if c in catalog.columns]
-        st.subheader(f"{market} instrument catalog")
-        st.dataframe(catalog[showcols] if showcols else catalog,use_container_width=True,hide_index=True,height=420)
+        st.subheader(f"{market} universe")
+        st.dataframe(catalog[showcols] if showcols else catalog,use_container_width=True,hide_index=True,height=300)
 
         symbols=catalog["symbol"].astype(str).tolist() if "symbol" in catalog.columns else []
-        defaults=symbols[:min(8,len(symbols))]
-        selected=st.multiselect("Track prices",symbols,default=defaults,
-                                help="Select a manageable group to avoid exhausting provider API credits.")
-        refresh=st.button("Refresh tracked prices",type="primary")
-        if selected:
-            st.subheader("Tracked market data")
-            quotes=live_rows(selected,td_key,market if market!="Commodities" else None,asx_suffix=(market=="ASX" and not td_key))
-            if quotes.empty:
-                st.warning("No quote data returned for the selected instruments.")
+        defaults=symbols[:min(6,len(symbols))]
+        selected=st.multiselect("Research companies",symbols,default=defaults,
+            help="Choose a manageable set. Each company requires historical-data calculations.",key="v19_research_symbols")
+
+        if selected and market!="Commodities":
+            if len(selected)>12:
+                st.warning("V19 limits deep opportunity research to the first 12 selected companies to reduce provider throttling.")
+                selected=selected[:12]
+            rows=[]
+            with st.spinner("Building opportunity dashboard…"):
+                for sym in selected:
+                    snap=opportunity_snapshot(sym,market)
+                    if snap: rows.append(snap)
+            if rows:
+                opp=pd.DataFrame(rows)
+                st.subheader("Opportunity research")
+                fmt={c:"{:+.1%}" for c in ["Actual 1M","Actual 3M","Actual 6M","Actual 12M",
+                                           "Model 1M","Model 3M","Model 6M","Model 12M","52W position"]}
+                fmt.update({"Price":"{:,.3f}","52W low":"{:,.3f}","52W high":"{:,.3f}"})
+                st.dataframe(opp.style.format(fmt,na_rep="—"),use_container_width=True,hide_index=True,height=420)
+                st.caption("Actual = realised trailing return. Model = median recency-weighted historical horizon return. 52W position shows where price sits between its trailing 52-week low and high.")
+
+                focus=st.selectbox("Open research preview",opp["Ticker"].tolist(),key="v19_focus_company")
+                row=opp.loc[opp["Ticker"]==focus].iloc[0]
+                st.subheader(f"{row['Company']} — research preview")
+                q1,q2,q3,q4=st.columns(4)
+                metric_box(q1,"Price",display_price(row["Price"],focus))
+                metric_box(q2,"52W position","—" if pd.isna(row["52W position"]) else f"{row['52W position']:.0%}")
+                metric_box(q3,"12M actual","—" if pd.isna(row["Actual 12M"]) else f"{row['Actual 12M']:+.1%}")
+                metric_box(q4,"12M model","—" if pd.isna(row["Model 12M"]) else f"{row['Model 12M']:+.1%}")
+                st.info("For the full evidence trail, enter this ticker in the sidebar and open Company Command Centre.")
             else:
-                st.dataframe(quotes.style.format({
-                    "Price":"{:,.4f}","Change":"{:+,.4f}","% Change":"{:+.2f}",
-                    "Open":"{:,.4f}","High":"{:,.4f}","Low":"{:,.4f}","Volume":"{:,.0f}"
-                },na_rep="—"),use_container_width=True,hide_index=True)
-                st.caption("Timestamp and Source are shown per row so delayed/fallback observations are not confused with licensed real-time exchange data.")
+                st.warning("No historical data was returned for the selected companies.")
+        elif selected:
+            st.subheader("Tracked commodity data")
+            quotes=live_rows(selected,td_key,None,False)
+            st.dataframe(quotes,use_container_width=True,hide_index=True)
 
 elif page=="Dashboard":
     st.header(f"{ticker} — {name}")
@@ -1985,6 +2066,8 @@ elif page=="Company Command Centre":
         render_analyst_consensus(ticker,price)
         st.divider()
         render_forecast_tool(ticker,h)
+        st.divider()
+        render_market_vs_model(ticker,price,h)
         st.divider()
         st.subheader("Your position")
         a,b,c,d=st.columns(4)
