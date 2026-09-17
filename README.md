@@ -1,12 +1,5 @@
-# Chrímata V20.0.2 — Sidebar Navigation Rebuild
+# Chrímata V20.0.3 — Reference Sidebar Rebuild
 
-Preserves the V20.0.1 persistent panoramic banner and rebuilds the left navigation to match the approved Chrímata terminal concept more closely.
+This release keeps the V20.0.1/V20.0.2 persistent panoramic header and rebuilds the left navigation rail to closely match the approved sidebar reference: dark navy rail, tall icon/title/subtitle navigation rows, blue active Home state, compact spacing, and the Knowledge Compounds Wealth footer with v20.0.3.
 
-- dark navy 220px persistent sidebar below the banner
-- clean blue active-page state; Streamlit radio circles hidden
-- two-line navigation labels with descriptive subtitles
-- Home, Company Search, Company Command Centre, Markets, Watchlist, Portfolio, Screening, Alerts, Calendar, Research Tools, Settings
-- specialist research workspaces retained within Research Tools and Company Command Centre
-- compact current-company selector
-- Knowledge Compounds Wealth footer panel
-- existing analytics and research engines retained
+Existing research engines and specialist workspaces remain available. Company selection is retained in a collapsed Current company control so it does not dominate the visual navigation rail.
