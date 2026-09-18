@@ -23,6 +23,7 @@ from research_system import snapshot as research_snapshot, kpi_framework, techni
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
 from announcement_engine import announcements, fetch_document, extract_text, evidence_summary
+from global_dividends import upcoming_dividends
 
 import sqlite3
 import uuid
@@ -2847,6 +2848,11 @@ def overview_batch(tickers):
         rows.append({"Ticker":t,"Company":nm,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
     return pd.DataFrame(rows)
 
+@st.cache_data(ttl=21600, show_spinner=False)
+def overview_global_dividends(tickers):
+    # Dividend declarations change far less frequently than intraday prices.
+    return upcoming_dividends(tuple(tickers),365)
+
 def overview_fmt_price(x):
     return "—" if not np.isfinite(_mia_num(x)) else f"{float(x):,.2f}"
 
@@ -3294,12 +3300,16 @@ def render_global_market_overview():
     vq=overview_quote('^VIX','5d'); vv=float(vq['last']) if vq and np.isfinite(_mia_num(vq.get('last'))) else None
     needle=(-80 if vv is None else max(-80,min(80,(min(vv,50.0)/50.0*160)-80)))
     vix_text='—' if vv is None else f'{vv:.1f}'
-    earnings,dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
+    earnings,_legacy_dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
+    # V20.5.8: country-aware declared-dividend engine. Unlike the legacy metadata-only
+    # path, this checks calendar + quote metadata + Yahoo corporate-action events for
+    # every security in the selected country's configured universe.
+    dividends=overview_global_dividends(tuple(cfg['universe']))
     if dividends is not None and not dividends.empty:
-        for _,r in dividends.head(5).iterrows():
-            amt=r.get('Dividend Rate','—'); amt='—' if pd.isna(amt) else f'{float(amt):.2f}'
+        for _,r in dividends.head(8).iterrows():
+            amt=r.get('Amount','—'); amt='—' if pd.isna(amt) else f'{float(amt):.4g}'
             divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:23],'Ex-Date':r.get('Ex-Date',''),'Pay-Date':r.get('Pay-Date','—'),'Amount':amt})
-    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dividend dates were returned by the active provider for this market universe.</div>'
+    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No declared upcoming dividends were returned for the selected market universe. The widget does not estimate undeclared future dividends.</div>'
     earnrows=[]
     if earnings is not None and not earnings.empty:
         for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
