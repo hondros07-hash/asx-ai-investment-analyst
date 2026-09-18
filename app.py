@@ -24,6 +24,7 @@ from market_terminal import td_catalog, commodity_catalog, fallback_catalog, liv
 from security_search import search_securities, resolve_listing, identity
 from announcement_engine import announcements, fetch_document, extract_text, evidence_summary
 from global_dividends import upcoming_dividends
+from corporate_actions_calendar import corporate_actions_calendar
 
 import sqlite3
 import uuid
@@ -2792,7 +2793,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.5.8 • Chrímata • Global Upcoming Dividends Engine")
+    st.caption("V20.5.9 • Chrímata • Global Corporate Actions Calendar")
 
 
 
@@ -2888,9 +2889,10 @@ def overview_batch(tickers):
     return pd.DataFrame(rows)
 
 @st.cache_data(ttl=21600, show_spinner=False)
-def overview_global_dividends(tickers):
-    # Dividend declarations change far less frequently than intraday prices.
-    return upcoming_dividends(tuple(tickers),365)
+def overview_global_dividends(market, tickers, twelve_data_key="", fmp_key=""):
+    # V20.5.9: forward corporate-actions provider hierarchy. Calendar data is
+    # cached because declarations change far less frequently than market prices.
+    return corporate_actions_calendar(market, tuple(tickers), 120, twelve_data_key, fmp_key)
 
 def overview_fmt_price(x):
     return "—" if not np.isfinite(_mia_num(x)) else f"{float(x):,.2f}"
@@ -3460,15 +3462,18 @@ def render_global_market_overview():
     needle=(-80 if vv is None else max(-80,min(80,(min(vv,50.0)/50.0*160)-80)))
     vix_text='—' if vv is None else f'{vv:.1f}'
     earnings,_legacy_dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
-    # V20.5.8: country-aware declared-dividend engine. Unlike the legacy metadata-only
-    # path, this checks calendar + quote metadata + Yahoo corporate-action events for
-    # every security in the selected country's configured universe.
-    dividends=overview_global_dividends(tuple(cfg['universe']))
+    # V20.5.9: Global Corporate Actions Calendar. Use a real forward calendar provider
+    # first (Twelve Data; optional FMP), with Yahoo declared events only as fallback.
+    try: _td_div_key=st.secrets.get('TWELVE_DATA_API_KEY','')
+    except Exception: _td_div_key=''
+    try: _fmp_div_key=st.secrets.get('FMP_API_KEY','')
+    except Exception: _fmp_div_key=''
+    dividends=overview_global_dividends(market, tuple(cfg['universe']), _td_div_key, _fmp_div_key)
     if dividends is not None and not dividends.empty:
         for _,r in dividends.head(8).iterrows():
             amt=r.get('Amount','—'); amt='—' if pd.isna(amt) else f'{float(amt):.4g}'
             divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:23],'Ex-Date':r.get('Ex-Date',''),'Pay-Date':r.get('Pay-Date','—'),'Amount':amt})
-    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No declared upcoming dividends were returned for the selected market universe. The widget does not estimate undeclared future dividends.</div>'
+    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No confirmed upcoming dividends were returned by the configured calendar providers for this market. Chrímata does not estimate undeclared future dividends.</div>'
     earnrows=[]
     if earnings is not None and not earnings.empty:
         for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})

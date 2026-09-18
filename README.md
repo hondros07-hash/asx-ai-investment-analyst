@@ -139,12 +139,16 @@ Replaces the Home search selectbox with compact inline result buttons that appea
 ## V20.5.6 — Global True-Time Intraday Charts
 1D charts now preserve provider timestamps, convert them to the selected exchange timezone, stop at the latest bar that has actually occurred, and retain 60-second refreshes while the dashboard is open. Historical ranges are unchanged.
 
-## V20.5.8 — Professional Sidebar Restoration
+## V20.5.9 — Professional Sidebar Restoration
 - Restores the approved compact Chrímata terminal sidebar styling.
 - Larger consistent white navigation icons and white primary labels.
 - Gold secondary descriptions with aligned spacing.
 - Strong blue active-page state and restrained hover treatment.
 - Keeps V20.5.6 global true-time intraday chart and single-router navigation unchanged.
 
-## V20.5.8 — Global Upcoming Dividends Engine
+## V20.5.9 — Global Corporate Actions Calendar
 The Home dashboard's Upcoming Dividends widget is now country-aware across Australia, United States, United Kingdom, Japan, Hong Kong and Canada. It scans the selected market's configured exchange-qualified universe and uses Yahoo calendar metadata, quote metadata and the corporate-action event feed as independent declared-dividend sources. Results are ordered by ex-dividend date and cached for six hours. Chrímata does not infer or fabricate undeclared future dividends.
+
+
+## V20.5.9 — Global Corporate Actions Calendar
+Upcoming Dividends now uses a forward-calendar provider hierarchy: Twelve Data dividends_calendar when the existing TWELVE_DATA_API_KEY entitlement supports it, optional Financial Modeling Prep via FMP_API_KEY, then Yahoo declared corporate actions as fallback. Only confirmed/declared events are shown; historical dividends are never projected into the future.
