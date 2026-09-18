@@ -2504,6 +2504,13 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
 .st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
 
+/* V20.6.0 — fixed sidebar text column. Streamlit's button-label wrapper can
+   center itself independently; pin every title to the same x coordinate as the
+   gold subtitle so long/short labels align exactly. */
+[data-testid="stSidebar"] .stButton>button p,
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{position:absolute!important;left:45px!important;top:8px!important;margin:0!important;padding:0!important;width:calc(100% - 52px)!important;max-width:calc(100% - 52px)!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;}
+[data-testid="stSidebar"] .stButton>button p{font-size:11.5px!important;font-weight:600!important;line-height:1.05!important;}
+
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
@@ -2793,7 +2800,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.5.9 • Chrímata • Global Corporate Actions Calendar")
+    st.caption("V20.6.0 • Chrímata • Sidebar Alignment & Dividend Calendar Fix")
 
 
 
