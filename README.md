@@ -1,4 +1,4 @@
-## V20.5.3 — Search Bar Alignment & Header Polish
+## V20.5.4 — Search Bar Alignment & Header Polish
 
 - Removes the redundant “Global security search” label above the professional autocomplete.
 - Rebalances the Home search/country strip into one compact aligned row.
@@ -114,8 +114,16 @@ Replaces the Home search selectbox with compact inline result buttons that appea
 - Preserved V20.4.9 market data, flags, charts, calendars, sectors, indices, watchlist and intelligence widgets.
 
 
-## V20.5.3 — Navigation State Fix
+## V20.5.4 — Navigation State Fix
 - Session navigation is authoritative after initial deep-link resolution.
 - Sidebar Home works on the first click and cannot be overridden by a stale `chr_nav` query parameter.
 - Active ticker state is independent of page navigation and is retained when returning Home.
 - Home removes only the URL ticker deep-link, not the remembered analysed security.
+
+
+## V20.5.4 — Single Router Navigation Rebuild
+- `chr_primary_nav` is the sole authority for the visible workspace.
+- Active ticker state is independent from navigation state.
+- Removed legacy URL/query-param routing and hidden sidebar security selector from runtime navigation.
+- Search selection commits a security once, then routes to Company Command Centre.
+- Home and every sidebar destination override the visible page on the first click while retaining the last analysed security.

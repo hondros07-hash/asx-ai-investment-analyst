@@ -2431,12 +2431,8 @@ except Exception:
     _search_key=""
 _query_default=st.session_state.get("mia_search_query","ZIP")
 ticker=resolve_bare_ticker(str(_query_default).strip().upper()) if str(_query_default).strip() else "ZIP.AX"
-try:
-    _ticker_qp=st.query_params.get('ticker')
-    if _ticker_qp:
-        ticker=resolve_listing(str(_ticker_qp)); st.session_state['mia_search_query']=ticker
-except Exception:
-    pass
+# V20.5.4: ticker query params no longer control runtime navigation or selection.
+# The active security lives only in session state after initial app startup.
 
 st.markdown(r"""
 <style>
@@ -2506,7 +2502,7 @@ button[kind="headerNoPadding"],
 /* V20.5.1 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
-/* V20.5.3 — compact single-row Home search/header alignment. */
+/* V20.5.4 — compact single-row Home search/header alignment. */
 .st-key-country_nav_v2027{margin-top:0!important;padding-top:0!important;}
 .st-key-country_nav_v2027 [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:44px!important;}
 .st-key-country_nav_v2027 .stButton>button{height:44px!important;min-height:44px!important;}
@@ -2529,24 +2525,17 @@ NAV_ITEMS=[
 ("Research Tools","research","⊕  Research Tools","Valuation, Forecasts & Scores"),
 ("Settings","settings","⚙  Settings","Preferences")]
 _valid_nav={x[0] for x in NAV_ITEMS}
-# V20.5.3 — navigation state fix. Session state is the single authority after
-# initial page load; query params are deep-link inputs, not a value that can
-# continually override a sidebar click on every Streamlit rerun.
-if "chr_nav_initialized_v2053" not in st.session_state:
-    try:
-        _qp_nav=st.query_params.get("chr_nav")
-        if isinstance(_qp_nav,list): _qp_nav=_qp_nav[0] if _qp_nav else None
-    except Exception:
-        _qp_nav=None
-    primary=_qp_nav if _qp_nav in _valid_nav else st.session_state.get("chr_primary_nav","Home")
-    if primary not in _valid_nav: primary="Home"
-    st.session_state["chr_primary_nav"]=primary
-    st.session_state["chr_nav_initialized_v2053"]=True
-else:
-    primary=st.session_state.get("chr_primary_nav","Home")
-    if primary not in _valid_nav:
-        primary="Home"
-        st.session_state["chr_primary_nav"]="Home"
+# V20.5.4 — single-router navigation rebuild.
+# chr_primary_nav is the ONLY authority for the visible workspace. URL/query
+# parameters are deliberately not consulted during reruns, preventing a stale
+# ticker or deep-link from forcing the Command Centre back open.
+if "chr_router_v2054_ready" not in st.session_state:
+    st.session_state["chr_primary_nav"]="Home"
+    st.session_state["chr_router_v2054_ready"]=True
+primary=st.session_state.get("chr_primary_nav","Home")
+if primary not in _valid_nav:
+    primary="Home"
+    st.session_state["chr_primary_nav"]="Home"
 
 from urllib.parse import quote as _urlquote
 def _chr_nav_svg(name):
@@ -2577,42 +2566,19 @@ for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
         # retained for a later return to Company Command Centre.
         st.session_state["chr_primary_nav"]=_key
         primary=_key
-        try:
-            st.query_params["chr_nav"]=_key
-            if _key=="Home" and "ticker" in st.query_params:
-                del st.query_params["ticker"]
-        except Exception:
-            pass
+        # Navigation never mutates ticker state and never depends on URL state.
         st.rerun()
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
-# Keep company selection available without changing the clean reference navigation rail.
-with st.sidebar.expander("Current company", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v209")
-    st.session_state["mia_search_query"]=query
-    matches=search_securities(query,_search_key)
-    if not matches.empty:
-        _labels=[]; _map={}
-        for i,r in matches.head(20).iterrows():
-            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}"; _labels.append(lab); _map[lab]=i
-        _chosen=st.selectbox("Matching listings",_labels,key="mia_symbol_result_v206",label_visibility="collapsed")
-        _row=matches.loc[_map[_chosen]]; ticker=resolve_listing(_row["Symbol"],_row.get("Exchange",""),_row.get("Country",""))
-        st.caption(f"Current · {ticker} · {str(_row.get('Company') or identity(ticker))}")
-    else:
-        ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"; st.caption(f"Current · {ticker}")
+# V20.5.4: removed the legacy hidden sidebar company selector. It was a second
+# security-selection state machine and could silently compete with global search.
 
-# V20.5.1 — one authoritative active-security state. A selected search result/URL
-# always wins over stale sidebar/session selections. Merely typing does not commit it.
-try:
-    _url_ticker=st.query_params.get("ticker")
-    if isinstance(_url_ticker,list): _url_ticker=_url_ticker[0] if _url_ticker else None
-except Exception:
-    _url_ticker=None
-if _url_ticker:
-    ticker=str(_url_ticker).strip().upper()
+# V20.5.4 — active security is independent from page routing.
+# It persists when the user returns Home, but can never choose the visible page.
+if st.session_state.get("chr_active_ticker"):
+    ticker=str(st.session_state["chr_active_ticker"]).strip().upper()
+else:
     st.session_state["chr_active_ticker"]=ticker
-elif st.session_state.get("chr_active_ticker"):
-    ticker=st.session_state["chr_active_ticker"]
 
 SUBPAGES={
 "Company Command Centre":["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence","News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
@@ -2766,7 +2732,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.4</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3235,16 +3201,13 @@ def _home_live_search_fragment():
     )
     if selected:
         resolved=_resolve_professional_search_label(selected)
-        if resolved:
+        if resolved and resolved != st.session_state.get("chr_last_search_commit_v2054"):
             # Search text/suggestions are deliberately separate from the loaded company.
             st.session_state["mia_search_query"]=resolved
             st.session_state["chr_active_ticker"]=resolved
             st.session_state["chr_primary_nav"]="Company Command Centre"
-            try:
-                st.query_params["chr_nav"]="Company Command Centre"
-                st.query_params["ticker"]=resolved
-            except Exception:
-                pass
+            # Consume each autocomplete selection once; URL state is not used.
+            st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
 
 def render_global_market_overview():
