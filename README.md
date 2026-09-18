@@ -1,4 +1,4 @@
-Chrímata V20.3.9 — Interactive ASX Sectors
+Chrímata V20.4.0 — Interactive ASX Sectors
 
 # Chrímata V20.3.3 — Reference Market Section & In-Place Chart Fix
 
@@ -18,7 +18,7 @@ Provider/exchange delays still apply.
 - Market datasets remain provider-driven and use the existing 60-second provider cache.
 
 
-## V20.3.9 — Interactive ASX Sectors
+## V20.4.0 — Interactive ASX Sectors
 - Removes the 1-second Streamlit fragment rerun that caused constant page jumping/reflow.
 - Keeps the market clock live with a client-side 1-second clock update instead.
 - Locks the embedded market component and chart to fixed geometry so the chart does not shrink or stretch after interaction.
@@ -26,15 +26,19 @@ Provider/exchange delays still apply.
 - Restores a compact plot area with Y-axis values, adaptive X-axis labels, gridlines and previous-close reference.
 - Provider data is refreshed on normal app reruns; provider caching remains in place.
 
-### V20.3.9 sector widget
+### V20.4.0 sector widget
 - Shows all configured ASX GICS sector proxies (up to all 11 sectors) in the market dashboard.
 - Day / Week / Month / YTD are real client-side controls and update without a Streamlit page reload.
 - Sector rows re-rank strongest to weakest for the selected period.
 - Week, Month and YTD performance are calculated from provider history for each selected horizon; Day uses the latest provider change.
 
 
-## V20.3.9 — ASX Sectors Widget Rebuild
+## V20.4.0 — ASX Sectors Widget Rebuild
 - Always renders all 11 configured ASX sector rows; provider gaps show as N/A instead of disappearing.
 - Rebuilt Day / Week / Month / YTD segmented controls with Chrímata styling.
 - Period switching remains client-side with no full Streamlit page rerun.
 - Sector rows rank strongest to weakest for the selected period, with unavailable rows retained at the bottom.
+
+
+## V20.4.0 — Complete ASX Sector Data Engine
+Australia sector performance now uses the official S&P/ASX 200 GICS sector index symbols first (XFJ, XHJ, XRE/XPJ, XNJ, XTJ, XSJ, XDJ, XUJ, XMJ, XIJ, XEJ). If the active provider cannot resolve an official index, Chrímata falls back to an ASX proxy or an equal-weight basket of representative ASX shares. Day, Week, Month and YTD remain client-side interactive in the sector widget.
