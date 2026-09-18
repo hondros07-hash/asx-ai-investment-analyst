@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from zoneinfo import ZoneInfo
 from datetime import datetime, time, timedelta
 import pandas as pd
@@ -2891,6 +2892,45 @@ def _chr_metric_card(label,ticker,q,accent=None,chart_key=None,selected=False,ma
     spark=_chr_svg_line(q.get("series",[]),300,46,accent or col,"#eaf8f1" if up else "#fff0f0")
     return f'<a class="chr-metric-link" href="{href}" target="_self" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
 
+def _chr_smooth_market_component(market, instruments, selected_key, range_map, sectors, index_table, date_label, time_label, zone_label, market_status, market_is_open, updated_label, panel_asof):
+    # V20.3.6 client-side market cards and chart; preloaded states avoid Streamlit reruns.
+    import json, html as _html
+    datasets={}
+    for label,ticker,base,accent in instruments:
+        per={}
+        for rng,(period,interval) in range_map.items():
+            q=overview_quote(ticker,period,interval) or base
+            if q:
+                up=float(q.get('change',0) or 0)>=0
+                col='#10b96a' if up else '#ef4444'; fill='#e7f8ef' if up else '#fff0f0'
+                per[rng]={
+                    'label':label,'ticker':ticker,'last':f"{q['last']:,.2f}",
+                    'change':f"{q.get('change',0):+,.2f}",'pct':f"{q.get('pct',0):+.2%}",
+                    'up':up,'prev':f"{q.get('prev'):,.2f}" if np.isfinite(_mia_num(q.get('prev'))) else '—',
+                    'svg':_chr_big_market_svg(q.get('series',[]),q.get('prev'),760,230,col,fill)
+                }
+        datasets[ticker]=per
+    cards=[]
+    for label,ticker,q,accent in instruments:
+        if not q: continue
+        up=float(q.get('change',0) or 0)>=0; col='#0aa968' if up else '#ef4444'; arrow='▲' if up else '▼'
+        spark=_chr_svg_line(q.get('series',[]),300,46,accent or col,'#eaf8f1' if up else '#fff0f0')
+        cards.append(f'''<button class="metric {'selected' if ticker==selected_key else ''}" data-key="{_html.escape(ticker)}"><div class="mname">{_html.escape(label)} <span>{_html.escape(ticker)}</span></div><div class="mrow"><strong>{q['last']:,.2f}</strong><em style="color:{col}">{arrow} {q.get('change',0):+,.2f} ({q.get('pct',0):+.2%})</em></div><div class="spark">{spark}</div></button>''')
+    sector_html=''.join(f'<div class="srow"><span>{_html.escape(n)}</span><i><b class="{"up" if v>=0 else "down"}" style="width:{max(3,abs(v)/max([abs(x) for _,x in sectors] or [1])*100):.0f}%"></b></i><em class="{"pos" if v>=0 else "neg"}">{v:+.2f}%</em></div>' for n,v in sectors[:11])
+    flag={'Australia':'🇦🇺','United States':'🇺🇸','United Kingdom':'🇬🇧','Japan':'🇯🇵','Hong Kong':'🇭🇰','Canada':'🇨🇦'}.get(market,'')
+    data=json.dumps(datasets).replace('</','<\\/')
+    selected=json.dumps(selected_key)
+    status_cls='open' if market_is_open else 'closed'
+    comp=f'''<div id="smooth"><style>
+    *{{box-sizing:border-box}}body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0c2747;background:transparent}}.head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}.title{{font-size:20px;font-weight:800}}.meta{{font-size:11px;color:#617b9b;margin-top:4px}}.status.open{{color:#08a66a;font-weight:700}}.status.closed{{color:#ef4444;font-weight:700}}.live{{color:#08a66a;font-weight:700}}.quote{{text-align:right;font:italic 13px Georgia,serif;color:#395a82}}.quote small{{display:block;font:700 10px Arial;color:#0d78e8;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}}.metric{{appearance:none;text-align:left;background:#fff;border:1px solid #d8e5f2;border-radius:5px;height:104px;padding:8px 11px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}}.metric:hover{{transform:translateY(-1px);border-color:#1687ff}}.metric.selected{{border:2px solid #1687ff;box-shadow:0 0 0 2px rgba(22,135,255,.08)}}.mname{{font-size:14px;font-weight:700}}.mname span{{font-size:13px;color:#6780a2}}.mrow{{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:2px}}.mrow strong{{font-size:23px}}.mrow em{{font-size:11px;font-style:normal;font-weight:700}}.spark{{height:38px;margin-top:3px}}.spark svg{{width:100%;height:100%}}.grid{{display:grid;grid-template-columns:1.48fr .86fr 1.10fr;gap:6px;margin-top:6px}}.panel{{height:336px;border:1px solid #d8e5f2;border-radius:5px;background:#fff;overflow:hidden}}.panel header{{height:36px;padding:7px 9px;font-size:14px;font-weight:700;border-bottom:1px solid #e5edf5;display:flex;align-items:center;gap:8px}}.ranges{{margin-left:auto;display:flex;gap:7px}}.ranges button{{border:0;background:#f2f6fb;color:#17365d;font:700 10px Arial;padding:5px 11px;border-radius:4px;cursor:pointer}}.ranges button.active{{background:#087cf0;color:#fff}}.chart{{height:299px;padding:15px 72px 28px 18px;position:relative;opacity:1;transition:opacity .16s ease}}.chart.fade{{opacity:.25}}.chart svg{{width:100%;height:100%}}.last{{position:absolute;right:10px;top:48%;font-size:15px;font-weight:800}}.prev{{position:absolute;right:8px;bottom:43px;font-size:10px;color:#35547c}}.prev b{{font-size:11px}}.xaxis{{position:absolute;left:76px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px}}.tabs{{display:flex;margin:4px 8px;background:#f1f6fb;border-radius:4px;overflow:hidden}}.tabs span{{flex:1;text-align:center;padding:4px 2px;font-size:9px;border-right:1px solid #dce7f2}}.tabs .active{{background:#087cf0;color:#fff}}.sectors{{padding:4px 8px}}.srow{{display:grid;grid-template-columns:132px 1fr 52px;height:22px;gap:6px;align-items:center;font-size:10px}}.srow i{{height:10px;background:#edf2f7;border-radius:3px;overflow:hidden}}.srow i b{{display:block;height:100%;border-radius:3px}}.srow i .up{{background:#0aa968}}.srow i .down{{background:#ef4444}}.pos{{color:#0aa968}}.neg{{color:#ef4444}}.asof{{font-size:9px;color:#6a80a0;margin-left:auto}}table{{width:100%;border-collapse:collapse;font-size:10px}}th,td{{padding:4px 6px;height:25px;border-bottom:1px solid #e5edf5;text-align:left}}th{{background:#edf3f9}}@media(max-width:900px){{.metrics{{grid-template-columns:repeat(2,1fr)}}.grid{{grid-template-columns:1fr}}.panel{{height:auto;min-height:300px}}}}
+    </style><div class="head"><div><div class="title">{flag} Market Overview – {_html.escape(market)}</div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle"></span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg"></div><strong class="last" id="last"></strong><div class="prev">Prev Close<br><b id="prev"></b></div><div class="xaxis" id="xaxis"></div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="sectors">{sector_html}</div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
+    const root=document.getElementById('smooth'), data={data}; let key={selected}, range='1D';
+    const labels={{'1D':['10:00','11:00','12:00','13:00','14:00','15:00','16:00'],'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}};
+    function draw(animate=true){{const q=(data[key]||{{}})[range]||Object.values(data[key]||{{}})[0];if(!q)return;const c=root.querySelector('#chart');if(animate)c.classList.add('fade');setTimeout(()=>{{root.querySelector('#ctitle').textContent=q.label+' '+(range==='1D'?'Intraday Chart':range+' Chart');root.querySelector('#svg').innerHTML=q.svg;root.querySelector('#last').textContent=q.last;root.querySelector('#last').style.color=q.up?'#10b96a':'#ef4444';root.querySelector('#prev').textContent=q.prev;root.querySelector('#xaxis').innerHTML=(labels[range]||[]).map(x=>'<span>'+x+'</span>').join('');c.classList.remove('fade');}},animate?120:0)}}
+    root.querySelectorAll('.metric').forEach(b=>b.addEventListener('click',()=>{{key=b.dataset.key;root.querySelectorAll('.metric').forEach(x=>x.classList.toggle('selected',x===b));draw(true)}}));root.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{{range=b.dataset.range;root.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));draw(true)}}));draw(false);
+    </script></div>'''
+    return comp
+
 def _chr_table(rows, headers, fmts=None):
     fmts=fmts or {}; h=''.join(f'<th>{x}</th>' for x in headers); body=[]
     for r in rows:
@@ -2951,10 +2991,12 @@ section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
   padding-bottom:132px!important;
 }
-/* V20.3.5 reference-match market section */
+/* V20.3.6 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
-/* V20.3.5 — pixel-density pass based on the approved market-section reference. */
+/* V20.3.6 — the top market section is rendered as a client-side component to eliminate white rerun flashes. */
+.chr-home-v2020>.chr-overview-head,.chr-home-v2020>.chr-metrics,.chr-home-v2020>.chr-grid-main{display:none!important;}
+/* V20.3.6 — pixel-density pass based on the approved market-section reference. */
 .chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
 .chr-metrics{gap:6px!important}
 .chr-metric{height:104px!important;padding:8px 11px!important;border-radius:5px!important}
@@ -3023,7 +3065,7 @@ def render_global_market_overview():
 
     # V20.3.1 — top metric cards drive the large chart below. Query parameters make
     # the interaction reliable in Streamlit without opening a modal or a new tab.
-    # V20.3.5 — keep the headline strip intentionally limited to five cards.
+    # V20.3.6 — keep the headline strip intentionally limited to five cards.
     # The broader index universe remains available in the Indices panel below.
     if market == 'Australia':
         primary_index_names = ['S&P/ASX 200', 'All Ordinaries', 'All Technology']
@@ -3109,6 +3151,8 @@ def render_global_market_overview():
         panel_asof = "At Close " + data_asof.strftime("%d/%m (%Z)") if not market_is_open else "Live · " + data_asof.strftime("%-I:%M %p %Z")
     except Exception:
         panel_asof = "Live" if market_is_open else "At Close"
+    smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
+    components.html(smooth_html,height=500,scrolling=False)
     html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
@@ -4459,7 +4503,7 @@ Create a secret named `TWELVE_DATA_API_KEY` in your Streamlit app settings. Do n
 V10.2 intentionally keeps the provider layer separate from the analytical engines, so a licensed ASX provider can later replace the ASX prototype feed without rewriting the application.""")
 
 
-# V20.3.5 labelled chart axis alignment.
+# V20.3.6 labelled chart axis alignment.
 st.markdown(r"""<style>
 .chr-chart-axis{left:76px!important;right:76px!important;bottom:7px!important;font-size:10px!important;font-weight:500!important;}
 .chr-bigchart svg{overflow:visible!important;}

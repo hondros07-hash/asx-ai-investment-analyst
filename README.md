@@ -9,3 +9,10 @@ Chrímata V20.3.3 — Reference Market Section Rebuild
 - Preserves the dynamic clock, 60-second provider refresh, flags, navigation, sidebar, banner and scrolling fixes.
 
 Provider/exchange delays still apply.
+
+## V20.3.6 — Smooth Interactive Market Chart
+- Replaces query-link chart switching with a client-side embedded market component.
+- Five headline cards switch the existing chart without a Streamlit page rerun or white-screen flash.
+- 1D / 5D / 1M / 3M / 1Y / 5Y switch in place with a short fade transition.
+- Keeps labelled Y-axis values, adaptive X-axis labels, previous-close reference, sectors and expanded indices.
+- Market datasets remain provider-driven and use the existing 60-second provider cache.
