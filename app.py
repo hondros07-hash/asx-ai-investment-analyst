@@ -1,4 +1,6 @@
 import streamlit as st
+from zoneinfo import ZoneInfo
+from datetime import datetime, time, timedelta
 import pandas as pd
 import numpy as np
 import re
@@ -343,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.0 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.1 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -394,6 +396,15 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-grid-main{display:grid;grid-template-columns:1.55fr .92fr 1.05fr;gap:8px;margin-top:8px}.chr-grid-mid{display:grid;grid-template-columns:1fr 1fr .82fr 1fr;gap:8px;margin-top:8px}.chr-grid-bottom{display:grid;grid-template-columns:1.1fr 1.15fr .95fr;gap:8px;margin-top:8px}.chr-panel{overflow:hidden}.chr-panel>header{height:34px;padding:8px 10px;font-size:14px;font-weight:800;border-bottom:1px solid #e5edf5;display:flex;justify-content:space-between}.chr-panel>header span{font-size:10px;font-weight:600;color:#5d7594}.chr-panel>footer{font-size:10px;color:#0874df;text-align:right;padding:5px 10px;background:#f8fbff}.chr-chart-panel{min-height:270px}.chr-bigchart{height:235px;padding:12px 12px 5px;position:relative;background:repeating-linear-gradient(0deg,#fff,#fff 44px,#e9eff6 45px),repeating-linear-gradient(90deg,transparent,transparent 78px,#e9eff6 79px)}.chr-bigchart svg{width:100%;height:100%}.chr-bigchart>strong{position:absolute;right:12px;top:50%;font-size:13px;color:#0aa968}.chr-sectors{padding:7px 9px}.chr-sector-row{display:grid;grid-template-columns:105px 1fr 55px;align-items:center;gap:7px;height:21px;font-size:10px}.chr-sector-row>span{text-align:right;color:#1475d1}.chr-sector-row i{height:11px;background:#f2f5f9;position:relative}.chr-sector-row i b{display:block;height:100%}.chr-sector-row i b.up{background:#12b76a}.chr-sector-row i b.down{background:#ef4444}.chr-sector-row em{font-style:normal;text-align:right}.pos{color:#0aa968!important}.neg{color:#ef4444!important}
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
+
+/* V20.2.1 — remove the residual Streamlit slot below the fixed banner. */
+div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
+div.element-container:has(.chrimata-exact-hero),
+div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
+.chr-country-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0;}
+.chr-country-row .stButton button{background:#fff!important;color:#10264b!important;border:1px solid #d7e2ef!important;box-shadow:none!important;font-size:11px!important;font-weight:700!important;padding:0 8px!important;}
+.chr-country-row .stButton button:hover{border-color:#1687ff!important;color:#0874df!important;}
+.chr-market-status{font-weight:700;color:#315276}.chr-market-status.open{color:#0a9d62}.chr-market-status.closed{color:#b45309}
 @media(max-width:1200px){.chr-metrics{grid-template-columns:repeat(3,1fr)}.chr-grid-main{grid-template-columns:1fr 1fr}.chr-grid-main .chr-chart-panel{grid-column:1/-1}.chr-grid-mid{grid-template-columns:1fr 1fr}.chr-grid-bottom{grid-template-columns:1fr 1fr}.chr-overview-quote{display:none}}
 </style>
 """,unsafe_allow_html=True)
@@ -2453,7 +2464,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2615,20 +2626,50 @@ def _chr_table(rows, headers, fmts=None):
         body.append('<tr>'+''.join(cells)+'</tr>')
     return '<table class="chr-table"><thead><tr>'+h+'</tr></thead><tbody>'+''.join(body)+'</tbody></table>'
 
+def _chr_market_clock(market):
+    specs={
+      "Australia":("Australia/Sydney", time(10,0), time(16,0), "AEST/AEDT"),
+      "United States":("America/New_York", time(9,30), time(16,0), "ET"),
+      "United Kingdom":("Europe/London", time(8,0), time(16,30), "UK"),
+      "Japan":("Asia/Tokyo", time(9,0), time(15,30), "JST"),
+      "Hong Kong":("Asia/Hong_Kong", time(9,30), time(16,0), "HKT"),
+      "Canada":("America/Toronto", time(9,30), time(16,0), "ET"),
+    }
+    tzname,op,cl,abbr=specs.get(market,specs["Australia"]); tz=ZoneInfo(tzname); now=datetime.now(tz)
+    wd=now.weekday(); open_dt=datetime.combine(now.date(),op,tzinfo=tz); close_dt=datetime.combine(now.date(),cl,tzinfo=tz)
+    is_open=wd<5 and open_dt <= now < close_dt
+    if is_open: status=f"Market Open · Closes {close_dt.strftime('%-I:%M %p')}"
+    else:
+        d=now.date()
+        if wd<5 and now < open_dt: nxt=open_dt
+        else:
+            d=d+timedelta(days=1)
+            while d.weekday()>=5: d+=timedelta(days=1)
+            nxt=datetime.combine(d,op,tzinfo=tz)
+        status=f"Market Closed · Opens {nxt.strftime('%a %-I:%M %p')}"
+    zone=now.tzname() or abbr
+    return now.strftime('%A, %d %B %Y'), now.strftime('%-I:%M %p'), zone, status, is_open
+
 def render_global_market_overview():
-    search_col,button_col,market_col=st.columns([1.45,.25,2.15],gap="small")
-    with search_col: home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2020")
-    with button_col: st.button("Search",use_container_width=True,key="home_search_button_v2020")
+    if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
+    search_col,button_col,market_col=st.columns([1.35,.23,2.15],gap="small")
+    with search_col: home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2021")
+    with button_col: st.button("Search",use_container_width=True,key="home_search_button_v2021")
     with market_col:
-        labels=[f"{MARKET_OVERVIEW_CONFIG[m]['flag']}  {m}" for m in MARKET_OVERVIEW_CONFIG]; picked=st.radio("Market",labels,horizontal=True,index=0,key="home_market_v2020",label_visibility="collapsed"); market=next((m for m in MARKET_OVERVIEW_CONFIG if picked.endswith(m)),"Australia")
-    cfg=MARKET_OVERVIEW_CONFIG[market]
+        names=list(MARKET_OVERVIEW_CONFIG.keys()); cols=st.columns(6,gap="small")
+        for c,m in zip(cols,names):
+            with c:
+                flag=MARKET_OVERVIEW_CONFIG[m]["flag"]; active=(st.session_state.home_market_v2021==m)
+                if st.button(f"{flag}  {m}",key=f"country_{m}_v2021",use_container_width=True,type="primary" if active else "secondary"):
+                    st.session_state.home_market_v2021=m; st.rerun()
+    market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     if home_q:
         mm=search_securities(home_q,_search_key)
         if not mm.empty:
             r=mm.iloc[0]; st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
-    cq=overview_quote(cfg.get('currency'),'5d') if cfg.get('currency') else None; gq=overview_quote('GC=F','5d'); date_label=pd.Timestamp.now().strftime('%A, %d %B %Y')
+    cq=overview_quote(cfg.get('currency'),'5d') if cfg.get('currency') else None; gq=overview_quote('GC=F','5d'); date_label, time_label, zone_label, market_status, market_is_open=_chr_market_clock(market)
     cards=''.join(_chr_metric_card(a,b,q) for a,b,q in idx)+_chr_metric_card('AUD/USD' if market=='Australia' else cfg.get('currency','FX'),cfg.get('currency',''),cq,'#1687ff')+_chr_metric_card('Gold (USD)','',gq,'#f5b400')
     main_label,main_t,main_q=idx[0]; chart_svg=_chr_svg_line(main_q['series'] if main_q else [],760,230,"#10b96a","#e7f8ef"); last_txt=f"{main_q['last']:,.2f}" if main_q else '—'
     sectors=[]
@@ -2668,7 +2709,7 @@ def render_global_market_overview():
         q=overview_quote(t,'5d')
         if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
     glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span>{cfg['flag']}</span> Market Overview – {market}</div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; Latest available market data</div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span>{cfg['flag']}</span> Market Overview – {market}</div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
