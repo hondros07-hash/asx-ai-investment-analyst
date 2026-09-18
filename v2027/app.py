@@ -2431,6 +2431,12 @@ except Exception:
     _search_key=""
 _query_default=st.session_state.get("mia_search_query","ZIP")
 ticker=resolve_bare_ticker(str(_query_default).strip().upper()) if str(_query_default).strip() else "ZIP.AX"
+try:
+    _ticker_qp=st.query_params.get('ticker')
+    if _ticker_qp:
+        ticker=resolve_listing(str(_ticker_qp)); st.session_state['mia_search_query']=ticker
+except Exception:
+    pass
 
 st.markdown(r"""
 <style>
@@ -2690,7 +2696,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2855,24 +2861,46 @@ def render_change_table(df,n=8):
 
 @st.cache_data(ttl=1800)
 def overview_calendar(tickers):
+    """Best-effort upcoming earnings/dividend calendar from the active Yahoo feed.
+    Returns only future/current events; unavailable fields remain unavailable rather than invented.
+    """
     earnings=[]; dividends=[]
     now=pd.Timestamp.now(tz="UTC")
-    for t in list(tickers)[:12]:
+    for t in list(tickers)[:20]:
         try:
-            tk=yf.Ticker(t); m=tk.info or {}; nm=m.get("shortName") or t
-            cal=tk.calendar
-            if isinstance(cal,dict):
-                ed=cal.get("Earnings Date") or cal.get("EarningsDate")
-                if isinstance(ed,(list,tuple)) and ed:ed=ed[0]
-                if ed is not None:
-                    dt=pd.to_datetime(ed,utc=True,errors="coerce")
-                    if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat()})
+            tk=yf.Ticker(t); m=tk.info or {}; nm=m.get("longName") or m.get("shortName") or t
+            # Earnings: prefer the dedicated earnings-date endpoint, then calendar fallback.
+            found_earn=False
+            try:
+                edf=tk.get_earnings_dates(limit=4)
+                if edf is not None and not edf.empty:
+                    for ed in edf.index:
+                        dt=pd.to_datetime(ed,utc=True,errors="coerce")
+                        if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):
+                            earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat(),"Type":"Earnings"}); found_earn=True; break
+            except Exception: pass
+            if not found_earn:
+                try:
+                    cal=tk.calendar
+                    if isinstance(cal,dict):
+                        ed=cal.get("Earnings Date") or cal.get("EarningsDate")
+                        if isinstance(ed,(list,tuple)) and ed: ed=ed[0]
+                        dt=pd.to_datetime(ed,utc=True,errors="coerce")
+                        if pd.notna(dt) and dt>=now-pd.Timedelta(days=1): earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat(),"Type":"Earnings"})
+                except Exception: pass
+            # Dividend: Yahoo exposes a future ex-dividend timestamp for many securities.
             ex=m.get("exDividendDate")
             if ex:
                 dt=pd.to_datetime(ex,unit="s",utc=True,errors="coerce")
-                if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):dividends.append({"Ticker":t,"Company":nm,"Ex-Date":dt.date().isoformat(),"Dividend Rate":m.get("dividendRate")})
-        except Exception:pass
-    return pd.DataFrame(earnings),pd.DataFrame(dividends)
+                if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):
+                    pay=m.get("dividendDate")
+                    pdt=pd.to_datetime(pay,unit="s",utc=True,errors="coerce") if pay else pd.NaT
+                    dividends.append({"Ticker":t,"Company":nm,"Ex-Date":dt.date().isoformat(),"Pay-Date":pdt.date().isoformat() if pd.notna(pdt) else "—","Dividend Rate":m.get("dividendRate")})
+        except Exception: pass
+    e=pd.DataFrame(earnings); d=pd.DataFrame(dividends)
+    if not e.empty: e=e.drop_duplicates(subset=["Ticker","Date"]).sort_values("Date")
+    if not d.empty: d=d.drop_duplicates(subset=["Ticker","Ex-Date"]).sort_values("Ex-Date")
+    return e,d
 
 def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"):
     try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
@@ -2949,13 +2977,13 @@ def _chr_smooth_market_component(market, instruments, selected_key, range_map, s
     # V20.4.0: all 11 ASX sectors use official sector indices first, then provider-safe fallbacks.
     sector_data = sectors if isinstance(sectors, dict) else {'Day': sectors, 'Week': sectors, 'Month': sectors, 'YTD': sectors}
     sector_json=json.dumps({k:[{'name':n,'value':(float(v) if v is not None and np.isfinite(_mia_num(v)) else None)} for n,v in vals] for k,vals in sector_data.items()}).replace('</','<\/')
-    flag={'Australia':'🇦🇺','United States':'🇺🇸','United Kingdom':'🇬🇧','Japan':'🇯🇵','Hong Kong':'🇭🇰','Canada':'🇨🇦'}.get(market,'')
+    flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     data=json.dumps(datasets).replace('</','<\\/')
     selected=json.dumps(selected_key)
     status_cls='open' if market_is_open else 'closed'
     comp=f'''<div id="smooth"><style>
-    *{{box-sizing:border-box}}body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0c2747;background:transparent}}.head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}.title{{font-size:20px;font-weight:800}}.meta{{font-size:11px;color:#617b9b;margin-top:4px}}.status.open{{color:#08a66a;font-weight:700}}.status.closed{{color:#ef4444;font-weight:700}}.live{{color:#08a66a;font-weight:700}}.quote{{text-align:right;font:italic 13px Georgia,serif;color:#395a82}}.quote small{{display:block;font:700 10px Arial;color:#0d78e8;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}}.metric{{appearance:none;text-align:left;background:#fff;border:1px solid #d8e5f2;border-radius:5px;height:104px;padding:8px 11px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}}.metric:hover{{transform:translateY(-1px);border-color:#1687ff}}.metric.selected{{border:2px solid #1687ff;box-shadow:0 0 0 2px rgba(22,135,255,.08)}}.mname{{font-size:14px;font-weight:700}}.mname span{{font-size:13px;color:#6780a2}}.mrow{{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:2px}}.mrow strong{{font-size:23px}}.mrow em{{font-size:11px;font-style:normal;font-weight:700}}.spark{{height:38px;margin-top:3px}}.spark svg{{width:100%;height:100%}}.grid{{display:grid;grid-template-columns:1.48fr .86fr 1.10fr;gap:6px;margin-top:6px}}.panel{{height:336px;border:1px solid #d8e5f2;border-radius:5px;background:#fff;overflow:hidden}}.panel header{{height:36px;padding:7px 9px;font-size:14px;font-weight:700;border-bottom:1px solid #e5edf5;display:flex;align-items:center;gap:8px}}.ranges{{margin-left:auto;display:flex;gap:7px}}.ranges button{{border:0;background:#f2f6fb;color:#17365d;font:700 10px Arial;padding:5px 11px;border-radius:4px;cursor:pointer}}.ranges button.active{{background:#087cf0;color:#fff}}.chart{{height:299px;position:relative;overflow:hidden;opacity:1;transition:opacity .16s ease}}.chart.fade{{opacity:.72}}#svg{{position:absolute;left:12px;right:70px;top:10px;bottom:32px;height:auto;min-height:0}}#svg svg{{display:block;width:100%;height:100%}}.last{{position:absolute;right:10px;top:46%;font-size:15px;font-weight:800}}.prev{{position:absolute;right:8px;bottom:43px;font-size:10px;color:#35547c}}.prev b{{font-size:11px}}.xaxis{{position:absolute;left:70px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;line-height:12px}}.tabs{{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 8px 4px;background:#f1f6fb;border-radius:5px;overflow:hidden;height:30px}}.tabs button{{appearance:none;border:0;border-right:1px solid #dce7f2;background:transparent;color:#17365d;text-align:center;padding:5px 2px;font:500 11px Arial;cursor:pointer}}.tabs button:last-child{{border-right:0}}.tabs button.active{{background:#087cf0;color:#fff;font-weight:700}}.sectors{{padding:3px 8px 5px}}.srow{{display:grid;grid-template-columns:132px 1fr 52px;height:22px;gap:6px;align-items:center;font-size:10px}}.srow i{{height:10px;background:#edf2f7;border-radius:3px;overflow:hidden}}.srow i b{{display:block;height:100%;border-radius:3px}}.srow i .up{{background:#0aa968}}.srow i .down{{background:#ef4444}}.pos{{color:#0aa968}}.neg{{color:#ef4444}}.asof{{font-size:9px;color:#6a80a0;margin-left:auto}}table{{width:100%;border-collapse:collapse;font-size:10px}}th,td{{padding:4px 6px;height:25px;border-bottom:1px solid #e5edf5;text-align:left}}th{{background:#edf3f9}}@media(max-width:900px){{.metrics{{grid-template-columns:repeat(2,1fr)}}.grid{{grid-template-columns:1fr}}.panel{{height:auto;min-height:300px}}}}
-    </style><div class="head"><div><div class="title">{flag} Market Overview – {_html.escape(market)}</div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle"></span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg"></div><strong class="last" id="last"></strong><div class="prev">Prev Close<br><b id="prev"></b></div><div class="xaxis" id="xaxis"></div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
+    *{{box-sizing:border-box}}body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0c2747;background:transparent}}.head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}.title{{font-size:20px;font-weight:800;display:flex;align-items:center;gap:9px}}.hflag{{display:inline-block;width:36px;height:24px;flex:0 0 36px;background-size:100% 100%;background-repeat:no-repeat;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.10)}}.hflag.au{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012469'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='white' stroke-width='5'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='%23C8102E' stroke-width='2'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='white' stroke-width='8'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='%23C8102E' stroke-width='4'/%3E%3Ccircle cx='45' cy='27' r='3' fill='white'/%3E%3Ccircle cx='48' cy='10' r='2' fill='white'/%3E%3C/svg%3E")}}.hflag.us{{background:linear-gradient(#b22234 0 14%,white 14% 28%,#b22234 28% 42%,white 42% 56%,#b22234 56% 70%,white 70% 84%,#b22234 84%)}}.hflag.gb{{background:#012169}}.hflag.jp{{background:radial-gradient(circle at center,#bc002d 0 30%,white 31%)}}.hflag.hk{{background:#de2910}}.hflag.ca{{background:linear-gradient(90deg,#d80621 0 24%,white 24% 76%,#d80621 76%)}}.meta{{font-size:11px;color:#617b9b;margin-top:4px}}.status.open{{color:#08a66a;font-weight:700}}.status.closed{{color:#ef4444;font-weight:700}}.live{{color:#08a66a;font-weight:700}}.quote{{text-align:right;font:italic 13px Georgia,serif;color:#395a82}}.quote small{{display:block;font:700 10px Arial;color:#0d78e8;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}}.metric{{appearance:none;text-align:left;background:#fff;border:1px solid #d8e5f2;border-radius:5px;height:104px;padding:8px 11px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}}.metric:hover{{transform:translateY(-1px);border-color:#1687ff}}.metric.selected{{border:2px solid #1687ff;box-shadow:0 0 0 2px rgba(22,135,255,.08)}}.mname{{font-size:14px;font-weight:700}}.mname span{{font-size:13px;color:#6780a2}}.mrow{{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:2px}}.mrow strong{{font-size:23px}}.mrow em{{font-size:11px;font-style:normal;font-weight:700}}.spark{{height:38px;margin-top:3px}}.spark svg{{width:100%;height:100%}}.grid{{display:grid;grid-template-columns:1.48fr .86fr 1.10fr;gap:6px;margin-top:6px}}.panel{{height:336px;border:1px solid #d8e5f2;border-radius:5px;background:#fff;overflow:hidden}}.panel header{{height:36px;padding:7px 9px;font-size:14px;font-weight:700;border-bottom:1px solid #e5edf5;display:flex;align-items:center;gap:8px}}.ranges{{margin-left:auto;display:flex;gap:7px}}.ranges button{{border:0;background:#f2f6fb;color:#17365d;font:700 10px Arial;padding:5px 11px;border-radius:4px;cursor:pointer}}.ranges button.active{{background:#087cf0;color:#fff}}.chart{{height:299px;position:relative;overflow:hidden;opacity:1;transition:opacity .16s ease}}.chart.fade{{opacity:.72}}#svg{{position:absolute;left:12px;right:70px;top:10px;bottom:32px;height:auto;min-height:0}}#svg svg{{display:block;width:100%;height:100%}}.last{{position:absolute;right:10px;top:46%;font-size:15px;font-weight:800}}.prev{{position:absolute;right:8px;bottom:43px;font-size:10px;color:#35547c}}.prev b{{font-size:11px}}.xaxis{{position:absolute;left:70px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;line-height:12px}}.tabs{{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 8px 4px;background:#f1f6fb;border-radius:5px;overflow:hidden;height:30px}}.tabs button{{appearance:none;border:0;border-right:1px solid #dce7f2;background:transparent;color:#17365d;text-align:center;padding:5px 2px;font:500 11px Arial;cursor:pointer}}.tabs button:last-child{{border-right:0}}.tabs button.active{{background:#087cf0;color:#fff;font-weight:700}}.sectors{{padding:3px 8px 5px}}.srow{{display:grid;grid-template-columns:132px 1fr 52px;height:22px;gap:6px;align-items:center;font-size:10px}}.srow i{{height:10px;background:#edf2f7;border-radius:3px;overflow:hidden}}.srow i b{{display:block;height:100%;border-radius:3px}}.srow i .up{{background:#0aa968}}.srow i .down{{background:#ef4444}}.pos{{color:#0aa968}}.neg{{color:#ef4444}}.asof{{font-size:9px;color:#6a80a0;margin-left:auto}}table{{width:100%;border-collapse:collapse;font-size:10px}}th,td{{padding:4px 6px;height:25px;border-bottom:1px solid #e5edf5;text-align:left}}th{{background:#edf3f9}}@media(max-width:900px){{.metrics{{grid-template-columns:repeat(2,1fr)}}.grid{{grid-template-columns:1fr}}.panel{{height:auto;min-height:300px}}}}
+    </style><div class="head"><div><div class="title"><span class="hflag {flag_class}" aria-label="{_html.escape(market)} flag"></span><span>Market Overview – {_html.escape(market)}</span></div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle"></span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg"></div><strong class="last" id="last"></strong><div class="prev">Prev Close<br><b id="prev"></b></div><div class="xaxis" id="xaxis"></div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
     const root=document.getElementById('smooth'), data={data}; let key={selected}, range='1D';
     const labels={{'1D':['10:00','11:00','12:00','13:00','14:00','15:00','16:00'],'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}};
     function draw(animate=true){{const q=(data[key]||{{}})[range]||Object.values(data[key]||{{}})[0];if(!q)return;const c=root.querySelector('#chart');if(animate)c.classList.add('fade');setTimeout(()=>{{root.querySelector('#ctitle').textContent=q.label+' '+(range==='1D'?'Intraday Chart':range+' Chart');root.querySelector('#svg').innerHTML=q.svg;root.querySelector('#last').textContent=q.last;root.querySelector('#last').style.color=q.up?'#10b96a':'#ef4444';root.querySelector('#prev').textContent=q.prev;root.querySelector('#xaxis').innerHTML=(labels[range]||[]).map(x=>'<span>'+x+'</span>').join('');c.classList.remove('fade');}},animate?120:0)}}
@@ -3054,6 +3082,16 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
+/* V20.4.6 — global security search + interactive bottom intelligence widgets */
+.chr-grid-bottom>.chr-panel{min-height:290px!important}
+.chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
+.chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
+.chr-cal-tabs>label,.chr-global-tabs>label,.gm-btn{display:inline-block;padding:5px 11px;margin:0 3px 7px 0;border:1px solid #d8e5f2;border-radius:5px;background:#f1f6fb;color:#17365d;font-size:10px;font-weight:700;cursor:pointer}
+#cal-earn:checked+label,#cal-ipo:checked+label,.gm-btn.active{background:#087cf0!important;color:#fff!important;border-color:#087cf0!important}.gm-btn{cursor:pointer}
+.cal-earn-panel,.cal-ipo-panel,.gm-panel{display:none;margin:0 -9px}
+#cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
+#gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
+
 /* Prevent the final dashboard row from disappearing behind the viewport/taskbar. */
 .chr-home-v2020{padding-bottom:28px!important;margin-bottom:24px!important;}
 </style>
@@ -3071,9 +3109,35 @@ def render_global_market_overview():
         pass
     search_col,button_col,market_col=st.columns([1.35,.23,2.15],gap="small")
     with search_col:
-        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2021")
+        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2046")
+    home_matches=search_securities(home_q,_search_key) if home_q and len(home_q.strip())>=1 else pd.DataFrame()
+    chosen_row=None
+    if home_matches is not None and not home_matches.empty:
+        # V20.4.6: global results remain global. Exact ticker matches are ranked
+        # by security_search; the selected dashboard country never hides listings.
+        hm=home_matches.copy().head(30)
+        labels=[]; rows={}
+        for i,r in hm.iterrows():
+            country=r.get('Country','') or 'Global'
+            currency=r.get('Currency','')
+            extra=' · '.join(x for x in [str(r.get('Exchange','')),str(country),str(currency)] if x)
+            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {extra}"
+            labels.append(lab); rows[lab]=r
+        choice=st.selectbox("Search matches",labels,label_visibility="collapsed",key="home_search_match_v2046")
+        chosen_row=rows.get(choice)
     with button_col:
-        st.button("Search",use_container_width=True,key="home_search_button_v2021",type="primary")
+        do_home_search=st.button("Search",use_container_width=True,key="home_search_button_v2046",type="primary")
+    if do_home_search:
+        if chosen_row is not None:
+            resolved=resolve_listing(chosen_row.get('Symbol',''),chosen_row.get('Exchange',''),chosen_row.get('Country',''))
+            st.session_state['mia_search_query']=resolved
+            st.session_state['chr_primary_nav']='Company Command Centre'
+            try:
+                st.query_params['chr_nav']='Company Command Centre'; st.query_params['ticker']=resolved
+            except Exception: pass
+            st.rerun()
+        elif home_q.strip():
+            st.warning("No matching security found. Try a ticker, company name, or exchange-listed symbol.")
     with market_col:
         names=list(MARKET_OVERVIEW_CONFIG.keys())
         # V20.3.0: native Streamlit buttons keep navigation in the SAME app/tab.
@@ -3231,15 +3295,33 @@ def render_global_market_overview():
     vix_text='—' if vv is None else f'{vv:.1f}'
     earnings,dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
     if dividends is not None and not dividends.empty:
-        for _,r in dividends.head(4).iterrows():divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Ex-Date':r.get('Ex-Date',''),'Amount':r.get('Dividend Rate','—')})
-    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dates returned.</div>'; earnrows=[]
+        for _,r in dividends.head(5).iterrows():
+            amt=r.get('Dividend Rate','—'); amt='—' if pd.isna(amt) else f'{float(amt):.2f}'
+            divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:23],'Ex-Date':r.get('Ex-Date',''),'Pay-Date':r.get('Pay-Date','—'),'Amount':amt})
+    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dividend dates were returned by the active provider for this market universe.</div>'
+    earnrows=[]
     if earnings is not None and not earnings.empty:
-        for _,r in earnings.head(4).iterrows():earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
-    earn_t=_chr_table(earnrows,['Code','Company','Date']) if earnrows else '<div class="chr-empty">Provider IPO/earnings calendar not configured.</div>'; glob=[]
-    for label,t in list(GLOBAL_MARKET_TICKERS.items())[:5]:
-        q=overview_quote(t,'5d')
-        if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
-    glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
+        for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
+    earnings_table=_chr_table(earnrows,['Code','Company','Date']) if earnrows else '<div class="chr-empty">No upcoming earnings dates were returned by the active provider.</div>'
+    earn_t='<div class="chr-cal-tabs"><input checked type="radio" name="calmode" id="cal-earn"><label for="cal-earn">Earnings</label><input type="radio" name="calmode" id="cal-ipo"><label for="cal-ipo">IPOs</label><div class="cal-earn-panel">'+earnings_table+'</div><div class="cal-ipo-panel"><div class="chr-empty">IPO calendar feed is not available from the configured market-data provider.</div></div></div>'
+    global_groups={
+      'US':[('S&P 500','^GSPC'),('Nasdaq 100','^NDX'),('Dow Jones','^DJI')],
+      'UK':[('FTSE 100','^FTSE'),('FTSE 250','^FTMC'),('FTSE All-Share','^FTAS')],
+      'Japan':[('Nikkei 225','^N225'),('TOPIX','^TOPX'),('JPX-Nikkei 400','^JPXNK400')],
+      'HK':[('Hang Seng','^HSI'),('Hang Seng China Ent.','^HSCE'),('Hang Seng Tech','^HSTECH')],
+      'Canada':[('TSX Composite','^GSPTSE'),('TSX 60','^TX60'),('TSX Venture','^SPCDNX')]
+    }
+    gp=[]
+    for gi,(gname,items) in enumerate(global_groups.items()):
+        rows=[]
+        for label,t in items:
+            q=overview_quote(t,'5d')
+            if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
+        tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
+        gp.append((gname,tbl))
+    gbuttons=''.join(f'<button type="button" class="gm-btn {"active" if i==0 else ""}" data-gm="{i}">{name}</button>' for i,(name,_) in enumerate(gp))
+    panels=''.join(f'<div class="gm-panel gm-{i}-panel" style="display:{"block" if i==0 else "none"}">{tbl}</div>' for i,(_,tbl) in enumerate(gp))
+    glob_t='<div class="chr-global-tabs"><div class="gm-buttons">'+gbuttons+'</div>'+panels+'''<script>(function(){const box=document.currentScript.parentElement;box.querySelectorAll('.gm-btn').forEach(b=>b.addEventListener('click',()=>{box.querySelectorAll('.gm-btn').forEach(x=>x.classList.toggle('active',x===b));box.querySelectorAll('.gm-panel').forEach((p,i)=>p.style.display=(String(i)===b.dataset.gm?'block':'none'));}));})();</script></div>'''
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     # V20.4.0: no timed Streamlit fragment rerun. The market clock updates client-side so the page remains stationary.
     # Show the latest market-data timestamp separately so users can distinguish the live clock from quote freshness.
@@ -3254,7 +3336,7 @@ def render_global_market_overview():
         panel_asof = "Live" if market_is_open else "At Close"
     smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
     components.html(smooth_html,height=496,scrolling=False)
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX) <span>CBOE · US</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ Elevated 20–30</span><span>■ High &gt;30</span></div></div><p class="chr-note">CBOE VIX: S&amp;P 500 options-implied volatility over roughly the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX) <span>CBOE · US</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ Elevated 20–30</span><span>■ High &gt;30</span></div></div><p class="chr-note">CBOE VIX: S&amp;P 500 options-implied volatility over roughly the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):

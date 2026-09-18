@@ -63,3 +63,11 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 - Restored Windows-safe market-heading flag artwork inside the smooth market component.
 - Stabilised Global Markets tabs with local client-side state so each country changes on the first click.
 - Retains provider-backed dividends and earnings with explicit unavailable states; no fabricated calendar events.
+
+
+## V20.4.6 — Global Security Search Engine
+- Landing-page search now searches globally rather than filtering by the selected dashboard country.
+- Exact ticker matches rank first across supported exchanges, followed by ticker-prefix and company-name matches.
+- Results identify symbol, company, exchange, country and currency where available.
+- Selecting a listing passes its exchange-specific symbol to Company Command Centre.
+- Yahoo Finance search, Twelve Data symbol search (when configured), aliases and validated exchange-qualified fallbacks are merged without fabricating listings.

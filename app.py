@@ -2696,7 +2696,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3082,7 +3082,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.4.5 — interactive bottom intelligence widgets */
+/* V20.4.6 — global security search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3109,22 +3109,24 @@ def render_global_market_overview():
         pass
     search_col,button_col,market_col=st.columns([1.35,.23,2.15],gap="small")
     with search_col:
-        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2045")
+        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2046")
     home_matches=search_securities(home_q,_search_key) if home_q and len(home_q.strip())>=1 else pd.DataFrame()
     chosen_row=None
     if home_matches is not None and not home_matches.empty:
-        # Prefer the selected country's exchange, but keep global matches available.
-        pref={'Australia':'ASX','United States':'NASDAQ','United Kingdom':'LSE','Japan':'TSE','Hong Kong':'HKEX','Canada':'TSX'}.get(st.session_state.home_market_v2021,'')
-        hm=home_matches.copy(); hm['_pref']=hm.get('Exchange','').astype(str).str.upper().str.contains(pref,regex=False) if pref else False
-        hm=hm.sort_values('_pref',ascending=False).head(12)
+        # V20.4.6: global results remain global. Exact ticker matches are ranked
+        # by security_search; the selected dashboard country never hides listings.
+        hm=home_matches.copy().head(30)
         labels=[]; rows={}
         for i,r in hm.iterrows():
-            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}"
+            country=r.get('Country','') or 'Global'
+            currency=r.get('Currency','')
+            extra=' · '.join(x for x in [str(r.get('Exchange','')),str(country),str(currency)] if x)
+            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {extra}"
             labels.append(lab); rows[lab]=r
-        choice=st.selectbox("Search matches",labels,label_visibility="collapsed",key="home_search_match_v2045")
+        choice=st.selectbox("Search matches",labels,label_visibility="collapsed",key="home_search_match_v2046")
         chosen_row=rows.get(choice)
     with button_col:
-        do_home_search=st.button("Search",use_container_width=True,key="home_search_button_v2045",type="primary")
+        do_home_search=st.button("Search",use_container_width=True,key="home_search_button_v2046",type="primary")
     if do_home_search:
         if chosen_row is not None:
             resolved=resolve_listing(chosen_row.get('Symbol',''),chosen_row.get('Exchange',''),chosen_row.get('Country',''))
