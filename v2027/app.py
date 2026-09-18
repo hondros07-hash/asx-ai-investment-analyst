@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.7 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.6 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.7 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.2.6 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -411,7 +411,7 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 
 st.markdown(r"""
 <style>
-/* V20.2.7 — approved reference alignment */
+/* V20.2.6 — approved reference alignment */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 /* Make the banner host consume zero document height; the image itself stays fixed. */
 .chrimata-terminal-hero.chrimata-exact-hero{
@@ -462,7 +462,7 @@ div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!import
 
 st.markdown(r"""
 <style>
-/* V20.2.7 — exact reference search/country strip */
+/* V20.2.6 — exact reference search/country strip */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] > section.main,
@@ -2544,7 +2544,7 @@ SUBPAGES={
 "Settings":["Workspace Settings","Data & Production","Broker Connections"]}
 
 
-# V20.2.7 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
+# V20.2.6 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -2579,7 +2579,7 @@ div.element-container:has(.chrimata-exact-hero){height:0!important;min-height:0!
 </style>
 """,unsafe_allow_html=True)
 
-# V20.2.7 — final reference-header override. Must remain after all legacy theme CSS.
+# V20.2.6 — final reference-header override. Must remain after all legacy theme CSS.
 st.markdown(r"""
 <style>
 /* Main canvas: exactly below banner, never reserve another banner-height spacer. */
@@ -2611,7 +2611,7 @@ section[data-testid="stMain"],.stMain{top:108px!important;}
 """,unsafe_allow_html=True)
 
 
-# V20.2.7 — reference header strip: hard neutralise the remaining phantom 108px flow gap.
+# V20.2.6 — reference header strip: hard neutralise the remaining phantom 108px flow gap.
 st.markdown(r"""
 <style>
 /* The deployed Streamlit DOM still contributes one legacy 108px top offset.
@@ -2632,37 +2632,6 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 </style>
 """,unsafe_allow_html=True)
 
-
-# V20.2.7 — same-tab country buttons with embedded SVG flags (Windows-safe).
-st.markdown(r"""
-<style>
-/* Country nav is native Streamlit interaction, but visually matches the reference. */
-.st-key-country_nav_v2027 [data-testid="stHorizontalBlock"]{gap:7px!important;}
-.st-key-country_nav_v2027 .stButton>button{
-  height:40px!important;min-height:40px!important;background:#fff!important;color:#10264b!important;
-  border:1px solid #d7e2ef!important;border-radius:5px!important;box-shadow:0 1px 3px rgba(16,38,75,.06)!important;
-  font-size:11px!important;font-weight:700!important;white-space:nowrap!important;padding:0 7px!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;
-}
-.st-key-country_nav_v2027 .stButton>button[kind="primary"]{background:#fff!important;color:#0874df!important;border:2px solid #1687ff!important;}
-.st-key-country_nav_v2027 .stButton>button:hover{background:#f8fbff!important;color:#0874df!important;border-color:#1687ff!important;}
-.st-key-country_nav_v2027 .stButton>button:before{content:"";display:inline-block;width:25px;height:17px;flex:0 0 25px;background-size:100% 100%;background-repeat:no-repeat;background-position:center;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
-/* Australia */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(1) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012469'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='white' stroke-width='5'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='%23C8102E' stroke-width='2'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='white' stroke-width='8'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='%23C8102E' stroke-width='4'/%3E%3Ccircle cx='45' cy='27' r='3' fill='white'/%3E%3Ccircle cx='48' cy='10' r='2' fill='white'/%3E%3C/svg%3E");}
-/* United States */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(2) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Cg fill='%23B22234'%3E%3Crect y='0' width='60' height='3.1'/%3E%3Crect y='6.2' width='60' height='3.1'/%3E%3Crect y='12.4' width='60' height='3.1'/%3E%3Crect y='18.6' width='60' height='3.1'/%3E%3Crect y='24.8' width='60' height='3.1'/%3E%3Crect y='31' width='60' height='3.1'/%3E%3Crect y='37.2' width='60' height='2.8'/%3E%3C/g%3E%3Crect width='26' height='21.7' fill='%233C3B6E'/%3E%3Cg fill='white'%3E%3Ccircle cx='5' cy='5' r='1'/%3E%3Ccircle cx='12' cy='5' r='1'/%3E%3Ccircle cx='19' cy='5' r='1'/%3E%3Ccircle cx='8' cy='11' r='1'/%3E%3Ccircle cx='16' cy='11' r='1'/%3E%3Ccircle cx='5' cy='17' r='1'/%3E%3Ccircle cx='12' cy='17' r='1'/%3E%3Ccircle cx='19' cy='17' r='1'/%3E%3C/g%3E%3C/svg%3E");}
-/* United Kingdom */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(3) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012169'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='white' stroke-width='8'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='%23C8102E' stroke-width='3'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='white' stroke-width='13'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='%23C8102E' stroke-width='7'/%3E%3C/svg%3E");}
-/* Japan */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(4) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Ccircle cx='30' cy='20' r='11' fill='%23BC002D'/%3E%3C/svg%3E");}
-/* Hong Kong */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(5) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23DE2910'/%3E%3Cpath d='M30 20c7-12 13-4 5 1 10-2 11 7 1 6 7 7-1 12-5 3-2 10-11 7-6-2-10 4-13-5-3-8-1-7 6-10 2-2 8-1 12 2z' fill='white'/%3E%3C/svg%3E");}
-/* Canada */
-.st-key-country_nav_v2027 [data-testid="stColumn"]:nth-child(6) button:before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Crect width='14' height='40' fill='%23D80621'/%3E%3Crect x='46' width='14' height='40' fill='%23D80621'/%3E%3Cpath d='M30 7l3 7 5-2-3 6 5 2-7 4 1 7h-8l1-7-7-4 5-2-3-6 5 2z' fill='%23D80621'/%3E%3C/svg%3E");}
-@media(max-width:1200px){.st-key-country_nav_v2027 .stButton>button{font-size:10px!important;gap:4px!important}.st-key-country_nav_v2027 .stButton>button:before{width:21px;height:14px;flex-basis:21px}}
-</style>
-""",unsafe_allow_html=True)
-
 PAGE_MAP={
 ("Company Command Centre","Overview"):"Company Command Centre",("Company Command Centre","Fundamentals"):"Fundamentals",("Company Command Centre","Valuation"):"Valuation",("Company Command Centre","Technical"):"Technical",("Company Command Centre","Announcements & Reports"):"Announcements & Reports",("Company Command Centre","Report Intelligence"):"Report Intelligence",("Company Command Centre","News & Events"):"News & Events",("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",("Company Command Centre","Quant"):"Quant",("Company Command Centre","Forecasts"):"Forecasts",
 ("Portfolio","Portfolio Overview"):"Portfolio",("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",("Portfolio","Risk Centre"):"Risk Centre",("Portfolio","Watchlist"):"Watchlist",("Portfolio","Paper Portfolio"):"Paper Portfolio",
@@ -2679,10 +2648,10 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.7</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
-    # V20.2.7: paint the banner on the app viewport itself. This creates NO Streamlit
+    # V20.2.6: paint the banner on the app viewport itself. This creates NO Streamlit
     # element in document flow, eliminating the phantom 100+ px spacer below it.
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
@@ -2875,7 +2844,7 @@ def _chr_market_clock(market):
 
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
-    # V20.2.7: query-param navigation uses plain HTML anchors instead of Streamlit
+    # V20.2.6: query-param navigation uses plain HTML anchors instead of Streamlit
     # buttons. This guarantees the reference white-card appearance and real flags.
     try:
         qp_market=st.query_params.get("market")
@@ -2890,21 +2859,13 @@ def render_global_market_overview():
         st.button("Search",use_container_width=True,key="home_search_button_v2021",type="primary")
     with market_col:
         names=list(MARKET_OVERVIEW_CONFIG.keys())
-        # V20.2.7: native Streamlit buttons keep navigation in the SAME app/tab.
-        # Actual flag artwork is injected by CSS below (not Windows emoji), so flags
-        # render consistently on Windows/Chrome.
-        with st.container(key="country_nav_v2027"):
-            nav_cols=st.columns(6,gap="small")
-            for i,m in enumerate(names):
-                with nav_cols[i]:
-                    if st.button(m, key=f"country_v2027_{i}", use_container_width=True,
-                                 type="primary" if st.session_state.home_market_v2021==m else "secondary"):
-                        st.session_state.home_market_v2021=m
-                        try:
-                            st.query_params["market"]=m
-                        except Exception:
-                            pass
-                        st.rerun()
+        links=[]
+        for m in names:
+            flag=MARKET_OVERVIEW_CONFIG[m]["flag"]
+            active=(st.session_state.home_market_v2021==m)
+            cls=" active" if active else ""
+            links.append(f'<a class="chr-country-link{cls}" href="?market={m.replace(" ", "%20")}"><span class="chr-flag">{flag}</span><span>{m}</span></a>')
+        st.markdown('<div class="chr-country-nav">'+''.join(links)+'</div>',unsafe_allow_html=True)
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     if home_q:
         mm=search_securities(home_q,_search_key)
