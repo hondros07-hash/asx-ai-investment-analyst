@@ -129,8 +129,12 @@ Replaces the Home search selectbox with compact inline result buttons that appea
 - Home and every sidebar destination override the visible page on the first click while retaining the last analysed security.
 
 
-## V20.5.5 — Live 60-Second Market Chart
+## V20.5.6 — Live 60-Second Market Chart
 - Home market workspace refreshes every 60 seconds using a Streamlit timed fragment, leaving the application shell/sidebar in place.
 - 1D charts request 1-minute provider bars so an open market can extend on each refresh.
 - Quote/chart cache remains capped at 60 seconds; selected market, chart instrument and timeframe persist across refreshes.
 - Data freshness remains subject to the configured provider and exchange entitlements/delays.
+
+
+## V20.5.6 — Global True-Time Intraday Charts
+1D charts now preserve provider timestamps, convert them to the selected exchange timezone, stop at the latest bar that has actually occurred, and retain 60-second refreshes while the dashboard is open. Historical ranges are unchanged.

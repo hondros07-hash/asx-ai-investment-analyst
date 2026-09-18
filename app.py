@@ -2480,7 +2480,7 @@ button[kind="headerNoPadding"],
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 
 
-/* V20.5.5 sidebar restoration: white icons/titles + gold secondary copy. */
+/* V20.5.6 sidebar restoration: white icons/titles + gold secondary copy. */
 [data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
 [data-testid="stSidebar"] .stButton>button{width:100%!important;height:46px!important;min-height:46px!important;margin:0!important;padding:4px 8px 14px 42px!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;font-size:11px!important;line-height:1.05!important;border-radius:6px!important;box-shadow:none!important;position:relative!important;}
 [data-testid="stSidebar"] .stButton>button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
@@ -2499,7 +2499,7 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
 .st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
 
-/* V20.5.5 — keep provider/cache execution details out of the product UI. */
+/* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
 /* V20.5.4 — compact single-row Home search/header alignment. */
@@ -2948,8 +2948,67 @@ def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"
     line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"2,{height-2} "+line+f" {width-2},{height-2}"
     return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none"><polygon points="{area}" fill="{fill}"/><polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
 
-def _chr_big_market_svg(series, prev=None, width=760, height=230, stroke="#12b76a", fill="#e8f8ef"):
-    """Reference-style market chart with visible Y-axis values and gridlines."""
+def _chr_market_session_spec(market):
+    return {
+        "Australia": ("Australia/Sydney", time(10,0), time(16,0)),
+        "United States": ("America/New_York", time(9,30), time(16,0)),
+        "United Kingdom": ("Europe/London", time(8,0), time(16,30)),
+        "Japan": ("Asia/Tokyo", time(9,0), time(15,30)),
+        "Hong Kong": ("Asia/Hong_Kong", time(9,30), time(16,0)),
+        "Canada": ("America/Toronto", time(9,30), time(16,0)),
+    }.get(market, ("Australia/Sydney", time(10,0), time(16,0)))
+
+
+def _chr_true_intraday(q, market):
+    """Return today's actually elapsed exchange-local bars and full-session geometry metadata."""
+    if not q: return q
+    try:
+        vals=pd.to_numeric(pd.Series(q.get('series',[])),errors='coerce')
+        raw_times=list(q.get('times',[]))
+        n=min(len(vals),len(raw_times))
+        if n < 2: return q
+        vals=vals.iloc[:n].reset_index(drop=True)
+        idx=pd.to_datetime(raw_times[:n],errors='coerce',utc=True)
+        tzname,op,cl=_chr_market_session_spec(market); tz=ZoneInfo(tzname)
+        local=idx.tz_convert(tz)
+        now=datetime.now(tz)
+        # Yahoo can return more than one calendar date around boundaries. Use the latest
+        # trading date not in the future, and never plot a timestamp that has not occurred.
+        dates=[x.date() for x in local if pd.notna(x) and x <= now]
+        if not dates: return q
+        trade_date=max(dates)
+        open_dt=datetime.combine(trade_date,op,tzinfo=tz); close_dt=datetime.combine(trade_date,cl,tzinfo=tz)
+        mask=[]
+        for x in local:
+            ok=pd.notna(x) and x.date()==trade_date and open_dt <= x <= close_dt
+            if trade_date==now.date(): ok=ok and x <= now
+            mask.append(ok)
+        pos=[i for i,b in enumerate(mask) if b and np.isfinite(_mia_num(vals.iloc[i]))]
+        if len(pos)<2: return q
+        qq=dict(q)
+        qq['series']=[float(vals.iloc[i]) for i in pos]
+        qq['times']=[local[i].isoformat() for i in pos]
+        qq['session_open']=open_dt.isoformat(); qq['session_close']=close_dt.isoformat()
+        qq['latest_bar']=local[pos[-1]].isoformat()
+        return qq
+    except Exception:
+        return q
+
+
+def _chr_intraday_labels(market):
+    tzname,op,cl=_chr_market_session_spec(market)
+    base=datetime(2000,1,1,op.hour,op.minute)
+    end=datetime(2000,1,1,cl.hour,cl.minute)
+    out=[]
+    # 7 evenly spaced labels across the actual exchange session.
+    for i in range(7):
+        d=base+(end-base)*(i/6)
+        out.append(d.strftime('%H:%M'))
+    return out
+
+
+def _chr_big_market_svg(series, prev=None, width=760, height=230, stroke="#12b76a", fill="#e8f8ef", times=None, session_open=None, session_close=None):
+    """Reference chart; intraday X positions use real exchange timestamps, never redistributed bars."""
     try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
     except Exception: vals=[]
     if len(vals)<2: return ""
@@ -2957,12 +3016,27 @@ def _chr_big_market_svg(series, prev=None, width=760, height=230, stroke="#12b76
     if np.isfinite(_mia_num(prev)): finite.append(float(prev))
     lo0,hi0=min(finite),max(finite); raw=max(hi0-lo0,abs(hi0)*.001,.01)
     pad=raw*.10; lo=lo0-pad; hi=hi0+pad; span=(hi-lo) or 1.0
-    # Reserve 58 SVG units for the left-axis labels so they never overlap the plot.
     left=58; right=4; top=5; bottom=5; pw=width-left-right; ph=height-top-bottom
+    xfracs=None
+    if times and session_open and session_close:
+        try:
+            ti=pd.to_datetime(list(times),errors='coerce',utc=True)
+            so=pd.Timestamp(session_open); sc=pd.Timestamp(session_close)
+            if so.tzinfo is None: so=so.tz_localize('UTC')
+            else: so=so.tz_convert('UTC')
+            if sc.tzinfo is None: sc=sc.tz_localize('UTC')
+            else: sc=sc.tz_convert('UTC')
+            denom=max((sc-so).total_seconds(),1)
+            xfracs=[min(1,max(0,(x-so).total_seconds()/denom)) for x in ti[:len(vals)]]
+            if len(xfracs)!=len(vals): xfracs=None
+        except Exception: xfracs=None
     pts=[]
     for i,v in enumerate(vals):
-        x=left+pw*i/(len(vals)-1); y=top+ph-(ph*(v-lo)/span); pts.append((x,y))
-    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"{left},{top+ph} "+line+f" {left+pw},{top+ph}"
+        frac=xfracs[i] if xfracs is not None else i/(len(vals)-1)
+        x=left+pw*frac; y=top+ph-(ph*(v-lo)/span); pts.append((x,y))
+    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts)
+    # Fill only to the latest actual bar, not to the market close.
+    area=f"{pts[0][0]:.1f},{top+ph} "+line+f" {pts[-1][0]:.1f},{top+ph}"
     grid=[]; labels=[]
     for i in range(5):
         frac=i/4; y=top+ph*frac; val=hi-span*frac
@@ -2994,6 +3068,8 @@ def _chr_smooth_market_component(market, instruments, selected_key, range_map, s
         per={}
         for rng,(period,interval) in range_map.items():
             q=overview_quote(ticker,period,interval) or base
+            if q and rng=='1D':
+                q=_chr_true_intraday(q, market)
             if q:
                 up=float(q.get('change',0) or 0)>=0
                 col='#10b96a' if up else '#ef4444'; fill='#e7f8ef' if up else '#fff0f0'
@@ -3001,7 +3077,7 @@ def _chr_smooth_market_component(market, instruments, selected_key, range_map, s
                     'label':label,'ticker':ticker,'last':f"{q['last']:,.2f}",
                     'change':f"{q.get('change',0):+,.2f}",'pct':f"{q.get('pct',0):+.2%}",
                     'up':up,'prev':f"{q.get('prev'):,.2f}" if np.isfinite(_mia_num(q.get('prev'))) else '—',
-                    'svg':_chr_big_market_svg(q.get('series',[]),q.get('prev'),760,230,col,fill)
+                    'svg':_chr_big_market_svg(q.get('series',[]),q.get('prev'),760,230,col,fill,q.get('times') if rng=='1D' else None,q.get('session_open') if rng=='1D' else None,q.get('session_close') if rng=='1D' else None)
                 }
         datasets[ticker]=per
     cards=[]
@@ -3025,9 +3101,9 @@ def _chr_smooth_market_component(market, instruments, selected_key, range_map, s
     _initial_col=('#10b96a' if (_initial or {}).get('up',True) else '#ef4444')
     comp=f'''<div id="smooth"><style>
     *{{box-sizing:border-box}}body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0c2747;background:transparent}}.head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}.title{{font-size:20px;font-weight:800;display:flex;align-items:center;gap:9px}}.hflag{{display:inline-block;width:36px;height:24px;flex:0 0 36px;background-size:100% 100%;background-repeat:no-repeat;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.10)}}.hflag.au{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012469'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='white' stroke-width='5'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='%23C8102E' stroke-width='2'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='white' stroke-width='8'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='%23C8102E' stroke-width='4'/%3E%3Ccircle cx='45' cy='27' r='3' fill='white'/%3E%3Ccircle cx='48' cy='10' r='2' fill='white'/%3E%3C/svg%3E")}}.hflag.us{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Cg fill='%23B22234'%3E%3Crect y='0' width='60' height='3.1'/%3E%3Crect y='6.2' width='60' height='3.1'/%3E%3Crect y='12.4' width='60' height='3.1'/%3E%3Crect y='18.6' width='60' height='3.1'/%3E%3Crect y='24.8' width='60' height='3.1'/%3E%3Crect y='31' width='60' height='3.1'/%3E%3Crect y='37.2' width='60' height='2.8'/%3E%3C/g%3E%3Crect width='26' height='21.7' fill='%233C3B6E'/%3E%3Cg fill='white'%3E%3Ccircle cx='5' cy='5' r='1'/%3E%3Ccircle cx='12' cy='5' r='1'/%3E%3Ccircle cx='19' cy='5' r='1'/%3E%3Ccircle cx='8' cy='11' r='1'/%3E%3Ccircle cx='16' cy='11' r='1'/%3E%3Ccircle cx='5' cy='17' r='1'/%3E%3Ccircle cx='12' cy='17' r='1'/%3E%3Ccircle cx='19' cy='17' r='1'/%3E%3C/g%3E%3C/svg%3E")}}.hflag.gb{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012169'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='white' stroke-width='8'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='%23C8102E' stroke-width='3'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='white' stroke-width='13'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='%23C8102E' stroke-width='7'/%3E%3C/svg%3E")}}.hflag.jp{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Ccircle cx='30' cy='20' r='11' fill='%23BC002D'/%3E%3C/svg%3E")}}.hflag.hk{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23DE2910'/%3E%3Cpath d='M30 20c7-12 13-4 5 1 10-2 11 7 1 6 7 7-1 12-5 3-2 10-11 7-6-2-10 4-13-5-3-8-1-7 6-10 2-2 8-1 12 2z' fill='white'/%3E%3C/svg%3E")}}.hflag.ca{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Crect width='14' height='40' fill='%23D80621'/%3E%3Crect x='46' width='14' height='40' fill='%23D80621'/%3E%3Cpath d='M30 7l3 7 5-2-3 6 5 2-7 4 1 7h-8l1-7-7-4 5-2-3-6 5 2z' fill='%23D80621'/%3E%3C/svg%3E")}}.meta{{font-size:11px;color:#617b9b;margin-top:4px}}.status.open{{color:#08a66a;font-weight:700}}.status.closed{{color:#ef4444;font-weight:700}}.live{{color:#08a66a;font-weight:700}}.quote{{text-align:right;font:italic 13px Georgia,serif;color:#395a82}}.quote small{{display:block;font:700 10px Arial;color:#0d78e8;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}}.metric{{appearance:none;text-align:left;background:#fff;border:1px solid #d8e5f2;border-radius:5px;height:104px;padding:8px 11px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}}.metric:hover{{transform:translateY(-1px);border-color:#1687ff}}.metric.selected{{border:2px solid #1687ff;box-shadow:0 0 0 2px rgba(22,135,255,.08)}}.mname{{font-size:14px;font-weight:700}}.mname span{{font-size:13px;color:#6780a2}}.mrow{{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:2px}}.mrow strong{{font-size:23px}}.mrow em{{font-size:11px;font-style:normal;font-weight:700}}.spark{{height:38px;margin-top:3px}}.spark svg{{width:100%;height:100%}}.grid{{display:grid;grid-template-columns:1.48fr .86fr 1.10fr;gap:6px;margin-top:6px}}.panel{{height:336px;border:1px solid #d8e5f2;border-radius:5px;background:#fff;overflow:hidden}}.panel header{{height:36px;padding:7px 9px;font-size:14px;font-weight:700;border-bottom:1px solid #e5edf5;display:flex;align-items:center;gap:8px}}.ranges{{margin-left:auto;display:flex;gap:7px}}.ranges button{{border:0;background:#f2f6fb;color:#17365d;font:700 10px Arial;padding:5px 11px;border-radius:4px;cursor:pointer}}.ranges button.active{{background:#087cf0;color:#fff}}.chart{{height:299px;position:relative;overflow:hidden;opacity:1;transition:opacity .16s ease}}.chart.fade{{opacity:.72}}#svg{{position:absolute;left:12px;right:70px;top:10px;bottom:32px;height:auto;min-height:0}}#svg svg{{display:block;width:100%;height:100%}}.last{{position:absolute;right:10px;top:46%;font-size:15px;font-weight:800}}.prev{{position:absolute;right:8px;bottom:43px;font-size:10px;color:#35547c}}.prev b{{font-size:11px}}.xaxis{{position:absolute;left:70px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;line-height:12px}}.tabs{{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 8px 4px;background:#f1f6fb;border-radius:5px;overflow:hidden;height:30px}}.tabs button{{appearance:none;border:0;border-right:1px solid #dce7f2;background:transparent;color:#17365d;text-align:center;padding:5px 2px;font:500 11px Arial;cursor:pointer}}.tabs button:last-child{{border-right:0}}.tabs button.active{{background:#087cf0;color:#fff;font-weight:700}}.sectors{{padding:3px 8px 5px}}.srow{{display:grid;grid-template-columns:132px 1fr 52px;height:22px;gap:6px;align-items:center;font-size:10px}}.srow i{{height:10px;background:#edf2f7;border-radius:3px;overflow:hidden}}.srow i b{{display:block;height:100%;border-radius:3px}}.srow i .up{{background:#0aa968}}.srow i .down{{background:#ef4444}}.pos{{color:#0aa968}}.neg{{color:#ef4444}}.asof{{font-size:9px;color:#6a80a0;margin-left:auto}}table{{width:100%;border-collapse:collapse;font-size:10px}}th,td{{padding:4px 6px;height:25px;border-bottom:1px solid #e5edf5;text-align:left}}th{{background:#edf3f9}}@media(max-width:900px){{.metrics{{grid-template-columns:repeat(2,1fr)}}.grid{{grid-template-columns:1fr}}.panel{{height:auto;min-height:300px}}}}
-    </style><div class="head"><div><div class="title"><span class="hflag {flag_class}" aria-label="{_html.escape(market)} flag"></span><span>Market Overview – {_html.escape(market)}</span></div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle">{_html.escape(_initial_title)}</span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg">{_initial_svg}</div><strong class="last" id="last" style="color:{_initial_col}">{_html.escape(_initial_last)}</strong><div class="prev">Prev Close<br><b id="prev">{_html.escape(_initial_prev)}</b></div><div class="xaxis" id="xaxis"><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
+    </style><div class="head"><div><div class="title"><span class="hflag {flag_class}" aria-label="{_html.escape(market)} flag"></span><span>Market Overview – {_html.escape(market)}</span></div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle">{_html.escape(_initial_title)}</span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg">{_initial_svg}</div><strong class="last" id="last" style="color:{_initial_col}">{_html.escape(_initial_last)}</strong><div class="prev">Prev Close<br><b id="prev">{_html.escape(_initial_prev)}</b></div><div class="xaxis" id="xaxis">{''.join(f'<span>{x}</span>' for x in _chr_intraday_labels(market))}</div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
     const root=document.getElementById('smooth'), data={data}; let key={selected}, range='1D';
-    const labels={{'1D':['10:00','11:00','12:00','13:00','14:00','15:00','16:00'],'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}};
+    const labels={{'1D':{json.dumps(_chr_intraday_labels(market))},'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}};
     function draw(animate=true){{const q=(data[key]||{{}})[range]||Object.values(data[key]||{{}})[0];if(!q)return;const c=root.querySelector('#chart');if(animate)c.classList.add('fade');setTimeout(()=>{{root.querySelector('#ctitle').textContent=q.label+' '+(range==='1D'?'Intraday Chart':range+' Chart');root.querySelector('#svg').innerHTML=q.svg;root.querySelector('#last').textContent=q.last;root.querySelector('#last').style.color=q.up?'#10b96a':'#ef4444';root.querySelector('#prev').textContent=q.prev;root.querySelector('#xaxis').innerHTML=(labels[range]||[]).map(x=>'<span>'+x+'</span>').join('');c.classList.remove('fade');}},animate?120:0)}}
     root.querySelectorAll('.metric').forEach(b=>b.addEventListener('click',()=>{{key=b.dataset.key;root.querySelectorAll('.metric').forEach(x=>x.classList.toggle('selected',x===b));draw(true)}}));root.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{{range=b.dataset.range;root.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));draw(true)}}));draw(false);
     const sectorData={sector_json}; let sectorPeriod='Day';
@@ -3124,7 +3200,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.5.5 — inline autocomplete search + interactive bottom intelligence widgets */
+/* V20.5.6 — inline autocomplete search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3134,7 +3210,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 #cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
 #gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
 
-/* V20.5.5 — inline autocomplete search (no selectbox). */
+/* V20.5.6 — inline autocomplete search (no selectbox). */
 .chr-autocomplete-label{font-size:10px;font-weight:700;color:#6a80a0;margin:2px 0 3px 2px;text-transform:uppercase;letter-spacing:.04em}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]{min-height:30px!important;height:auto!important;padding:5px 10px!important;border:1px solid #d8e5f2!important;border-radius:4px!important;background:#fff!important;color:#17365d!important;text-align:left!important;justify-content:flex-start!important;font-size:11px!important;font-weight:500!important;margin:0 0 2px!important}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]:hover{background:#eef6ff!important;border-color:#087cf0!important;color:#087cf0!important}
