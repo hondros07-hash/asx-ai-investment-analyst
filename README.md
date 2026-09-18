@@ -1,4 +1,6 @@
-# Chrímata V20.3.2 — Reference Market Section & In-Place Chart Fix
+Chrímata V20.3.3 — Reference Market Section Rebuild
+
+# Chrímata V20.3.3 — Reference Market Section & In-Place Chart Fix
 
 - Fixes market-card and timeframe controls so they remain in the same browser tab.
 - Clicking a headline market card changes the existing large chart.

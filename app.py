@@ -2750,7 +2750,7 @@ if page!="Dashboard":
 
 
 MARKET_OVERVIEW_CONFIG={
- "Australia":{"flag":"🇦🇺","indices":{"S&P/ASX 200":"^AXJO","All Ordinaries":"^AORD","All Technology":"^AXTX"},"benchmark":"^AXJO","vol":"^AXVI","currency":"AUDUSD=X","universe":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX"],"sectors":{"Financials":"QFN.AX","Health Care":"QHL.AX","Real Estate":"VAP.AX","Industrials":"MVE.AX","Telecommunication":"IXP.AX","Staples":"IXI.AX","Discretionary":"IXY.AX","Utilities":"IXU.AX","Materials":"QRE.AX","Information Technology":"ATEC.AX","Energy":"FUEL.AX"}},
+ "Australia":{"flag":"🇦🇺","indices":{"S&P/ASX 200":"^AXJO","All Ordinaries":"^AORD","ASX 50":"^AXFL","ASX 100":"^AXTO","ASX 300":"^AXKO","ASX 20":"^AXTL","All Technology":"^AXTX","ASX 200 Resources":"^AXJR","All Ords Gold (sub)":"^AXGD"},"benchmark":"^AXJO","vol":"^AXVI","currency":"AUDUSD=X","universe":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX"],"sectors":{"Financials":"QFN.AX","Health Care":"QHL.AX","Real Estate":"VAP.AX","Industrials":"MVE.AX","Telecommunication":"IXP.AX","Staples":"IXI.AX","Discretionary":"IXY.AX","Utilities":"IXU.AX","Materials":"QRE.AX","Information Technology":"ATEC.AX","Energy":"FUEL.AX"}},
  "United States":{"flag":"🇺🇸","indices":{"S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI"},"benchmark":"^GSPC","vol":"^VIX","currency":"AUDUSD=X","universe":["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","V","WMT","XOM","MA","NFLX","COST","AMD","PEP","KO","DIS","CAT"],"sectors":{"Technology":"XLK","Financials":"XLF","Health Care":"XLV","Consumer Discretionary":"XLY","Industrials":"XLI","Energy":"XLE","Materials":"XLB","Utilities":"XLU","Real Estate":"XLRE","Staples":"XLP","Communication":"XLC"}},
  "United Kingdom":{"flag":"🇬🇧","indices":{"FTSE 100":"^FTSE","FTSE 250":"^FTMC","FTSE All-Share":"^FTAS"},"benchmark":"^FTSE","vol":None,"currency":"GBPUSD=X","universe":["SHEL.L","AZN.L","HSBA.L","ULVR.L","BP.L","RIO.L","GSK.L","REL.L","LSEG.L","DGE.L","BARC.L","VOD.L"],"sectors":{}},
  "Japan":{"flag":"🇯🇵","indices":{"Nikkei 225":"^N225","TOPIX":"^TOPX","JPX-Nikkei 400":"^JPXNK400"},"benchmark":"^N225","vol":None,"currency":"JPY=X","universe":["7203.T","6758.T","9984.T","8306.T","6861.T","8035.T","9432.T","7974.T","6501.T","7267.T","6098.T","9983.T"],"sectors":{}},
@@ -2853,15 +2853,37 @@ def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"
     line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"2,{height-2} "+line+f" {width-2},{height-2}"
     return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none"><polygon points="{area}" fill="{fill}"/><polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
 
+def _chr_big_market_svg(series, prev=None, width=760, height=230, stroke="#12b76a", fill="#e8f8ef"):
+    try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
+    except Exception: vals=[]
+    if len(vals)<2: return ""
+    finite=[v for v in vals if np.isfinite(v)]
+    if np.isfinite(_mia_num(prev)): finite.append(float(prev))
+    lo,hi=min(finite),max(finite); pad=max((hi-lo)*.08, abs(hi)*.0008, .01); lo-=pad; hi+=pad; span=(hi-lo) or 1.0
+    pts=[]
+    for i,v in enumerate(vals):
+        x=1+(width-2)*i/(len(vals)-1); y=height-2-(height-4)*(v-lo)/span; pts.append((x,y))
+    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"1,{height-1} "+line+f" {width-1},{height-1}"
+    grid=[]
+    for i in range(5):
+        y=2+(height-4)*i/4; grid.append(f'<line x1="0" y1="{y:.1f}" x2="{width}" y2="{y:.1f}" stroke="#e3ebf4" stroke-width="1"/>')
+    for i in range(7):
+        x=(width)*i/6; grid.append(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{height}" stroke="#e9eff6" stroke-width="1"/>')
+    prevline=''
+    if np.isfinite(_mia_num(prev)):
+        py=height-2-(height-4)*(float(prev)-lo)/span
+        prevline=f'<line x1="0" y1="{py:.1f}" x2="{width}" y2="{py:.1f}" stroke="#ff5c68" stroke-width="1.2" stroke-dasharray="4 3"/>'
+    return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">{"".join(grid)}<polygon points="{area}" fill="{fill}" fill-opacity=".82"/>{prevline}<polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
+
 def _chr_metric_card(label,ticker,q,accent=None,chart_key=None,selected=False,market="Australia"):
     from urllib.parse import quote
     selected_cls=" selected" if selected else ""
     href=f"?market={quote(str(market))}&chart={quote(str(chart_key or ticker))}"
     if not q:
-        return f'<a class="chr-metric-link" href="{href}" target="_self"><div class="chr-card chr-metric{selected_cls}"><b>{label}</b><strong>N/A</strong></div></a>'
+        return f'<a class="chr-metric-link" href="{href}" target="_top"><div class="chr-card chr-metric{selected_cls}"><b>{label}</b><strong>N/A</strong></div></a>'
     up=float(q.get("change",0) or 0)>=0; col="#0aa968" if up else "#ef4444"; arrow="▲" if up else "▼"
     spark=_chr_svg_line(q.get("series",[]),300,46,accent or col,"#eaf8f1" if up else "#fff0f0")
-    return f'<a class="chr-metric-link" href="{href}" target="_self" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
+    return f'<a class="chr-metric-link" href="{href}" target="_top" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
 
 def _chr_table(rows, headers, fmts=None):
     fmts=fmts or {}; h=''.join(f'<th>{x}</th>' for x in headers); body=[]
@@ -2923,9 +2945,29 @@ section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
   padding-bottom:132px!important;
 }
-/* V20.3.2 reference-match market section */
+/* V20.3.3 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
+/* V20.3.3 — pixel-density pass based on the approved market-section reference. */
+.chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
+.chr-metrics{gap:6px!important}
+.chr-metric{height:104px!important;padding:8px 11px!important;border-radius:5px!important}
+.chr-metric-name{font-size:14px!important;line-height:18px!important}.chr-metric-name span{font-size:13px!important;color:#6780a2!important}
+.chr-metric-row{margin-top:2px!important;gap:10px!important}.chr-metric-row strong{font-size:23px!important}.chr-metric-row em{font-size:11px!important}
+.chr-spark{height:38px!important;margin-top:3px!important}
+.chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:6px!important;margin-top:6px!important;align-items:stretch!important}
+.chr-grid-main>.chr-panel{height:336px!important;min-height:336px!important}
+.chr-panel{border-radius:5px!important;border:1px solid #d8e5f2!important;box-shadow:0 1px 2px rgba(20,50,80,.025)!important}
+.chr-panel>header{height:36px!important;padding:7px 9px!important;font-size:14px!important;line-height:21px!important}
+.chr-chart-panel{min-height:336px!important}.chr-bigchart{height:299px!important;padding:15px 72px 28px 18px!important;background:#fff!important}
+.chr-bigchart>strong{right:10px!important;top:48%!important;font-size:15px!important}.chr-prev-close{right:8px!important;bottom:43px!important;font-size:10px!important}.chr-prev-close b{font-size:11px!important}
+.chr-range-links{gap:7px!important}.chr-range-links a{font-size:10px!important;padding:5px 11px!important;background:#f2f6fb!important;border-radius:4px!important}.chr-range-links a.active{background:#087cf0!important;color:white!important}
+.chr-sectors{padding:4px 8px!important}.chr-sector-row{grid-template-columns:132px 1fr 52px!important;height:22px!important;font-size:10px!important;gap:6px!important}.chr-sector-row i{height:10px!important}
+.chr-table{font-size:10px!important}.chr-table th,.chr-table td{padding:4px 6px!important;height:25px!important}.chr-table th{background:#edf3f9!important}
+.chr-panel-asof{font-size:9px!important;font-weight:600!important;color:#6a80a0!important;margin-left:auto!important}
+.chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
+.chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
+
 /* Prevent the final dashboard row from disappearing behind the viewport/taskbar. */
 .chr-home-v2020{padding-bottom:28px!important;margin-bottom:24px!important;}
 </style>
@@ -2994,12 +3036,14 @@ def render_global_market_overview():
     chart_up=float((chart_q or {}).get('change',0) or 0)>=0
     chart_col='#10b96a' if chart_up else '#ef4444'
     chart_fill='#e7f8ef' if chart_up else '#fff0f0'
-    chart_svg=_chr_svg_line(chart_q['series'] if chart_q else [],760,230,chart_col,chart_fill)
+    chart_svg=_chr_big_market_svg(chart_q['series'] if chart_q else [], (chart_q or {}).get('prev'),760,230,chart_col,chart_fill)
     last_txt=f"{chart_q['last']:,.2f}" if chart_q else '—'
     prev_txt=f"{chart_q.get('prev'):,.2f}" if chart_q and np.isfinite(_mia_num(chart_q.get('prev'))) else '—'
     from urllib.parse import quote
-    range_links=''.join(f'<a class="{"active" if r==selected_range else ""}" href="?market={quote(str(market))}&chart={quote(str(selected_key))}&range={r}" target="_self">{r}</a>' for r in range_map)
+    range_links=''.join(f'<a class="{"active" if r==selected_range else ""}" href="?market={quote(str(market))}&chart={quote(str(selected_key))}&range={r}" target="_top">{r}</a>' for r in range_map)
     chart_title=f'{selected_label} {"Intraday Chart" if selected_range=="1D" else selected_range+" Chart"}'
+    xlabels = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00'] if selected_range=='1D' else ({'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}[selected_range])
+    xaxis_html='<div class="chr-chart-axis">'+''.join(f'<span>{x}</span>' for x in xlabels)+'</div>' 
     main_q=idx[0][2]
     intraday_q=chart_q
     sectors=[]
@@ -3047,7 +3091,11 @@ def render_global_market_overview():
         updated_label = data_asof.strftime('%-I:%M:%S %p %Z')
     except Exception:
         updated_label = time_label + ' ' + zone_label
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    try:
+        panel_asof = "At Close " + data_asof.strftime("%d/%m (%Z)") if not market_is_open else "Live · " + data_asof.strftime("%-I:%M %p %Z")
+    except Exception:
+        panel_asof = "Live" if market_is_open else "At Close"
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
