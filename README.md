@@ -1,4 +1,4 @@
-# Chrímata V20.2.9 — Market Overview Flag Header
+# Chrímata V20.3.0 — Market Overview Flag Header
 
 Adds the selected country’s real embedded flag artwork directly before the Market Overview title while retaining same-tab country navigation.
 
@@ -10,7 +10,7 @@ Removes the deployed phantom header gap and replaces country Streamlit buttons w
 V20.2.7: Windows-safe embedded SVG country flags and same-tab native Streamlit market switching.
 
 
-## V20.2.9
+## V20.3.0
 - Fixes full-page landing dashboard scrolling so the bottom widgets remain reachable.
 - Market overview quote cache reduced to 60 seconds.
 - Headline quotes prefer Twelve Data when `TWELVE_DATA_API_KEY` is configured, with Yahoo/yfinance fallback.
@@ -18,3 +18,10 @@ V20.2.7: Windows-safe embedded SVG country flags and same-tab native Streamlit m
 - Preserves V20.2.8 country flags, same-tab navigation, banner and sidebar.
 
 Real-time entitlement depends on the configured provider/exchange subscription; delayed feeds remain delayed.
+
+
+## V20.3.0
+- Dynamic market clock refreshes every second using a Streamlit fragment.
+- Market quote and mover caches refresh every 60 seconds while the Home dashboard is open.
+- Live/data-updated timestamp distinguishes clock time from provider quote freshness.
+- Existing market-provider entitlements still determine whether quotes are real-time or delayed.

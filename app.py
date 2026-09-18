@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.9 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.3.0 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.9 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.3.0 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -411,7 +411,7 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 
 st.markdown(r"""
 <style>
-/* V20.2.9 — approved reference alignment */
+/* V20.3.0 — approved reference alignment */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 /* Make the banner host consume zero document height; the image itself stays fixed. */
 .chrimata-terminal-hero.chrimata-exact-hero{
@@ -462,7 +462,7 @@ div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!import
 
 st.markdown(r"""
 <style>
-/* V20.2.9 — exact reference search/country strip */
+/* V20.3.0 — exact reference search/country strip */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] > section.main,
@@ -2544,7 +2544,7 @@ SUBPAGES={
 "Settings":["Workspace Settings","Data & Production","Broker Connections"]}
 
 
-# V20.2.9 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
+# V20.3.0 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -2579,7 +2579,7 @@ div.element-container:has(.chrimata-exact-hero){height:0!important;min-height:0!
 </style>
 """,unsafe_allow_html=True)
 
-# V20.2.9 — final reference-header override. Must remain after all legacy theme CSS.
+# V20.3.0 — final reference-header override. Must remain after all legacy theme CSS.
 st.markdown(r"""
 <style>
 /* Main canvas: exactly below banner, never reserve another banner-height spacer. */
@@ -2611,7 +2611,7 @@ section[data-testid="stMain"],.stMain{top:108px!important;}
 """,unsafe_allow_html=True)
 
 
-# V20.2.9 — reference header strip: hard neutralise the remaining phantom 108px flow gap.
+# V20.3.0 — reference header strip: hard neutralise the remaining phantom 108px flow gap.
 st.markdown(r"""
 <style>
 /* The deployed Streamlit DOM still contributes one legacy 108px top offset.
@@ -2633,7 +2633,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 """,unsafe_allow_html=True)
 
 
-# V20.2.9 — same-tab country buttons with embedded SVG flags (Windows-safe).
+# V20.3.0 — same-tab country buttons with embedded SVG flags (Windows-safe).
 st.markdown(r"""
 <style>
 /* Country nav is native Streamlit interaction, but visually matches the reference. */
@@ -2689,10 +2689,10 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.9</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.3.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
-    # V20.2.9: paint the banner on the app viewport itself. This creates NO Streamlit
+    # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
     # element in document flow, eliminating the phantom 100+ px spacer below it.
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
@@ -2799,7 +2799,7 @@ def overview_quote(ticker,period="5d",interval=None):
         return {"last":last,"change":last-prev if np.isfinite(prev) else np.nan,"pct":last/prev-1 if np.isfinite(prev) and prev else np.nan,"series":c,"source":source,"asof":datetime.now(timezone.utc).isoformat()}
     except Exception:return None
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def overview_batch(tickers):
     rows=[]
     for t in list(tickers):
@@ -2898,11 +2898,14 @@ def _chr_market_clock(market):
             nxt=datetime.combine(d,op,tzinfo=tz)
         status=f"Market Closed · Opens {nxt.strftime('%a %-I:%M %p')}"
     zone=now.tzname() or abbr
-    return now.strftime('%A, %d %B %Y'), now.strftime('%-I:%M %p'), zone, status, is_open
+    return now.strftime('%A, %d %B %Y'), now.strftime('%-I:%M:%S %p'), zone, status, is_open
 
-# V20.2.9 — transformed landing canvas must retain its full scrollable height.
+
+# V20.3.0 — transformed landing canvas must retain its full scrollable height.
 st.markdown(r"""
 <style>
+/* V20.3.0 — live clock + 60-second provider refresh status */
+.chr-live-updated{color:#0aa968;font-weight:700;font-size:11px;white-space:nowrap;}
 [data-testid="stMainBlockContainer"], .stMainBlockContainer,
 section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
@@ -2913,9 +2916,10 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 </style>
 """,unsafe_allow_html=True)
 
+@st.fragment(run_every="1s")
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
-    # V20.2.9: query-param navigation uses plain HTML anchors instead of Streamlit
+    # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
     # buttons. This guarantees the reference white-card appearance and real flags.
     try:
         qp_market=st.query_params.get("market")
@@ -2930,7 +2934,7 @@ def render_global_market_overview():
         st.button("Search",use_container_width=True,key="home_search_button_v2021",type="primary")
     with market_col:
         names=list(MARKET_OVERVIEW_CONFIG.keys())
-        # V20.2.9: native Streamlit buttons keep navigation in the SAME app/tab.
+        # V20.3.0: native Streamlit buttons keep navigation in the SAME app/tab.
         # Actual flag artwork is injected by CSS below (not Windows emoji), so flags
         # render consistently on Windows/Chrome.
         with st.container(key="country_nav_v2027"):
@@ -2996,7 +3000,14 @@ def render_global_market_overview():
         if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
     glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    # V20.3.0: the fragment reruns each second for the clock, while provider calls remain cached for 60s.
+    # Show the latest market-data timestamp separately so users can distinguish the live clock from quote freshness.
+    try:
+        data_asof = pd.to_datetime((intraday_q or main_q or {}).get('asof'), utc=True).tz_convert(ZoneInfo({'Australia':'Australia/Sydney','United States':'America/New_York','United Kingdom':'Europe/London','Japan':'Asia/Tokyo','Hong Kong':'Asia/Hong_Kong','Canada':'America/Toronto'}.get(market,'Australia/Sydney')))
+        updated_label = data_asof.strftime('%-I:%M:%S %p %Z')
+    except Exception:
+        updated_label = time_label + ' ' + zone_label
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
