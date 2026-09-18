@@ -2855,24 +2855,46 @@ def render_change_table(df,n=8):
 
 @st.cache_data(ttl=1800)
 def overview_calendar(tickers):
+    """Best-effort upcoming earnings/dividend calendar from the active Yahoo feed.
+    Returns only future/current events; unavailable fields remain unavailable rather than invented.
+    """
     earnings=[]; dividends=[]
     now=pd.Timestamp.now(tz="UTC")
-    for t in list(tickers)[:12]:
+    for t in list(tickers)[:20]:
         try:
-            tk=yf.Ticker(t); m=tk.info or {}; nm=m.get("shortName") or t
-            cal=tk.calendar
-            if isinstance(cal,dict):
-                ed=cal.get("Earnings Date") or cal.get("EarningsDate")
-                if isinstance(ed,(list,tuple)) and ed:ed=ed[0]
-                if ed is not None:
-                    dt=pd.to_datetime(ed,utc=True,errors="coerce")
-                    if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat()})
+            tk=yf.Ticker(t); m=tk.info or {}; nm=m.get("longName") or m.get("shortName") or t
+            # Earnings: prefer the dedicated earnings-date endpoint, then calendar fallback.
+            found_earn=False
+            try:
+                edf=tk.get_earnings_dates(limit=4)
+                if edf is not None and not edf.empty:
+                    for ed in edf.index:
+                        dt=pd.to_datetime(ed,utc=True,errors="coerce")
+                        if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):
+                            earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat(),"Type":"Earnings"}); found_earn=True; break
+            except Exception: pass
+            if not found_earn:
+                try:
+                    cal=tk.calendar
+                    if isinstance(cal,dict):
+                        ed=cal.get("Earnings Date") or cal.get("EarningsDate")
+                        if isinstance(ed,(list,tuple)) and ed: ed=ed[0]
+                        dt=pd.to_datetime(ed,utc=True,errors="coerce")
+                        if pd.notna(dt) and dt>=now-pd.Timedelta(days=1): earnings.append({"Ticker":t,"Company":nm,"Date":dt.date().isoformat(),"Type":"Earnings"})
+                except Exception: pass
+            # Dividend: Yahoo exposes a future ex-dividend timestamp for many securities.
             ex=m.get("exDividendDate")
             if ex:
                 dt=pd.to_datetime(ex,unit="s",utc=True,errors="coerce")
-                if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):dividends.append({"Ticker":t,"Company":nm,"Ex-Date":dt.date().isoformat(),"Dividend Rate":m.get("dividendRate")})
-        except Exception:pass
-    return pd.DataFrame(earnings),pd.DataFrame(dividends)
+                if pd.notna(dt) and dt>=now-pd.Timedelta(days=1):
+                    pay=m.get("dividendDate")
+                    pdt=pd.to_datetime(pay,unit="s",utc=True,errors="coerce") if pay else pd.NaT
+                    dividends.append({"Ticker":t,"Company":nm,"Ex-Date":dt.date().isoformat(),"Pay-Date":pdt.date().isoformat() if pd.notna(pdt) else "—","Dividend Rate":m.get("dividendRate")})
+        except Exception: pass
+    e=pd.DataFrame(earnings); d=pd.DataFrame(dividends)
+    if not e.empty: e=e.drop_duplicates(subset=["Ticker","Date"]).sort_values("Date")
+    if not d.empty: d=d.drop_duplicates(subset=["Ticker","Ex-Date"]).sort_values("Ex-Date")
+    return e,d
 
 def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"):
     try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
@@ -3054,6 +3076,16 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
+/* V20.4.4 — interactive bottom intelligence widgets */
+.chr-grid-bottom>.chr-panel{min-height:290px!important}
+.chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
+.chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
+.chr-cal-tabs>label,.chr-global-tabs>label{display:inline-block;padding:5px 11px;margin:0 3px 7px 0;border:1px solid #d8e5f2;border-radius:5px;background:#f1f6fb;color:#17365d;font-size:10px;font-weight:700;cursor:pointer}
+#cal-earn:checked+label,#cal-ipo:checked+label,#gm-0:checked+label,#gm-1:checked+label,#gm-2:checked+label,#gm-3:checked+label,#gm-4:checked+label{background:#087cf0;color:#fff;border-color:#087cf0}
+.cal-earn-panel,.cal-ipo-panel,.gm-panel{display:none;margin:0 -9px}
+#cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
+#gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
+
 /* Prevent the final dashboard row from disappearing behind the viewport/taskbar. */
 .chr-home-v2020{padding-bottom:28px!important;margin-bottom:24px!important;}
 </style>
@@ -3231,15 +3263,33 @@ def render_global_market_overview():
     vix_text='—' if vv is None else f'{vv:.1f}'
     earnings,dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
     if dividends is not None and not dividends.empty:
-        for _,r in dividends.head(4).iterrows():divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Ex-Date':r.get('Ex-Date',''),'Amount':r.get('Dividend Rate','—')})
-    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dates returned.</div>'; earnrows=[]
+        for _,r in dividends.head(5).iterrows():
+            amt=r.get('Dividend Rate','—'); amt='—' if pd.isna(amt) else f'{float(amt):.2f}'
+            divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:23],'Ex-Date':r.get('Ex-Date',''),'Pay-Date':r.get('Pay-Date','—'),'Amount':amt})
+    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dividend dates were returned by the active provider for this market universe.</div>'
+    earnrows=[]
     if earnings is not None and not earnings.empty:
-        for _,r in earnings.head(4).iterrows():earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
-    earn_t=_chr_table(earnrows,['Code','Company','Date']) if earnrows else '<div class="chr-empty">Provider IPO/earnings calendar not configured.</div>'; glob=[]
-    for label,t in list(GLOBAL_MARKET_TICKERS.items())[:5]:
-        q=overview_quote(t,'5d')
-        if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
-    glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
+        for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
+    earnings_table=_chr_table(earnrows,['Code','Company','Date']) if earnrows else '<div class="chr-empty">No upcoming earnings dates were returned by the active provider.</div>'
+    earn_t='<div class="chr-cal-tabs"><input checked type="radio" name="calmode" id="cal-earn"><label for="cal-earn">Earnings</label><input type="radio" name="calmode" id="cal-ipo"><label for="cal-ipo">IPOs</label><div class="cal-earn-panel">'+earnings_table+'</div><div class="cal-ipo-panel"><div class="chr-empty">IPO calendar feed is not available from the configured market-data provider.</div></div></div>'
+    global_groups={
+      'US':[('S&P 500','^GSPC'),('Nasdaq 100','^NDX'),('Dow Jones','^DJI')],
+      'UK':[('FTSE 100','^FTSE'),('FTSE 250','^FTMC'),('FTSE All-Share','^FTAS')],
+      'Japan':[('Nikkei 225','^N225'),('TOPIX','^TOPX'),('JPX-Nikkei 400','^JPXNK400')],
+      'HK':[('Hang Seng','^HSI'),('Hang Seng China Ent.','^HSCE'),('Hang Seng Tech','^HSTECH')],
+      'Canada':[('TSX Composite','^GSPTSE'),('TSX 60','^TX60'),('TSX Venture','^SPCDNX')]
+    }
+    gp=[]
+    for gi,(gname,items) in enumerate(global_groups.items()):
+        rows=[]
+        for label,t in items:
+            q=overview_quote(t,'5d')
+            if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
+        tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
+        gp.append((gname,tbl))
+    radios=''.join(f'<input {"checked" if i==0 else ""} type="radio" name="globalmode" id="gm-{i}"><label for="gm-{i}">{name}</label>' for i,(name,_) in enumerate(gp))
+    panels=''.join(f'<div class="gm-panel gm-{i}-panel">{tbl}</div>' for i,(_,tbl) in enumerate(gp))
+    glob_t='<div class="chr-global-tabs">'+radios+panels+'</div>'
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     # V20.4.0: no timed Streamlit fragment rerun. The market clock updates client-side so the page remains stationary.
     # Show the latest market-data timestamp separately so users can distinguish the live clock from quote freshness.
@@ -3254,7 +3304,7 @@ def render_global_market_overview():
         panel_asof = "Live" if market_is_open else "At Close"
     smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
     components.html(smooth_html,height=496,scrolling=False)
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX) <span>CBOE · US</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ Elevated 20–30</span><span>■ High &gt;30</span></div></div><p class="chr-note">CBOE VIX: S&amp;P 500 options-implied volatility over roughly the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX) <span>CBOE · US</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ Elevated 20–30</span><span>■ High &gt;30</span></div></div><p class="chr-note">CBOE VIX: S&amp;P 500 options-implied volatility over roughly the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
