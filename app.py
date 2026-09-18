@@ -2689,7 +2689,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.3.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.3.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2853,11 +2853,15 @@ def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"
     line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"2,{height-2} "+line+f" {width-2},{height-2}"
     return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none"><polygon points="{area}" fill="{fill}"/><polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
 
-def _chr_metric_card(label,ticker,q,accent=None):
-    if not q: return f'<div class="chr-card chr-metric"><b>{label}</b><strong>N/A</strong></div>'
+def _chr_metric_card(label,ticker,q,accent=None,chart_key=None,selected=False,market="Australia"):
+    from urllib.parse import quote
+    selected_cls=" selected" if selected else ""
+    href=f"?market={quote(str(market))}&chart={quote(str(chart_key or ticker))}"
+    if not q:
+        return f'<a class="chr-metric-link" href="{href}"><div class="chr-card chr-metric{selected_cls}"><b>{label}</b><strong>N/A</strong></div></a>'
     up=float(q.get("change",0) or 0)>=0; col="#0aa968" if up else "#ef4444"; arrow="▲" if up else "▼"
     spark=_chr_svg_line(q.get("series",[]),300,46,accent or col,"#eaf8f1" if up else "#fff0f0")
-    return f'<div class="chr-card chr-metric"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div>'
+    return f'<a class="chr-metric-link" href="{href}" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
 
 def _chr_table(rows, headers, fmts=None):
     fmts=fmts or {}; h=''.join(f'<th>{x}</th>' for x in headers); body=[]
@@ -2906,6 +2910,14 @@ st.markdown(r"""
 <style>
 /* V20.3.0 — live clock + 60-second provider refresh status */
 .chr-live-updated{color:#0aa968;font-weight:700;font-size:11px;white-space:nowrap;}
+.chr-metric-link{display:block;color:inherit!important;text-decoration:none!important;min-width:0;}
+.chr-metric-link .chr-metric{cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease;}
+.chr-metric-link:hover .chr-metric{border-color:#1687ff;box-shadow:0 2px 8px rgba(22,135,255,.14);transform:translateY(-1px);}
+.chr-metric.selected{border:2px solid #1687ff!important;box-shadow:0 0 0 2px rgba(22,135,255,.08);}
+.chr-range-links{display:flex;gap:12px;align-items:center;}
+.chr-range-links a{color:#5d7594!important;text-decoration:none!important;font-size:10px;font-weight:700;padding:2px 3px;border-radius:3px;}
+.chr-range-links a.active{color:#0874df!important;background:#eaf4ff;}
+
 [data-testid="stMainBlockContainer"], .stMainBlockContainer,
 section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
@@ -2957,11 +2969,35 @@ def render_global_market_overview():
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
     cq=overview_quote(cfg.get('currency'),'5d') if cfg.get('currency') else None; gq=overview_quote('GC=F','5d'); date_label, time_label, zone_label, market_status, market_is_open=_chr_market_clock(market)
-    cards=''.join(_chr_metric_card(a,b,q) for a,b,q in idx)+_chr_metric_card('AUD/USD' if market=='Australia' else cfg.get('currency','FX'),cfg.get('currency',''),cq,'#1687ff')+_chr_metric_card('Gold (USD)','',gq,'#f5b400')
-    main_label,main_t,main_q=idx[0]
-    intraday_q=overview_quote(main_t,'1d','5m') or main_q
-    chart_svg=_chr_svg_line(intraday_q['series'] if intraday_q else [],760,230,"#10b96a","#e7f8ef")
-    last_txt=f"{intraday_q['last']:,.2f}" if intraday_q else '—' 
+
+    # V20.3.1 — top metric cards drive the large chart below. Query parameters make
+    # the interaction reliable in Streamlit without opening a modal or a new tab.
+    instruments=[(a,b,q,None) for a,b,q in idx]
+    if cfg.get('currency'):
+        instruments.append(('AUD/USD' if market=='Australia' else cfg.get('currency','FX'),cfg.get('currency',''),cq,'#1687ff'))
+    instruments.append(('Gold (USD)','GC=F',gq,'#f5b400'))
+    valid_keys=[t for _,t,_,_ in instruments if t]
+    try: selected_key=st.query_params.get('chart')
+    except Exception: selected_key=None
+    if selected_key not in valid_keys: selected_key=valid_keys[0]
+    try: selected_range=st.query_params.get('range','1D').upper()
+    except Exception: selected_range='1D'
+    range_map={'1D':('1d','5m'),'5D':('5d','15m'),'1M':('1mo','60m'),'3M':('3mo','1d'),'1Y':('1y','1d'),'5Y':('5y','1wk')}
+    if selected_range not in range_map: selected_range='1D'
+    selected_label,selected_t,selected_base,_=next((x for x in instruments if x[1]==selected_key),instruments[0])
+    cards=''.join(_chr_metric_card(a,b,q,accent,chart_key=b,selected=(b==selected_key),market=market) for a,b,q,accent in instruments)
+    chart_period,chart_interval=range_map[selected_range]
+    chart_q=overview_quote(selected_t,chart_period,chart_interval) or selected_base
+    chart_up=float((chart_q or {}).get('change',0) or 0)>=0
+    chart_col='#10b96a' if chart_up else '#ef4444'
+    chart_fill='#e7f8ef' if chart_up else '#fff0f0'
+    chart_svg=_chr_svg_line(chart_q['series'] if chart_q else [],760,230,chart_col,chart_fill)
+    last_txt=f"{chart_q['last']:,.2f}" if chart_q else '—'
+    from urllib.parse import quote
+    range_links=''.join(f'<a class="{"active" if r==selected_range else ""}" href="?market={quote(str(market))}&chart={quote(str(selected_key))}&range={r}">{r}</a>' for r in range_map)
+    chart_title=f'{selected_label} Chart'
+    main_q=idx[0][2]
+    intraday_q=chart_q
     sectors=[]
     for label,t in cfg.get('sectors',{}).items():
         q=overview_quote(t,'5d')
@@ -3007,7 +3043,7 @@ def render_global_market_overview():
         updated_label = data_asof.strftime('%-I:%M:%S %p %Z')
     except Exception:
         updated_label = time_label + ' ' + zone_label
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}<strong style="color:{chart_col}">{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):

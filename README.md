@@ -25,3 +25,11 @@ Real-time entitlement depends on the configured provider/exchange subscription; 
 - Market quote and mover caches refresh every 60 seconds while the Home dashboard is open.
 - Live/data-updated timestamp distinguishes clock time from provider quote freshness.
 - Existing market-provider entitlements still determine whether quotes are real-time or delayed.
+
+## V20.3.1 — Interactive Market Cards
+- Click any top market card to load that instrument into the large chart panel.
+- Selected card receives a blue active outline.
+- Chart title, latest price and direction update with the selected instrument.
+- 1D / 5D / 1M / 3M / 1Y / 5Y controls now load provider history for the selected instrument.
+- Selection is retained through URL query parameters and stays in the same browser tab.
+- Preserves V20.3.0 dynamic clock and 60-second provider cache/refresh behaviour.
