@@ -2482,6 +2482,17 @@ button[kind="headerNoPadding"],
 .chr-nav-item.active .chr-nav-sub{color:#f0c86e!important;}
 .chr-nav-copy{min-width:0!important;max-width:calc(var(--chr-sidebar) - 46px)!important;overflow:hidden!important;}
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
+
+
+/* V20.4.7 native sidebar navigation: same visual language, no browser-level link navigation. */
+[data-testid="stSidebar"] .chr-nav-native + div button,
+[data-testid="stSidebar"] button[kind="secondary"],
+[data-testid="stSidebar"] button[kind="primary"]{text-align:left!important;justify-content:flex-start!important;white-space:pre-line!important;font-size:11px!important;line-height:1.15!important;border-radius:5px!important;min-height:42px!important;padding:6px 10px!important;}
+[data-testid="stSidebar"] button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
+
+/* V20.4.7 — keep provider/cache execution details out of the product UI. */
+[data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
+[data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2522,12 +2533,19 @@ def _chr_nav_svg(name):
     "research": '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5M10 7v6M7 10h6"/></svg>',
     "settings": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/><circle cx="12" cy="12" r="7"/></svg>'}
     return icons.get(name,icons["home"])
-_nav_html=['<nav class="chr-nav" aria-label="Chrímata navigation">']
-for _key,_icon,_title,_sub in NAV_ITEMS:
-    _active=' active' if _key==primary else ''
-    _nav_html.append(f'<a href="?chr_nav={_urlquote(_key)}" target="_self"><div class="chr-nav-item{_active}"><div class="chr-nav-icon">{_chr_nav_svg(_icon)}</div><div class="chr-nav-copy"><div class="chr-nav-title">{_title}</div><div class="chr-nav-sub">{_sub}</div></div></div></a>')
-_nav_html.append('</nav>')
-st.sidebar.markdown(''.join(_nav_html),unsafe_allow_html=True)
+# V20.4.7: use Streamlit's in-app event channel instead of browser URL anchors.
+# This avoids a document-level navigation/white flash; only Streamlit rerenders the app body.
+st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
+for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
+    _active=(_key==primary)
+    if st.sidebar.button(f"{_title}\n{_sub}", key=f"chr_nav_native_{_idx}", use_container_width=True,
+                         type="primary" if _active else "secondary"):
+        st.session_state["chr_primary_nav"]=_key
+        primary=_key
+        try: st.query_params["chr_nav"]=_key
+        except Exception: pass
+        st.rerun()
+st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
 # Keep company selection available without changing the clean reference navigation rail.
 with st.sidebar.expander("Current company", expanded=False):
@@ -2696,7 +2714,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.7</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2859,7 +2877,7 @@ def render_change_table(df,n=8):
     d["% Chg"]=d["% Chg"].map(lambda x:f"{x:+.2%}")
     st.dataframe(d,use_container_width=True,hide_index=True)
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=1800, show_spinner=False)
 def overview_calendar(tickers):
     """Best-effort upcoming earnings/dividend calendar from the active Yahoo feed.
     Returns only future/current events; unavailable fields remain unavailable rather than invented.
@@ -3082,7 +3100,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.4.6 — global security search + interactive bottom intelligence widgets */
+/* V20.4.7 — global security search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3097,6 +3115,41 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 </style>
 """,unsafe_allow_html=True)
 
+@st.fragment
+def _home_live_search_fragment():
+    """Live global autocomplete. Typing reruns only this fragment, not the dashboard."""
+    _qcol,_scol=st.columns([4.2,1],gap="small")
+    with _qcol:
+        q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",
+                        label_visibility="collapsed",key="home_global_search_v2047")
+    chosen=None
+    if q and len(q.strip())>=1:
+        matches=search_securities(q,_search_key)
+        if matches is not None and not matches.empty:
+            hm=matches.head(30).copy(); labels=[]; rowmap={}
+            for i,r in hm.iterrows():
+                country=r.get('Country','') or 'Global'; currency=r.get('Currency','')
+                extra=' · '.join(x for x in [str(r.get('Exchange','')),str(country),str(currency)] if x)
+                lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {extra}"
+                labels.append(lab); rowmap[lab]=r
+            choice=st.selectbox("Live matches",labels,label_visibility="collapsed",key="home_search_match_v2047")
+            chosen=rowmap.get(choice)
+        else:
+            st.caption("No matching security found yet.")
+    with _scol:
+        _go=st.button("Search",use_container_width=True,key="home_search_button_v2047",type="primary")
+    if _go:
+        if chosen is not None:
+            resolved=resolve_listing(chosen.get('Symbol',''),chosen.get('Exchange',''),chosen.get('Country',''))
+            st.session_state['mia_search_query']=resolved
+            st.session_state['chr_primary_nav']='Company Command Centre'
+            try:
+                st.query_params['chr_nav']='Company Command Centre'; st.query_params['ticker']=resolved
+            except Exception: pass
+            st.rerun()
+        elif q and q.strip():
+            st.warning("No matching security found. Try a ticker, company name, or exchange-listed symbol.")
+
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
@@ -3107,37 +3160,9 @@ def render_global_market_overview():
             st.session_state.home_market_v2021=qp_market
     except Exception:
         pass
-    search_col,button_col,market_col=st.columns([1.35,.23,2.15],gap="small")
+    search_col,market_col=st.columns([1.58,2.15],gap="small")
     with search_col:
-        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2046")
-    home_matches=search_securities(home_q,_search_key) if home_q and len(home_q.strip())>=1 else pd.DataFrame()
-    chosen_row=None
-    if home_matches is not None and not home_matches.empty:
-        # V20.4.6: global results remain global. Exact ticker matches are ranked
-        # by security_search; the selected dashboard country never hides listings.
-        hm=home_matches.copy().head(30)
-        labels=[]; rows={}
-        for i,r in hm.iterrows():
-            country=r.get('Country','') or 'Global'
-            currency=r.get('Currency','')
-            extra=' · '.join(x for x in [str(r.get('Exchange','')),str(country),str(currency)] if x)
-            lab=f"{r.get('Symbol','')} · {r.get('Company','')} · {extra}"
-            labels.append(lab); rows[lab]=r
-        choice=st.selectbox("Search matches",labels,label_visibility="collapsed",key="home_search_match_v2046")
-        chosen_row=rows.get(choice)
-    with button_col:
-        do_home_search=st.button("Search",use_container_width=True,key="home_search_button_v2046",type="primary")
-    if do_home_search:
-        if chosen_row is not None:
-            resolved=resolve_listing(chosen_row.get('Symbol',''),chosen_row.get('Exchange',''),chosen_row.get('Country',''))
-            st.session_state['mia_search_query']=resolved
-            st.session_state['chr_primary_nav']='Company Command Centre'
-            try:
-                st.query_params['chr_nav']='Company Command Centre'; st.query_params['ticker']=resolved
-            except Exception: pass
-            st.rerun()
-        elif home_q.strip():
-            st.warning("No matching security found. Try a ticker, company name, or exchange-listed symbol.")
+        _home_live_search_fragment()
     with market_col:
         names=list(MARKET_OVERVIEW_CONFIG.keys())
         # V20.3.0: native Streamlit buttons keep navigation in the SAME app/tab.
@@ -3156,10 +3181,6 @@ def render_global_market_overview():
                             pass
                         st.rerun()
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
-    if home_q:
-        mm=search_securities(home_q,_search_key)
-        if not mm.empty:
-            r=mm.iloc[0]; st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
     cq=overview_quote(cfg.get('currency'),'5d') if cfg.get('currency') else None; gq=overview_quote('GC=F','5d'); date_label, time_label, zone_label, market_status, market_is_open=_chr_market_clock(market)
