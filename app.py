@@ -2480,24 +2480,27 @@ button[kind="headerNoPadding"],
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 
 
-/* V20.5.6 sidebar restoration: white icons/titles + gold secondary copy. */
+/* V20.5.7 Professional Sidebar Restoration — approved compact terminal sidebar. */
 [data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
-[data-testid="stSidebar"] .stButton>button{width:100%!important;height:46px!important;min-height:46px!important;margin:0!important;padding:4px 8px 14px 42px!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;font-size:11px!important;line-height:1.05!important;border-radius:6px!important;box-shadow:none!important;position:relative!important;}
+[data-testid="stSidebar"] .stButton>button{width:100%!important;height:48px!important;min-height:48px!important;margin:0 0 1px!important;padding:4px 7px 15px 45px!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;font-size:11.5px!important;font-weight:600!important;line-height:1.05!important;border-radius:5px!important;box-shadow:none!important;position:relative!important;overflow:visible!important;}
 [data-testid="stSidebar"] .stButton>button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
-[data-testid="stSidebar"] .stButton>button[kind="primary"]{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;color:#fff!important;border-color:transparent!important;}
+[data-testid="stSidebar"] .stButton>button[kind="primary"]{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;color:#fff!important;border-color:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important;}
+[data-testid="stSidebar"] .stButton>button:hover{background:rgba(255,255,255,.055)!important;border-color:transparent!important;color:#fff!important;}
+[data-testid="stSidebar"] .stButton>button[kind="primary"]:hover{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;}
+[data-testid="stSidebar"] .stButton>button span[data-testid="stIconMaterial"],[data-testid="stSidebar"] .stButton>button [data-testid="stIconMaterial"]{position:absolute!important;left:12px!important;top:12px!important;font-size:23px!important;line-height:23px!important;color:#fff!important;margin:0!important;}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0!important;}
 /* Gold secondary copy from the approved Chrímata sidebar reference. */
-.st-key-chr_nav_native_0 button:after{content:"Global Market Overview";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_1 button:after{content:"Find & Analyse Stocks";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_2 button:after{content:"Deep Analysis & Reports";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_3 button:after{content:"Indices, Sectors & Heatmaps";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_4 button:after{content:"Track Your Stocks";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_5 button:after{content:"Performance & Analytics";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_6 button:after{content:"Find Opportunities";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_7 button:after{content:"Price & News Alerts";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_8 button:after{content:"Dividends, Earnings & IPOs";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
-.st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_0 button:after{content:"Global Market Overview";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_1 button:after{content:"Find & Analyse Stocks";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_2 button:after{content:"Deep Analysis & Reports";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_3 button:after{content:"Indices, Sectors & Heatmaps";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_4 button:after{content:"Track Your Stocks";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_5 button:after{content:"Performance & Analytics";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_6 button:after{content:"Find Opportunities";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_7 button:after{content:"Price & News Alerts";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_8 button:after{content:"Dividends, Earnings & IPOs";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
 
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
@@ -2732,7 +2735,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.4</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.7</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
