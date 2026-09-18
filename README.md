@@ -1,4 +1,4 @@
-Chrímata V20.4.0 — Interactive ASX Sectors
+Chrímata V20.4.1 — Interactive ASX Sectors
 
 # Chrímata V20.3.3 — Reference Market Section & In-Place Chart Fix
 
@@ -42,3 +42,10 @@ Provider/exchange delays still apply.
 
 ## V20.4.0 — Complete ASX Sector Data Engine
 Australia sector performance now uses the official S&P/ASX 200 GICS sector index symbols first (XFJ, XHJ, XRE/XPJ, XNJ, XTJ, XSJ, XDJ, XUJ, XMJ, XIJ, XEJ). If the active provider cannot resolve an official index, Chrímata falls back to an ASX proxy or an equal-weight basket of representative ASX shares. Day, Week, Month and YTD remain client-side interactive in the sector widget.
+
+
+## V20.4.1 — ASX Indices Widget Rebuild
+- Restores the complete nine-row ASX Indices terminal layout: XJO, XAO, XFL, XTO, XKO, XTL, XTX, XJR and XGD.
+- Uses provider-compatible symbols for ASX 50 (^AFLI), ASX 100 (^ATOI) and ASX 20 (^ATLI) while displaying canonical ASX codes.
+- Keeps unavailable rows visible with an em dash instead of removing them.
+- Preserves the five headline cards and the stable client-side market chart/sector interactions.

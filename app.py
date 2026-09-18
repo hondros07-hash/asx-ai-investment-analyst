@@ -2690,7 +2690,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2751,7 +2751,7 @@ if page!="Dashboard":
 
 
 MARKET_OVERVIEW_CONFIG={
- "Australia":{"flag":"🇦🇺","indices":{"S&P/ASX 200":"^AXJO","All Ordinaries":"^AORD","ASX 50":"^AXFL","ASX 100":"^AXTO","ASX 300":"^AXKO","ASX 20":"^AXTL","All Technology":"^AXTX","ASX 200 Resources":"^AXJR","All Ords Gold (sub)":"^AXGD"},"benchmark":"^AXJO","vol":"^AXVI","currency":"AUDUSD=X","universe":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX"],"sectors":{"Financials":["^AXFJ","QFN.AX"],"Health Care":["^AXHJ",["CSL.AX","RMD.AX","COH.AX","FPH.AX"]],"Real Estate":["^AXRE","^AXPJ","VAP.AX"],"Industrials":["^AXNJ",["BXB.AX","QAN.AX","QUB.AX","CPU.AX"]],"Telecommunication":["^AXTJ",["TLS.AX","REA.AX","CAR.AX","TPG.AX"]],"Staples":["^AXSJ",["WOW.AX","COL.AX","EDV.AX","TWE.AX"]],"Discretionary":["^AXDJ",["WES.AX","ALL.AX","JBH.AX","HVN.AX"]],"Utilities":["^AXUJ",["APA.AX","AGL.AX","ORG.AX"]],"Materials":["^AXMJ","QRE.AX"],"Information Technology":["^AXIJ","ATEC.AX"],"Energy":["^AXEJ","FUEL.AX"]}},
+ "Australia":{"flag":"🇦🇺","indices":{"S&P/ASX 200":"^AXJO","All Ordinaries":"^AORD","ASX 50":"^AFLI","ASX 100":"^ATOI","ASX 300":"^AXKO","ASX 20":"^ATLI","All Technology":"^AXTX","ASX 200 Resources":"^AXJR","All Ords Gold (sub)":"^AXGD"},"benchmark":"^AXJO","vol":"^AXVI","currency":"AUDUSD=X","universe":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX"],"sectors":{"Financials":["^AXFJ","QFN.AX"],"Health Care":["^AXHJ",["CSL.AX","RMD.AX","COH.AX","FPH.AX"]],"Real Estate":["^AXRE","^AXPJ","VAP.AX"],"Industrials":["^AXNJ",["BXB.AX","QAN.AX","QUB.AX","CPU.AX"]],"Telecommunication":["^AXTJ",["TLS.AX","REA.AX","CAR.AX","TPG.AX"]],"Staples":["^AXSJ",["WOW.AX","COL.AX","EDV.AX","TWE.AX"]],"Discretionary":["^AXDJ",["WES.AX","ALL.AX","JBH.AX","HVN.AX"]],"Utilities":["^AXUJ",["APA.AX","AGL.AX","ORG.AX"]],"Materials":["^AXMJ","QRE.AX"],"Information Technology":["^AXIJ","ATEC.AX"],"Energy":["^AXEJ","FUEL.AX"]}},
  "United States":{"flag":"🇺🇸","indices":{"S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI"},"benchmark":"^GSPC","vol":"^VIX","currency":"AUDUSD=X","universe":["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","V","WMT","XOM","MA","NFLX","COST","AMD","PEP","KO","DIS","CAT"],"sectors":{"Technology":"XLK","Financials":"XLF","Health Care":"XLV","Consumer Discretionary":"XLY","Industrials":"XLI","Energy":"XLE","Materials":"XLB","Utilities":"XLU","Real Estate":"XLRE","Staples":"XLP","Communication":"XLC"}},
  "United Kingdom":{"flag":"🇬🇧","indices":{"FTSE 100":"^FTSE","FTSE 250":"^FTMC","FTSE All-Share":"^FTAS"},"benchmark":"^FTSE","vol":None,"currency":"GBPUSD=X","universe":["SHEL.L","AZN.L","HSBA.L","ULVR.L","BP.L","RIO.L","GSK.L","REL.L","LSEG.L","DGE.L","BARC.L","VOD.L"],"sectors":{}},
  "Japan":{"flag":"🇯🇵","indices":{"Nikkei 225":"^N225","TOPIX":"^TOPX","JPX-Nikkei 400":"^JPXNK400"},"benchmark":"^N225","vol":None,"currency":"JPY=X","universe":["7203.T","6758.T","9984.T","8306.T","6861.T","8035.T","9432.T","7974.T","6501.T","7267.T","6098.T","9983.T"],"sectors":{}},
@@ -3032,7 +3032,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 /* V20.3.6 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
-/* V20.4.0 — stable client-side market section: no timed Streamlit reruns or layout reflow. */
+/* V20.4.1 — stable client-side market section: no timed Streamlit reruns or layout reflow. */
 .chr-home-v2020>.chr-overview-head,.chr-home-v2020>.chr-metrics,.chr-home-v2020>.chr-grid-main{display:none!important;}
 /* V20.3.6 — pixel-density pass based on the approved market-section reference. */
 .chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
@@ -3158,10 +3158,28 @@ def render_global_market_overview():
             if d: sector_values[pname][label]=d['return']
     sectors={p:[(name,sector_values[p][name]) for name in sector_names] for p in ('Day','Week','Month','YTD')}
     sector_html=''
+    # V20.4.1 — ASX Indices terminal table. Always preserve the complete nine-row
+    # reference layout. Yahoo/provider symbols differ from the ASX display codes for
+    # several capitalisation indices (AFLI/ATOI/ATLI), so present canonical ASX codes.
     index_rows=[]
+    asx_display_codes={
+        'S&P/ASX 200':'XJO','All Ordinaries':'XAO','ASX 50':'XFL','ASX 100':'XTO',
+        'ASX 300':'XKO','ASX 20':'XTL','All Technology':'XTX',
+        'ASX 200 Resources':'XJR','All Ords Gold (sub)':'XGD'
+    }
     for label,t,q in idx:
-        if q:index_rows.append({'Code':t.replace('^',''),'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
-    index_table=_chr_table(index_rows,['Code','Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
+        code=asx_display_codes.get(label,t.replace('^','')) if market=='Australia' else t.replace('^','')
+        index_rows.append({
+            'Code':code,'Name':label,
+            'Last':q['last'] if q else '—',
+            'Change':q['change'] if q else '—',
+            '% Chg':q['pct'] if q else '—'
+        })
+    index_table=_chr_table(index_rows,['Code','Name','Last','Change','% Chg'],{
+        'Last':lambda x:f'{x:,.2f}' if isinstance(x,(int,float,np.integer,np.floating)) else str(x),
+        'Change':lambda x:f'{x:+,.2f}' if isinstance(x,(int,float,np.integer,np.floating)) else str(x),
+        '% Chg':lambda x:f'{x:+.2%}' if isinstance(x,(int,float,np.integer,np.floating)) else str(x)
+    })
     movers=overview_batch(tuple(cfg['universe'])); gain=[]; fall=[]
     if movers is not None and not movers.empty:
         for _,r in movers.sort_values('% Chg',ascending=False).head(5).iterrows(): gain.append({'Code':r['Ticker'].split('.')[0],'Company':str(r['Company'])[:24],'Last':r['Last'],'% Chg':r['% Chg']})
