@@ -2511,7 +2511,7 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{position:absolute!important;left:45px!important;top:8px!important;margin:0!important;padding:0!important;width:calc(100% - 52px)!important;max-width:calc(100% - 52px)!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;}
 [data-testid="stSidebar"] .stButton>button p{font-size:11.5px!important;font-weight:600!important;line-height:1.05!important;}
 
-/* V20.6.1 — deterministic sidebar grid.  Streamlit wraps button text in
+/* V20.6.2 — deterministic sidebar grid.  Streamlit wraps button text in
    multiple flex containers, so pin the complete label wrapper rather than only
    the paragraph. Every white title and gold subtitle now shares x=52px. */
 [data-testid="stSidebar"] .stButton>button{
@@ -2536,7 +2536,15 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
 .st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
 .st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
-.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{left:52px!important;text-align:left!important;}
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{left:42px!important;text-align:left!important;}
+/* V20.6.2 — subtitle alignment repair. The grid text column begins at
+   8px button padding + 34px icon column = 42px. Gold pseudo-elements now
+   use that exact origin, with no inherited transform/margin. */
+.st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
+.st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
+.st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{left:42px!important;right:auto!important;margin:0!important;padding:0!important;transform:none!important;text-align:left!important;}
+
 
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}

@@ -4,7 +4,7 @@ import json, urllib.parse, urllib.request
 import pandas as pd
 from global_dividends import upcoming_dividends as yahoo_upcoming_dividends
 
-UA={"User-Agent":"Mozilla/5.0 Chrimata/20.6.0","Accept":"application/json"}
+UA={"User-Agent":"Mozilla/5.0 Chrimata/20.6.2","Accept":"application/json"}
 COUNTRY_ALIASES={
     "Australia":["AU","Australia"],
     "United States":["US","United States"],
@@ -48,6 +48,15 @@ def _belongs(symbol, market, universe, mic_code="", exchange=""):
     mic=str(mic_code or '').upper(); exch=str(exchange or '').upper()
     return s.split('.')[0] in bases and (mic in MIC_CODES.get(market,set()) or exch in EXCHANGES.get(market,set()))
 
+def _venue_belongs(market, mic_code="", exchange=""):
+    """Market-wide venue test; deliberately does NOT depend on dashboard universe."""
+    mic=str(mic_code or "").upper().strip()
+    exch=str(exchange or "").upper().strip()
+    if mic and mic in MIC_CODES.get(market,set()): return True
+    if exch and exch in EXCHANGES.get(market,set()): return True
+    # Provider venue labels vary (e.g. NASDAQ Capital Market, ASX).
+    return any(x and (x in exch or exch in x) for x in EXCHANGES.get(market,set()))
+
 def _calendar_items(j):
     if isinstance(j,list):return j
     if not isinstance(j,dict):return []
@@ -80,11 +89,29 @@ def _twelve_calendar(market,start,end,key,universe):
         params=dict(base,country=country)
         try:j=_get_json("https://api.twelvedata.com/dividends_calendar?"+urllib.parse.urlencode(params))
         except Exception:continue
+        # Country-filtered calendar is already market-wide. Do NOT filter it
+        # through Chrímata's small dashboard universe; that was the AU/US bug.
         for x in _calendar_items(j):
-            if _belongs(x.get("symbol"),market,universe,x.get("mic_code"),x.get("exchange")):
-                r=_row(x,"Twelve Data calendar")
-                if r:out.append(r)
+            r=_row(x,"Twelve Data calendar")
+            if r:out.append(r)
         if out:break
+    # V20.6.2: AU/US venue-specific repair. Some provider responses are more
+    # reliable by MIC/exchange than by country. Query the actual venues directly.
+    if not out and market in {"Australia","United States"}:
+        venue_params=[]
+        for mic in sorted(MIC_CODES.get(market,set())):
+            venue_params.append(dict(base,mic_code=mic))
+        for exch in sorted(EXCHANGES.get(market,set())):
+            venue_params.append(dict(base,exchange=exch))
+        for params in venue_params:
+            try:j=_get_json("https://api.twelvedata.com/dividends_calendar?"+urllib.parse.urlencode(params))
+            except Exception:continue
+            for x in _calendar_items(j):
+                if _venue_belongs(market,x.get("mic_code"),x.get("exchange")):
+                    r=_row(x,"Twelve Data calendar")
+                    if r:out.append(r)
+            if out:break
+
     # Final calendar-level fallback: request the date range without a country
     # filter and keep only the configured universe. This avoids silently losing
     # AU/US events when a provider's country vocabulary changes.
@@ -92,7 +119,7 @@ def _twelve_calendar(market,start,end,key,universe):
         try:j=_get_json("https://api.twelvedata.com/dividends_calendar?"+urllib.parse.urlencode(base))
         except Exception:j=[]
         for x in _calendar_items(j):
-            if _belongs(x.get("symbol"),market,universe,x.get("mic_code"),x.get("exchange")):
+            if _venue_belongs(market,x.get("mic_code"),x.get("exchange")):
                 r=_row(x,"Twelve Data calendar")
                 if r:out.append(r)
     return out

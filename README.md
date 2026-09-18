@@ -158,3 +158,9 @@ Upcoming Dividends now uses a forward-calendar provider hierarchy: Twelve Data d
 - Pins every sidebar title and subtitle to one fixed text column while preserving icons, active-state styling and routing.
 - Hardens Australia and United States dividend retrieval with ISO/full-country retries, unfiltered calendar fallback filtered to the configured universe, and a final per-security `range=next` declared-dividend fallback.
 - Continues to show only declared/confirmed dividend events; no historical-pattern estimates are created.
+
+
+## V20.6.2 — Sidebar Subtitle Alignment & AU/US Dividend Engine Repair
+- Gold sidebar subtitles share the exact grid text origin with white titles.
+- AU/US forward dividend calendars no longer get restricted to the small dashboard universe.
+- AU/US provider fallbacks query country, MIC/exchange, then market-wide calendar, then declared per-security events.
