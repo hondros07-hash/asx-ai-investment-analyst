@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.1 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.2 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.1 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.2.2 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -406,6 +406,57 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 .chr-country-row .stButton button:hover{border-color:#1687ff!important;color:#0874df!important;}
 .chr-market-status{font-weight:700;color:#315276}.chr-market-status.open{color:#0a9d62}.chr-market-status.closed{color:#b45309}
 @media(max-width:1200px){.chr-metrics{grid-template-columns:repeat(3,1fr)}.chr-grid-main{grid-template-columns:1fr 1fr}.chr-grid-main .chr-chart-panel{grid-column:1/-1}.chr-grid-mid{grid-template-columns:1fr 1fr}.chr-grid-bottom{grid-template-columns:1fr 1fr}.chr-overview-quote{display:none}}
+</style>
+""",unsafe_allow_html=True)
+
+st.markdown(r"""
+<style>
+/* V20.2.2 — approved reference alignment */
+:root{--chr-sidebar:228px;--chr-banner:108px;}
+/* Make the banner host consume zero document height; the image itself stays fixed. */
+.chrimata-terminal-hero.chrimata-exact-hero{
+  position:static!important;left:auto!important;right:auto!important;top:auto!important;
+  width:0!important;height:0!important;min-height:0!important;max-height:0!important;
+  margin:0!important;padding:0!important;overflow:visible!important;background:transparent!important;
+}
+.chrimata-terminal-hero.chrimata-exact-hero img{
+  position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:var(--chr-banner)!important;
+  display:block!important;object-fit:fill!important;object-position:center!important;z-index:1000000!important;
+}
+div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
+div.element-container:has(.chrimata-exact-hero),
+div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
+/* Main canvas starts immediately below the banner. */
+[data-testid="stAppViewContainer"] > .main,[data-testid="stAppViewContainer"] > section.main,section[data-testid="stMain"],.stMain{
+  top:var(--chr-banner)!important;left:var(--chr-sidebar)!important;right:0!important;bottom:0!important;
+}
+.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{
+  padding:10px 12px 14px!important;margin:0!important;
+}
+/* Reference-style country controls: white cards with a real flag tile at left. */
+.main [data-testid="stHorizontalBlock"]:has(button[key^="country_"]) {gap:6px!important;}
+.main button[kind="secondary"]{background:#fff!important;color:#10264b!important;}
+/* Country buttons specifically */
+.main div[data-testid="stColumn"]:has(button[key^="country_"]) button{
+  background:#fff!important;color:#10264b!important;border:1px solid #d7e2ef!important;
+  box-shadow:none!important;height:38px!important;min-height:38px!important;border-radius:5px!important;
+  font-size:11px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+.main div[data-testid="stColumn"]:has(button[key^="country_"]) button[kind="primary"]{
+  background:#fff!important;color:#0874df!important;border:2px solid #1687ff!important;
+}
+/* Use CSS-drawn flag tiles so Windows font rendering cannot turn emoji into AU/US/GB text. */
+.main div[data-testid="stColumn"]:has(button[key="country_Australia_v2021"]) button::before{content:"🇦🇺";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+.main div[data-testid="stColumn"]:has(button[key="country_United States_v2021"]) button::before{content:"🇺🇸";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+.main div[data-testid="stColumn"]:has(button[key="country_United Kingdom_v2021"]) button::before{content:"🇬🇧";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+.main div[data-testid="stColumn"]:has(button[key="country_Japan_v2021"]) button::before{content:"🇯🇵";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+.main div[data-testid="stColumn"]:has(button[key="country_Hong Kong_v2021"]) button::before{content:"🇭🇰";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+.main div[data-testid="stColumn"]:has(button[key="country_Canada_v2021"]) button::before{content:"🇨🇦";font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;margin-right:6px;}
+/* Hide the textual regional-indicator prefix in labels by rendering names without emoji in Python. */
+.chr-overview-title{display:flex!important;align-items:center!important;gap:8px!important;}
+.chr-overview-title .chr-flag{font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:28px!important;line-height:1!important;}
+.chr-home-v2020{margin-top:0!important;}
+.chr-overview-head{padding-top:4px!important;}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2464,7 +2515,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2660,7 +2711,7 @@ def render_global_market_overview():
         for c,m in zip(cols,names):
             with c:
                 flag=MARKET_OVERVIEW_CONFIG[m]["flag"]; active=(st.session_state.home_market_v2021==m)
-                if st.button(f"{flag}  {m}",key=f"country_{m}_v2021",use_container_width=True,type="primary" if active else "secondary"):
+                if st.button(m,key=f"country_{m}_v2021",use_container_width=True,type="primary" if active else "secondary"):
                     st.session_state.home_market_v2021=m; st.rerun()
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     if home_q:
@@ -2709,7 +2760,7 @@ def render_global_market_overview():
         q=overview_quote(t,'5d')
         if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
     glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span>{cfg['flag']}</span> Market Overview – {market}</div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-flag">{cfg['flag']}</span> Market Overview – {market}</div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
