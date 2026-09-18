@@ -1,4 +1,4 @@
-Chrímata V20.4.1 — Interactive ASX Sectors
+Chrímata V20.4.2 — Live Market Intelligence Widgets
 
 # Chrímata V20.3.3 — Reference Market Section & In-Place Chart Fix
 
@@ -49,3 +49,11 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 - Uses provider-compatible symbols for ASX 50 (^AFLI), ASX 100 (^ATOI) and ASX 20 (^ATLI) while displaying canonical ASX codes.
 - Keeps unavailable rows visible with an em dash instead of removing them.
 - Preserves the five headline cards and the stable client-side market chart/sector interactions.
+
+
+## V20.4.2 — Live Market Intelligence Widgets
+- Top Gainers filters to positive movers only; Biggest Fallers filters to negative movers only.
+- Market movers remain country-aware through each market universe and provider quotes.
+- Landing-page Watchlist now resolves saved bare tickers to the selected market and uses the same persistent SQLite watchlist store as the full Watchlist page.
+- VIX widget now requests CBOE VIX (^VIX), removes the fabricated numeric fallback, supports values above 30, and identifies VIX as a US S&P 500 options-implied volatility measure.
+- Existing five-card market overview, stable chart, ASX sectors, and nine-row ASX indices widget are preserved.

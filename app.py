@@ -2690,7 +2690,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3032,7 +3032,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 /* V20.3.6 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
-/* V20.4.1 — stable client-side market section: no timed Streamlit reruns or layout reflow. */
+/* V20.4.2 — live market intelligence widgets + stable client-side market section. */
 .chr-home-v2020>.chr-overview-head,.chr-home-v2020>.chr-metrics,.chr-home-v2020>.chr-grid-main{display:none!important;}
 /* V20.3.6 — pixel-density pass based on the approved market-section reference. */
 .chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
@@ -3180,11 +3180,28 @@ def render_global_market_overview():
         'Change':lambda x:f'{x:+,.2f}' if isinstance(x,(int,float,np.integer,np.floating)) else str(x),
         '% Chg':lambda x:f'{x:+.2%}' if isinstance(x,(int,float,np.integer,np.floating)) else str(x)
     })
+    # V20.4.2 — genuine movers: gainers are positive-only and fallers negative-only.
+    # Never pad a list with securities moving in the wrong direction.
     movers=overview_batch(tuple(cfg['universe'])); gain=[]; fall=[]
     if movers is not None and not movers.empty:
-        for _,r in movers.sort_values('% Chg',ascending=False).head(5).iterrows(): gain.append({'Code':r['Ticker'].split('.')[0],'Company':str(r['Company'])[:24],'Last':r['Last'],'% Chg':r['% Chg']})
-        for _,r in movers.sort_values('% Chg').head(5).iterrows(): fall.append({'Code':r['Ticker'].split('.')[0],'Company':str(r['Company'])[:24],'Last':r['Last'],'% Chg':r['% Chg']})
-    smallfmt={'Last':lambda x:f'${x:,.2f}','% Chg':lambda x:f'{x:+.2%}'}; gain_t=_chr_table(gain,['Code','Company','Last','% Chg'],smallfmt); fall_t=_chr_table(fall,['Code','Company','Last','% Chg'],smallfmt)
+        clean=movers.copy()
+        clean['% Chg']=pd.to_numeric(clean['% Chg'],errors='coerce')
+        clean=clean.dropna(subset=['% Chg'])
+        def _clean_company_name(name,ticker):
+            nm=str(name or ticker).strip()
+            # Provider names sometimes echo the exchange ticker rather than a company name.
+            if nm.upper() in {str(ticker).upper(),str(ticker).split('.')[0].upper()}:
+                return str(ticker).split('.')[0]
+            for suffix in (' FPO',' CDI 1:1'):
+                nm=nm.replace(suffix,'')
+            return nm[:28]
+        for _,r in clean[clean['% Chg']>0].sort_values('% Chg',ascending=False).head(5).iterrows():
+            gain.append({'Code':r['Ticker'].split('.')[0],'Company':_clean_company_name(r['Company'],r['Ticker']),'Last':r['Last'],'% Chg':r['% Chg']})
+        for _,r in clean[clean['% Chg']<0].sort_values('% Chg',ascending=True).head(5).iterrows():
+            fall.append({'Code':r['Ticker'].split('.')[0],'Company':_clean_company_name(r['Company'],r['Ticker']),'Last':r['Last'],'% Chg':r['% Chg']})
+    smallfmt={'Last':lambda x:f'${x:,.2f}','% Chg':lambda x:f'{x:+.2%}'}
+    gain_t=_chr_table(gain,['Code','Company','Last','% Chg'],smallfmt) if gain else '<div class="chr-empty">No qualifying gainers returned by the active provider.</div>'
+    fall_t=_chr_table(fall,['Code','Company','Last','% Chg'],smallfmt) if fall else '<div class="chr-empty">No qualifying fallers returned by the active provider.</div>'
     try: wl=watch_get()
     except Exception: wl=[]
     wt=[]
@@ -3192,11 +3209,26 @@ def render_global_market_overview():
         for c in ['ticker','Ticker','symbol','Symbol']:
             if c in wl.columns: wt=wl[c].astype(str).tolist();break
     elif isinstance(wl,(list,tuple)): wt=[str(x) for x in wl]
-    wdf=overview_batch(tuple(wt[:6])) if wt else pd.DataFrame(); wrows=[]
+    # V20.4.2 — the dashboard reads the same persistent watchlist database as the full Watchlist page.
+    # Resolve bare symbols to the selected market before requesting quotes.
+    resolved_wt=[]
+    for sym in wt[:6]:
+        raw=str(sym).strip().upper()
+        if not raw: continue
+        if any(raw.endswith(x) for x in ('.AX','.L','.HK','.T','.TO')) or raw.startswith('^') or '=' in raw:
+            resolved_wt.append(raw)
+        else:
+            market_code={'Australia':'ASX','United Kingdom':'LSE','Hong Kong':'HKEX','Japan':'TSE','Canada':'TSX'}.get(market,'US')
+            resolved_wt.append(global_yahoo_symbol(raw,market_code))
+    wdf=overview_batch(tuple(resolved_wt)) if resolved_wt else pd.DataFrame(); wrows=[]
     if wdf is not None and not wdf.empty:
         for _,r in wdf.head(6).iterrows():wrows.append({'Code':r['Ticker'].split('.')[0],'Last':r['Last'],'% Chg':r['% Chg']})
-    watch_t=_chr_table(wrows,['Code','Last','% Chg'],smallfmt) if wrows else '<div class="chr-empty">Your saved watchlist is empty.</div>'
-    vt=cfg.get('vol'); vq=overview_quote(vt,'1y') if vt else None; vv=float(vq['last']) if vq else 12.6; needle=max(-80,min(80,(vv/30*160)-80))
+    watch_t=_chr_table(wrows,['Code','Last','% Chg'],smallfmt) if wrows else ('<div class="chr-empty">Your saved watchlist is empty.</div>' if not wt else '<div class="chr-empty">Watchlist saved; live quotes are temporarily unavailable.</div>')
+    # V20.4.2 — VIX is explicitly the CBOE VIX (S&P 500 options), regardless of selected country.
+    # Do not substitute a fabricated fallback value when the provider is unavailable.
+    vq=overview_quote('^VIX','5d'); vv=float(vq['last']) if vq and np.isfinite(_mia_num(vq.get('last'))) else None
+    needle=(-80 if vv is None else max(-80,min(80,(min(vv,50.0)/50.0*160)-80)))
+    vix_text='—' if vv is None else f'{vv:.1f}'
     earnings,dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
     if dividends is not None and not dividends.empty:
         for _,r in dividends.head(4).iterrows():divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Ex-Date':r.get('Ex-Date',''),'Amount':r.get('Dividend Rate','—')})
@@ -3222,7 +3254,7 @@ def render_global_market_overview():
         panel_asof = "Live" if market_is_open else "At Close"
     smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
     components.html(smooth_html,height=496,scrolling=False)
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX) <span>CBOE · US</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ Elevated 20–30</span><span>■ High &gt;30</span></div></div><p class="chr-note">CBOE VIX: S&amp;P 500 options-implied volatility over roughly the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
