@@ -2217,7 +2217,7 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-# V20.0.8 — compact reference sidebar, refined footer, copyright and browser title.
+# V20.0.9 — compressed full-height sidebar so all primary navigation fits without scrolling.
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
@@ -2232,23 +2232,23 @@ st.markdown(r"""
 [data-testid="stSidebar"] .block-container{padding:10px 9px 12px!important;min-height:100%!important;display:flex!important;flex-direction:column!important;}
 .chr-nav{display:flex;flex-direction:column;gap:0;width:100%;margin:0;padding:0;}
 .chr-nav a,.chr-nav a:visited{text-decoration:none!important;color:#fff!important;}
-.chr-nav-item{display:grid;grid-template-columns:36px 1fr;align-items:center;min-height:55px;padding:5px 7px;border-radius:6px;background:transparent;transition:background .12s ease,box-shadow .12s ease;box-sizing:border-box;}
+.chr-nav-item{display:grid;grid-template-columns:32px 1fr;align-items:center;min-height:43px;padding:3px 6px;border-radius:6px;background:transparent;transition:background .12s ease,box-shadow .12s ease;box-sizing:border-box;}
 .chr-nav-item:hover{background:rgba(255,255,255,.055);}
 .chr-nav-item.active{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.08);}
-.chr-nav-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:#fff;line-height:1}.chr-nav-icon svg{width:23px;height:23px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.chr-nav-icon{width:25px;height:25px;display:flex;align-items:center;justify-content:center;color:#fff;line-height:1}.chr-nav-icon svg{width:20px;height:20px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;}
 .chr-nav-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.2;}
-.chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:11.4px;font-weight:500;color:#fff;white-space:nowrap;line-height:1.12;letter-spacing:-.01em;}
-.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:8.2px;font-weight:400;color:#d9ad55;margin-top:2px;white-space:nowrap;line-height:1.1;letter-spacing:-.01em;}
+.chr-nav-title{font-family:Arial,"Helvetica Neue",sans-serif;font-size:10.7px;font-weight:500;color:#fff;white-space:nowrap;line-height:1.12;letter-spacing:-.01em;}
+.chr-nav-sub{font-family:Arial,"Helvetica Neue",sans-serif;font-size:7.5px;font-weight:400;color:#d9ad55;margin-top:1px;white-space:nowrap;line-height:1.1;letter-spacing:-.01em;}
 .chr-nav-item.active .chr-nav-sub{color:#f3d58f;}
 [data-testid="stSidebar"] details{margin-top:8px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:6px!important;}
 [data-testid="stSidebar"] details summary{font-size:10.5px!important;font-weight:650!important;color:#fff!important;}
 [data-testid="stSidebar"] [data-testid="stSelectbox"] label p{font-size:9px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#8fbce2!important;}
-.chr-side-spacer{height:12px;flex:1 1 auto;min-height:12px;}
-.chr-side-wealth{margin:12px 6px 4px;padding:12px 10px;border:1px solid rgba(55,151,221,.30);border-radius:6px;background:rgba(2,32,58,.35);display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:center;color:#fff}
-.chr-side-wealth .wealth-pillar{width:44px;height:62px;display:flex;align-items:center;justify-content:center}.chr-side-wealth .wealth-pillar svg{width:42px;height:58px;stroke:#e6bd68;fill:none;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
-.chr-side-wealth .wealth-copy{font:10.5px Georgia,serif;letter-spacing:1.45px;line-height:1.65;color:#fff;text-align:center}
-.chr-side-version{font-size:9px;color:#d7e8f7;text-align:right;margin:5px 7px 0}
-.chr-side-copyright{font:7.8px Arial,sans-serif;color:#91abc0;text-align:center;margin:5px 4px 0;letter-spacing:.02em}
+.chr-side-spacer{height:5px;flex:1 1 auto;min-height:5px;}
+.chr-side-wealth{margin:5px 6px 2px;padding:8px 8px;border:1px solid rgba(55,151,221,.30);border-radius:6px;background:rgba(2,32,58,.35);display:grid;grid-template-columns:38px 1fr;gap:7px;align-items:center;color:#fff}
+.chr-side-wealth .wealth-pillar{width:36px;height:50px;display:flex;align-items:center;justify-content:center}.chr-side-wealth .wealth-pillar svg{width:34px;height:48px;stroke:#e6bd68;fill:none;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
+.chr-side-wealth .wealth-copy{font:9.4px Georgia,serif;letter-spacing:1.45px;line-height:1.65;color:#fff;text-align:center}
+.chr-side-version{font-size:8px;color:#d7e8f7;text-align:right;margin:5px 7px 0}
+.chr-side-copyright{font:7px Arial,sans-serif;color:#91abc0;text-align:center;margin:5px 4px 0;letter-spacing:.02em}
 /* Remove Streamlit footer/bottom chrome that can appear as a white strip. */
 footer,[data-testid="stBottom"],[data-testid="stBottomBlockContainer"]{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;}
 /* V20.0.8: compact reference spacing and remove Streamlit sidebar chrome. */
@@ -2262,10 +2262,12 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] > div:first-child{padding-top:0!important;margin-top:0!important;}
 [data-testid="stSidebar"] .block-container{padding-top:0!important;margin-top:0!important;}
 [data-testid="stSidebar"] .chr-nav{margin-top:0!important;padding-top:0!important;}
+[data-testid="stSidebar"] section,[data-testid="stSidebar"]>div{overflow:hidden!important;}
+[data-testid="stSidebar"] details{display:none!important;}
 .chr-nav a .chr-nav-title,.chr-nav a:visited .chr-nav-title{color:#ffffff!important;}
-.chr-nav a .chr-nav-sub,.chr-nav a:visited .chr-nav-sub{color:#d9ad55!important;font-size:8.2px!important;line-height:1.08!important;margin-top:2px!important;font-weight:400!important;letter-spacing:.01em!important;}
+.chr-nav a .chr-nav-sub,.chr-nav a:visited .chr-nav-sub{color:#d9ad55!important;font-size:7.5px!important;line-height:1.04!important;margin-top:1px!important;font-weight:400!important;letter-spacing:.01em!important;}
 .chr-nav-item.active .chr-nav-sub{color:#f0c86e!important;}
-.chr-nav-copy{min-width:0!important;max-width:calc(var(--chr-sidebar) - 52px)!important;overflow:hidden!important;}
+.chr-nav-copy{min-width:0!important;max-width:calc(var(--chr-sidebar) - 46px)!important;overflow:hidden!important;}
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 </style>
 """,unsafe_allow_html=True)
@@ -2316,7 +2318,7 @@ st.sidebar.markdown(''.join(_nav_html),unsafe_allow_html=True)
 
 # Keep company selection available without changing the clean reference navigation rail.
 with st.sidebar.expander("Current company", expanded=False):
-    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v208")
+    query=st.text_input("Search company or ticker",st.session_state.get("mia_search_query","ZIP"),placeholder="Pepsi, PEP, Qantas, QAN, Zip…",label_visibility="collapsed",key="sidebar_company_search_v209")
     st.session_state["mia_search_query"]=query
     matches=search_securities(query,_search_key)
     if not matches.empty:
@@ -2347,10 +2349,10 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v208_{primary}"); page=PAGE_MAP[(primary,sub)]
+    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.8</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.9</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
