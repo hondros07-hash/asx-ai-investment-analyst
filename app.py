@@ -2484,14 +2484,26 @@ button[kind="headerNoPadding"],
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 
 
-/* V20.5.0 native sidebar navigation: same visual language, no browser-level link navigation. */
+/* V20.5.1 sidebar restoration: white icons/titles + gold secondary copy. */
 [data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
-[data-testid="stSidebar"] .stButton>button{width:100%!important;height:43px!important;min-height:43px!important;margin:0!important;padding:4px 8px!important;text-align:left!important;justify-content:flex-start!important;white-space:pre-line!important;font-size:10.5px!important;line-height:1.10!important;border-radius:6px!important;box-shadow:none!important;}
+[data-testid="stSidebar"] .stButton>button{width:100%!important;height:46px!important;min-height:46px!important;margin:0!important;padding:4px 8px 14px 42px!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;font-size:11px!important;line-height:1.05!important;border-radius:6px!important;box-shadow:none!important;position:relative!important;}
 [data-testid="stSidebar"] .stButton>button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
 [data-testid="stSidebar"] .stButton>button[kind="primary"]{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;color:#fff!important;border-color:transparent!important;}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0!important;}
+/* Gold secondary copy from the approved Chrímata sidebar reference. */
+.st-key-chr_nav_native_0 button:after{content:"Global Market Overview";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_1 button:after{content:"Find & Analyse Stocks";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_2 button:after{content:"Deep Analysis & Reports";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_3 button:after{content:"Indices, Sectors & Heatmaps";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_4 button:after{content:"Track Your Stocks";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_5 button:after{content:"Performance & Analytics";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_6 button:after{content:"Find Opportunities";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_7 button:after{content:"Price & News Alerts";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_8 button:after{content:"Dividends, Earnings & IPOs";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
+.st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
 
-/* V20.5.0 — keep provider/cache execution details out of the product UI. */
+/* V20.5.1 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
 </style>
@@ -2541,11 +2553,15 @@ for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
     _active=(_key==primary)
     _material_icons={"home":":material/home:","search":":material/search:","document":":material/description:","chart":":material/monitoring:","star":":material/star_outline:","briefcase":":material/business_center:","screen":":material/filter_alt:","bell":":material/notifications_none:","calendar":":material/calendar_month:","research":":material/query_stats:","settings":":material/settings:"}
     _clean_title=_title.split("  ",1)[-1]
-    if st.sidebar.button(f"{_clean_title}\n{_sub}", key=f"chr_nav_native_{_idx}", use_container_width=True,
+    if st.sidebar.button(_clean_title, key=f"chr_nav_native_{_idx}", use_container_width=True,
                          type="primary" if _active else "secondary", icon=_material_icons.get(_icon)):
         st.session_state["chr_primary_nav"]=_key
         primary=_key
-        try: st.query_params["chr_nav"]=_key
+        try:
+            st.query_params["chr_nav"]=_key
+            if _key=="Home":
+                if "ticker" in st.query_params: del st.query_params["ticker"]
+                st.session_state.pop("chr_active_ticker",None)
         except Exception: pass
         st.rerun()
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
@@ -2564,6 +2580,19 @@ with st.sidebar.expander("Current company", expanded=False):
         st.caption(f"Current · {ticker} · {str(_row.get('Company') or identity(ticker))}")
     else:
         ticker=resolve_bare_ticker(query.strip().upper()) if query.strip() else "ZIP.AX"; st.caption(f"Current · {ticker}")
+
+# V20.5.1 — one authoritative active-security state. A selected search result/URL
+# always wins over stale sidebar/session selections. Merely typing does not commit it.
+try:
+    _url_ticker=st.query_params.get("ticker")
+    if isinstance(_url_ticker,list): _url_ticker=_url_ticker[0] if _url_ticker else None
+except Exception:
+    _url_ticker=None
+if _url_ticker:
+    ticker=str(_url_ticker).strip().upper()
+    st.session_state["chr_active_ticker"]=ticker
+elif st.session_state.get("chr_active_ticker"):
+    ticker=st.session_state["chr_active_ticker"]
 
 SUBPAGES={
 "Company Command Centre":["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence","News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"],
@@ -2717,7 +2746,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3109,7 +3138,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.5.0 — inline autocomplete search + interactive bottom intelligence widgets */
+/* V20.5.1 — inline autocomplete search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3119,7 +3148,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 #cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
 #gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
 
-/* V20.5.0 — inline autocomplete search (no selectbox). */
+/* V20.5.1 — inline autocomplete search (no selectbox). */
 .chr-autocomplete-label{font-size:10px;font-weight:700;color:#6a80a0;margin:2px 0 3px 2px;text-transform:uppercase;letter-spacing:.04em}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]{min-height:30px!important;height:auto!important;padding:5px 10px!important;border:1px solid #d8e5f2!important;border-radius:4px!important;background:#fff!important;color:#17365d!important;text-align:left!important;justify-content:flex-start!important;font-size:11px!important;font-weight:500!important;margin:0 0 2px!important}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]:hover{background:#eef6ff!important;border-color:#087cf0!important;color:#087cf0!important}
@@ -3189,6 +3218,7 @@ def _home_live_search_fragment():
         if resolved:
             # Search text/suggestions are deliberately separate from the loaded company.
             st.session_state["mia_search_query"]=resolved
+            st.session_state["chr_active_ticker"]=resolved
             st.session_state["chr_primary_nav"]="Company Command Centre"
             try:
                 st.query_params["chr_nav"]="Company Command Centre"

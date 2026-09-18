@@ -1,3 +1,10 @@
+## V20.5.1 — Navigation, Ticker State & Sidebar Restoration
+
+- Search selection is the authoritative active ticker.
+- Home clears company route state and returns to the dashboard.
+- Sidebar restores white icons/titles with gold secondary descriptions.
+- Professional autocomplete from V20.5.0 is preserved.
+
 Chrímata V20.4.2 — Live Market Intelligence Widgets
 
 # Chrímata V20.3.3 — Reference Market Section & In-Place Chart Fix
