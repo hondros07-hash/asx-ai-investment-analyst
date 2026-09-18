@@ -2945,10 +2945,10 @@ section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
   padding-bottom:132px!important;
 }
-/* V20.3.3 reference-match market section */
+/* V20.3.4 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
-/* V20.3.3 — pixel-density pass based on the approved market-section reference. */
+/* V20.3.4 — pixel-density pass based on the approved market-section reference. */
 .chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
 .chr-metrics{gap:6px!important}
 .chr-metric{height:104px!important;padding:8px 11px!important;border-radius:5px!important}
@@ -3017,7 +3017,15 @@ def render_global_market_overview():
 
     # V20.3.1 — top metric cards drive the large chart below. Query parameters make
     # the interaction reliable in Streamlit without opening a modal or a new tab.
-    instruments=[(a,b,q,None) for a,b,q in idx]
+    # V20.3.4 — keep the headline strip intentionally limited to five cards.
+    # The broader index universe remains available in the Indices panel below.
+    if market == 'Australia':
+        primary_index_names = ['S&P/ASX 200', 'All Ordinaries', 'All Technology']
+        idx_by_name = {a:(a,b,q,None) for a,b,q in idx}
+        instruments = [idx_by_name[n] for n in primary_index_names if n in idx_by_name]
+    else:
+        # For other countries use the first three configured headline indices.
+        instruments = [(a,b,q,None) for a,b,q in idx[:3]]
     if cfg.get('currency'):
         instruments.append(('AUD/USD' if market=='Australia' else cfg.get('currency','FX'),cfg.get('currency',''),cq,'#1687ff'))
     instruments.append(('Gold (USD)','GC=F',gq,'#f5b400'))
