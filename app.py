@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.4 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.5 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.4 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.2.5 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -411,7 +411,7 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 
 st.markdown(r"""
 <style>
-/* V20.2.4 — approved reference alignment */
+/* V20.2.5 — approved reference alignment */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 /* Make the banner host consume zero document height; the image itself stays fixed. */
 .chrimata-terminal-hero.chrimata-exact-hero{
@@ -462,7 +462,7 @@ div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!import
 
 st.markdown(r"""
 <style>
-/* V20.2.4 — exact reference search/country strip */
+/* V20.2.5 — exact reference search/country strip */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] > section.main,
@@ -2544,7 +2544,7 @@ SUBPAGES={
 "Settings":["Workspace Settings","Data & Production","Broker Connections"]}
 
 
-# V20.2.4 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
+# V20.2.5 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -2579,6 +2579,37 @@ div.element-container:has(.chrimata-exact-hero){height:0!important;min-height:0!
 </style>
 """,unsafe_allow_html=True)
 
+# V20.2.5 — final reference-header override. Must remain after all legacy theme CSS.
+st.markdown(r"""
+<style>
+/* Main canvas: exactly below banner, never reserve another banner-height spacer. */
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stAppViewContainer"] > section.main,
+section[data-testid="stMain"],.stMain{top:108px!important;}
+[data-testid="stMainBlockContainer"],.stMainBlockContainer,.main .block-container,section.main .block-container{
+ top:0!important;margin-top:0!important;padding-top:8px!important;
+}
+/* First dashboard row is the search/country strip. No phantom vertical margins. */
+.main [data-testid="stVerticalBlock"]{row-gap:6px!important;}
+.main [data-testid="stHorizontalBlock"]{margin-top:0!important;margin-bottom:0!important;}
+/* Reset every header button to the white reference card. */
+.main .stButton>button,
+.main button[kind="secondary"],
+.main button[kind="primary"]{
+ background:#fff!important;color:#10264b!important;border:1px solid #d7e2ef!important;
+ box-shadow:0 1px 3px rgba(16,38,75,.06)!important;border-radius:5px!important;
+ height:40px!important;min-height:40px!important;font-size:11px!important;font-weight:700!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+/* The Search action is column 2 of the dashboard's first horizontal row. */
+.main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) .stButton>button{
+ background:#1687ff!important;color:#fff!important;border-color:#1687ff!important;font-size:12px!important;
+}
+.main .stButton>button:hover{background:#f8fbff!important;color:#0874df!important;border-color:#1687ff!important;}
+.main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) .stButton>button:hover{background:#0874df!important;color:#fff!important;}
+</style>
+""",unsafe_allow_html=True)
+
 PAGE_MAP={
 ("Company Command Centre","Overview"):"Company Command Centre",("Company Command Centre","Fundamentals"):"Fundamentals",("Company Command Centre","Valuation"):"Valuation",("Company Command Centre","Technical"):"Technical",("Company Command Centre","Announcements & Reports"):"Announcements & Reports",("Company Command Centre","Report Intelligence"):"Report Intelligence",("Company Command Centre","News & Events"):"News & Events",("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",("Company Command Centre","Quant"):"Quant",("Company Command Centre","Forecasts"):"Forecasts",
 ("Portfolio","Portfolio Overview"):"Portfolio",("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",("Portfolio","Risk Centre"):"Risk Centre",("Portfolio","Watchlist"):"Watchlist",("Portfolio","Paper Portfolio"):"Paper Portfolio",
@@ -2595,15 +2626,23 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.4</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.5</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
+    # V20.2.5: paint the banner on the app viewport itself. This creates NO Streamlit
+    # element in document flow, eliminating the phantom 100+ px spacer below it.
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
         banner_b64=base64.b64encode(banner_path.read_bytes()).decode("ascii")
-        st.markdown(f"""<div class="chrimata-terminal-hero chrimata-exact-hero"><img src="data:image/jpeg;base64,{banner_b64}" alt="Chrímata — Market Investment Analyst"></div>""",unsafe_allow_html=True)
+        st.markdown(f"""<style>
+        [data-testid="stAppViewContainer"]::before{{
+          content:"";position:fixed;left:0;right:0;top:0;height:108px;z-index:1000000;
+          background-image:url(data:image/jpeg;base64,{banner_b64});background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
+          pointer-events:none;
+        }}
+        </style>""",unsafe_allow_html=True)
     except Exception:
-        st.markdown("<div class='chrimata-terminal-hero chrimata-banner-fallback'><b>CHRÍMATA</b><span>Market Investment Analyst · Global Markets. Smarter Decisions.</span></div>",unsafe_allow_html=True)
+        pass
 
 render_chrimata_persistent_header()
 
