@@ -1,4 +1,4 @@
-## V20.5.2 — Search Bar Alignment & Header Polish
+## V20.5.3 — Search Bar Alignment & Header Polish
 
 - Removes the redundant “Global security search” label above the professional autocomplete.
 - Rebalances the Home search/country strip into one compact aligned row.
@@ -112,3 +112,10 @@ Replaces the Home search selectbox with compact inline result buttons that appea
 - Suppressed the market-movers cache spinner (`overview_batch`) during normal dashboard refreshes.
 - Restored polished sidebar navigation icons using Streamlit Material icons while retaining in-app navigation.
 - Preserved V20.4.9 market data, flags, charts, calendars, sectors, indices, watchlist and intelligence widgets.
+
+
+## V20.5.3 — Navigation State Fix
+- Session navigation is authoritative after initial deep-link resolution.
+- Sidebar Home works on the first click and cannot be overridden by a stale `chr_nav` query parameter.
+- Active ticker state is independent of page navigation and is retained when returning Home.
+- Home removes only the URL ticker deep-link, not the remembered analysed security.

@@ -2506,7 +2506,7 @@ button[kind="headerNoPadding"],
 /* V20.5.1 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
-/* V20.5.2 — compact single-row Home search/header alignment. */
+/* V20.5.3 — compact single-row Home search/header alignment. */
 .st-key-country_nav_v2027{margin-top:0!important;padding-top:0!important;}
 .st-key-country_nav_v2027 [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:44px!important;}
 .st-key-country_nav_v2027 .stButton>button{height:44px!important;min-height:44px!important;}
@@ -2529,14 +2529,24 @@ NAV_ITEMS=[
 ("Research Tools","research","⊕  Research Tools","Valuation, Forecasts & Scores"),
 ("Settings","settings","⚙  Settings","Preferences")]
 _valid_nav={x[0] for x in NAV_ITEMS}
-try:
-    _qp=st.query_params
-    primary=_qp.get("chr_nav",st.session_state.get("chr_primary_nav","Home"))
-    if isinstance(primary,list): primary=primary[0] if primary else "Home"
-except Exception:
+# V20.5.3 — navigation state fix. Session state is the single authority after
+# initial page load; query params are deep-link inputs, not a value that can
+# continually override a sidebar click on every Streamlit rerun.
+if "chr_nav_initialized_v2053" not in st.session_state:
+    try:
+        _qp_nav=st.query_params.get("chr_nav")
+        if isinstance(_qp_nav,list): _qp_nav=_qp_nav[0] if _qp_nav else None
+    except Exception:
+        _qp_nav=None
+    primary=_qp_nav if _qp_nav in _valid_nav else st.session_state.get("chr_primary_nav","Home")
+    if primary not in _valid_nav: primary="Home"
+    st.session_state["chr_primary_nav"]=primary
+    st.session_state["chr_nav_initialized_v2053"]=True
+else:
     primary=st.session_state.get("chr_primary_nav","Home")
-if primary not in _valid_nav: primary="Home"
-st.session_state["chr_primary_nav"]=primary
+    if primary not in _valid_nav:
+        primary="Home"
+        st.session_state["chr_primary_nav"]="Home"
 
 from urllib.parse import quote as _urlquote
 def _chr_nav_svg(name):
@@ -2562,14 +2572,17 @@ for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
     _clean_title=_title.split("  ",1)[-1]
     if st.sidebar.button(_clean_title, key=f"chr_nav_native_{_idx}", use_container_width=True,
                          type="primary" if _active else "secondary", icon=_material_icons.get(_icon)):
+        # Page navigation and selected security are intentionally independent.
+        # Clicking Home must win immediately, while the last analysed ticker is
+        # retained for a later return to Company Command Centre.
         st.session_state["chr_primary_nav"]=_key
         primary=_key
         try:
             st.query_params["chr_nav"]=_key
-            if _key=="Home":
-                if "ticker" in st.query_params: del st.query_params["ticker"]
-                st.session_state.pop("chr_active_ticker",None)
-        except Exception: pass
+            if _key=="Home" and "ticker" in st.query_params:
+                del st.query_params["ticker"]
+        except Exception:
+            pass
         st.rerun()
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
@@ -2753,7 +2766,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
