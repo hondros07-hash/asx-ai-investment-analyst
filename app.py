@@ -297,6 +297,52 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
 </style>
 """, unsafe_allow_html=True)
 
+# V20.1.0 — definitive desktop shell geometry + reference landing canvas.
+st.markdown(r"""
+<style>
+:root{--chr-sidebar:228px;--chr-banner:108px;}
+/* Streamlit's current main node must physically start AFTER the fixed sidebar.
+   Previous builds only padded the inner block, so column children could still paint underneath the rail. */
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stAppViewContainer"] > section.main,
+section[data-testid="stMain"],
+.stMain{
+  position:relative!important;
+  margin-left:var(--chr-sidebar)!important;
+  width:calc(100vw - var(--chr-sidebar))!important;
+  max-width:calc(100vw - var(--chr-sidebar))!important;
+  min-width:0!important;
+  padding:0!important;
+  overflow-x:hidden!important;
+  box-sizing:border-box!important;
+}
+.main .block-container,
+section.main .block-container,
+[data-testid="stMainBlockContainer"],
+.stMainBlockContainer{
+  width:100%!important;max-width:none!important;min-width:0!important;
+  margin:0!important;padding:calc(var(--chr-banner) + 12px) 12px 18px!important;
+  box-sizing:border-box!important;overflow:visible!important;
+}
+[data-testid="stSidebar"]{width:var(--chr-sidebar)!important;min-width:var(--chr-sidebar)!important;max-width:var(--chr-sidebar)!important;}
+[data-testid="stSidebar"]>div:first-child{width:var(--chr-sidebar)!important;}
+/* Home dashboard density and card proportions from the approved reference. */
+.chrimata-home-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin:5px 1px 8px}
+.chrimata-home-title{font-size:23px;font-weight:800;line-height:1.1;color:#10264b}
+.chrimata-home-meta{font-size:11px;color:#7185a0;margin-top:4px}
+.chrimata-home-quote{font:italic 15px Georgia,serif;color:#36577e;text-align:right;padding:4px 8px 0 0;white-space:nowrap}
+.main div[data-testid="stMetric"]{min-height:98px!important;padding:10px 13px!important;overflow:hidden!important}
+.main div[data-testid="stMetricValue"]{font-size:1.48rem!important}
+.main [data-testid="stHorizontalBlock"]{align-items:stretch!important;min-width:0!important}
+.main [data-testid="column"]{min-width:0!important;overflow:hidden!important}
+.main h3{font-size:.93rem!important;margin:.38rem 0 .3rem!important;color:#183e72!important}
+.main [data-testid="stDataFrame"]{font-size:.76rem!important}
+.main [data-testid="stPlotlyChart"],.main [data-testid="stArrowVegaLiteChart"]{overflow:hidden!important}
+@media(max-width:1100px){:root{--chr-sidebar:196px}.chrimata-home-quote{display:none!important}}
+@media(max-width:760px){:root{--chr-sidebar:0px;--chr-banner:74px}[data-testid="stAppViewContainer"] > .main,[data-testid="stAppViewContainer"] > section.main,section[data-testid="stMain"],.stMain{margin-left:0!important;width:100vw!important;max-width:100vw!important}.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{padding:82px 8px 14px!important}}
+</style>
+""", unsafe_allow_html=True)
+
 @st.cache_data(ttl=300)
 def history(t, period="5y"):
     try: return yf.Ticker(t).history(period=period, auto_adjust=True)
@@ -2217,7 +2263,7 @@ def attention_items(ticker):
     if not items: items.append(("✓","No stored thesis condition currently requires attention"))
     return items
 
-# V20.0.9 — compressed full-height sidebar so all primary navigation fits without scrolling.
+# V20.1.0 — compressed full-height sidebar so all primary navigation fits without scrolling.
 try:
     _search_key=st.secrets.get("TWELVE_DATA_API_KEY","")
 except Exception:
@@ -2352,7 +2398,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.0.9</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.1.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2482,18 +2528,23 @@ def overview_calendar(tickers):
     return pd.DataFrame(earnings),pd.DataFrame(dividends)
 
 def render_global_market_overview():
-    search_col, market_col = st.columns([1.05,1.55], gap="small")
+    search_col, button_col, market_col = st.columns([1.22,.22,1.75], gap="small")
     with search_col:
-        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index…",label_visibility="collapsed",key="home_global_search")
-        if home_q:
-            home_matches=search_securities(home_q,_search_key)
-            if not home_matches.empty:
-                r=home_matches.iloc[0]
-                st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
+        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) …",label_visibility="collapsed",key="home_global_search")
+    with button_col:
+        st.button("Search",use_container_width=True,key="home_search_button")
     with market_col:
-        market=st.radio("Market",list(MARKET_OVERVIEW_CONFIG.keys()),horizontal=True,index=0,key="home_market")
+        market_labels=[f"{MARKET_OVERVIEW_CONFIG[m]['flag']}  {m}" for m in MARKET_OVERVIEW_CONFIG]
+        picked=st.radio("Market",market_labels,horizontal=True,index=0,key="home_market_v2010",label_visibility="collapsed")
+        market=next((m for m in MARKET_OVERVIEW_CONFIG if picked.endswith(m)),"Australia")
+    if home_q:
+        home_matches=search_securities(home_q,_search_key)
+        if not home_matches.empty:
+            r=home_matches.iloc[0]
+            st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
     cfg=MARKET_OVERVIEW_CONFIG[market]
-    st.markdown(f"<div class='chrimata-market-title'><span class='chrimata-market-flag'>{cfg['flag']}</span><span class='chrimata-market-name'>Market Overview — {market}</span></div><div class='chrimata-market-note'>Latest available provider data · exchange data may be delayed depending on source and market</div>",unsafe_allow_html=True)
+    now_label=pd.Timestamp.now().strftime("%A, %d %B %Y")
+    st.markdown(f"""<div class='chrimata-home-intro'><div><div class='chrimata-home-title'>{cfg['flag']} Market Overview — {market}</div><div class='chrimata-home-meta'>{now_label} &nbsp; · &nbsp; Latest available provider data; exchange data may be delayed.</div></div><div class='chrimata-home-quote'>“The best investments are built on knowledge, not noise.”<br><span style='font-size:10px;font-style:normal'>— CHRÍMATA</span></div></div>""",unsafe_allow_html=True)
 
     cols=st.columns(len(cfg["indices"])+2)
     index_rows=[]
@@ -2512,8 +2563,8 @@ def render_global_market_overview():
 
     left,right1,right2=st.columns([1.55,.9,.9],gap="small")
     with left:
-        st.subheader(f"{next(iter(cfg['indices']))} Market Chart")
-        horizon=st.radio("Chart period",["5d","1mo","3mo","6mo","1y","5y"],horizontal=True,index=1,key="home_chart_period")
+        st.subheader(f"{next(iter(cfg['indices']))} Intraday / Market Chart")
+        horizon=st.radio("Chart period",["5d","1mo","3mo","6mo","1y","5y"],horizontal=True,index=0,key="home_chart_period")
         chart=pd.DataFrame()
         for label,t in cfg["indices"].items():
             q=overview_quote(t,horizon)
@@ -2605,7 +2656,7 @@ def render_global_market_overview():
         st.subheader("Upcoming IPOs / Listings")
         st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
 
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.0.1 · Persistent Terminal Shell</span></div>",unsafe_allow_html=True)
+    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.1.0 · Landing Dashboard Rebuild</span></div>",unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()

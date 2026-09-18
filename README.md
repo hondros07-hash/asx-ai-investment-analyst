@@ -1,11 +1,7 @@
-# Chrímata V20.0.9 — Full Sidebar Fit
+# Chrímata V20.1.0 — Landing Dashboard Rebuild
 
-Updated from V20.0.8 to compress sidebar navigation so all menu options and the wealth footer fit without scrolling on standard desktop displays.
+This build keeps the approved full-width Chrímata banner and compact reference sidebar, and rebuilds the desktop main-canvas geometry so the dashboard starts to the right of the fixed sidebar rather than rendering beneath it.
 
-Changes:
-- Reduced vertical spacing between sidebar navigation items.
-- Slightly reduced icon, title and gold subtitle sizes while preserving readability.
-- Keeps main labels white and subtitles gold.
-- Removes the hidden Current company expander from the navigation rail to eliminate the stray white box.
-- Keeps the Knowledge Compounds Wealth footer, version and copyright visible.
-- Keeps the approved persistent Chrímata banner and browser title.
+Landing-page changes include a compact search + Search button row, flag-labelled market selectors, reference-style market heading and quote, denser metric/data panels, a 5-day default market chart, and stronger overflow/min-width rules for Streamlit columns.
+
+Deploy by uploading the extracted contents to the repository root and committing to main.
