@@ -65,7 +65,7 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 - Retains provider-backed dividends and earnings with explicit unavailable states; no fabricated calendar events.
 
 
-## V20.4.8 — Global Security Search Engine
+## V20.4.9 — Global Security Search Engine
 - Landing-page search now searches globally rather than filtering by the selected dashboard country.
 - Exact ticker matches rank first across supported exchanges, followed by ticker-prefix and company-name matches.
 - Results identify symbol, company, exchange, country and currency where available.
@@ -73,15 +73,19 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 - Yahoo Finance search, Twelve Data symbol search (when configured), aliases and validated exchange-qualified fallbacks are merged without fabricating listings.
 
 
-## V20.4.8 — Smooth Navigation & Live Search
+## V20.4.9 — Smooth Navigation & Live Search
 - Live global autocomplete search runs inside a Streamlit fragment so typing does not rerun the full dashboard.
 - Calendar cache spinner is suppressed to prevent visible `Running overview_calendar(...)` status.
 - Sidebar navigation uses in-app Streamlit controls instead of browser URL anchors to reduce white-page navigation flashes.
 - Existing market intelligence widgets and provider-backed data are preserved.
 
 
-## V20.4.8 — UI Stability & Live Search Rebuild
+## V20.4.9 — UI Stability & Live Search Rebuild
 - Restores compact sidebar navigation and navigation icons.
 - Uses the same SVG flag artwork for Market Overview headings as the country selector.
 - Pre-renders the active market chart so the chart cannot start as an empty panel while client-side controls initialise.
 - Retains global security discovery and isolated search state from V20.4.7.
+
+
+## V20.4.9 — Inline Autocomplete Search
+Replaces the Home search selectbox with compact inline result buttons that appear only while typing. Exact/global security ranking and exchange-specific routing are preserved.
