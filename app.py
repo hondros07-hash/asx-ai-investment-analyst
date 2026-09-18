@@ -2796,7 +2796,7 @@ def overview_quote(ticker,period="5d",interval=None):
                     last=live; source="Twelve Data"
         except Exception:
             pass
-        return {"last":last,"prev":prev,"change":last-prev if np.isfinite(prev) else np.nan,"pct":last/prev-1 if np.isfinite(prev) and prev else np.nan,"series":c,"source":source,"asof":datetime.now(timezone.utc).isoformat()}
+        return {"last":last,"prev":prev,"change":last-prev if np.isfinite(prev) else np.nan,"pct":last/prev-1 if np.isfinite(prev) and prev else np.nan,"series":c,"times":[str(x) for x in c.index],"source":source,"asof":datetime.now(timezone.utc).isoformat()}
     except Exception:return None
 
 @st.cache_data(ttl=60)
@@ -2854,36 +2854,42 @@ def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"
     return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none"><polygon points="{area}" fill="{fill}"/><polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
 
 def _chr_big_market_svg(series, prev=None, width=760, height=230, stroke="#12b76a", fill="#e8f8ef"):
+    """Reference-style market chart with visible Y-axis values and gridlines."""
     try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
     except Exception: vals=[]
     if len(vals)<2: return ""
     finite=[v for v in vals if np.isfinite(v)]
     if np.isfinite(_mia_num(prev)): finite.append(float(prev))
-    lo,hi=min(finite),max(finite); pad=max((hi-lo)*.08, abs(hi)*.0008, .01); lo-=pad; hi+=pad; span=(hi-lo) or 1.0
+    lo0,hi0=min(finite),max(finite); raw=max(hi0-lo0,abs(hi0)*.001,.01)
+    pad=raw*.10; lo=lo0-pad; hi=hi0+pad; span=(hi-lo) or 1.0
+    # Reserve 58 SVG units for the left-axis labels so they never overlap the plot.
+    left=58; right=4; top=5; bottom=5; pw=width-left-right; ph=height-top-bottom
     pts=[]
     for i,v in enumerate(vals):
-        x=1+(width-2)*i/(len(vals)-1); y=height-2-(height-4)*(v-lo)/span; pts.append((x,y))
-    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"1,{height-1} "+line+f" {width-1},{height-1}"
-    grid=[]
+        x=left+pw*i/(len(vals)-1); y=top+ph-(ph*(v-lo)/span); pts.append((x,y))
+    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"{left},{top+ph} "+line+f" {left+pw},{top+ph}"
+    grid=[]; labels=[]
     for i in range(5):
-        y=2+(height-4)*i/4; grid.append(f'<line x1="0" y1="{y:.1f}" x2="{width}" y2="{y:.1f}" stroke="#e3ebf4" stroke-width="1"/>')
+        frac=i/4; y=top+ph*frac; val=hi-span*frac
+        grid.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left+pw}" y2="{y:.1f}" stroke="#dfe8f2" stroke-width="1"/>')
+        labels.append(f'<text x="{left-8}" y="{y+4:.1f}" text-anchor="end" font-size="12" fill="#27496f" font-family="Arial,Helvetica,sans-serif">{val:,.2f}</text>')
     for i in range(7):
-        x=(width)*i/6; grid.append(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{height}" stroke="#e9eff6" stroke-width="1"/>')
+        x=left+pw*i/6; grid.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+ph}" stroke="#e7eef6" stroke-width="1"/>')
     prevline=''
     if np.isfinite(_mia_num(prev)):
-        py=height-2-(height-4)*(float(prev)-lo)/span
-        prevline=f'<line x1="0" y1="{py:.1f}" x2="{width}" y2="{py:.1f}" stroke="#ff5c68" stroke-width="1.2" stroke-dasharray="4 3"/>'
-    return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">{"".join(grid)}<polygon points="{area}" fill="{fill}" fill-opacity=".82"/>{prevline}<polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
+        py=top+ph-(ph*(float(prev)-lo)/span)
+        prevline=f'<line x1="{left}" y1="{py:.1f}" x2="{left+pw}" y2="{py:.1f}" stroke="#ff5c68" stroke-width="1.2" stroke-dasharray="4 3"/>'
+    return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">{"".join(grid)}{"".join(labels)}<polygon points="{area}" fill="{fill}" fill-opacity=".82"/>{prevline}<polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
 
 def _chr_metric_card(label,ticker,q,accent=None,chart_key=None,selected=False,market="Australia"):
     from urllib.parse import quote
     selected_cls=" selected" if selected else ""
-    href=f"?market={quote(str(market))}&chart={quote(str(chart_key or ticker))}"
+    href=f"?market={quote(str(market))}&chart={quote(str(chart_key or ticker))}#investment-command-centre"
     if not q:
-        return f'<a class="chr-metric-link" href="{href}" target="_top"><div class="chr-card chr-metric{selected_cls}"><b>{label}</b><strong>N/A</strong></div></a>'
+        return f'<a class="chr-metric-link" href="{href}" target="_self"><div class="chr-card chr-metric{selected_cls}"><b>{label}</b><strong>N/A</strong></div></a>'
     up=float(q.get("change",0) or 0)>=0; col="#0aa968" if up else "#ef4444"; arrow="▲" if up else "▼"
     spark=_chr_svg_line(q.get("series",[]),300,46,accent or col,"#eaf8f1" if up else "#fff0f0")
-    return f'<a class="chr-metric-link" href="{href}" target="_top" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
+    return f'<a class="chr-metric-link" href="{href}" target="_self" title="Show {label} chart"><div class="chr-card chr-metric{selected_cls}"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div></a>'
 
 def _chr_table(rows, headers, fmts=None):
     fmts=fmts or {}; h=''.join(f'<th>{x}</th>' for x in headers); body=[]
@@ -2945,10 +2951,10 @@ section[data-testid="stMain"] .block-container, .main .block-container{
   min-height:calc(100% + 120px)!important;
   padding-bottom:132px!important;
 }
-/* V20.3.4 reference-match market section */
+/* V20.3.5 reference-match market section */
 .chr-metrics{gap:7px!important}.chr-metric{height:122px!important;padding:10px 12px!important}.chr-metric-name{font-size:15px!important}.chr-metric-row strong{font-size:25px!important}.chr-spark{height:48px!important;margin-top:6px!important}
 .chr-grid-main{grid-template-columns:1.48fr .86fr 1.10fr!important;gap:7px!important}.chr-panel{border-color:#d5e3f1!important;border-radius:7px!important}.chr-panel>header{height:40px!important;padding:9px 10px!important;font-size:15px!important}.chr-chart-panel{min-height:345px!important}.chr-bigchart{height:302px!important;padding:18px 72px 28px 18px!important}.chr-bigchart>strong{right:12px!important;top:47%!important;font-size:16px!important}.chr-prev-close{position:absolute;right:9px;bottom:46px;font-size:11px;line-height:1.15;color:#35547c}.chr-prev-close b{font-size:12px}.chr-range-links{gap:8px!important}.chr-range-links a{font-size:11px!important;padding:7px 12px!important;background:#f2f6fb;border-radius:5px!important;color:#17365d!important}.chr-range-links a.active{background:#087cf0!important;color:#fff!important}.chr-sectors{padding:7px 9px!important}.chr-sector-row{grid-template-columns:145px 1fr 58px!important;height:24px!important;font-size:11px!important}.chr-table{font-size:11px!important}.chr-table th,.chr-table td{padding:5px 7px!important}
-/* V20.3.4 — pixel-density pass based on the approved market-section reference. */
+/* V20.3.5 — pixel-density pass based on the approved market-section reference. */
 .chr-home-v2020{font-family:Arial,Helvetica,sans-serif!important}
 .chr-metrics{gap:6px!important}
 .chr-metric{height:104px!important;padding:8px 11px!important;border-radius:5px!important}
@@ -3017,7 +3023,7 @@ def render_global_market_overview():
 
     # V20.3.1 — top metric cards drive the large chart below. Query parameters make
     # the interaction reliable in Streamlit without opening a modal or a new tab.
-    # V20.3.4 — keep the headline strip intentionally limited to five cards.
+    # V20.3.5 — keep the headline strip intentionally limited to five cards.
     # The broader index universe remains available in the Indices panel below.
     if market == 'Australia':
         primary_index_names = ['S&P/ASX 200', 'All Ordinaries', 'All Technology']
@@ -3048,7 +3054,7 @@ def render_global_market_overview():
     last_txt=f"{chart_q['last']:,.2f}" if chart_q else '—'
     prev_txt=f"{chart_q.get('prev'):,.2f}" if chart_q and np.isfinite(_mia_num(chart_q.get('prev'))) else '—'
     from urllib.parse import quote
-    range_links=''.join(f'<a class="{"active" if r==selected_range else ""}" href="?market={quote(str(market))}&chart={quote(str(selected_key))}&range={r}" target="_top">{r}</a>' for r in range_map)
+    range_links=''.join(f'<a class="{"active" if r==selected_range else ""}" href="?market={quote(str(market))}&chart={quote(str(selected_key))}&range={r}" target="_self">{r}</a>' for r in range_map)
     chart_title=f'{selected_label} {"Intraday Chart" if selected_range=="1D" else selected_range+" Chart"}'
     xlabels = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00'] if selected_range=='1D' else ({'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}[selected_range])
     xaxis_html='<div class="chr-chart-axis">'+''.join(f'<span>{x}</span>' for x in xlabels)+'</div>' 
@@ -4451,3 +4457,11 @@ elif page=="Data & Production":
 Create a secret named `TWELVE_DATA_API_KEY` in your Streamlit app settings. Do not commit the API key to GitHub.
 
 V10.2 intentionally keeps the provider layer separate from the analytical engines, so a licensed ASX provider can later replace the ASX prototype feed without rewriting the application.""")
+
+
+# V20.3.5 labelled chart axis alignment.
+st.markdown(r"""<style>
+.chr-chart-axis{left:76px!important;right:76px!important;bottom:7px!important;font-size:10px!important;font-weight:500!important;}
+.chr-bigchart svg{overflow:visible!important;}
+.chr-metric-link{cursor:pointer!important;}
+</style>""",unsafe_allow_html=True)
