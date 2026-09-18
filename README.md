@@ -89,3 +89,12 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 
 ## V20.4.9 — Inline Autocomplete Search
 Replaces the Home search selectbox with compact inline result buttons that appear only while typing. Exact/global security ranking and exchange-specific routing are preserved.
+
+
+## V20.5.0 — Professional Search & UI State Rebuild
+- Replaced the full-width Streamlit result-button stack with a dedicated autocomplete search component.
+- Suggestions update inside the search control while typing and no longer push Market Overview down the page.
+- Active-company state changes only after a security is selected.
+- Suppressed the market-movers cache spinner (`overview_batch`) during normal dashboard refreshes.
+- Restored polished sidebar navigation icons using Streamlit Material icons while retaining in-app navigation.
+- Preserved V20.4.9 market data, flags, charts, calendars, sectors, indices, watchlist and intelligence widgets.

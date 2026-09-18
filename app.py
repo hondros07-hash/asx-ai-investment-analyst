@@ -2484,14 +2484,14 @@ button[kind="headerNoPadding"],
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 
 
-/* V20.4.9 native sidebar navigation: same visual language, no browser-level link navigation. */
+/* V20.5.0 native sidebar navigation: same visual language, no browser-level link navigation. */
 [data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
 [data-testid="stSidebar"] .stButton>button{width:100%!important;height:43px!important;min-height:43px!important;margin:0!important;padding:4px 8px!important;text-align:left!important;justify-content:flex-start!important;white-space:pre-line!important;font-size:10.5px!important;line-height:1.10!important;border-radius:6px!important;box-shadow:none!important;}
 [data-testid="stSidebar"] .stButton>button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
 [data-testid="stSidebar"] .stButton>button[kind="primary"]{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;color:#fff!important;border-color:transparent!important;}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0!important;}
 
-/* V20.4.9 — keep provider/cache execution details out of the product UI. */
+/* V20.5.0 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
 </style>
@@ -2534,13 +2534,15 @@ def _chr_nav_svg(name):
     "research": '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5M10 7v6M7 10h6"/></svg>',
     "settings": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/><circle cx="12" cy="12" r="7"/></svg>'}
     return icons.get(name,icons["home"])
-# V20.4.9: use Streamlit's in-app event channel instead of browser URL anchors.
+# V20.5.0: use Streamlit's in-app event channel instead of browser URL anchors.
 # This avoids a document-level navigation/white flash; only Streamlit rerenders the app body.
 st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
 for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
     _active=(_key==primary)
-    if st.sidebar.button(f"{_title}\n{_sub}", key=f"chr_nav_native_{_idx}", use_container_width=True,
-                         type="primary" if _active else "secondary"):
+    _material_icons={"home":":material/home:","search":":material/search:","document":":material/description:","chart":":material/monitoring:","star":":material/star_outline:","briefcase":":material/business_center:","screen":":material/filter_alt:","bell":":material/notifications_none:","calendar":":material/calendar_month:","research":":material/query_stats:","settings":":material/settings:"}
+    _clean_title=_title.split("  ",1)[-1]
+    if st.sidebar.button(f"{_clean_title}\n{_sub}", key=f"chr_nav_native_{_idx}", use_container_width=True,
+                         type="primary" if _active else "secondary", icon=_material_icons.get(_icon)):
         st.session_state["chr_primary_nav"]=_key
         primary=_key
         try: st.query_params["chr_nav"]=_key
@@ -2715,7 +2717,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.4.9</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2855,7 +2857,7 @@ def overview_sector_performance(sources, period="5d"):
                 return {"return":float(np.mean(rets)),"source":"ASX representative basket"}
     return None
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner=False)
 def overview_batch(tickers):
     rows=[]
     for t in list(tickers):
@@ -3107,7 +3109,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.4.9 — inline autocomplete search + interactive bottom intelligence widgets */
+/* V20.5.0 — inline autocomplete search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3117,7 +3119,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 #cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
 #gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
 
-/* V20.4.9 — inline autocomplete search (no selectbox). */
+/* V20.5.0 — inline autocomplete search (no selectbox). */
 .chr-autocomplete-label{font-size:10px;font-weight:700;color:#6a80a0;margin:2px 0 3px 2px;text-transform:uppercase;letter-spacing:.04em}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]{min-height:30px!important;height:auto!important;padding:5px 10px!important;border:1px solid #d8e5f2!important;border-radius:4px!important;background:#fff!important;color:#17365d!important;text-align:left!important;justify-content:flex-start!important;font-size:11px!important;font-weight:500!important;margin:0 0 2px!important}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]:hover{background:#eef6ff!important;border-color:#087cf0!important;color:#087cf0!important}
@@ -3127,61 +3129,73 @@ div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary
 </style>
 """,unsafe_allow_html=True)
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _professional_security_suggestions(term):
+    """Return compact global security labels for the autocomplete component."""
+    term=(term or "").strip()
+    if len(term)<1:
+        return []
+    try:
+        matches=search_securities(term,_search_key)
+    except Exception:
+        return []
+    if matches is None or matches.empty:
+        return []
+    labels=[]
+    mapping={}
+    for _,r in matches.head(8).iterrows():
+        sym=str(r.get("Symbol","") or "").strip()
+        company=str(r.get("Company","") or "").strip()
+        exchange=str(r.get("Exchange","") or "").strip()
+        country=str(r.get("Country","") or "Global").strip()
+        label=" · ".join(x for x in [sym,company,exchange,country] if x)
+        if label and label not in mapping:
+            mapping[label]=(sym,exchange,country)
+            labels.append(label)
+    # Mapping is reconstructed on selection too; keeping only labels makes this cache safe.
+    return labels
+
+def _resolve_professional_search_label(label):
+    parts=[x.strip() for x in str(label or "").split(" · ")]
+    sym=parts[0] if parts else ""
+    exchange=parts[-2] if len(parts)>=3 else ""
+    country=parts[-1] if len(parts)>=2 else ""
+    return resolve_listing(sym,exchange,country) if sym else ""
+
 @st.fragment
 def _home_live_search_fragment():
-    """V20.4.9 inline autocomplete: no selectbox/dropdown control."""
-    _qcol,_scol=st.columns([4.2,1],gap="small")
-    with _qcol:
-        q=st.text_input(
-            "Global security search",
-            placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",
-            label_visibility="collapsed",
-            key="home_global_search_v2049",
-        )
-    with _scol:
-        _go=st.button("Search",use_container_width=True,key="home_search_button_v2049",type="primary")
+    """V20.5.0 professional autocomplete. Suggestions live inside the search control.
 
-    q=(q or "").strip()
-    matches=pd.DataFrame()
-    if q:
-        matches=search_securities(q,_search_key)
+    streamlit-searchbox handles keystrokes inside its component, so typing does not
+    create a stack of Streamlit buttons or push the market dashboard down the page.
+    Only selecting a security commits active-company state.
+    """
+    try:
+        from streamlit_searchbox import st_searchbox
+    except Exception:
+        st.info("Search component is loading. Refresh once after deployment finishes installing dependencies.")
+        return
 
-    # Compact inline results appear only while there is search text.  Each row is
-    # a direct action, not a selectbox, so there is no persistent dropdown arrow.
-    if q and matches is not None and not matches.empty:
-        st.markdown('<div class="chr-autocomplete-label">Matching securities</div>',unsafe_allow_html=True)
-        for pos,(_,r) in enumerate(matches.head(8).iterrows()):
-            sym=str(r.get('Symbol','')); company=str(r.get('Company',''))
-            exchange=str(r.get('Exchange','')); country=str(r.get('Country','') or 'Global')
-            meta=' · '.join(x for x in [exchange,country] if x)
-            label=f"{sym}  ·  {company}  ·  {meta}"
-            if st.button(label,key=f"home_ac_v2049_{pos}_{sym}_{exchange}",use_container_width=True):
-                resolved=resolve_listing(sym,exchange,country)
-                st.session_state['mia_search_query']=resolved
-                st.session_state['chr_primary_nav']='Company Command Centre'
-                try:
-                    st.query_params['chr_nav']='Company Command Centre'
-                    st.query_params['ticker']=resolved
-                except Exception:
-                    pass
-                st.rerun()
-    elif q:
-        st.caption("No matching security found yet.")
-
-    if _go:
-        if matches is not None and not matches.empty:
-            r=matches.iloc[0]
-            resolved=resolve_listing(r.get('Symbol',''),r.get('Exchange',''),r.get('Country',''))
-            st.session_state['mia_search_query']=resolved
-            st.session_state['chr_primary_nav']='Company Command Centre'
+    selected=st_searchbox(
+        _professional_security_suggestions,
+        key="chrimata_professional_global_search_v2050",
+        placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",
+        label="Global security search",
+        clear_on_submit=True,
+        rerun_on_update=False,
+    )
+    if selected:
+        resolved=_resolve_professional_search_label(selected)
+        if resolved:
+            # Search text/suggestions are deliberately separate from the loaded company.
+            st.session_state["mia_search_query"]=resolved
+            st.session_state["chr_primary_nav"]="Company Command Centre"
             try:
-                st.query_params['chr_nav']='Company Command Centre'
-                st.query_params['ticker']=resolved
+                st.query_params["chr_nav"]="Company Command Centre"
+                st.query_params["ticker"]=resolved
             except Exception:
                 pass
             st.rerun()
-        elif q:
-            st.warning("No matching security found. Try a ticker, company name, or exchange-listed symbol.")
 
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
