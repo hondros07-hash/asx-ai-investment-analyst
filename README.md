@@ -1,3 +1,3 @@
-# Chrímata V20.2.3 — Reference Market Header
+# Chrímata V20.2.4 — Flush Header & White Flag Navigation
 
-Landing-page header rebuilt to match the approved reference: compact search strip directly under the banner, white country buttons with real flag labels, blue-outline selected country, country flag in Market Overview, and live local market date/time/open status.
+Fixes the landing-page top gap and forces the country navigation to white flag/name cards.
