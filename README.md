@@ -1,11 +1,3 @@
-# Chrímata V20.1.1 — Reference Landing Match
+# Chrímata V20.2.3 — Reference Market Header
 
-This build preserves the approved persistent banner and compact reference sidebar, while rebuilding the main desktop canvas geometry to match the approved landing-page reference more closely.
-
-Key changes:
-- Main content physically begins at the right edge of the sidebar.
-- Removes the duplicated 108px top reservation that created the large white gap.
-- Main dashboard starts immediately beneath the banner.
-- Search/market controls, overview heading, metrics, charts and tables use denser terminal proportions.
-- Header and sidebar styling remain locked.
-- Browser title remains Chrímata - Market Investment Analyst.
+Landing-page header rebuilt to match the approved reference: compact search strip directly under the banner, white country buttons with real flag labels, blue-outline selected country, country flag in Market Overview, and live local market date/time/open status.

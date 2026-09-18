@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.2 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.3 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.2 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.2.3 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -411,7 +411,7 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 
 st.markdown(r"""
 <style>
-/* V20.2.2 — approved reference alignment */
+/* V20.2.3 — approved reference alignment */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 /* Make the banner host consume zero document height; the image itself stays fixed. */
 .chrimata-terminal-hero.chrimata-exact-hero{
@@ -457,6 +457,49 @@ div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!import
 .chr-overview-title .chr-flag{font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:28px!important;line-height:1!important;}
 .chr-home-v2020{margin-top:0!important;}
 .chr-overview-head{padding-top:4px!important;}
+</style>
+""",unsafe_allow_html=True)
+
+st.markdown(r"""
+<style>
+/* V20.2.3 — exact reference search/country strip */
+:root{--chr-sidebar:228px;--chr-banner:108px;}
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stAppViewContainer"] > section.main,
+section[data-testid="stMain"],.stMain{
+  top:var(--chr-banner)!important;
+}
+.main .block-container,section.main .block-container,
+[data-testid="stMainBlockContainer"],.stMainBlockContainer{
+  padding-top:8px!important;
+}
+/* Remove Streamlit's invisible top spacers so the search strip hugs the banner. */
+.main .block-container > [data-testid="stVerticalBlock"],
+section.main .block-container > [data-testid="stVerticalBlock"]{gap:6px!important;}
+.main div[data-testid="stHorizontalBlock"]{margin-top:0!important;margin-bottom:0!important;}
+/* Country buttons: white cards, flag at left, dark label. Selected = blue outline/text, never solid blue. */
+.main .stButton button,
+.main .stButton button[kind="secondary"],
+.main .stButton button[kind="primary"]{
+  background:#fff!important;
+  color:#10264b!important;
+  border:1px solid #d6e2ef!important;
+  box-shadow:0 1px 2px rgba(20,50,80,.04)!important;
+  font-weight:700!important;
+}
+.main .stButton button[kind="primary"]{
+  border:2px solid #1687ff!important;
+  color:#0874df!important;
+  background:#f8fbff!important;
+}
+.main .stButton button:hover{background:#f8fbff!important;border-color:#1687ff!important;color:#0874df!important;}
+/* Search button remains the one blue action in the strip. */
+.main div[data-testid="stColumn"]:nth-child(2) > div .stButton button{
+  background:#1687ff!important;color:#fff!important;border-color:#1687ff!important;
+}
+.chr-overview-head{margin-top:0!important;padding-top:4px!important;}
+.chr-overview-title{display:flex!important;align-items:center!important;gap:8px!important;}
+.chr-overview-title .chr-flag{font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif!important;font-size:31px!important;line-height:1!important;}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2515,7 +2558,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2711,7 +2754,8 @@ def render_global_market_overview():
         for c,m in zip(cols,names):
             with c:
                 flag=MARKET_OVERVIEW_CONFIG[m]["flag"]; active=(st.session_state.home_market_v2021==m)
-                if st.button(m,key=f"country_{m}_v2021",use_container_width=True,type="primary" if active else "secondary"):
+                # Put the actual country flag in the button label so it renders reliably in Streamlit.
+                if st.button(f"{flag}  {m}",key=f"country_{m}_v2021",use_container_width=True,type="primary" if active else "secondary"):
                     st.session_state.home_market_v2021=m; st.rerun()
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     if home_q:
