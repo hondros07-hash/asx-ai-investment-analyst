@@ -343,6 +343,48 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
+# V20.1.1 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+st.markdown(r"""
+<style>
+:root{--chr-sidebar:228px;--chr-banner:108px;}
+/* The fixed banner already occupies the top 108px visually. Do not reserve it a second time in Streamlit's block. */
+.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{
+  padding:10px 14px 14px!important;
+  margin:0!important;width:100%!important;max-width:none!important;box-sizing:border-box!important;
+}
+/* Main surface begins at the right edge of the sidebar and directly below the persistent banner. */
+[data-testid="stAppViewContainer"] > .main,[data-testid="stAppViewContainer"] > section.main,section[data-testid="stMain"],.stMain{
+  position:fixed!important;left:var(--chr-sidebar)!important;right:0!important;top:var(--chr-banner)!important;bottom:0!important;
+  margin:0!important;width:auto!important;max-width:none!important;min-width:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+  background:#f7faff!important;
+}
+/* Reference terminal density */
+.main div[data-testid="stHorizontalBlock"]{gap:8px!important;margin:0!important;}
+.main [data-testid="stTextInput"] input{height:38px!important;min-height:38px!important;border-radius:5px!important;font-size:12px!important;}
+.main .stButton button{height:38px!important;min-height:38px!important;border-radius:5px!important;font-size:12px!important;font-weight:700!important;}
+.main div[data-testid="stRadio"] div[role="radiogroup"]{gap:5px!important;flex-wrap:nowrap!important;}
+.main div[data-testid="stRadio"] div[role="radiogroup"] label{height:38px!important;min-height:38px!important;padding:5px 9px!important;border-radius:5px!important;font-size:11px!important;white-space:nowrap!important;}
+.chrimata-home-intro{margin:6px 0 8px!important;min-height:48px!important;align-items:center!important;}
+.chrimata-home-title{font-size:22px!important;line-height:1.05!important;}
+.chrimata-home-meta{font-size:10px!important;margin-top:3px!important;}
+.chrimata-home-quote{font-size:13px!important;padding-right:4px!important;}
+.main div[data-testid="stMetric"]{min-height:86px!important;height:86px!important;padding:8px 11px!important;border-radius:5px!important;}
+.main div[data-testid="stMetricLabel"] p{font-size:12px!important;font-weight:700!important;color:#17345d!important;}
+.main div[data-testid="stMetricValue"]{font-size:1.42rem!important;line-height:1.05!important;color:#0b2348!important;}
+.main div[data-testid="stMetricDelta"]{font-size:11px!important;}
+.main h3{font-size:14px!important;line-height:1.1!important;margin:7px 0 5px!important;color:#0d3266!important;}
+.main [data-testid="stDataFrame"]{border-radius:5px!important;font-size:11px!important;}
+.main [data-testid="stArrowVegaLiteChart"],.main [data-testid="stPlotlyChart"]{border-radius:5px!important;padding:2px!important;}
+.main hr{margin:5px 0!important;}
+.chrimata-section-rule{margin:6px 0!important;}
+.chrimata-terminal-footer{margin-top:6px!important;padding:5px 0!important;}
+/* Keep all home content inside the available canvas. */
+.main [data-testid="column"]{min-width:0!important;overflow:hidden!important;}
+@media(max-width:1100px){:root{--chr-sidebar:196px}.chrimata-home-quote{display:none!important}.main div[data-testid="stRadio"] div[role="radiogroup"]{flex-wrap:wrap!important;}}
+@media(max-width:760px){:root{--chr-sidebar:0px;--chr-banner:74px}[data-testid="stSidebar"]{display:none!important}[data-testid="stAppViewContainer"] > .main,[data-testid="stAppViewContainer"] > section.main,section[data-testid="stMain"],.stMain{left:0!important;top:var(--chr-banner)!important}.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{padding:8px!important}}
+</style>
+""",unsafe_allow_html=True)
+
 @st.cache_data(ttl=300)
 def history(t, period="5y"):
     try: return yf.Ticker(t).history(period=period, auto_adjust=True)
@@ -2398,7 +2440,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.1.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.1.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2656,7 +2698,7 @@ def render_global_market_overview():
         st.subheader("Upcoming IPOs / Listings")
         st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
 
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.1.0 · Landing Dashboard Rebuild</span></div>",unsafe_allow_html=True)
+    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.1.1 · Reference Landing Match</span></div>",unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()

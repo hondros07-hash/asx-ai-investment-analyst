@@ -1,7 +1,11 @@
-# Chrímata V20.1.0 — Landing Dashboard Rebuild
+# Chrímata V20.1.1 — Reference Landing Match
 
-This build keeps the approved full-width Chrímata banner and compact reference sidebar, and rebuilds the desktop main-canvas geometry so the dashboard starts to the right of the fixed sidebar rather than rendering beneath it.
+This build preserves the approved persistent banner and compact reference sidebar, while rebuilding the main desktop canvas geometry to match the approved landing-page reference more closely.
 
-Landing-page changes include a compact search + Search button row, flag-labelled market selectors, reference-style market heading and quote, denser metric/data panels, a 5-day default market chart, and stronger overflow/min-width rules for Streamlit columns.
-
-Deploy by uploading the extracted contents to the repository root and committing to main.
+Key changes:
+- Main content physically begins at the right edge of the sidebar.
+- Removes the duplicated 108px top reservation that created the large white gap.
+- Main dashboard starts immediately beneath the banner.
+- Search/market controls, overview heading, metrics, charts and tables use denser terminal proportions.
+- Header and sidebar styling remain locked.
+- Browser title remains Chrímata - Market Investment Analyst.
