@@ -2511,6 +2511,33 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{position:absolute!important;left:45px!important;top:8px!important;margin:0!important;padding:0!important;width:calc(100% - 52px)!important;max-width:calc(100% - 52px)!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;}
 [data-testid="stSidebar"] .stButton>button p{font-size:11.5px!important;font-weight:600!important;line-height:1.05!important;}
 
+/* V20.6.1 — deterministic sidebar grid.  Streamlit wraps button text in
+   multiple flex containers, so pin the complete label wrapper rather than only
+   the paragraph. Every white title and gold subtitle now shares x=52px. */
+[data-testid="stSidebar"] .stButton>button{
+  display:grid!important;grid-template-columns:34px minmax(0,1fr)!important;
+  grid-template-rows:1fr!important;align-items:center!important;
+  padding:4px 8px 15px 8px!important;text-align:left!important;
+}
+[data-testid="stSidebar"] .stButton>button span[data-testid="stIconMaterial"],
+[data-testid="stSidebar"] .stButton>button [data-testid="stIconMaterial"]{
+  position:static!important;grid-column:1!important;grid-row:1!important;
+  justify-self:center!important;align-self:center!important;margin:5px 0 0!important;
+}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{
+  position:static!important;grid-column:2!important;grid-row:1!important;
+  width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;
+  display:block!important;text-align:left!important;justify-self:stretch!important;
+}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"] p{
+  position:static!important;width:100%!important;max-width:100%!important;
+  margin:0!important;padding:0!important;text-align:left!important;
+}
+.st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
+.st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
+.st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{left:52px!important;text-align:left!important;}
+
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
