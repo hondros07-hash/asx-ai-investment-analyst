@@ -345,7 +345,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.2.5 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.6 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -397,7 +397,7 @@ div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!importa
 .chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
 html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
 
-/* V20.2.5 — remove the residual Streamlit slot below the fixed banner. */
+/* V20.2.6 — remove the residual Streamlit slot below the fixed banner. */
 div[data-testid="stElementContainer"]:has(.chrimata-exact-hero),
 div.element-container:has(.chrimata-exact-hero),
 div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
@@ -411,7 +411,7 @@ div[data-testid="stVerticalBlock"] > div:has(.chrimata-exact-hero){height:0!impo
 
 st.markdown(r"""
 <style>
-/* V20.2.5 — approved reference alignment */
+/* V20.2.6 — approved reference alignment */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 /* Make the banner host consume zero document height; the image itself stays fixed. */
 .chrimata-terminal-hero.chrimata-exact-hero{
@@ -462,7 +462,7 @@ div[data-testid="stMarkdownContainer"]:has(.chrimata-exact-hero){height:0!import
 
 st.markdown(r"""
 <style>
-/* V20.2.5 — exact reference search/country strip */
+/* V20.2.6 — exact reference search/country strip */
 :root{--chr-sidebar:228px;--chr-banner:108px;}
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] > section.main,
@@ -2544,7 +2544,7 @@ SUBPAGES={
 "Settings":["Workspace Settings","Data & Production","Broker Connections"]}
 
 
-# V20.2.5 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
+# V20.2.6 — authoritative geometry/nav override. Keep this LAST so legacy Streamlit rules cannot win.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -2579,7 +2579,7 @@ div.element-container:has(.chrimata-exact-hero){height:0!important;min-height:0!
 </style>
 """,unsafe_allow_html=True)
 
-# V20.2.5 — final reference-header override. Must remain after all legacy theme CSS.
+# V20.2.6 — final reference-header override. Must remain after all legacy theme CSS.
 st.markdown(r"""
 <style>
 /* Main canvas: exactly below banner, never reserve another banner-height spacer. */
@@ -2610,6 +2610,28 @@ section[data-testid="stMain"],.stMain{top:108px!important;}
 </style>
 """,unsafe_allow_html=True)
 
+
+# V20.2.6 — reference header strip: hard neutralise the remaining phantom 108px flow gap.
+st.markdown(r"""
+<style>
+/* The deployed Streamlit DOM still contributes one legacy 108px top offset.
+   Counter it at the actual main block level; the fixed banner itself remains 108px high. */
+[data-testid="stMainBlockContainer"], .stMainBlockContainer,
+section[data-testid="stMain"] .block-container, .main .block-container{
+  transform:translateY(-104px)!important;
+  padding-top:6px!important;
+}
+/* Plain-anchor country navigation: independent of Streamlit button/radio CSS. */
+.chr-country-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;width:100%;margin:0;padding:0;}
+.chr-country-link,.chr-country-link:visited{height:40px;display:flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;background:#fff;color:#10264b!important;border:1px solid #d7e2ef;border-radius:5px;text-decoration:none!important;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(16,38,75,.06);overflow:hidden;}
+.chr-country-link:hover{border-color:#1687ff;color:#0874df!important;background:#f8fbff;}
+.chr-country-link.active{border:2px solid #1687ff;color:#0874df!important;background:#fff;}
+.chr-country-link .chr-flag{font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:18px;line-height:1;}
+@media(max-width:1200px){.chr-country-link{font-size:10px;gap:4px}.chr-country-link .chr-flag{font-size:15px}}
+@media(max-width:900px){.chr-country-nav{grid-template-columns:repeat(3,minmax(0,1fr));}}
+</style>
+""",unsafe_allow_html=True)
+
 PAGE_MAP={
 ("Company Command Centre","Overview"):"Company Command Centre",("Company Command Centre","Fundamentals"):"Fundamentals",("Company Command Centre","Valuation"):"Valuation",("Company Command Centre","Technical"):"Technical",("Company Command Centre","Announcements & Reports"):"Announcements & Reports",("Company Command Centre","Report Intelligence"):"Report Intelligence",("Company Command Centre","News & Events"):"News & Events",("Company Command Centre","Thesis Scorecard"):"Thesis Scorecard",("Company Command Centre","Catalyst Calendar"):"Catalyst Calendar",("Company Command Centre","Quant"):"Quant",("Company Command Centre","Forecasts"):"Forecasts",
 ("Portfolio","Portfolio Overview"):"Portfolio",("Portfolio","Portfolio Intelligence"):"Portfolio Intelligence",("Portfolio","Risk Centre"):"Risk Centre",("Portfolio","Watchlist"):"Watchlist",("Portfolio","Paper Portfolio"):"Paper Portfolio",
@@ -2626,10 +2648,10 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.5</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
-    # V20.2.5: paint the banner on the app viewport itself. This creates NO Streamlit
+    # V20.2.6: paint the banner on the app viewport itself. This creates NO Streamlit
     # element in document flow, eliminating the phantom 100+ px spacer below it.
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
@@ -2822,17 +2844,28 @@ def _chr_market_clock(market):
 
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
+    # V20.2.6: query-param navigation uses plain HTML anchors instead of Streamlit
+    # buttons. This guarantees the reference white-card appearance and real flags.
+    try:
+        qp_market=st.query_params.get("market")
+        if qp_market in MARKET_OVERVIEW_CONFIG:
+            st.session_state.home_market_v2021=qp_market
+    except Exception:
+        pass
     search_col,button_col,market_col=st.columns([1.35,.23,2.15],gap="small")
-    with search_col: home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2021")
-    with button_col: st.button("Search",use_container_width=True,key="home_search_button_v2021")
+    with search_col:
+        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2021")
+    with button_col:
+        st.button("Search",use_container_width=True,key="home_search_button_v2021",type="primary")
     with market_col:
-        names=list(MARKET_OVERVIEW_CONFIG.keys()); cols=st.columns(6,gap="small")
-        for c,m in zip(cols,names):
-            with c:
-                flag=MARKET_OVERVIEW_CONFIG[m]["flag"]; active=(st.session_state.home_market_v2021==m)
-                # Put the actual country flag in the button label so it renders reliably in Streamlit.
-                if st.button(f"{flag}  {m}",key=f"country_{m}_v2021",use_container_width=True,type="secondary"):
-                    st.session_state.home_market_v2021=m; st.rerun()
+        names=list(MARKET_OVERVIEW_CONFIG.keys())
+        links=[]
+        for m in names:
+            flag=MARKET_OVERVIEW_CONFIG[m]["flag"]
+            active=(st.session_state.home_market_v2021==m)
+            cls=" active" if active else ""
+            links.append(f'<a class="chr-country-link{cls}" href="?market={m.replace(" ", "%20")}"><span class="chr-flag">{flag}</span><span>{m}</span></a>')
+        st.markdown('<div class="chr-country-nav">'+''.join(links)+'</div>',unsafe_allow_html=True)
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     if home_q:
         mm=search_securities(home_q,_search_key)
