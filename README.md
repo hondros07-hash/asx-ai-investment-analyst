@@ -57,3 +57,9 @@ Australia sector performance now uses the official S&P/ASX 200 GICS sector index
 - Landing-page Watchlist now resolves saved bare tickers to the selected market and uses the same persistent SQLite watchlist store as the full Watchlist page.
 - VIX widget now requests CBOE VIX (^VIX), removes the fabricated numeric fallback, supports values above 30, and identifies VIX as a US S&P 500 options-implied volatility measure.
 - Existing five-card market overview, stable chart, ASX sectors, and nine-row ASX indices widget are preserved.
+
+## V20.4.5 — Market Data & Search Rebuild
+- Rebuilt landing-page security search with visible matching listings and Search → Company Command Centre routing.
+- Restored Windows-safe market-heading flag artwork inside the smooth market component.
+- Stabilised Global Markets tabs with local client-side state so each country changes on the first click.
+- Retains provider-backed dividends and earnings with explicit unavailable states; no fabricated calendar events.
