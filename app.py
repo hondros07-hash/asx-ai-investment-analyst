@@ -2506,6 +2506,13 @@ button[kind="headerNoPadding"],
 /* V20.5.1 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
+/* V20.5.2 — compact single-row Home search/header alignment. */
+.st-key-country_nav_v2027{margin-top:0!important;padding-top:0!important;}
+.st-key-country_nav_v2027 [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:44px!important;}
+.st-key-country_nav_v2027 .stButton>button{height:44px!important;min-height:44px!important;}
+/* The professional search component owns its suggestions; remove extra outer label spacing. */
+div[data-testid="stFragment"]{margin-top:0!important;margin-bottom:0!important;padding-top:0!important;}
+div[data-testid="stFragment"] iframe{margin-top:0!important;}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2746,7 +2753,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3209,7 +3216,7 @@ def _home_live_search_fragment():
         _professional_security_suggestions,
         key="chrimata_professional_global_search_v2050",
         placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",
-        label="Global security search",
+        label="",
         clear_on_submit=True,
         rerun_on_update=False,
     )
@@ -3237,7 +3244,7 @@ def render_global_market_overview():
             st.session_state.home_market_v2021=qp_market
     except Exception:
         pass
-    search_col,market_col=st.columns([1.58,2.15],gap="small")
+    search_col,market_col=st.columns([1.72,2.28],gap="small")
     with search_col:
         _home_live_search_fragment()
     with market_col:

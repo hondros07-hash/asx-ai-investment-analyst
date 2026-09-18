@@ -1,3 +1,10 @@
+## V20.5.2 — Search Bar Alignment & Header Polish
+
+- Removes the redundant “Global security search” label above the professional autocomplete.
+- Rebalances the Home search/country strip into one compact aligned row.
+- Aligns country controls to the search control height without changing search/ticker logic.
+- Preserves V20.5.1 authoritative ticker state, navigation restoration, sidebar styling and market widgets.
+
 ## V20.5.1 — Navigation, Ticker State & Sidebar Restoration
 
 - Search selection is the authoritative active ticker.
