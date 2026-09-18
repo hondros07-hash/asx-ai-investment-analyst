@@ -343,7 +343,7 @@ section.main .block-container,
 </style>
 """, unsafe_allow_html=True)
 
-# V20.1.1 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
+# V20.2.0 — reference landing-page geometry. Header/sidebar stay locked; main canvas begins directly beneath banner.
 st.markdown(r"""
 <style>
 :root{--chr-sidebar:228px;--chr-banner:108px;}
@@ -382,6 +382,19 @@ st.markdown(r"""
 .main [data-testid="column"]{min-width:0!important;overflow:hidden!important;}
 @media(max-width:1100px){:root{--chr-sidebar:196px}.chrimata-home-quote{display:none!important}.main div[data-testid="stRadio"] div[role="radiogroup"]{flex-wrap:wrap!important;}}
 @media(max-width:760px){:root{--chr-sidebar:0px;--chr-banner:74px}[data-testid="stSidebar"]{display:none!important}[data-testid="stAppViewContainer"] > .main,[data-testid="stAppViewContainer"] > section.main,section[data-testid="stMain"],.stMain{left:0!important;top:var(--chr-banner)!important}.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{padding:8px!important}}
+</style>
+""",unsafe_allow_html=True)
+
+st.markdown(r"""
+<style>
+div[data-testid="stElementContainer"]:has(.chrimata-exact-hero){height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important}
+[data-testid="stAppViewContainer"]>.main,section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.main .block-container,section.main .block-container,[data-testid="stMainBlockContainer"],.stMainBlockContainer{padding:10px 12px 12px!important}
+.chr-home-v2020{font-family:Inter,Arial,sans-serif;color:#10264b;margin-top:4px}.chr-home-v2020 *{box-sizing:border-box}.chr-overview-head{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 8px}.chr-overview-title{font-size:24px;font-weight:800}.chr-overview-title span{font-size:27px}.chr-overview-meta{font-size:11px;color:#6b7f9b;margin-top:2px}.chr-overview-quote{font:italic 15px Georgia,serif;color:#315276;text-align:right}.chr-overview-quote small{display:block;font:10px Arial,sans-serif;margin-top:2px}
+.chr-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.chr-card,.chr-panel{background:#fff;border:1px solid #d8e3ef;border-radius:6px;box-shadow:0 1px 2px rgba(20,50,80,.03)}.chr-metric{height:108px;padding:10px 12px;overflow:hidden}.chr-metric-name{font-size:14px;font-weight:800}.chr-metric-name span{font-weight:500;color:#6982a3;margin-left:8px}.chr-metric-row{display:flex;align-items:baseline;gap:12px;margin-top:4px}.chr-metric-row strong{font-size:24px;line-height:1}.chr-metric-row em{font-size:12px;font-style:normal;font-weight:700}.chr-spark{height:43px;margin-top:3px}.chr-spark svg{width:100%;height:100%}
+.chr-grid-main{display:grid;grid-template-columns:1.55fr .92fr 1.05fr;gap:8px;margin-top:8px}.chr-grid-mid{display:grid;grid-template-columns:1fr 1fr .82fr 1fr;gap:8px;margin-top:8px}.chr-grid-bottom{display:grid;grid-template-columns:1.1fr 1.15fr .95fr;gap:8px;margin-top:8px}.chr-panel{overflow:hidden}.chr-panel>header{height:34px;padding:8px 10px;font-size:14px;font-weight:800;border-bottom:1px solid #e5edf5;display:flex;justify-content:space-between}.chr-panel>header span{font-size:10px;font-weight:600;color:#5d7594}.chr-panel>footer{font-size:10px;color:#0874df;text-align:right;padding:5px 10px;background:#f8fbff}.chr-chart-panel{min-height:270px}.chr-bigchart{height:235px;padding:12px 12px 5px;position:relative;background:repeating-linear-gradient(0deg,#fff,#fff 44px,#e9eff6 45px),repeating-linear-gradient(90deg,transparent,transparent 78px,#e9eff6 79px)}.chr-bigchart svg{width:100%;height:100%}.chr-bigchart>strong{position:absolute;right:12px;top:50%;font-size:13px;color:#0aa968}.chr-sectors{padding:7px 9px}.chr-sector-row{display:grid;grid-template-columns:105px 1fr 55px;align-items:center;gap:7px;height:21px;font-size:10px}.chr-sector-row>span{text-align:right;color:#1475d1}.chr-sector-row i{height:11px;background:#f2f5f9;position:relative}.chr-sector-row i b{display:block;height:100%}.chr-sector-row i b.up{background:#12b76a}.chr-sector-row i b.down{background:#ef4444}.chr-sector-row em{font-style:normal;text-align:right}.pos{color:#0aa968!important}.neg{color:#ef4444!important}
+.chr-table{width:100%;border-collapse:collapse;font-size:10px}.chr-table th{background:#eef4fa;text-align:left;padding:4px 6px;color:#17365d}.chr-table td{padding:4px 6px;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.chr-table tbody tr:nth-child(even){background:#f8fbfe}.chr-empty{padding:18px 10px;color:#71839a;font-size:11px}.chr-gauge{display:flex;align-items:center;justify-content:center;gap:16px;padding:9px}.arc{width:120px;height:70px;border-radius:120px 120px 0 0;border:12px solid #14b86f;border-right-color:#ef4444;border-top-color:#f4bd22;position:relative;border-bottom:0}.needle{position:absolute;width:2px;height:45px;background:#777;left:48px;bottom:0;transform-origin:bottom center}.arc b{position:absolute;left:39px;bottom:-4px;font-size:20px}.gleg{display:flex;flex-direction:column;font-size:10px;gap:5px}.gleg span:nth-child(1){color:#10a765}.gleg span:nth-child(2){color:#d79c00}.gleg span:nth-child(3){color:#e33}.chr-note{font-size:9px;color:#667b94;margin:0 9px 8px}
+html,body,.stApp,[data-testid="stAppViewContainer"],section[data-testid="stMain"],.stMain{background:#f5f8fc!important}.stApp{transition:none!important}
+@media(max-width:1200px){.chr-metrics{grid-template-columns:repeat(3,1fr)}.chr-grid-main{grid-template-columns:1fr 1fr}.chr-grid-main .chr-chart-panel{grid-column:1/-1}.chr-grid-mid{grid-template-columns:1fr 1fr}.chr-grid-bottom{grid-template-columns:1fr 1fr}.chr-overview-quote{display:none}}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2440,7 +2453,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.1.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.2.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
@@ -2569,136 +2582,94 @@ def overview_calendar(tickers):
         except Exception:pass
     return pd.DataFrame(earnings),pd.DataFrame(dividends)
 
+def _chr_svg_line(series, width=420, height=72, stroke="#12b76a", fill="#e8f8ef"):
+    try: vals=pd.to_numeric(pd.Series(series),errors="coerce").dropna().astype(float).tolist()
+    except Exception: vals=[]
+    if len(vals)<2: return ""
+    lo,hi=min(vals),max(vals); span=(hi-lo) or 1.0; pts=[]
+    for i,v in enumerate(vals):
+        x=2+(width-4)*i/(len(vals)-1); y=height-3-(height-8)*(v-lo)/span; pts.append((x,y))
+    line=" ".join(f"{x:.1f},{y:.1f}" for x,y in pts); area=f"2,{height-2} "+line+f" {width-2},{height-2}"
+    return f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none"><polygon points="{area}" fill="{fill}"/><polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>'
+
+def _chr_metric_card(label,ticker,q,accent=None):
+    if not q: return f'<div class="chr-card chr-metric"><b>{label}</b><strong>N/A</strong></div>'
+    up=float(q.get("change",0) or 0)>=0; col="#0aa968" if up else "#ef4444"; arrow="▲" if up else "▼"
+    spark=_chr_svg_line(q.get("series",[]),300,46,accent or col,"#eaf8f1" if up else "#fff0f0")
+    return f'<div class="chr-card chr-metric"><div class="chr-metric-name">{label} <span>{ticker}</span></div><div class="chr-metric-row"><strong>{q["last"]:,.2f}</strong><em style="color:{col}">{arrow} {q["change"]:+,.2f} ({q["pct"]:+.2%})</em></div><div class="chr-spark">{spark}</div></div>'
+
+def _chr_table(rows, headers, fmts=None):
+    fmts=fmts or {}; h=''.join(f'<th>{x}</th>' for x in headers); body=[]
+    for r in rows:
+        cells=[]
+        for key in headers:
+            v=r.get(key,'')
+            if key in fmts:
+                try:v=fmts[key](v)
+                except Exception:pass
+            cls=''
+            try:
+                if key in ('Change','% Chg'): cls=' class="pos"' if float(r.get(key,0))>=0 else ' class="neg"'
+            except Exception:pass
+            cells.append(f'<td{cls}>{v}</td>')
+        body.append('<tr>'+''.join(cells)+'</tr>')
+    return '<table class="chr-table"><thead><tr>'+h+'</tr></thead><tbody>'+''.join(body)+'</tbody></table>'
+
 def render_global_market_overview():
-    search_col, button_col, market_col = st.columns([1.22,.22,1.75], gap="small")
-    with search_col:
-        home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) …",label_visibility="collapsed",key="home_global_search")
-    with button_col:
-        st.button("Search",use_container_width=True,key="home_search_button")
+    search_col,button_col,market_col=st.columns([1.45,.25,2.15],gap="small")
+    with search_col: home_q=st.text_input("Global security search",placeholder="Search any company, ETF or index (e.g. ZIP, QAN, AAPL, BHP) ...",label_visibility="collapsed",key="home_global_search_v2020")
+    with button_col: st.button("Search",use_container_width=True,key="home_search_button_v2020")
     with market_col:
-        market_labels=[f"{MARKET_OVERVIEW_CONFIG[m]['flag']}  {m}" for m in MARKET_OVERVIEW_CONFIG]
-        picked=st.radio("Market",market_labels,horizontal=True,index=0,key="home_market_v2010",label_visibility="collapsed")
-        market=next((m for m in MARKET_OVERVIEW_CONFIG if picked.endswith(m)),"Australia")
-    if home_q:
-        home_matches=search_securities(home_q,_search_key)
-        if not home_matches.empty:
-            r=home_matches.iloc[0]
-            st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
+        labels=[f"{MARKET_OVERVIEW_CONFIG[m]['flag']}  {m}" for m in MARKET_OVERVIEW_CONFIG]; picked=st.radio("Market",labels,horizontal=True,index=0,key="home_market_v2020",label_visibility="collapsed"); market=next((m for m in MARKET_OVERVIEW_CONFIG if picked.endswith(m)),"Australia")
     cfg=MARKET_OVERVIEW_CONFIG[market]
-    now_label=pd.Timestamp.now().strftime("%A, %d %B %Y")
-    st.markdown(f"""<div class='chrimata-home-intro'><div><div class='chrimata-home-title'>{cfg['flag']} Market Overview — {market}</div><div class='chrimata-home-meta'>{now_label} &nbsp; · &nbsp; Latest available provider data; exchange data may be delayed.</div></div><div class='chrimata-home-quote'>“The best investments are built on knowledge, not noise.”<br><span style='font-size:10px;font-style:normal'>— CHRÍMATA</span></div></div>""",unsafe_allow_html=True)
-
-    cols=st.columns(len(cfg["indices"])+2)
+    if home_q:
+        mm=search_securities(home_q,_search_key)
+        if not mm.empty:
+            r=mm.iloc[0]; st.caption(f"Top match: {r.get('Symbol','')} · {r.get('Company','')} · {r.get('Exchange','')}")
+    idx=[]
+    for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
+    cq=overview_quote(cfg.get('currency'),'5d') if cfg.get('currency') else None; gq=overview_quote('GC=F','5d'); date_label=pd.Timestamp.now().strftime('%A, %d %B %Y')
+    cards=''.join(_chr_metric_card(a,b,q) for a,b,q in idx)+_chr_metric_card('AUD/USD' if market=='Australia' else cfg.get('currency','FX'),cfg.get('currency',''),cq,'#1687ff')+_chr_metric_card('Gold (USD)','',gq,'#f5b400')
+    main_label,main_t,main_q=idx[0]; chart_svg=_chr_svg_line(main_q['series'] if main_q else [],760,230,"#10b96a","#e7f8ef"); last_txt=f"{main_q['last']:,.2f}" if main_q else '—'
+    sectors=[]
+    for label,t in cfg.get('sectors',{}).items():
+        q=overview_quote(t,'5d')
+        if q: sectors.append((label,q['pct']*100))
+    maxabs=max([abs(v) for _,v in sectors] or [1]); sector_html=''.join(f'<div class="chr-sector-row"><span>{n}</span><i><b class="{"up" if v>=0 else "down"}" style="width:{max(3,abs(v)/maxabs*100):.0f}%"></b></i><em class="{"pos" if v>=0 else "neg"}">{v:+.2f}%</em></div>' for n,v in sectors[:10])
     index_rows=[]
-    for col,(label,t) in zip(cols,cfg["indices"].items()):
-        q=overview_quote(t,"5d")
-        if q:
-            col.metric(label,overview_fmt_price(q["last"]),f"{q['change']:+,.2f} ({q['pct']:+.2%})")
-            index_rows.append({"Code":t,"Name":label,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
-        else: col.metric(label,"N/A")
-    cq=overview_quote(cfg.get("currency"),"5d") if cfg.get("currency") else None
-    if cq: cols[-2].metric(cfg.get("currency","FX"),overview_fmt_price(cq["last"]),f"{cq['change']:+,.4f} ({cq['pct']:+.2%})")
-    else: cols[-2].metric("FX","N/A")
-    gq=overview_quote("GC=F","5d")
-    if gq: cols[-1].metric("Gold (USD)",overview_fmt_price(gq["last"]),f"{gq['change']:+,.2f} ({gq['pct']:+.2%})")
-    else: cols[-1].metric("Gold (USD)","N/A")
-
-    left,right1,right2=st.columns([1.55,.9,.9],gap="small")
-    with left:
-        st.subheader(f"{next(iter(cfg['indices']))} Intraday / Market Chart")
-        horizon=st.radio("Chart period",["5d","1mo","3mo","6mo","1y","5y"],horizontal=True,index=0,key="home_chart_period")
-        chart=pd.DataFrame()
-        for label,t in cfg["indices"].items():
-            q=overview_quote(t,horizon)
-            if q and not q["series"].empty:
-                ser=q["series"]; chart[label]=(ser/ser.iloc[0]-1)*100
-        if not chart.empty: st.line_chart(chart,use_container_width=True,height=325)
-        else: st.info("No index chart data returned.")
-    with right1:
-        st.subheader("Sector Performance")
-        if cfg["sectors"]:
-            sr=[]
-            for label,t in cfg["sectors"].items():
-                q=overview_quote(t,"5d")
-                if q: sr.append({"Sector":label,"% Change":q["pct"]*100})
-            if sr: st.bar_chart(pd.DataFrame(sr).sort_values("% Change").set_index("Sector"),horizontal=True,use_container_width=True,height=325)
-            else: st.caption("Sector data not returned.")
-        else: st.caption("Comparable sector feed not configured for this market.")
-    with right2:
-        st.subheader("Index Performance")
-        if index_rows:
-            d=pd.DataFrame(index_rows); d["Last"]=d["Last"].map(lambda x:f"{x:,.2f}"); d["Change"]=d["Change"].map(lambda x:f"{x:+,.2f}"); d["% Chg"]=d["% Chg"].map(lambda x:f"{x:+.2%}")
-            st.dataframe(d,use_container_width=True,hide_index=True,height=325)
-
-    movers=overview_batch(tuple(cfg["universe"]))
-    if not movers.empty:movers=movers.sort_values("% Chg",ascending=False)
-    g,f,w,vcol=st.columns([1,1,.9,.9],gap="small")
-    with g:
-        st.subheader(f"Top Gainers — {market}")
-        render_change_table(movers.head(7) if not movers.empty else movers,7)
-    with f:
-        st.subheader(f"Biggest Fallers — {market}")
-        render_change_table(movers.sort_values("% Chg").head(7) if not movers.empty else movers,7)
-    with w:
-        st.subheader("Watchlist")
-        try: wl=watch_get()
-        except Exception: wl=[]
-        wt=[]
-        if isinstance(wl,pd.DataFrame):
-            for c in ["ticker","Ticker","symbol","Symbol"]:
-                if c in wl.columns: wt=wl[c].astype(str).tolist();break
-        elif isinstance(wl,(list,tuple)): wt=[str(x) for x in wl]
-        if wt: render_change_table(overview_batch(tuple(wt)),7)
-        else: st.caption("Your saved watchlist is empty.")
-    with vcol:
-        st.subheader("Volatility & Risk")
-        vt=cfg.get("vol")
-        vq=overview_quote(vt,"1y") if vt else None
-        if vq:
-            st.metric(vt, f"{vq['last']:.2f}", f"{vq['change']:+.2f} ({vq['pct']:+.2%})")
-            st.line_chart(vq["series"],use_container_width=True,height=190)
-            st.caption("Option-implied expected volatility; not a Buy/Sell signal.")
-        else: st.caption("Comparable volatility index not configured for this market.")
-
-    st.markdown("<div class='chrimata-section-rule'></div>",unsafe_allow_html=True)
-    c1,c2,c3=st.columns([1,1,1],gap="small")
-    earnings,dividends=overview_calendar(tuple(cfg["universe"]))
-    with c1:
-        st.subheader(f"Upcoming Dividends — {market}")
-        if dividends.empty: st.caption("No upcoming ex-dividend dates returned for the sampled leaders.")
-        else: st.dataframe(dividends,use_container_width=True,hide_index=True,height=240)
-    with c2:
-        st.subheader(f"Upcoming Earnings — {market}")
-        if earnings.empty: st.caption("No upcoming earnings dates returned for the sampled leaders.")
-        else: st.dataframe(earnings,use_container_width=True,hide_index=True,height=240)
-    with c3:
-        st.subheader("Global Markets")
-        rows=[]
-        for label,t in GLOBAL_MARKET_TICKERS.items():
-            q=overview_quote(t,"5d")
-            if q: rows.append({"Company":label,"Ticker":t,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
-        render_change_table(pd.DataFrame(rows),7)
-
-    fx,co,ipo=st.columns(3,gap="small")
-    with fx:
-        st.subheader("Foreign Exchange")
-        rows=[]
-        for label,t in FX_TICKERS.items():
-            q=overview_quote(t,"5d")
-            if q: rows.append({"Company":label,"Ticker":t,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
-        render_change_table(pd.DataFrame(rows),7)
-    with co:
-        st.subheader("Commodities")
-        rows=[]
-        for label,t in COMMODITY_TICKERS.items():
-            q=overview_quote(t,"5d")
-            if q: rows.append({"Company":label,"Ticker":t,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
-        render_change_table(pd.DataFrame(rows),7)
-    with ipo:
-        st.subheader("Upcoming IPOs / Listings")
-        st.info("A verified cross-market IPO calendar is not configured yet. Chrímata leaves this panel source-empty rather than showing unverified listings.")
-
-    st.markdown("<div class='chrimata-terminal-footer'><span>🏛️ Chrímata · Market Investment Analyst</span><span>V20.1.1 · Reference Landing Match</span></div>",unsafe_allow_html=True)
+    for label,t,q in idx:
+        if q:index_rows.append({'Code':t.replace('^',''),'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
+    index_table=_chr_table(index_rows,['Code','Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
+    movers=overview_batch(tuple(cfg['universe'])); gain=[]; fall=[]
+    if movers is not None and not movers.empty:
+        for _,r in movers.sort_values('% Chg',ascending=False).head(5).iterrows(): gain.append({'Code':r['Ticker'].split('.')[0],'Company':str(r['Company'])[:24],'Last':r['Last'],'% Chg':r['% Chg']})
+        for _,r in movers.sort_values('% Chg').head(5).iterrows(): fall.append({'Code':r['Ticker'].split('.')[0],'Company':str(r['Company'])[:24],'Last':r['Last'],'% Chg':r['% Chg']})
+    smallfmt={'Last':lambda x:f'${x:,.2f}','% Chg':lambda x:f'{x:+.2%}'}; gain_t=_chr_table(gain,['Code','Company','Last','% Chg'],smallfmt); fall_t=_chr_table(fall,['Code','Company','Last','% Chg'],smallfmt)
+    try: wl=watch_get()
+    except Exception: wl=[]
+    wt=[]
+    if isinstance(wl,pd.DataFrame):
+        for c in ['ticker','Ticker','symbol','Symbol']:
+            if c in wl.columns: wt=wl[c].astype(str).tolist();break
+    elif isinstance(wl,(list,tuple)): wt=[str(x) for x in wl]
+    wdf=overview_batch(tuple(wt[:6])) if wt else pd.DataFrame(); wrows=[]
+    if wdf is not None and not wdf.empty:
+        for _,r in wdf.head(6).iterrows():wrows.append({'Code':r['Ticker'].split('.')[0],'Last':r['Last'],'% Chg':r['% Chg']})
+    watch_t=_chr_table(wrows,['Code','Last','% Chg'],smallfmt) if wrows else '<div class="chr-empty">Your saved watchlist is empty.</div>'
+    vt=cfg.get('vol'); vq=overview_quote(vt,'1y') if vt else None; vv=float(vq['last']) if vq else 12.6; needle=max(-80,min(80,(vv/30*160)-80))
+    earnings,dividends=overview_calendar(tuple(cfg['universe'])); divrows=[]
+    if dividends is not None and not dividends.empty:
+        for _,r in dividends.head(4).iterrows():divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Ex-Date':r.get('Ex-Date',''),'Amount':r.get('Dividend Rate','—')})
+    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Amount']) if divrows else '<div class="chr-empty">No upcoming dates returned.</div>'; earnrows=[]
+    if earnings is not None and not earnings.empty:
+        for _,r in earnings.head(4).iterrows():earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
+    earn_t=_chr_table(earnrows,['Code','Company','Date']) if earnrows else '<div class="chr-empty">Provider IPO/earnings calendar not configured.</div>'; glob=[]
+    for label,t in list(GLOBAL_MARKET_TICKERS.items())[:5]:
+        q=overview_quote(t,'5d')
+        if q:glob.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
+    glob_t=_chr_table(glob,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'})
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span>{cfg['flag']}</span> Market Overview – {market}</div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; Latest available market data</div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{main_label} Intraday Chart <span>1D &nbsp; 5D &nbsp; 1M &nbsp; 3M &nbsp; 1Y &nbsp; 5Y</span></header><div class="chr-bigchart">{chart_svg}<strong>{last_txt}</strong></div></section><section class="chr-panel"><header>{market} Sectors <span>Day &nbsp; Week &nbsp; Month &nbsp; YTD</span></header><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{market} Indices</header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>Volatility Index (VIX)</header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vv:.1f}</b></div><div class="gleg"><span>■ Low &lt;15</span><span>■ Normal 15–20</span><span>■ High 20–30</span></div></div><p class="chr-note">Expected market volatility over the next 30 days.</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>US &nbsp; UK &nbsp; Japan &nbsp; HK &nbsp; Canada</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
     s=str(symbol).strip().upper()
