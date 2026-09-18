@@ -2480,7 +2480,7 @@ button[kind="headerNoPadding"],
 .chr-nav-title,.chr-nav-sub{max-width:100%!important;overflow:hidden!important;text-overflow:clip!important;}
 
 
-/* V20.5.1 sidebar restoration: white icons/titles + gold secondary copy. */
+/* V20.5.5 sidebar restoration: white icons/titles + gold secondary copy. */
 [data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
 [data-testid="stSidebar"] .stButton>button{width:100%!important;height:46px!important;min-height:46px!important;margin:0!important;padding:4px 8px 14px 42px!important;text-align:left!important;justify-content:flex-start!important;white-space:nowrap!important;font-size:11px!important;line-height:1.05!important;border-radius:6px!important;box-shadow:none!important;position:relative!important;}
 [data-testid="stSidebar"] .stButton>button[kind="secondary"]{background:transparent!important;color:#fff!important;border-color:transparent!important;}
@@ -2499,7 +2499,7 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_9 button:after{content:"Valuation, Forecasts & Scores";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
 .st-key-chr_nav_native_10 button:after{content:"Preferences";position:absolute;left:42px;bottom:6px;color:#d9ad55;font-size:8px;font-weight:500;line-height:1;white-space:nowrap;}
 
-/* V20.5.1 — keep provider/cache execution details out of the product UI. */
+/* V20.5.5 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
 /* V20.5.4 — compact single-row Home search/header alignment. */
@@ -3124,7 +3124,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-sector-tabs{display:flex;gap:0;margin:-4px 8px 4px;border-radius:4px;overflow:hidden;background:#f1f6fb}.chr-sector-tabs span{flex:1;text-align:center;padding:4px 2px;font-size:9px;color:#17365d;border-right:1px solid #dce7f2}.chr-sector-tabs span:last-child{border-right:0}.chr-sector-tabs .active{background:#087cf0;color:#fff}
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
-/* V20.5.1 — inline autocomplete search + interactive bottom intelligence widgets */
+/* V20.5.5 — inline autocomplete search + interactive bottom intelligence widgets */
 .chr-grid-bottom>.chr-panel{min-height:290px!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
@@ -3134,7 +3134,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 #cal-earn:checked~.cal-earn-panel,#cal-ipo:checked~.cal-ipo-panel{display:block}
 #gm-0:checked~.gm-0-panel,#gm-1:checked~.gm-1-panel,#gm-2:checked~.gm-2-panel,#gm-3:checked~.gm-3-panel,#gm-4:checked~.gm-4-panel{display:block}
 
-/* V20.5.1 — inline autocomplete search (no selectbox). */
+/* V20.5.5 — inline autocomplete search (no selectbox). */
 .chr-autocomplete-label{font-size:10px;font-weight:700;color:#6a80a0;margin:2px 0 3px 2px;text-transform:uppercase;letter-spacing:.04em}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]{min-height:30px!important;height:auto!important;padding:5px 10px!important;border:1px solid #d8e5f2!important;border-radius:4px!important;background:#fff!important;color:#17365d!important;text-align:left!important;justify-content:flex-start!important;font-size:11px!important;font-weight:500!important;margin:0 0 2px!important}
 div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary"]:hover{background:#eef6ff!important;border-color:#087cf0!important;color:#087cf0!important}
@@ -3177,7 +3177,6 @@ def _resolve_professional_search_label(label):
     country=parts[-1] if len(parts)>=2 else ""
     return resolve_listing(sym,exchange,country) if sym else ""
 
-@st.fragment
 def _home_live_search_fragment():
     """V20.5.0 professional autocomplete. Suggestions live inside the search control.
 
@@ -3210,6 +3209,7 @@ def _home_live_search_fragment():
             st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
 
+@st.fragment(run_every="60s")
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
@@ -3265,7 +3265,7 @@ def render_global_market_overview():
     if selected_key not in valid_keys: selected_key=valid_keys[0]
     try: selected_range=st.query_params.get('range','1D').upper()
     except Exception: selected_range='1D'
-    range_map={'1D':('1d','5m'),'5D':('5d','15m'),'1M':('1mo','60m'),'3M':('3mo','1d'),'1Y':('1y','1d'),'5Y':('5y','1wk')}
+    range_map={'1D':('1d','1m'),'5D':('5d','15m'),'1M':('1mo','60m'),'3M':('3mo','1d'),'1Y':('1y','1d'),'5Y':('5y','1wk')}
     if selected_range not in range_map: selected_range='1D'
     selected_label,selected_t,selected_base,_=next((x for x in instruments if x[1]==selected_key),instruments[0])
     cards=''.join(_chr_metric_card(a,b,q,accent,chart_key=b,selected=(b==selected_key),market=market) for a,b,q,accent in instruments)

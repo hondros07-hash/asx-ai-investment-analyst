@@ -3097,6 +3097,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 </style>
 """,unsafe_allow_html=True)
 
+@st.fragment(run_every="60s")
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
@@ -3184,7 +3185,7 @@ def render_global_market_overview():
     if selected_key not in valid_keys: selected_key=valid_keys[0]
     try: selected_range=st.query_params.get('range','1D').upper()
     except Exception: selected_range='1D'
-    range_map={'1D':('1d','5m'),'5D':('5d','15m'),'1M':('1mo','60m'),'3M':('3mo','1d'),'1Y':('1y','1d'),'5Y':('5y','1wk')}
+    range_map={'1D':('1d','1m'),'5D':('5d','15m'),'1M':('1mo','60m'),'3M':('3mo','1d'),'1Y':('1y','1d'),'5Y':('5y','1wk')}
     if selected_range not in range_map: selected_range='1D'
     selected_label,selected_t,selected_base,_=next((x for x in instruments if x[1]==selected_key),instruments[0])
     cards=''.join(_chr_metric_card(a,b,q,accent,chart_key=b,selected=(b==selected_key),market=market) for a,b,q,accent in instruments)
