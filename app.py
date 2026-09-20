@@ -2943,7 +2943,7 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Chrímata research workspace")
-if page!="Dashboard":
+if page not in {"Dashboard","Company Search"}:
     st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Chrímata / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
@@ -2966,7 +2966,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page not in {"Dashboard","Company Search"}:
     st.title("Chrímata")
-    st.caption("V20.7.3 • Chrímata • Global Company Search Interface")
+    st.caption("V20.7.3.1 • Chrímata • Company Search Header & Button Fix")
 
 
 
@@ -4039,7 +4039,7 @@ def _chr_company_search_page():
     .v2073-kicker{font-size:9px;font-weight:850;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}.v2073-name{font-size:17px;font-weight:850;color:#10264b;margin:2px 0}.v2073-meta{font-size:10px;color:#6d7f95;margin-bottom:7px}
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
-    div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}div[data-testid="stForm"] [data-testid="stTextInput"] input{height:48px;border-radius:7px;font-size:14px;padding-left:15px}div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:48px;border-radius:7px;font-weight:800;font-size:14px}
+    div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}div[data-testid="stForm"] [data-testid="stTextInput"] input{height:48px;border-radius:7px;font-size:14px;padding-left:15px}div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:48px;border-radius:7px;font-weight:800;font-size:14px;background:#0b5bd3!important;border-color:#0b5bd3!important;color:#fff!important}div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover{background:#084bb2!important;border-color:#084bb2!important;color:#fff!important}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
