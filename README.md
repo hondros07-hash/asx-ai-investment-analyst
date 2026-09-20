@@ -183,3 +183,11 @@ Restores the supplied compact sidebar reference with a dedicated icon track and 
 - Changes sidebar navigation subtext from blue-grey to Chrímata gold.
 - Uses a brighter gold for the active navigation item while retaining the existing active blue background.
 - No changes to routing, charts, search, market data, dividend engine, or other application functionality.
+
+
+## V20.6.8 — Global Indices Expansion
+- Expanded the country-specific Indices panel for United States, United Kingdom, Japan, Hong Kong and Canada.
+- Preserved Australia's existing nine-index ASX catalogue.
+- The five headline market cards are unchanged: non-Australian dashboards still use the first three configured headline indices plus FX and Gold.
+- Index quote failures degrade to N/A/— inside the Indices panel and do not affect other dashboard widgets.
+- No changes to Sectors, movers, Watchlist, VIX, dividends, earnings/IPOs, Global Markets, search, routing, sidebar layout, or the live chart engine.
