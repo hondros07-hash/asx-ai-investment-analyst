@@ -2571,6 +2571,110 @@ button[kind="headerNoPadding"],
   transform:none!important;text-align:left!important;
 }
 
+/* V20.6.5 — title/subtitle share one physical text container.
+   Do not position the gold copy from the button. Streamlit's text wrapper is
+   already the exact white-title origin, so render the subtitle on that wrapper. */
+.st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
+.st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
+.st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{content:none!important;display:none!important;}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{position:relative!important;overflow:visible!important;}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]:after{
+  position:absolute!important;left:0!important;top:16px!important;right:auto!important;
+  margin:0!important;padding:0!important;transform:none!important;text-align:left!important;
+  color:#e0b45a!important;font-size:8.2px!important;font-weight:500!important;line-height:1!important;
+  white-space:nowrap!important;display:block!important;
+}
+.st-key-chr_nav_native_0 button [data-testid="stMarkdownContainer"]:after{content:"Global Market Overview";}
+.st-key-chr_nav_native_1 button [data-testid="stMarkdownContainer"]:after{content:"Find & Analyse Stocks";}
+.st-key-chr_nav_native_2 button [data-testid="stMarkdownContainer"]:after{content:"Deep Analysis & Reports";}
+.st-key-chr_nav_native_3 button [data-testid="stMarkdownContainer"]:after{content:"Indices, Sectors & Heatmaps";}
+.st-key-chr_nav_native_4 button [data-testid="stMarkdownContainer"]:after{content:"Track Your Stocks";}
+.st-key-chr_nav_native_5 button [data-testid="stMarkdownContainer"]:after{content:"Performance & Analytics";}
+.st-key-chr_nav_native_6 button [data-testid="stMarkdownContainer"]:after{content:"Find Opportunities";}
+.st-key-chr_nav_native_7 button [data-testid="stMarkdownContainer"]:after{content:"Price & News Alerts";}
+.st-key-chr_nav_native_8 button [data-testid="stMarkdownContainer"]:after{content:"Dividends, Earnings & IPOs";}
+.st-key-chr_nav_native_9 button [data-testid="stMarkdownContainer"]:after{content:"Valuation, Forecasts & Scores";}
+.st-key-chr_nav_native_10 button [data-testid="stMarkdownContainer"]:after{content:"Preferences";}
+.st-key-chr_nav_native_0 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_1 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_2 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_3 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_4 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_5 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_6 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_7 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_8 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_9 button[kind="primary"] [data-testid="stMarkdownContainer"]:after,
+.st-key-chr_nav_native_10 button[kind="primary"] [data-testid="stMarkdownContainer"]:after{color:#f0c86e!important;}
+
+/* V20.6.6 — Reference Sidebar Restoration.
+   This is the final sidebar authority. It mirrors the supplied reference:
+   compact rows, a dedicated icon track, and ONE shared title/subtitle origin. */
+[data-testid="stSidebar"] .stButton{margin:0!important;padding:0!important;}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0!important;}
+[data-testid="stSidebar"] .stButton>button{
+  width:100%!important;height:46px!important;min-height:46px!important;
+  margin:0 0 1px!important;padding:4px 7px 14px 52px!important;
+  position:relative!important;display:block!important;overflow:visible!important;
+  text-align:left!important;justify-content:flex-start!important;
+  border-radius:5px!important;box-shadow:none!important;
+}
+[data-testid="stSidebar"] .stButton>button[kind="secondary"]{
+  background:transparent!important;color:#fff!important;border-color:transparent!important;
+}
+[data-testid="stSidebar"] .stButton>button[kind="primary"]{
+  background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;
+  color:#fff!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)!important;
+}
+[data-testid="stSidebar"] .stButton>button span[data-testid="stIconMaterial"],
+[data-testid="stSidebar"] .stButton>button [data-testid="stIconMaterial"]{
+  position:absolute!important;left:12px!important;top:11px!important;
+  width:24px!important;height:24px!important;font-size:22px!important;line-height:24px!important;
+  color:#fff!important;margin:0!important;padding:0!important;
+}
+/* The markdown wrapper is the sole text column for BOTH lines. */
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]{
+  position:absolute!important;left:52px!important;top:7px!important;right:auto!important;
+  width:calc(100% - 59px)!important;max-width:calc(100% - 59px)!important;
+  margin:0!important;padding:0!important;display:block!important;overflow:visible!important;
+  text-align:left!important;transform:none!important;
+}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"] p{
+  position:static!important;display:block!important;width:100%!important;max-width:100%!important;
+  margin:0!important;padding:0!important;text-align:left!important;transform:none!important;
+  font-family:Arial,"Helvetica Neue",sans-serif!important;font-size:11.2px!important;
+  font-weight:600!important;line-height:1.08!important;white-space:nowrap!important;color:#fff!important;
+}
+/* Disable every legacy button pseudo subtitle; the subtitle is attached to the
+   SAME markdown wrapper, so its left edge can never drift from the title. */
+.st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
+.st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
+.st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{content:none!important;display:none!important;}
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]:after{
+  position:absolute!important;left:0!important;top:15px!important;right:auto!important;
+  margin:0!important;padding:0!important;transform:none!important;text-align:left!important;
+  color:#8fbce2!important;font-family:Arial,"Helvetica Neue",sans-serif!important;
+  font-size:8.0px!important;font-weight:400!important;line-height:1!important;
+  white-space:nowrap!important;display:block!important;
+}
+.st-key-chr_nav_native_0 button [data-testid="stMarkdownContainer"]:after{content:"Global Market Overview";}
+.st-key-chr_nav_native_1 button [data-testid="stMarkdownContainer"]:after{content:"Find & Analyse Stocks";}
+.st-key-chr_nav_native_2 button [data-testid="stMarkdownContainer"]:after{content:"Deep Analysis & Reports";}
+.st-key-chr_nav_native_3 button [data-testid="stMarkdownContainer"]:after{content:"Indices, Sectors & Heatmaps";}
+.st-key-chr_nav_native_4 button [data-testid="stMarkdownContainer"]:after{content:"Track Your Stocks";}
+.st-key-chr_nav_native_5 button [data-testid="stMarkdownContainer"]:after{content:"Performance & Analytics";}
+.st-key-chr_nav_native_6 button [data-testid="stMarkdownContainer"]:after{content:"Find Opportunities";}
+.st-key-chr_nav_native_7 button [data-testid="stMarkdownContainer"]:after{content:"Price & News Alerts";}
+.st-key-chr_nav_native_8 button [data-testid="stMarkdownContainer"]:after{content:"Dividends, Earnings & IPOs";}
+.st-key-chr_nav_native_9 button [data-testid="stMarkdownContainer"]:after{content:"Valuation, Forecasts & Scores";}
+.st-key-chr_nav_native_10 button [data-testid="stMarkdownContainer"]:after{content:"Preferences";}
+[data-testid="stSidebar"] .stButton>button[kind="primary"] [data-testid="stMarkdownContainer"]:after{color:#a9cfee!important;}
+.chr-side-wealth{margin:7px 6px 2px!important;padding:8px!important;}
+.chr-side-version{font-size:8px!important;color:#d7e8f7!important;text-align:right!important;margin:5px 7px 0!important;}
+
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
@@ -2804,7 +2908,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2860,7 +2964,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.6.4 • Chrímata • Exact Sidebar Left Alignment")
+    st.caption("V20.6.6 • Chrímata • Reference Sidebar Restoration")
 
 
 

@@ -168,3 +168,11 @@ Upcoming Dividends now uses a forward-calendar provider hierarchy: Twelve Data d
 
 ## V20.6.3 — Exact Sidebar Text Alignment Fix
 Gold sidebar subtitles now use the same text-bearing origin as the white navigation titles. The prior 42px offset was being applied twice by Streamlit's nested button layout, pushing subtitles to the right. No market-data, routing, chart, search, or dividend-engine behavior was changed in this focused release.
+
+
+## V20.6.5 — Shared Sidebar Text Origin
+White navigation titles and gold subtitles now render from the same Streamlit text wrapper, giving both lines the identical left-hand origin. No image-based sidebar elements were introduced.
+
+
+## V20.6.6 — Reference Sidebar Restoration
+Restores the supplied compact sidebar reference with a dedicated icon track and a single shared text origin for title/subtitle copy. Navigation/routing and research engines are unchanged.
