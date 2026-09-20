@@ -209,3 +209,9 @@ Restores the supplied compact sidebar reference with a dedicated icon track and 
 
 ## V20.7.0 Volatility Widget Presentation Update
 The country-aware volatility widget now centres its value, state and legend, and uses semantic state colours: Low (green), Normal (gold), High (red). This presentation change is isolated to the volatility widget.
+
+## V20.7.1 — Interactive Global Markets Widget
+- Replaced the non-working JavaScript tabs with CSS-only radio tabs.
+- US, UK, Japan, Hong Kong and Canada switch locally inside Global Markets.
+- The widget does not mutate the main country selector, chart selection, routing or Streamlit session state.
+- Preserves the enhanced V20.7.0 volatility widget and all previous dashboard work.

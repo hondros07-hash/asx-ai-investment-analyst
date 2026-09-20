@@ -3359,9 +3359,32 @@ def render_global_market_overview():
             if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
         tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
         gp.append((gname,tbl))
-    gbuttons=''.join(f'<button type="button" class="gm-btn {"active" if i==0 else ""}" data-gm="{i}">{name}</button>' for i,(name,_) in enumerate(gp))
-    panels=''.join(f'<div class="gm-panel gm-{i}-panel" style="display:{"block" if i==0 else "none"}">{tbl}</div>' for i,(_,tbl) in enumerate(gp))
-    glob_t='<div class="chr-global-tabs"><div class="gm-buttons">'+gbuttons+'</div>'+panels+'''<script>(function(){const box=document.currentScript.parentElement;box.querySelectorAll('.gm-btn').forEach(b=>b.addEventListener('click',()=>{box.querySelectorAll('.gm-btn').forEach(x=>x.classList.toggle('active',x===b));box.querySelectorAll('.gm-panel').forEach((p,i)=>p.style.display=(String(i)===b.dataset.gm?'block':'none'));}));})();</script></div>'''
+    # V20.7.1 — Interactive Global Markets Widget.
+    # CSS-only tabs avoid script execution inside st.markdown and remain fully local
+    # to this card: no Streamlit session state, routing or main market state is changed.
+    gm_uid='chr-gm-tabs'
+    gm_inputs=[]; gm_labels=[]; gm_panels=[]
+    for i,(gname,tbl) in enumerate(gp):
+        checked=' checked' if i==0 else ''
+        gm_inputs.append(f'<input class="gm-radio" type="radio" name="{gm_uid}" id="{gm_uid}-{i}"{checked}>')
+        gm_labels.append(f'<label class="gm-tab-label gm-label-{i}" for="{gm_uid}-{i}">{gname}</label>')
+        gm_panels.append(f'<div class="gm-panel gm-panel-{i}">{tbl}</div>')
+    gm_rules=''.join(
+        f'#{gm_uid}-{i}:checked ~ .gm-labels .gm-label-{i}{{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}}'
+        f'#{gm_uid}-{i}:checked ~ .gm-panels .gm-panel-{i}{{display:block;}}'
+        for i in range(len(gp))
+    )
+    glob_t=(
+        '<div class="chr-global-tabs gm-css-tabs"><style>'
+        '.gm-css-tabs .gm-radio{position:absolute;opacity:0;pointer-events:none;}'
+        '.gm-css-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
+        '.gm-css-tabs .gm-tab-label{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;}'
+        '.gm-css-tabs .gm-tab-label:hover{background:#f5f8fc;color:#0b57d0;}'
+        '.gm-css-tabs .gm-panel{display:none;}'
+        +gm_rules+'</style>'+''.join(gm_inputs)+
+        '<div class="gm-labels">'+''.join(gm_labels)+'</div>'
+        '<div class="gm-panels">'+''.join(gm_panels)+'</div></div>'
+    )
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     # V20.4.0: no timed Streamlit fragment rerun. The market clock updates client-side so the page remains stationary.
     # Show the latest market-data timestamp separately so users can distinguish the live clock from quote freshness.
