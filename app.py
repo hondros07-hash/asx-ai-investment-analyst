@@ -2908,7 +2908,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.8</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.9</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2964,7 +2964,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.6.8 • Chrímata • Global Indices Expansion")
+    st.caption("V20.6.9 • Chrímata • Global Top 5 Gainers")
 
 
 
@@ -2976,6 +2976,18 @@ MARKET_OVERVIEW_CONFIG={
  "Hong Kong":{"flag":"🇭🇰","indices":{"Hang Seng":"^HSI","Hang Seng China Ent.":"^HSCE","Hang Seng Tech":"^HSTECH","Hang Seng Composite":"^HSCI","Hang Seng China AH Premium":"^HSAHP","Hang Seng Finance":"^HSNF"},"benchmark":"^HSI","vol":None,"currency":"HKD=X","universe":["0700.HK","9988.HK","3690.HK","1299.HK","0005.HK","0388.HK","1810.HK","9618.HK","2318.HK","0883.HK","0941.HK","9999.HK"],"sectors":{}},
  "Canada":{"flag":"🇨🇦","indices":{"S&P/TSX Composite":"^GSPTSE","TSX 60":"^TX60","TSX Venture":"^SPCDNX","S&P/TSX Completion":"^TX40","S&P/TSX SmallCap":"^TX20","S&P/TSX Capped Financials":"^TTFS"},"benchmark":"^GSPTSE","vol":None,"currency":"CAD=X","universe":["RY.TO","TD.TO","SHOP.TO","ENB.TO","CNR.TO","BNS.TO","CP.TO","SU.TO","BMO.TO","CNQ.TO","TRI.TO","MFC.TO"],"sectors":{}}
 }
+# V20.6.9 — isolated country-specific Top Gainers coverage.
+# Kept separate from MARKET_OVERVIEW_CONFIG[market]["universe"] so expanding
+# mover coverage cannot alter sectors, fallers, watchlist, calendars or charts.
+TOP_GAINERS_UNIVERSE={
+ "Australia":["BHP.AX","CBA.AX","CSL.AX","NAB.AX","WBC.AX","ANZ.AX","WES.AX","MQG.AX","WOW.AX","TLS.AX","QAN.AX","ZIP.AX","XRO.AX","FMG.AX","RIO.AX","ALL.AX","REA.AX","CAR.AX","JHX.AX","COL.AX","RMD.AX","COH.AX","FPH.AX","BXB.AX","QUB.AX","CPU.AX","TPG.AX","EDV.AX","TWE.AX","JBH.AX","HVN.AX","APA.AX","AGL.AX","ORG.AX","WDS.AX","STO.AX","MIN.AX","S32.AX","NST.AX","NEM.AX","GMG.AX","SCG.AX","MGR.AX","SUN.AX","IAG.AX","QBE.AX","ASX.AX","SEK.AX","PME.AX","ALU.AX"],
+ "United States":["AAPL","MSFT","NVDA","AMZN","GOOGL","GOOG","META","TSLA","BRK-B","JPM","V","WMT","XOM","MA","NFLX","COST","AMD","PEP","KO","DIS","CAT","AVGO","ORCL","CRM","ADBE","CSCO","INTC","QCOM","TXN","AMAT","MU","IBM","GE","BA","GS","BAC","WFC","MS","CVX","COP","LLY","JNJ","UNH","MRK","ABBV","HD","LOW","NKE","MCD","SBUX"],
+ "United Kingdom":["SHEL.L","AZN.L","HSBA.L","ULVR.L","BP.L","RIO.L","GSK.L","REL.L","LSEG.L","DGE.L","BARC.L","VOD.L","BATS.L","GLEN.L","NG.L","RR.L","LLOY.L","AAL.L","ANTO.L","BA.L","CPG.L","EXPN.L","HLMA.L","III.L","IMB.L","LAND.L","MNG.L","PRU.L","SGE.L","SSE.L","STAN.L","TSCO.L","WTB.L"],
+ "Japan":["7203.T","6758.T","9984.T","8306.T","6861.T","8035.T","9432.T","7974.T","6501.T","7267.T","6098.T","9983.T","8058.T","8316.T","8411.T","8766.T","6954.T","4063.T","6367.T","4519.T","4502.T","4568.T","7741.T","6902.T","6702.T","8001.T","8002.T","8031.T","2914.T","3382.T"],
+ "Hong Kong":["0700.HK","9988.HK","3690.HK","1299.HK","0005.HK","0388.HK","1810.HK","9618.HK","2318.HK","0883.HK","0941.HK","9999.HK","1211.HK","1024.HK","2020.HK","0669.HK","0016.HK","0011.HK","0002.HK","0003.HK","0066.HK","0267.HK","0688.HK","0823.HK","1109.HK","1928.HK","2382.HK","2628.HK","3968.HK","6098.HK"],
+ "Canada":["RY.TO","TD.TO","SHOP.TO","ENB.TO","CNR.TO","BNS.TO","CP.TO","SU.TO","BMO.TO","CNQ.TO","TRI.TO","MFC.TO","BCE.TO","T.TO","ABX.TO","WCN.TO","CSU.TO","ATD.TO","NA.TO","CM.TO","POW.TO","GWO.TO","SLF.TO","NTR.TO","WPM.TO","AEM.TO","FNV.TO","IMO.TO","TRP.TO","PPL.TO"]
+}
+
 GLOBAL_MARKET_TICKERS={"S&P 500":"^GSPC","Nasdaq 100":"^NDX","Dow Jones":"^DJI","ASX 200":"^AXJO","Nikkei 225":"^N225","Hang Seng":"^HSI","FTSE 100":"^FTSE","TSX Composite":"^GSPTSE"}
 COMMODITY_TICKERS={"Gold":"GC=F","Silver":"SI=F","Brent Crude":"BZ=F","WTI Crude":"CL=F","Copper":"HG=F"}
 FX_TICKERS={"AUD / USD":"AUDUSD=X","EUR / USD":"EURUSD=X","GBP / USD":"GBPUSD=X","USD / JPY":"JPY=X","USD / CAD":"CAD=X","USD / HKD":"HKD=X"}
@@ -3585,9 +3597,12 @@ def render_global_market_overview():
     })
     # V20.4.2 — genuine movers: gainers are positive-only and fallers negative-only.
     # Never pad a list with securities moving in the wrong direction.
+    # V20.6.9: Top Gainers uses its own broader country universe. This is
+    # deliberately isolated so no other dashboard widget changes data inputs.
+    gainers_movers=overview_batch(tuple(TOP_GAINERS_UNIVERSE.get(market,cfg['universe'])))
     movers=overview_batch(tuple(cfg['universe'])); gain=[]; fall=[]
-    if movers is not None and not movers.empty:
-        clean=movers.copy()
+    if gainers_movers is not None and not gainers_movers.empty:
+        clean=gainers_movers.copy()
         clean['% Chg']=pd.to_numeric(clean['% Chg'],errors='coerce')
         clean=clean.dropna(subset=['% Chg'])
         def _clean_company_name(name,ticker):
@@ -3600,7 +3615,12 @@ def render_global_market_overview():
             return nm[:28]
         for _,r in clean[clean['% Chg']>0].sort_values('% Chg',ascending=False).head(5).iterrows():
             gain.append({'Code':r['Ticker'].split('.')[0],'Company':_clean_company_name(r['Company'],r['Ticker']),'Last':r['Last'],'% Chg':r['% Chg']})
-        for _,r in clean[clean['% Chg']<0].sort_values('% Chg',ascending=True).head(5).iterrows():
+    # Preserve the pre-V20.6.9 Biggest Fallers input universe unchanged.
+    if movers is not None and not movers.empty:
+        fall_clean=movers.copy()
+        fall_clean['% Chg']=pd.to_numeric(fall_clean['% Chg'],errors='coerce')
+        fall_clean=fall_clean.dropna(subset=['% Chg'])
+        for _,r in fall_clean[fall_clean['% Chg']<0].sort_values('% Chg',ascending=True).head(5).iterrows():
             fall.append({'Code':r['Ticker'].split('.')[0],'Company':_clean_company_name(r['Company'],r['Ticker']),'Last':r['Last'],'% Chg':r['% Chg']})
     smallfmt={'Last':lambda x:f'${x:,.2f}','% Chg':lambda x:f'{x:+.2%}'}
     gain_t=_chr_table(gain,['Code','Company','Last','% Chg'],smallfmt) if gain else '<div class="chr-empty">No qualifying gainers returned by the active provider.</div>'

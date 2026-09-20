@@ -191,3 +191,10 @@ Restores the supplied compact sidebar reference with a dedicated icon track and 
 - The five headline market cards are unchanged: non-Australian dashboards still use the first three configured headline indices plus FX and Gold.
 - Index quote failures degrade to N/A/— inside the Indices panel and do not affect other dashboard widgets.
 - No changes to Sectors, movers, Watchlist, VIX, dividends, earnings/IPOs, Global Markets, search, routing, sidebar layout, or the live chart engine.
+
+
+## V20.6.9 — Global Top 5 Gainers
+- Expands Top Gainers coverage with a dedicated country-specific mover universe for Australia, United States, United Kingdom, Japan, Hong Kong and Canada.
+- Ranks positive movers by current/latest session percentage change and displays the top five.
+- Keeps the mover universe isolated from indices, sectors, Biggest Fallers, watchlist, dividends, calendars, charts, search and routing.
+- Existing V20.6.8 global indices expansion and V20.6.7 sidebar styling are preserved.
