@@ -2965,7 +2965,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page not in {"Dashboard","Company Search"}:
     st.title("Chrímata")
-    st.caption("V20.7.2 • Chrímata • Global Company Search & Analysis")
+    st.caption("V20.7.2.1 • Chrímata • Company Search Error Fix")
 
 
 
