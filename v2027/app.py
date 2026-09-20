@@ -2688,7 +2688,7 @@ PAGE_MAP={
 ("Research Tools","Research Report"):"Research Report",("Research Tools","Investment Committee"):"Investment Committee",("Research Tools","Evidence & Thesis"):"Evidence & Thesis",("Research Tools","Before I Invest"):"Before I Invest",("Research Tools","Monitor My Thesis"):"Monitor My Thesis",("Research Tools","Something Changed"):"Something Changed",("Research Tools","Report Intelligence"):"Report Intelligence",("Research Tools","Advanced Forecasting"):"Advanced Forecasting",("Research Tools","Model Lab"):"Model Lab",
 ("Settings","Workspace Settings"):"Workspace Settings",("Settings","Data & Production"):"Data & Production",("Settings","Broker Connections"):"Broker Connections"}
 if primary=="Home": page="Dashboard"
-elif primary=="Company Search": page="Dashboard"
+elif primary=="Company Search": page="Company Search"
 elif primary=="Markets": page="Markets"
 elif primary=="Watchlist": page="Watchlist"
 elif primary=="Screening": page="Markets"
@@ -2720,6 +2720,7 @@ render_chrimata_persistent_header()
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
+ "Company Search":"Find and analyse exact listings across global markets",
  "Markets":"Discover and compare opportunities across global markets",
  "Something Changed":"Your material-change research inbox",
  "Company Command Centre":"One-company investment research workspace",
@@ -2739,10 +2740,10 @@ if page!="Dashboard":
 </div>""",unsafe_allow_html=True)
 
 h=history(ticker); meta=info(ticker)
-if h.empty and page!="Dashboard":
+if h.empty and page not in {"Dashboard","Company Search"}:
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
     st.stop()
-if h.empty:
+if h.empty and page!="Company Search":
     h=history("^AXJO","1mo")
     meta={}
 close=h["Close"] if not h.empty and "Close" in h else pd.Series(dtype=float)
@@ -2752,7 +2753,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 # Browser-tab branding is intentionally static in V19.8: Chrímata + Parthenon icon.
 
-if page!="Dashboard":
+if page not in {"Dashboard","Company Search"}:
     st.title("Chrímata")
     st.caption("V20.0.0 • Chrímata • Fixed Full-Width Terminal UI")
 
@@ -3650,6 +3651,159 @@ def render_market_vs_model(ticker, price, h):
     metric_box(c[3],"User-model base DCF","—" if pd.isna(base) else display_price(base,ticker))
     st.caption("Analyst target = external analyst data. Quant scenario = historical return-distribution model. DCF = saved user assumptions; generic defaults must be replaced before relying on it.")
 
+def _chr_search_exchange_bucket(symbol, exchange, country):
+    sym=str(symbol or "").upper(); ex=str(exchange or "").upper(); country=str(country or "")
+    if sym.endswith(".AX") or "ASX" in ex: return "ASX"
+    if sym.endswith(".L") or "LONDON" in ex or ex=="LSE": return "LSE"
+    if sym.endswith(".T") or "TOKYO" in ex or ex in {"TSE","JPX"}: return "TSE"
+    if sym.endswith(".HK") or "HONG KONG" in ex or ex in {"HKG","HKEX"}: return "HKEX"
+    if sym.endswith(".TO") or "TORONTO" in ex or ex=="TSX": return "TSX"
+    if "NASDAQ" in ex or ex in {"NMS","NGM","NCM"}: return "NASDAQ"
+    if "NYSE" in ex or ex in {"NYQ","ASE","AMEX"}: return "NYSE"
+    if country=="United States": return "US Other"
+    return ex or "Other"
+
+def _chr_company_search_page():
+    st.markdown("""
+    <style>
+    .chr-search-hero{background:#fff;border:1px solid #dbe5f0;border-radius:10px;padding:14px 16px 11px;margin:0 0 8px}
+    .chr-search-title{font-size:24px;font-weight:850;color:#10264b;letter-spacing:-.025em}
+    .chr-search-sub{font-size:12px;color:#6d7f95;margin-top:2px}
+    .chr-search-card{background:#fff;border:1px solid #dbe5f0;border-radius:9px;padding:12px 14px;height:100%}
+    .chr-search-kicker{font-size:10px;font-weight:800;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}
+    .chr-search-name{font-size:19px;font-weight:850;color:#10264b;margin:2px 0}
+    .chr-search-meta{font-size:11px;color:#6d7f95;margin-bottom:8px}
+    .chr-search-price{font-size:27px;font-weight:850;color:#10264b}
+    .chr-search-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;margin-top:8px}
+    .chr-search-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:6px 0;font-size:11px}
+    .chr-search-stat span{color:#708197}.chr-search-stat b{color:#172b4d}
+    .chr-search-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:9px;padding:28px;text-align:center;color:#6d7f95;margin-top:8px}
+    </style>
+    <div class="chr-search-hero"><div class="chr-search-title">Company Search</div>
+    <div class="chr-search-sub">Find and analyse listed companies across global markets. Search by company name or ticker, identify the exact exchange listing, then open it in the Company Command Centre.</div></div>
+    """,unsafe_allow_html=True)
+
+    with st.form("chr_global_company_search_form", clear_on_submit=False):
+        c1,c2=st.columns([5.2,1])
+        with c1:
+            q=st.text_input("Global company search", value=st.session_state.get("chr_company_search_query",""),
+                placeholder="Search Apple, AAPL, ZIP, Rio Tinto, Toyota, Tencent, Shopify ...",
+                label_visibility="collapsed")
+        with c2:
+            submitted=st.form_submit_button("Search",use_container_width=True,type="primary")
+    if submitted:
+        st.session_state["chr_company_search_query"]=q.strip()
+        st.session_state.pop("chr_company_search_selected",None)
+
+    query=st.session_state.get("chr_company_search_query","").strip()
+    exchange_choice=st.segmented_control("Exchange",
+        ["All Markets","ASX","NASDAQ","NYSE","LSE","TSE","HKEX","TSX"],
+        default="All Markets",key="chr_company_search_exchange_v2072",label_visibility="collapsed")
+
+    if not query:
+        st.markdown('<div class="chr-search-empty"><b>Search global listed companies</b><br>Chrímata will keep separate listings separate so you can analyse the exact security and exchange you intend.</div>',unsafe_allow_html=True)
+        return
+
+    try:
+        key=st.secrets.get("TWELVE_DATA_API_KEY","")
+    except Exception:
+        key=""
+    with st.spinner("Searching global markets..."):
+        results=search_securities(query,key)
+    if results is None or results.empty:
+        st.warning(f'No listed securities found for "{query}". Try the company name, ticker, or an exchange-qualified ticker.')
+        return
+
+    results=results.copy()
+    results["Market"]=[_chr_search_exchange_bucket(s,e,c) for s,e,c in zip(results["Symbol"],results["Exchange"],results["Country"])]
+    if exchange_choice and exchange_choice!="All Markets":
+        results=results[results["Market"].eq(exchange_choice)].copy()
+    if results.empty:
+        st.info(f'No {exchange_choice} listings matched "{query}". Choose All Markets to see other listings.')
+        return
+
+    # Enrich only the visible shortlist, keeping search responsive and provider load bounded.
+    rows=[]
+    for _,r in results.head(20).iterrows():
+        sym=str(r["Symbol"]); resolved=resolve_listing(sym,r.get("Exchange",""),r.get("Country",""))
+        oq=overview_quote(resolved,"5d")
+        last=_mia_num(oq.get("last")) if oq else np.nan
+        chg=_mia_num(oq.get("pct")) if oq else np.nan
+        rows.append({
+            "Company":str(r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or r.get("Market") or ""),
+            "Market":str(r.get("Market") or ""),"Country":str(r.get("Country") or ""),"Currency":str(r.get("Currency") or ""),
+            "Price":None if not np.isfinite(last) else float(last),
+            "Day %":None if not np.isfinite(chg) else float(chg),
+            "_resolved":resolved
+        })
+    view=pd.DataFrame(rows)
+    st.markdown(f"#### Search Results · {len(view)} listing{'s' if len(view)!=1 else ''}")
+    display=view[["Company","Ticker","Exchange","Market","Country","Currency","Price","Day %"]]
+    event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(430,74+35*len(display)),
+        on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2072",
+        column_config={"Price":st.column_config.NumberColumn(format="%.2f"),"Day %":st.column_config.NumberColumn(format="%+.2f%%")})
+    selected_rows=[]
+    try: selected_rows=event.selection.rows
+    except Exception: pass
+    if selected_rows:
+        idx=int(selected_rows[0])
+        if 0<=idx<len(view):
+            st.session_state["chr_company_search_selected"]=view.iloc[idx].to_dict()
+
+    selected=st.session_state.get("chr_company_search_selected")
+    if not selected:
+        st.caption("Select a row to preview that exact listing. Searching alone does not change your active company.")
+        return
+
+    resolved=str(selected.get("_resolved") or selected.get("Ticker") or "")
+    try: smeta=info(resolved) or {}
+    except Exception: smeta={}
+    oq=overview_quote(resolved,"1y") or {}
+    last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct"))
+    company=smeta.get("longName") or smeta.get("shortName") or selected.get("Company") or resolved
+    currency=smeta.get("currency") or selected.get("Currency") or ""
+    cap=_mia_num(smeta.get("marketCap")); low=_mia_num(smeta.get("fiftyTwoWeekLow")); high=_mia_num(smeta.get("fiftyTwoWeekHigh"))
+    pe=_mia_num(smeta.get("trailingPE")); dy=_mia_num(smeta.get("dividendYield"))
+    sector=smeta.get("sector") or "—"; industry=smeta.get("industry") or "—"
+    def fmt_money(v):
+        if not np.isfinite(v): return "—"
+        if abs(v)>=1e12:return f"{v/1e12:.2f}T"
+        if abs(v)>=1e9:return f"{v/1e9:.2f}B"
+        if abs(v)>=1e6:return f"{v/1e6:.2f}M"
+        return f"{v:,.0f}"
+    delta=("—" if not np.isfinite(pct) else f"{pct:+.2f}%")
+    price_txt=("—" if not np.isfinite(last) else f"{last:,.2f}")
+    range_txt=("—" if not(np.isfinite(low) and np.isfinite(high)) else f"{low:,.2f} – {high:,.2f}")
+    st.markdown(f"""<div class="chr-search-card">
+      <div class="chr-search-kicker">Selected listing</div>
+      <div class="chr-search-name">{html.escape(str(company))}</div>
+      <div class="chr-search-meta">{html.escape(str(selected.get("Ticker","")))} · {html.escape(str(selected.get("Exchange","")))} · {html.escape(str(selected.get("Country","")))} · {html.escape(str(currency))}</div>
+      <div class="chr-search-price">{price_txt} <span style="font-size:14px;color:{'#159447' if np.isfinite(pct) and pct>=0 else '#cf3c3c'}">{delta}</span></div>
+      <div class="chr-search-grid">
+       <div class="chr-search-stat"><span>Market Cap</span><b>{fmt_money(cap)}</b></div>
+       <div class="chr-search-stat"><span>52 Week Range</span><b>{range_txt}</b></div>
+       <div class="chr-search-stat"><span>P/E Ratio</span><b>{'—' if not np.isfinite(pe) else f'{pe:.1f}'}</b></div>
+       <div class="chr-search-stat"><span>Dividend Yield</span><b>{'—' if not np.isfinite(dy) else f'{dy*100:.2f}%'}</b></div>
+       <div class="chr-search-stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div>
+       <div class="chr-search-stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div>
+      </div></div>""",unsafe_allow_html=True)
+    a,b=st.columns([2.2,1.2])
+    with a:
+        if st.button("Open Company Command Centre",type="primary",use_container_width=True,key="chr_search_open_cc_v2072"):
+            st.session_state["chr_active_ticker"]=resolved
+            st.session_state["mia_search_query"]=resolved
+            st.session_state["chr_primary_nav"]="Company Command Centre"
+            st.rerun()
+    with b:
+        if st.button("Add to Watchlist",use_container_width=True,key="chr_search_watch_v2072"):
+            try:
+                watch_add(resolved)
+                st.success(f"{resolved} added to Watchlist.")
+            except Exception as exc:
+                st.warning(f"Could not add {resolved} to Watchlist: {exc}")
+
+
+
 if page=="Markets":
     st.header("Global Market Opportunity Dashboard")
     with st.expander("🔎 Universal symbol search",expanded=False):
@@ -3783,6 +3937,10 @@ elif page=="Something Changed":
         show=all_events if not category else all_events[all_events["category"].isin(category)]
         st.dataframe(show,use_container_width=True,hide_index=True,height=520)
         st.caption("Events are descriptive threshold/crossing detections. Review the underlying company evidence before drawing an investment conclusion.")
+
+
+elif page=="Company Search":
+    _chr_company_search_page()
 
 elif page=="Dashboard":
     render_global_market_overview()

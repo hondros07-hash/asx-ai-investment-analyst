@@ -215,3 +215,12 @@ The country-aware volatility widget now centres its value, state and legend, and
 - US, UK, Japan, Hong Kong and Canada switch locally inside Global Markets.
 - The widget does not mutate the main country selector, chart selection, routing or Streamlit session state.
 - Preserves the enhanced V20.7.0 volatility widget and all previous dashboard work.
+
+## V20.7.2 — Global Company Search & Analysis
+- Company Search is now a dedicated global workspace instead of routing back to Home.
+- Searches company names and tickers across ASX, NASDAQ, NYSE, LSE, TSE, HKEX and TSX-capable provider results.
+- Keeps separate exchange listings separate and displays company, ticker, exchange, market, country, currency, latest price and daily move.
+- Exchange filters are local to Company Search.
+- Row selection opens an analysis preview with market cap, 52-week range, P/E, dividend yield, sector and industry.
+- The active company is changed only when Open Company Command Centre is clicked.
+- Banner and sidebar structure/styles are preserved from V20.7.1.
