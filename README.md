@@ -205,3 +205,7 @@ Restores the supplied compact sidebar reference with a dedicated icon track and 
 - Australia uses S&P/ASX 200 VIX; United States uses CBOE VIX. UK, Japan, Hong Kong and Canada use dedicated market-specific volatility symbol candidates when supported by the configured provider.
 - If a local volatility benchmark is unavailable, the widget displays unavailable data rather than silently substituting the US VIX.
 - The implementation is isolated to the volatility widget configuration and render path; other dashboard widgets and their universes are unchanged.
+
+
+## V20.7.0 Volatility Widget Presentation Update
+The country-aware volatility widget now centres its value, state and legend, and uses semantic state colours: Low (green), Normal (gold), High (red). This presentation change is isolated to the volatility widget.
