@@ -176,3 +176,10 @@ White navigation titles and gold subtitles now render from the same Streamlit te
 
 ## V20.6.6 — Reference Sidebar Restoration
 Restores the supplied compact sidebar reference with a dedicated icon track and a single shared text origin for title/subtitle copy. Navigation/routing and research engines are unchanged.
+
+
+## V20.6.7 — Gold Sidebar Subtext
+- Preserves the V20.6.6 reference sidebar layout and shared title/subtitle left origin.
+- Changes sidebar navigation subtext from blue-grey to Chrímata gold.
+- Uses a brighter gold for the active navigation item while retaining the existing active blue background.
+- No changes to routing, charts, search, market data, dividend engine, or other application functionality.

@@ -2656,7 +2656,7 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"]:after{
   position:absolute!important;left:0!important;top:15px!important;right:auto!important;
   margin:0!important;padding:0!important;transform:none!important;text-align:left!important;
-  color:#8fbce2!important;font-family:Arial,"Helvetica Neue",sans-serif!important;
+  color:#e0b45a!important;font-family:Arial,"Helvetica Neue",sans-serif!important;
   font-size:8.0px!important;font-weight:400!important;line-height:1!important;
   white-space:nowrap!important;display:block!important;
 }
@@ -2671,7 +2671,7 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_8 button [data-testid="stMarkdownContainer"]:after{content:"Dividends, Earnings & IPOs";}
 .st-key-chr_nav_native_9 button [data-testid="stMarkdownContainer"]:after{content:"Valuation, Forecasts & Scores";}
 .st-key-chr_nav_native_10 button [data-testid="stMarkdownContainer"]:after{content:"Preferences";}
-[data-testid="stSidebar"] .stButton>button[kind="primary"] [data-testid="stMarkdownContainer"]:after{color:#a9cfee!important;}
+[data-testid="stSidebar"] .stButton>button[kind="primary"] [data-testid="stMarkdownContainer"]:after{color:#f0c86e!important;}
 .chr-side-wealth{margin:7px 6px 2px!important;padding:8px!important;}
 .chr-side-version{font-size:8px!important;color:#d7e8f7!important;text-align:right!important;margin:5px 7px 0!important;}
 
@@ -2908,7 +2908,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.7</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2964,7 +2964,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.6.6 • Chrímata • Reference Sidebar Restoration")
+    st.caption("V20.6.7 • Chrímata • Gold Sidebar Subtext")
 
 
 
