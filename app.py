@@ -2908,7 +2908,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.2.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2965,7 +2965,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page not in {"Dashboard","Company Search"}:
     st.title("Chrímata")
-    st.caption("V20.7.2.1 • Chrímata • Company Search Error Fix")
+    st.caption("V20.7.2.2 • Chrímata • Company Search Visual Upgrade")
 
 
 
@@ -4028,9 +4028,12 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
 def _chr_company_search_page():
     st.markdown("""
     <style>
-    .chr-search-hero{background:#fff;border:1px solid #dbe5f0;border-radius:10px;padding:14px 16px 11px;margin:0 0 8px}
-    .chr-search-title{font-size:24px;font-weight:850;color:#10264b;letter-spacing:-.025em}
-    .chr-search-sub{font-size:12px;color:#6d7f95;margin-top:2px}
+    .chr-search-shell{border-top:3px solid #0b4f9c;padding-top:17px;margin-top:-4px}
+    .chr-search-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:14px}
+    .chr-search-title{font-size:31px;font-weight:850;color:#10264b;letter-spacing:-.035em;line-height:1.05}
+    .chr-search-sub{font-size:16px;color:#65778d;margin-top:5px}
+    .chr-search-quote{font-size:15px;font-style:italic;font-weight:650;color:#687b92;padding-top:9px;white-space:nowrap}
+    .chr-search-hint{font-size:11px;color:#71839a;margin:-4px 0 10px 2px}
     .chr-search-card{background:#fff;border:1px solid #dbe5f0;border-radius:9px;padding:12px 14px;height:100%}
     .chr-search-kicker{font-size:10px;font-weight:800;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}
     .chr-search-name{font-size:19px;font-weight:850;color:#10264b;margin:2px 0}
@@ -4040,27 +4043,36 @@ def _chr_company_search_page():
     .chr-search-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:6px 0;font-size:11px}
     .chr-search-stat span{color:#708197}.chr-search-stat b{color:#172b4d}
     .chr-search-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:9px;padding:28px;text-align:center;color:#6d7f95;margin-top:8px}
+    div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}
+    div[data-testid="stForm"] [data-testid="stTextInput"] input{height:55px;border-radius:9px;font-size:16px;padding-left:18px}
+    div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:55px;border-radius:9px;font-weight:800;font-size:15px}
     </style>
-    <div class="chr-search-hero"><div class="chr-search-title">Company Search</div>
-    <div class="chr-search-sub">Find and analyse listed companies across global markets. Search by company name or ticker, identify the exact exchange listing, then open it in the Company Command Centre.</div></div>
+    <div class="chr-search-shell">
+      <div class="chr-search-head">
+        <div><div class="chr-search-title">Company Search</div>
+        <div class="chr-search-sub">Find and analyse stocks across global markets</div></div>
+        <div class="chr-search-quote">“Better information. Better decisions.”</div>
+      </div>
+    </div>
     """,unsafe_allow_html=True)
 
     with st.form("chr_global_company_search_form", clear_on_submit=False):
         c1,c2=st.columns([5.2,1])
         with c1:
             q=st.text_input("Global company search", value=st.session_state.get("chr_company_search_query",""),
-                placeholder="Search Apple, AAPL, ZIP, Rio Tinto, Toyota, Tencent, Shopify ...",
+                placeholder="⌕  Search by company name or ticker...",
                 label_visibility="collapsed")
         with c2:
             submitted=st.form_submit_button("Search",use_container_width=True,type="primary")
+    st.markdown('<div class="chr-search-hint">e.g. Apple, AAPL, ZIP, Commonwealth Bank, Coca-Cola...</div>',unsafe_allow_html=True)
     if submitted:
         st.session_state["chr_company_search_query"]=q.strip()
         st.session_state.pop("chr_company_search_selected",None)
 
     query=st.session_state.get("chr_company_search_query","").strip()
-    exchange_choice=st.segmented_control("Exchange",
-        ["All Markets","ASX","NASDAQ","NYSE","LSE","TSE","HKEX","TSX"],
-        default="All Markets",key="chr_company_search_exchange_v2072",label_visibility="collapsed")
+    country_choice=st.segmented_control("Market",
+        ["All Markets","Australia","United States","United Kingdom","Japan","Hong Kong","Canada"],
+        default="All Markets",key="chr_company_search_country_v20722",label_visibility="collapsed")
 
     if not query:
         st.markdown('<div class="chr-search-empty"><b>Search global listed companies</b><br>Chrímata will keep separate listings separate so you can analyse the exact security and exchange you intend.</div>',unsafe_allow_html=True)
@@ -4078,10 +4090,10 @@ def _chr_company_search_page():
 
     results=results.copy()
     results["Market"]=[_chr_search_exchange_bucket(s,e,c) for s,e,c in zip(results["Symbol"],results["Exchange"],results["Country"])]
-    if exchange_choice and exchange_choice!="All Markets":
-        results=results[results["Market"].eq(exchange_choice)].copy()
+    if country_choice and country_choice!="All Markets":
+        results=results[results["Country"].astype(str).eq(country_choice)].copy()
     if results.empty:
-        st.info(f'No {exchange_choice} listings matched "{query}". Choose All Markets to see other listings.')
+        st.info(f'No {country_choice} listings matched "{query}". Choose All Markets to see other listings.')
         return
 
     # Enrich only the visible shortlist, keeping search responsive and provider load bounded.
@@ -4102,7 +4114,7 @@ def _chr_company_search_page():
     st.markdown(f"#### Search Results · {len(view)} listing{'s' if len(view)!=1 else ''}")
     display=view[["Company","Ticker","Exchange","Market","Country","Currency","Price","Day %"]]
     event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(430,74+35*len(display)),
-        on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2072",
+        on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v20722",
         column_config={"Price":st.column_config.NumberColumn(format="%.2f"),"Day %":st.column_config.NumberColumn(format="%+.2f%%")})
     selected_rows=[]
     try: selected_rows=event.selection.rows
@@ -4151,13 +4163,13 @@ def _chr_company_search_page():
       </div></div>""",unsafe_allow_html=True)
     a,b=st.columns([2.2,1.2])
     with a:
-        if st.button("Open Company Command Centre",type="primary",use_container_width=True,key="chr_search_open_cc_v2072"):
+        if st.button("Open Company Command Centre",type="primary",use_container_width=True,key="chr_search_open_cc_v20722"):
             st.session_state["chr_active_ticker"]=resolved
             st.session_state["mia_search_query"]=resolved
             st.session_state["chr_primary_nav"]="Company Command Centre"
             st.rerun()
     with b:
-        if st.button("Add to Watchlist",use_container_width=True,key="chr_search_watch_v2072"):
+        if st.button("Add to Watchlist",use_container_width=True,key="chr_search_watch_v20722"):
             try:
                 watch_add(resolved)
                 st.success(f"{resolved} added to Watchlist.")
