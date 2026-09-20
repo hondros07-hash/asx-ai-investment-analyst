@@ -2546,6 +2546,18 @@ button[kind="headerNoPadding"],
 .st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{left:42px!important;right:auto!important;margin:0!important;padding:0!important;transform:none!important;text-align:left!important;}
 
 
+/* V20.6.3 — exact sidebar text alignment fix.
+   The pseudo-element is positioned inside Streamlit's text-bearing button wrapper,
+   whose origin already matches the white title column.  Previous builds added the
+   42px grid offset a second time, visibly pushing every gold subtitle right. */
+.st-key-chr_nav_native_0 button:after,.st-key-chr_nav_native_1 button:after,.st-key-chr_nav_native_2 button:after,
+.st-key-chr_nav_native_3 button:after,.st-key-chr_nav_native_4 button:after,.st-key-chr_nav_native_5 button:after,
+.st-key-chr_nav_native_6 button:after,.st-key-chr_nav_native_7 button:after,.st-key-chr_nav_native_8 button:after,
+.st-key-chr_nav_native_9 button:after,.st-key-chr_nav_native_10 button:after{
+  left:0!important;right:auto!important;margin-left:0!important;padding-left:0!important;
+  transform:none!important;text-align:left!important;
+}
+
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
@@ -2779,7 +2791,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.5.7</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.6.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit

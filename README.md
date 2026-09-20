@@ -160,7 +160,11 @@ Upcoming Dividends now uses a forward-calendar provider hierarchy: Twelve Data d
 - Continues to show only declared/confirmed dividend events; no historical-pattern estimates are created.
 
 
-## V20.6.2 — Sidebar Subtitle Alignment & AU/US Dividend Engine Repair
+## V20.6.3 — Sidebar Subtitle Alignment & AU/US Dividend Engine Repair
 - Gold sidebar subtitles share the exact grid text origin with white titles.
 - AU/US forward dividend calendars no longer get restricted to the small dashboard universe.
 - AU/US provider fallbacks query country, MIC/exchange, then market-wide calendar, then declared per-security events.
+
+
+## V20.6.3 — Exact Sidebar Text Alignment Fix
+Gold sidebar subtitles now use the same text-bearing origin as the white navigation titles. The prior 42px offset was being applied twice by Streamlit's nested button layout, pushing subtitles to the right. No market-data, routing, chart, search, or dividend-engine behavior was changed in this focused release.
