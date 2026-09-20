@@ -2558,6 +2558,19 @@ button[kind="headerNoPadding"],
   transform:none!important;text-align:left!important;
 }
 
+/* V20.6.4 — exact shared text origin.
+   Both title and subtitle are positioned from the button itself. The button's
+   8px left padding + 34px icon track = 42px text origin. */
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"],
+[data-testid="stSidebar"] .stButton>button [data-testid="stMarkdownContainer"] p{
+  grid-column:2!important;position:static!important;left:auto!important;
+  margin:0!important;padding:0!important;text-align:left!important;
+}
+[data-testid="stSidebar"] .stButton>button:after{
+  left:42px!important;right:auto!important;margin:0!important;padding:0!important;
+  transform:none!important;text-align:left!important;
+}
+
 /* V20.5.6 — keep provider/cache execution details out of the product UI. */
 [data-testid="stStatusWidget"], [data-testid="stException"] details summary{display:none!important;}
 [data-testid="stAppViewContainer"]{transition:opacity .12s ease!important;}
@@ -2847,7 +2860,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 if page!="Dashboard":
     st.title("Chrímata")
-    st.caption("V20.6.0 • Chrímata • Sidebar Alignment & Dividend Calendar Fix")
+    st.caption("V20.6.4 • Chrímata • Exact Sidebar Left Alignment")
 
 
 
