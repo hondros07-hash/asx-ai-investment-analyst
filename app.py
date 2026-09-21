@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.4 — reference-matched global company-search workspace."""
+    """V20.7.3.5 — compact reference-matched global company-search workspace."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4045,9 +4045,14 @@ def _chr_company_search_page():
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
     .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
     .v20734-market-gap{height:3px}
-    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{min-height:56px!important;background:#fff!important;border:1px solid #cfdbea!important;border-radius:7px!important;box-shadow:none!important}
-    .st-key-chr_sector_filter_v2073 label,.st-key-chr_cap_filter_v2073 label,.st-key-chr_exchange_filter_v2073 label{font-size:11px!important;color:#60748d!important;margin-bottom:3px!important}
-    .st-key-chr_clear_company_filters_v20734 button{height:56px!important;margin-top:27px!important;border:1px solid #0b5bd3!important;border-radius:8px!important;background:#fff!important;color:#0b4f9c!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#084bb2!important}
+    /* V20.7.3.5: compact floating-label filters matching the approved reference.
+       Selectors are scoped to these three Company Search widget keys only. */
+    .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{position:relative!important}
+    .st-key-chr_sector_filter_v2073 label,.st-key-chr_cap_filter_v2073 label,.st-key-chr_exchange_filter_v2073 label{position:absolute!important;z-index:5!important;left:14px!important;top:7px!important;margin:0!important;height:auto!important;min-height:0!important;pointer-events:none!important}
+    .st-key-chr_sector_filter_v2073 label p,.st-key-chr_cap_filter_v2073 label p,.st-key-chr_exchange_filter_v2073 label p{font-size:10px!important;line-height:12px!important;font-weight:500!important;color:#60748d!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{height:56px!important;min-height:56px!important;background:#fff!important;border:1px solid #cfdbea!important;border-radius:7px!important;box-shadow:none!important;padding-top:13px!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"] span,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] span,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] span{font-size:13px!important;color:#172b4d!important}
+    .st-key-chr_clear_company_filters_v20734 button{height:56px!important;margin-top:0!important;border:1px solid #6da6ef!important;border-radius:8px!important;background:#fff!important;color:#174f91!important;font-size:12px!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4079,7 +4084,7 @@ def _chr_company_search_page():
             st.rerun()
     st.markdown('<div class="v20734-market-gap"></div>',unsafe_allow_html=True)
 
-    f1,f2,f3,spacer,f4=st.columns([1.10,1.10,1.10,.40,.60],gap="medium")
+    f1,f2,f3,spacer,f4=st.columns([1.00,1.00,1.00,.22,.52],gap="medium")
     sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
     cap_filter=f2.selectbox("Market Cap",["All Market Caps","Mega (>$200B)","Large ($10B–$200B)","Mid ($2B–$10B)","Small (<$2B)"],key="chr_cap_filter_v2073")
     exchange_filter=f3.selectbox("Exchange",["All Exchanges","ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX"],key="chr_exchange_filter_v2073")
