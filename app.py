@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.4.5 — Exact Search Bar Match + pixel-matched results."""
+    """V20.7.4.7 — exact reference search row + pixel-matched results."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:0!important;margin-top:0!important;padding-top:0!important}
@@ -4052,6 +4052,21 @@ def _chr_company_search_page():
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stTextInput"]:before{content:"⌕";position:absolute;z-index:5;left:20px;top:50%;transform:translateY(-51%);font-size:31px;line-height:1;color:#0b5bd3;font-weight:500;pointer-events:none}
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button{height:58px!important;min-height:58px!important;border-radius:10px!important;font-weight:750!important;font-size:18px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;margin:0!important}
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important}
+    /* V20.7.4.7 — key-scoped exact reference search row.
+       Keys avoid older global Streamlit rules overriding this one control. */
+    .st-key-chr_company_search_input_v20747{margin:0!important;padding:0!important;}
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{margin:0!important;padding:0!important;position:relative!important;}
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]>div,
+    .st-key-chr_company_search_input_v20747 [data-baseweb="input"],
+    .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{height:58px!important;min-height:58px!important;max-height:58px!important;background:#fff!important;border:1px solid #cbd8e6!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important;box-sizing:border-box!important;}
+    .st-key-chr_company_search_input_v20747 input{height:56px!important;min-height:56px!important;max-height:56px!important;background:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;padding:0 20px 0 58px!important;font-size:18px!important;line-height:56px!important;color:#17345c!important;box-sizing:border-box!important;}
+    .st-key-chr_company_search_input_v20747 input::placeholder{color:#667b94!important;opacity:1!important;font-weight:500!important;}
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{content:"⌕";position:absolute;z-index:8;left:20px;top:29px;transform:translateY(-50%);font-size:31px;line-height:1;color:#0b5bd3;font-weight:500;pointer-events:none;}
+    .st-key-chr_company_search_submit_v20747{margin:0!important;padding:0!important;height:58px!important;min-height:58px!important;max-height:58px!important;}
+    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0!important;}
+    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]>button,
+    .st-key-chr_company_search_submit_v20747 button{height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;font-size:18px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;}
+    .st-key-chr_company_search_submit_v20747 button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important;}
     /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
@@ -4203,8 +4218,8 @@ def _chr_company_search_page():
     with st.form("chr_global_company_search_form_v2073", clear_on_submit=False):
         c1,c2=st.columns([5.4,1])
         with c1:
-            q=st.text_input("Global company search",value=st.session_state.get("chr_company_search_query",""),placeholder="Search by company name or ticker...",label_visibility="collapsed")
-        with c2: submitted=st.form_submit_button("Search",use_container_width=True,type="primary")
+            q=st.text_input("Global company search",value=st.session_state.get("chr_company_search_query",""),placeholder="Search by company name or ticker...",label_visibility="collapsed",key="chr_company_search_input_v20747")
+        with c2: submitted=st.form_submit_button("Search",use_container_width=True,type="primary",key="chr_company_search_submit_v20747")
     st.markdown('<div class="v2073-hint">e.g. Apple, AAPL, ZIP, Commonwealth Bank, Coca-Cola...</div>',unsafe_allow_html=True)
     if submitted:
         st.session_state["chr_company_search_query"]=q.strip(); st.session_state.pop("chr_company_search_selected",None)
