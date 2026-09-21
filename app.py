@@ -3768,40 +3768,45 @@ def render_global_market_overview():
             if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
         tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
         gp.append((gname,tbl))
-    # V20.7.4.18.5 — Global Markets persistent navigation.
-    # Keep the existing card/layout, but make Streamlit's own query/session state the
-    # source of truth instead of CSS radio state (which reset whenever the HTML rerendered).
-    gm_names=[name for name,_ in gp]
-    if 'chr_global_market_country' not in st.session_state:
-        st.session_state['chr_global_market_country']='US'
-    try:
-        gm_param=st.query_params.get('gm')
-    except Exception:
-        gm_param=None
-    if gm_param in gm_names:
-        st.session_state['chr_global_market_country']=gm_param
-    gm_selected=st.session_state.get('chr_global_market_country','US')
-    if gm_selected not in gm_names:
-        gm_selected='US'
-        st.session_state['chr_global_market_country']='US'
-    gm_tables=dict(gp)
-    from urllib.parse import quote as _chr_quote
-    gm_labels=[]
-    for gname in gm_names:
-        gm_active=' active' if gname==gm_selected else ''
-        gm_url=(f'?market={_chr_quote(str(market))}'
-                f'&chart={_chr_quote(str(selected_key))}'
-                f'&range={_chr_quote(str(selected_range))}'
-                f'&gm={_chr_quote(str(gname))}')
-        gm_labels.append(f'<a class="gm-tab-label{gm_active}" href="{gm_url}" target="_self">{gname}</a>')
+    # V20.7.4.18.6 — Global Markets Instant Persistent Navigation.
+    # All five tables are already rendered inside this isolated components.html
+    # document. Switching country is therefore handled entirely in the browser:
+    # no Streamlit widget, no st.rerun, no query-param navigation and no API refetch.
+    # localStorage restores the last selected country if the 60-second fragment
+    # refresh rebuilds this component.
+    gm_storage_key='chrimata-global-markets-country-v2074186'
+    gm_buttons=[]; gm_panels=[]
+    for i,(gname,tbl) in enumerate(gp):
+        gm_buttons.append(
+            f'<button type="button" class="gm-tab-button" data-gm="{html.escape(gname, quote=True)}">{html.escape(gname)}</button>'
+        )
+        gm_panels.append(
+            f'<div class="gm-panel" data-gm-panel="{html.escape(gname, quote=True)}">{tbl}</div>'
+        )
     glob_t=(
-        '<div class="chr-global-tabs gm-css-tabs"><style>'
-        '.gm-css-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
-        '.gm-css-tabs .gm-tab-label{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;text-decoration:none;}'
-        '.gm-css-tabs .gm-tab-label:hover{background:#f5f8fc;color:#0b57d0;}'
-        '.gm-css-tabs .gm-tab-label.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}'
-        '</style><div class="gm-labels">'+''.join(gm_labels)+'</div>'
-        '<div class="gm-panels">'+gm_tables.get(gm_selected,'')+'</div></div>'
+        '<div class="chr-global-tabs gm-instant-tabs" id="chr-gm-instant-v2074186"><style>'
+        '.gm-instant-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
+        '.gm-instant-tabs .gm-tab-button{appearance:none;font-family:inherit;cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;}'
+        '.gm-instant-tabs .gm-tab-button:hover{background:#f5f8fc;color:#0b57d0;}'
+        '.gm-instant-tabs .gm-tab-button.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}'
+        '.gm-instant-tabs .gm-panel{display:none;}'
+        '.gm-instant-tabs .gm-panel.active{display:block;}'
+        '</style><div class="gm-labels">'+''.join(gm_buttons)+'</div>'
+        '<div class="gm-panels">'+''.join(gm_panels)+'</div>'
+        '<script>(function(){'
+        'const root=document.getElementById("chr-gm-instant-v2074186");if(!root)return;'
+        'const key="'+gm_storage_key+'";'
+        'const buttons=Array.from(root.querySelectorAll(".gm-tab-button"));'
+        'const panels=Array.from(root.querySelectorAll(".gm-panel"));'
+        'const names=buttons.map(b=>b.dataset.gm);'
+        'function show(name,save){if(!names.includes(name))name="US";'
+        'buttons.forEach(b=>b.classList.toggle("active",b.dataset.gm===name));'
+        'panels.forEach(p=>p.classList.toggle("active",p.dataset.gmPanel===name));'
+        'if(save){try{localStorage.setItem(key,name);}catch(e){}}}'
+        'let initial="US";try{const saved=localStorage.getItem(key);if(saved)initial=saved;}catch(e){}'
+        'show(initial,false);'
+        'buttons.forEach(b=>b.addEventListener("click",function(ev){ev.preventDefault();ev.stopPropagation();show(b.dataset.gm,true);}));'
+        '})();</script></div>'
     )
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     # V20.4.0: no timed Streamlit fragment rerun. The market clock updates client-side so the page remains stationary.
