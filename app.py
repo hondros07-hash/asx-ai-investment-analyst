@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import re
 import html
-import html as html_lib
 import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -3539,7 +3538,7 @@ def _home_live_search_fragment():
             st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
 
-@st.fragment(run_every="60s")
+@st.fragment
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
@@ -3769,45 +3768,31 @@ def render_global_market_overview():
             if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
         tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
         gp.append((gname,tbl))
-    # V20.7.4.18.6.1 — Global Markets Navigation Runtime Hotfix.
-    # All five tables are already rendered inside this isolated components.html
-    # document. Switching country is therefore handled entirely in the browser:
-    # no Streamlit widget, no st.rerun, no query-param navigation and no API refetch.
-    # localStorage restores the last selected country if the 60-second fragment
-    # refresh rebuilds this component.
-    gm_storage_key='chrimata-global-markets-country-v2074186'
-    gm_buttons=[]; gm_panels=[]
+    # V20.7.4.18.7 — Global Markets Isolated Tab Engine.
+    # Keep all five tables in the same DOM and switch them with CSS only.
+    # No Streamlit button, query parameter, rerun, or JavaScript is involved.
+    gm_uid='chr-gm-isolated-v2074187'
+    gm_inputs=[]; gm_labels=[]; gm_panels=[]
     for i,(gname,tbl) in enumerate(gp):
-        gm_buttons.append(
-            f'<button type="button" class="gm-tab-button" data-gm="{html_lib.escape(gname, quote=True)}">{html_lib.escape(gname)}</button>'
-        )
-        gm_panels.append(
-            f'<div class="gm-panel" data-gm-panel="{html_lib.escape(gname, quote=True)}">{tbl}</div>'
-        )
+        checked=' checked' if i==0 else ''
+        gm_inputs.append(f'<input class="gm-radio" type="radio" name="{gm_uid}" id="{gm_uid}-{i}"{checked}>')
+        gm_labels.append(f'<label class="gm-tab-label gm-label-{i}" for="{gm_uid}-{i}">{gname}</label>')
+        gm_panels.append(f'<div class="gm-panel gm-panel-{i}">{tbl}</div>')
+    gm_rules=''.join(
+        f'#{gm_uid}-{i}:checked ~ .gm-labels .gm-label-{i}{{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}}'
+        f'#{gm_uid}-{i}:checked ~ .gm-panels .gm-panel-{i}{{display:block;}}'
+        for i in range(len(gp))
+    )
     glob_t=(
-        '<div class="chr-global-tabs gm-instant-tabs" id="chr-gm-instant-v2074186"><style>'
-        '.gm-instant-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
-        '.gm-instant-tabs .gm-tab-button{appearance:none;font-family:inherit;cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;}'
-        '.gm-instant-tabs .gm-tab-button:hover{background:#f5f8fc;color:#0b57d0;}'
-        '.gm-instant-tabs .gm-tab-button.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}'
-        '.gm-instant-tabs .gm-panel{display:none;}'
-        '.gm-instant-tabs .gm-panel.active{display:block;}'
-        '</style><div class="gm-labels">'+''.join(gm_buttons)+'</div>'
-        '<div class="gm-panels">'+''.join(gm_panels)+'</div>'
-        '<script>(function(){'
-        'const root=document.getElementById("chr-gm-instant-v2074186");if(!root)return;'
-        'const key="'+gm_storage_key+'";'
-        'const buttons=Array.from(root.querySelectorAll(".gm-tab-button"));'
-        'const panels=Array.from(root.querySelectorAll(".gm-panel"));'
-        'const names=buttons.map(b=>b.dataset.gm);'
-        'function show(name,save){if(!names.includes(name))name="US";'
-        'buttons.forEach(b=>b.classList.toggle("active",b.dataset.gm===name));'
-        'panels.forEach(p=>p.classList.toggle("active",p.dataset.gmPanel===name));'
-        'if(save){try{localStorage.setItem(key,name);}catch(e){}}}'
-        'let initial="US";try{const saved=localStorage.getItem(key);if(saved)initial=saved;}catch(e){}'
-        'show(initial,false);'
-        'buttons.forEach(b=>b.addEventListener("click",function(ev){ev.preventDefault();ev.stopPropagation();show(b.dataset.gm,true);}));'
-        '})();</script></div>'
+        '<div class="chr-global-tabs gm-isolated-tabs"><style>'
+        '.gm-isolated-tabs .gm-radio{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;}'
+        '.gm-isolated-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
+        '.gm-isolated-tabs .gm-tab-label{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;}'
+        '.gm-isolated-tabs .gm-tab-label:hover{background:#f5f8fc;color:#0b57d0;}'
+        '.gm-isolated-tabs .gm-panel{display:none;}'
+        +gm_rules+'</style>'+''.join(gm_inputs)+
+        '<div class="gm-labels">'+''.join(gm_labels)+'</div>'
+        '<div class="gm-panels">'+''.join(gm_panels)+'</div></div>'
     )
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
     # V20.4.0: no timed Streamlit fragment rerun. The market clock updates client-side so the page remains stationary.
