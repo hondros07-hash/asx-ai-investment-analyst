@@ -3538,7 +3538,7 @@ def _home_live_search_fragment():
             st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
 
-@st.fragment(run_every="60s")
+@st.fragment
 def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
