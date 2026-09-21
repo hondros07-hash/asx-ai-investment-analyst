@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.4.1 — Two-widget Company Search Results + Company Preview."""
+    """V20.7.4.3 — Pixel-matched Search Results + Company Preview."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4177,6 +4177,13 @@ def _chr_company_search_page():
     .v20741-stats{margin-top:8px}.v20741-stat{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e7edf4;padding:6px 0;font-size:12px}.v20741-stat span{color:#63768e}.v20741-stat b{color:#172b4d;text-align:right}
     .v20741-section{font-size:14px;font-weight:850;color:#10264b;margin:13px 0 8px}.v20741-consensus{display:flex;justify-content:space-between;align-items:center}.v20741-pill{background:#dcf4e7;color:#118348;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800}
     .v20741-empty{background:#fff;border:1px solid #dbe5f0;border-radius:10px;padding:28px 18px;color:#6a7d94;text-align:center;min-height:520px;display:flex;align-items:center;justify-content:center}
+    /* V20.7.4.3 — purpose-built reference-matched results table. */
+    .v20743-results-card{background:#fff;border:1px solid #dbe5f0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.035);min-height:610px;margin-top:12px}
+    .v20743-results-top{padding:15px 18px 13px;border-bottom:1px solid #edf2f7}.v20743-results-title{font-size:22px;line-height:1.05;font-weight:900;color:#10264b;letter-spacing:-.025em}.v20743-results-sub{font-size:12px;color:#60748d;margin-top:5px}.v20743-results-sub b{color:#18335c}
+    .v20743-table{width:100%;font-size:11px;color:#172b4d}.v20743-tr{display:grid;grid-template-columns:minmax(150px,1.7fr) minmax(70px,.72fr) minmax(78px,.78fr) minmax(115px,1.18fr) minmax(72px,.78fr) minmax(66px,.66fr) minmax(92px,.92fr);align-items:center;min-height:42px;border-bottom:1px solid #e8eef5}.v20743-th{min-height:38px;background:#eef6ff;color:#204f88;font-weight:850;border-bottom:1px solid #dce8f5}
+    .v20743-cell{padding:8px 9px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v20743-num{text-align:right}.v20743-companycell{display:flex;align-items:center;gap:8px;font-weight:800}.v20743-companylink{color:#1261bd!important;text-decoration:none!important;font-weight:850}.v20743-companylink:hover{text-decoration:underline!important}
+    .v20743-logo{width:23px;height:23px;object-fit:contain;border-radius:5px;flex:0 0 23px}.v20743-logo-fallback{width:23px;height:23px;border-radius:50%;background:#eef3f8;color:#17345c;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex:0 0 23px}.v20743-country{display:flex;align-items:center;gap:6px}.v20743-flag{font-size:16px;line-height:1}.v20743-up{color:#159447;font-weight:850}.v20743-down{color:#d04747;font-weight:850}.v20743-flat{color:#52657d;font-weight:750}
+    @media(max-width:1100px){.v20743-table{font-size:10px}.v20743-cell{padding-left:6px;padding-right:6px}.v20743-tr{grid-template-columns:minmax(130px,1.55fr) 68px 72px minmax(100px,1fr) 66px 60px 82px}}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4242,7 +4249,7 @@ def _chr_company_search_page():
         last=_mia_num(oq.get("last")); chg=_mia_num(oq.get("pct"))
         try: meta=info(resolved) or {}
         except Exception: meta={}
-        rows.append({"Company":str(meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":str(r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"_resolved":resolved})
+        rows.append({"Company":str(meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":str(r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Logo":str(meta.get("logo_url") or meta.get("logoUrl") or ""),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"_resolved":resolved})
     view=pd.DataFrame(rows)
     if sector_filter!="All Sectors": view=view[view["Sector"].eq(sector_filter)].copy()
     if cap_filter!="All Market Caps":
@@ -4253,12 +4260,9 @@ def _chr_company_search_page():
         else: view=view[mc<2e9]
     if view.empty: st.info("Listings were found, but none match the selected Sector / Market Cap filters."); return
 
-    # V20.7.4.1 — image-matched two-widget layout: results on the left,
-    # selected-company preview on the right. Search/data logic above remains unchanged.
-    flag_map={"United States":"🇺🇸","USA":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","UK":"🇬🇧","Japan":"🇯🇵","Hong Kong":"🇭🇰","Canada":"🇨🇦","Germany":"🇩🇪","Argentina":"🇦🇷","Mexico":"🇲🇽"}
-    display=view[["Company","Ticker","Exchange","Country","Price","Day %","Market Cap"]].copy()
-    display["Country"]=[f"{flag_map.get(str(c),'🌐')}  {c}" for c in display["Country"]]
-    def _v2074_cap(v):
+    # V20.7.4.3 — custom results widget; avoids Streamlit dataframe chrome.
+    flag_map={"United States":"🇺🇸","USA":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","UK":"🇬🇧","Japan":"🇯🇵","Hong Kong":"🇭🇰","Canada":"🇨🇦","Germany":"🇩🇪","Argentina":"🇦🇷","Mexico":"🇲🇽","Poland":"🇵🇱","Taiwan":"🇹🇼"}
+    def _v20743_cap(v):
         try:
             x=float(v)
             if not np.isfinite(x): return "—"
@@ -4267,19 +4271,41 @@ def _chr_company_search_page():
             if x>=1e6: return f"US${x/1e6:.1f}M"
             return f"US${x:,.0f}"
         except Exception: return "—"
-    display["Market Cap"]=[_v2074_cap(v) for v in display["Market Cap"]]
-    q_label=html.escape(query)
+    try:
+        pick_raw=st.query_params.get("chr_pick")
+        if isinstance(pick_raw,list): pick_raw=pick_raw[0] if pick_raw else None
+        if pick_raw is not None:
+            pick_i=int(pick_raw)
+            if 0 <= pick_i < len(view):
+                st.session_state["chr_company_search_selected"]=view.iloc[pick_i].to_dict()
+                recent=st.session_state.setdefault("chr_recent_companies",[])
+                item=view.iloc[pick_i]["_resolved"]
+                st.session_state["chr_recent_companies"]=[item]+[x for x in recent if x!=item][:4]
+    except Exception:
+        pass
 
+    q_label=html.escape(query)
     results_col, preview_col = st.columns([1.78,1.0], gap="small")
     with results_col:
-        st.markdown(f'<div class="v2074-results-head"><div class="v2074-results-title">Search Results</div><div class="v2074-results-sub">Showing results for <b>“{q_label}”</b> ({len(view)} result{"s" if len(view)!=1 else ""})</div></div>',unsafe_allow_html=True)
-        event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(610,38+35*len(display)),on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2073",column_config={"Company":st.column_config.TextColumn("Company",width="medium"),"Ticker":st.column_config.TextColumn("Ticker",width="small"),"Exchange":st.column_config.TextColumn("Exchange",width="small"),"Country":st.column_config.TextColumn("Country",width="medium"),"Price":st.column_config.NumberColumn("Price",format="%.2f",width="small"),"Day %":st.column_config.NumberColumn("Day",format="%+.2f%%",width="small"),"Market Cap":st.column_config.TextColumn("Market Cap",width="medium")})
-        try: selected_rows=event.selection.rows
-        except Exception: selected_rows=[]
-        if selected_rows:
-            idx=int(selected_rows[0]); st.session_state["chr_company_search_selected"]=view.iloc[idx].to_dict()
-            recent=st.session_state.setdefault("chr_recent_companies",[]); item=view.iloc[idx]["_resolved"]
-            st.session_state["chr_recent_companies"]=[item]+[x for x in recent if x!=item][:4]
+        rows_html=[]
+        for i,(_,r) in enumerate(view.iterrows()):
+            company_txt=html.escape(str(r.get("Company") or r.get("Ticker") or "—")); ticker_txt=html.escape(str(r.get("Ticker") or "—")); exchange_txt=html.escape(str(r.get("Exchange") or "—")); country_raw=str(r.get("Country") or "")
+            country_txt=html.escape(country_raw or "—"); flag=flag_map.get(country_raw,"🌐"); price=r.get("Price"); day=r.get("Day %"); cap=r.get("Market Cap"); logo=str(r.get("Logo") or "")
+            try: price_txt="—" if not np.isfinite(float(price)) else f"{float(price):,.2f}"
+            except Exception: price_txt="—"
+            try:
+                dv=float(day); day_txt="—" if not np.isfinite(dv) else f"{dv:+.2f}%"; day_cls="v20743-up" if dv>0 else ("v20743-down" if dv<0 else "v20743-flat")
+            except Exception: day_txt="—"; day_cls="v20743-flat"
+            if logo.startswith("http://") or logo.startswith("https://"):
+                logo_html=f'<img class="v20743-logo" src="{html.escape(logo,quote=True)}" alt="">'
+            else:
+                initial=html.escape((str(r.get("Company") or "?").strip()[:1] or "?").upper()); logo_html=f'<span class="v20743-logo-fallback">{initial}</span>'
+            rows_html.append(f'<div class="v20743-tr"><div class="v20743-cell v20743-companycell">{logo_html}<a class="v20743-companylink" href="?chr_pick={i}">{company_txt}</a></div><div class="v20743-cell">{ticker_txt}</div><div class="v20743-cell">{exchange_txt}</div><div class="v20743-cell v20743-country"><span class="v20743-flag">{flag}</span><span>{country_txt}</span></div><div class="v20743-cell v20743-num">{price_txt}</div><div class="v20743-cell v20743-num {day_cls}">{day_txt}</div><div class="v20743-cell v20743-num">{_v20743_cap(cap)}</div></div>')
+        plural="s" if len(view)!=1 else ""
+        table_html=(f'<div class="v20743-results-card"><div class="v20743-results-top"><div class="v20743-results-title">Search Results</div><div class="v20743-results-sub">Showing results for <b>“{q_label}”</b> ({len(view)} result{plural})</div></div>'
+                    + '<div class="v20743-table"><div class="v20743-tr v20743-th"><div class="v20743-cell">Company ◊</div><div class="v20743-cell">Ticker ◊</div><div class="v20743-cell">Exchange</div><div class="v20743-cell">Country</div><div class="v20743-cell v20743-num">Price</div><div class="v20743-cell v20743-num">Day</div><div class="v20743-cell v20743-num">Market Cap</div></div>'
+                    + ''.join(rows_html) + '</div></div>')
+        st.markdown(table_html,unsafe_allow_html=True)
 
     selected=st.session_state.get("chr_company_search_selected")
     if not selected and len(view):
