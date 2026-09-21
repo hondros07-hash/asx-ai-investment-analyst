@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.11 — hard override for clean white two-line global company-search filter cards."""
+    """V20.7.3.12 — exact flat-white two-line Company Search filter cards."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4097,6 +4097,43 @@ def _chr_company_search_page():
         background:#fff!important;
         border:0!important;
         outline:0!important;
+        box-shadow:none!important;
+    }
+    /* V20.7.3.12 — flatten every rendered layer inside these three select widgets.
+       Streamlit/BaseWeb can paint the field on nested generated elements/pseudo-elements,
+       so reset the whole select subtree instead of guessing one generated class. */
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"],
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"],
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"]{
+        --secondary-background-color:#fff!important;
+        background:#fff!important;
+    }
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *{
+        background-color:transparent!important;
+        background-image:none!important;
+        box-shadow:none!important;
+    }
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] [data-baseweb="select"],
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] [data-baseweb="select"],
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] [data-baseweb="select"],
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] [role="combobox"],
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] [role="combobox"],
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] [role="combobox"]{
+        background:transparent!important;
+        border:0!important;
+        outline:0!important;
+        box-shadow:none!important;
+    }
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *::before,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *::before,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *::before,
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *::after,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *::after,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *::after{
+        background-color:transparent!important;
+        background-image:none!important;
         box-shadow:none!important;
     }
     .st-key-chr_sector_filter_v2073:hover,.st-key-chr_cap_filter_v2073:hover,.st-key-chr_exchange_filter_v2073:hover{border-color:#9db7d5!important}
