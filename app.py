@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.9 — white two-line reference-matched global company-search workspace."""
+    """V20.7.3.9 — white two-line global company-search filter cards."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4045,7 +4045,7 @@ def _chr_company_search_page():
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
     .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
     .v20734-market-gap{height:3px}
-    /* V20.7.3.9 — exact two-line white Company Search filter cards. */
+    /* V20.7.3.8 — exact two-line Company Search filter cards. */
     .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{position:relative!important;background:#fff!important;border:1px solid #cbd8e6!important;border-radius:8px!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;padding:7px 12px 7px 13px!important;min-height:64px!important;box-sizing:border-box!important}
     .st-key-chr_sector_filter_v2073>div,.st-key-chr_cap_filter_v2073>div,.st-key-chr_exchange_filter_v2073>div{gap:0!important}
     .st-key-chr_sector_filter_v2073>div>label,.st-key-chr_cap_filter_v2073>div>label,.st-key-chr_exchange_filter_v2073>div>label,.st-key-chr_sector_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_cap_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_exchange_filter_v2073 [data-testid="stWidgetLabel"]{display:flex!important;visibility:visible!important;height:18px!important;min-height:18px!important;margin:0!important;padding:0!important;align-items:center!important}
@@ -4055,13 +4055,13 @@ def _chr_company_search_page():
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{height:30px!important;min-height:30px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;align-items:center!important}
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"] span,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] span,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] span{font-size:14px!important;line-height:20px!important;font-weight:650!important;color:#172b4d!important}
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"] svg,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] svg,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] svg{color:#17345c!important}
-    /* Remove Streamlit/BaseWeb inner grey fill while preserving the outer white card. */
+    /* V20.7.3.9: remove Streamlit/BaseWeb's inner grey select fill; outer card owns the surface. */
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"] *,
     .st-key-chr_cap_filter_v2073 [data-baseweb="select"] *,
-    .st-key-chr_exchange_filter_v2073 [data-baseweb="select"] *{background-color:transparent!important;background-image:none!important}
+    .st-key-chr_exchange_filter_v2073 [data-baseweb="select"] *{background-color:transparent!important;background-image:none!important;box-shadow:none!important}
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,
     .st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,
-    .st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{background:#fff!important;border:none!important;box-shadow:none!important}
+    .st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{background:#fff!important}
     .st-key-chr_sector_filter_v2073:hover,.st-key-chr_cap_filter_v2073:hover,.st-key-chr_exchange_filter_v2073:hover{border-color:#9db7d5!important}
     .st-key-chr_clear_company_filters_v20734 button{height:64px!important;margin-top:0!important;border:1px solid #72a8ed!important;border-radius:8px!important;background:#fff!important;color:#174f91!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.03)!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
     </style>
