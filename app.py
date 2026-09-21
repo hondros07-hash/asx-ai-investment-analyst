@@ -3481,6 +3481,30 @@ def _home_live_search_fragment():
         label="",
         clear_on_submit=True,
         rerun_on_update=False,
+        # V20.7.4.17 — Home-only search styling.  Keep this inside the
+        # streamlit-searchbox component so no global input/search CSS changes.
+        # Country buttons are 38px high; make this control use the same contract.
+        style_overrides={
+            "searchbox": {
+                "control": {
+                    "height": "38px",
+                    "minHeight": "38px",
+                    "backgroundColor": "#ffffff",
+                    "border": "1px solid #d7e2ef",
+                    "borderRadius": "5px",
+                    "boxShadow": "none",
+                },
+                "placeholder": {
+                    "color": "#66778f",
+                },
+                "input": {
+                    "color": "#10264b",
+                },
+                "singleValue": {
+                    "color": "#10264b",
+                },
+            }
+        },
     )
     if selected:
         resolved=_resolve_professional_search_label(selected)
