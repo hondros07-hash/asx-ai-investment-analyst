@@ -4231,7 +4231,49 @@ def _chr_company_search_page():
         box-shadow:none!important;
     }
     .st-key-chr_sector_filter_v2073:hover,.st-key-chr_cap_filter_v2073:hover,.st-key-chr_exchange_filter_v2073:hover{border-color:#9db7d5!important}
-    .st-key-chr_clear_company_filters_v20734 button{height:64px!important;margin-top:0!important;border:1px solid #72a8ed!important;border-radius:8px!important;background:#fff!important;color:#174f91!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.03)!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
+    /* V20.7.4.14.1 — exact filter-row height alignment.
+       Lock the Clear Filters widget wrapper AND native button to the same
+       64px outer height as the three keyed select cards. */
+    .st-key-chr_clear_company_filters_v20734{
+        height:64px!important;
+        min-height:64px!important;
+        margin:0!important;
+        padding:0!important;
+        box-sizing:border-box!important;
+        display:flex!important;
+        align-items:stretch!important;
+    }
+    .st-key-chr_clear_company_filters_v20734>div,
+    .st-key-chr_clear_company_filters_v20734 [data-testid="stButton"]{
+        height:64px!important;
+        min-height:64px!important;
+        width:100%!important;
+        margin:0!important;
+        padding:0!important;
+        display:flex!important;
+        align-items:stretch!important;
+    }
+    .st-key-chr_clear_company_filters_v20734 button{
+        height:64px!important;
+        min-height:64px!important;
+        width:100%!important;
+        margin:0!important;
+        padding:0 16px!important;
+        box-sizing:border-box!important;
+        border:1px solid #72a8ed!important;
+        border-radius:8px!important;
+        background:#fff!important;
+        color:#174f91!important;
+        font-size:13px!important;
+        font-weight:750!important;
+        line-height:1!important;
+        box-shadow:0 1px 3px rgba(15,23,42,.03)!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+    }
+    .st-key-chr_clear_company_filters_v20734 button p{margin:0!important;line-height:1!important;}
+    .st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
     /* V20.7.4 — Search Results widget. Scoped to the Company Search results dataframe only. */
     .v2074-results-head{background:#fff;border:1px solid #dbe5f0;border-bottom:0;border-radius:9px 9px 0 0;padding:12px 16px 10px;margin-top:12px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
     .v2074-results-title{font-size:20px;line-height:1.05;font-weight:850;color:#10264b;letter-spacing:-.02em}
