@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3 — isolated global company-search workspace."""
+    """V20.7.3.3 — image-matched global company-search workspace."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4041,7 +4041,7 @@ def _chr_company_search_page():
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
     div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}div[data-testid="stForm"] [data-testid="stTextInput"] input{height:48px;border-radius:7px;font-size:14px;padding-left:15px}div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:48px;border-radius:7px;font-weight:800;font-size:14px;background:#0b5bd3!important;border-color:#0b5bd3!important;color:#fff!important}div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover{background:#084bb2!important;border-color:#084bb2!important;color:#fff!important}
     div[data-testid="stSegmentedControl"]{margin-top:2px;margin-bottom:10px}div[data-testid="stSegmentedControl"]>div{width:100%!important;display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:8px!important}div[data-testid="stSegmentedControl"] button{width:100%!important;min-height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-weight:700!important;box-shadow:none!important}div[data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#0b5bd3!important;color:#fff!important}div[data-testid="stSegmentedControl"] button:hover{border-color:#0b5bd3!important;color:#0b5bd3!important}div[data-testid="stSegmentedControl"] button[aria-pressed="true"]:hover{background:#084bb2!important;color:#fff!important}
-    .st-key-chr_clear_company_filters_v20732 button{height:50px!important;margin-top:28px!important;border:1px solid #0b5bd3!important;border-radius:8px!important;background:#fff!important;color:#0b4f9c!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20732 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#084bb2!important}
+    .st-key-chr_clear_company_filters_v20733 button{height:57px!important;margin-top:27px!important;border:1px solid #0b5bd3!important;border-radius:8px!important;background:#fff!important;color:#0b4f9c!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20732 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#084bb2!important}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4055,18 +4055,18 @@ def _chr_company_search_page():
     if submitted:
         st.session_state["chr_company_search_query"]=q.strip(); st.session_state.pop("chr_company_search_selected",None)
 
-    markets=["🌐  All Markets","🇦🇺  Australia","🇺🇸  United States","🇬🇧  United Kingdom","🇯🇵  Japan","🇭🇰  Hong Kong","🇨🇦  Canada"]
+    markets=["All Markets","Australia","United States","United Kingdom","Japan","Hong Kong","Canada"]
     country_tab=st.segmented_control("Market",markets,default=markets[0],key="chr_company_market_v2073",label_visibility="collapsed") or markets[0]
     country_map={markets[1]:"Australia",markets[2]:"United States",markets[3]:"United Kingdom",markets[4]:"Japan",markets[5]:"Hong Kong",markets[6]:"Canada"}
 
-    # V20.7.3.2: filter toolbar mirrors the approved Company Search design.
+    # V20.7.3.3: filter toolbar closely matches the approved reference image.
     # The change is intentionally local to this page so Home/banner/sidebar code is untouched.
-    f1,f2,f3,f4=st.columns([1,1,1,0.45],gap="medium")
+    f1,f2,f3,spacer,f4=st.columns([1.18,1.18,1.18,0.42,0.62],gap="medium")
     sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
     cap_filter=f2.selectbox("Market Cap",["All Market Caps","Mega (>$200B)","Large ($10B–$200B)","Mid ($2B–$10B)","Small (<$2B)"],key="chr_cap_filter_v2073")
     exchange_filter=f3.selectbox("Exchange",["All Exchanges","ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX"],key="chr_exchange_filter_v2073")
     with f4:
-        clear_filters=st.button("Clear Filters",key="chr_clear_company_filters_v20732",use_container_width=True)
+        clear_filters=st.button("Clear Filters",key="chr_clear_company_filters_v20733",use_container_width=True)
     if clear_filters:
         st.session_state["chr_company_market_v2073"]=markets[0]
         st.session_state["chr_sector_filter_v2073"]="All Sectors"
