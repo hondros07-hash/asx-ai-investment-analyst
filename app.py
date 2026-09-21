@@ -4034,11 +4034,11 @@ def _chr_company_search_page():
     .v2073-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
     .v2073-title{font-size:30px;font-weight:850;color:#10264b;letter-spacing:-.035em;line-height:1.05}
     .v2073-sub{font-size:14px;color:#65778d;margin-top:5px}.v2073-quote{font-size:14px;font-style:italic;font-weight:650;color:#687b92;padding-top:8px}
-    .v2073-hint{font-size:10px;color:#71839a;margin:10px 0 14px 2px}.v2073-label{font-size:10px;font-weight:800;color:#40546d;letter-spacing:.04em;text-transform:uppercase;margin:5px 0 4px}
+    .v2073-hint{font-size:10px;color:#71839a;margin:-5px 0 8px 2px}.v2073-label{font-size:10px;font-weight:800;color:#40546d;letter-spacing:.04em;text-transform:uppercase;margin:5px 0 4px}
     .v2073-card{background:#fff;border:1px solid #dbe5f0;border-radius:7px;padding:11px 13px;height:100%;box-shadow:0 1px 2px rgba(15,23,42,.025)}
     .v2073-kicker{font-size:9px;font-weight:850;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}.v2073-name{font-size:17px;font-weight:850;color:#10264b;margin:2px 0}.v2073-meta{font-size:10px;color:#6d7f95;margin-bottom:7px}
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
-    .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:16px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
+    .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
     /* V20.7.4.13.1 — Search Row Recovery & Alignment Fix.
        Scoped only to the Company Search form. No header/toolbar/global rules are changed. */
     [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747){
@@ -4109,10 +4109,7 @@ def _chr_company_search_page():
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
     .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
-    .v20734-market-gap{height:14px}
-    /* V20.7.4.14 — reference-matched control spacing. */
-    [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747){margin-bottom:0!important;}
-    .st-key-chr_clear_company_filters_v20734{margin:0!important;padding:0!important;}
+    .v20734-market-gap{height:3px}
     /* V20.7.3.8 — exact two-line Company Search filter cards. */
     .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{position:relative!important;background:#fff!important;border:1px solid #cbd8e6!important;border-radius:8px!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;padding:7px 12px 7px 13px!important;min-height:64px!important;box-sizing:border-box!important}
     .st-key-chr_sector_filter_v2073>div,.st-key-chr_cap_filter_v2073>div,.st-key-chr_exchange_filter_v2073>div{gap:0!important}
@@ -4283,15 +4280,11 @@ def _chr_company_search_page():
             st.rerun()
     st.markdown('<div class="v20734-market-gap"></div>',unsafe_allow_html=True)
 
-    # V20.7.4.14: reuse the exact same 5.4:1 outer grid as the search row.
-    # This locks Clear Filters directly beneath Search at every desktop width.
-    filter_left,filter_right=st.columns([5.4,1],gap="small")
-    with filter_left:
-        f1,f2,f3=st.columns(3,gap="small")
-        sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
-        cap_filter=f2.selectbox("Market Cap",["All Market Caps","Mega (>$200B)","Large ($10B–$200B)","Mid ($2B–$10B)","Small (<$2B)"],key="chr_cap_filter_v2073")
-        exchange_filter=f3.selectbox("Exchange",["All Exchanges","ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX"],key="chr_exchange_filter_v2073")
-    with filter_right:
+    f1,f2,f3,spacer,f4=st.columns([1.00,1.00,1.00,.22,.52],gap="medium")
+    sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
+    cap_filter=f2.selectbox("Market Cap",["All Market Caps","Mega (>$200B)","Large ($10B–$200B)","Mid ($2B–$10B)","Small (<$2B)"],key="chr_cap_filter_v2073")
+    exchange_filter=f3.selectbox("Exchange",["All Exchanges","ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX"],key="chr_exchange_filter_v2073")
+    with f4:
         clear_filters=st.button("Clear Filters",key="chr_clear_company_filters_v20734",use_container_width=True)
     if clear_filters:
         st.session_state["chr_company_market_v20734"]=markets[0]
