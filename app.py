@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.12 — exact flat-white two-line Company Search filter cards."""
+    """V20.7.3.13 — remove inner select outlines from Company Search filter cards."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4134,6 +4134,32 @@ def _chr_company_search_page():
     .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *::after{
         background-color:transparent!important;
         background-image:none!important;
+        box-shadow:none!important;
+    }
+    /* V20.7.3.13 — remove the remaining native inner outline/border.
+       The ONLY visible outline is the keyed outer card above. */
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *{
+        border:0!important;
+        border-width:0!important;
+        border-color:transparent!important;
+        outline:0!important;
+        outline-width:0!important;
+        outline-color:transparent!important;
+        box-shadow:none!important;
+    }
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *:hover,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *:hover,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *:hover,
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *:focus,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *:focus,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *:focus,
+    .st-key-chr_sector_filter_v2073 [data-testid="stSelectbox"] *:focus-within,
+    .st-key-chr_cap_filter_v2073 [data-testid="stSelectbox"] *:focus-within,
+    .st-key-chr_exchange_filter_v2073 [data-testid="stSelectbox"] *:focus-within{
+        border:0!important;
+        outline:0!important;
         box-shadow:none!important;
     }
     .st-key-chr_sector_filter_v2073:hover,.st-key-chr_cap_filter_v2073:hover,.st-key-chr_exchange_filter_v2073:hover{border-color:#9db7d5!important}
