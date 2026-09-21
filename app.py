@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.4.7 — exact reference search row + pixel-matched results."""
+    """V20.7.4.12 — exact search bar/button alignment + pixel-matched results."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:0!important;margin-top:0!important;padding-top:0!important}
@@ -4039,83 +4039,66 @@ def _chr_company_search_page():
     .v2073-kicker{font-size:9px;font-weight:850;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}.v2073-name{font-size:17px;font-weight:850;color:#10264b;margin:2px 0}.v2073-meta{font-size:10px;color:#6d7f95;margin-bottom:7px}
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
-    /* V20.7.4.5 — Exact Search Bar Match. Target the actual form DOM via its unique input. */
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]){border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding:0!important;margin:0!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stFormSubmitButton"]{margin:0!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stTextInput"]{margin:0!important;position:relative!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stTextInput"]>div{height:58px!important;min-height:58px!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-baseweb="input"],
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-baseweb="base-input"]{height:58px!important;min-height:58px!important;background:#fff!important;background-color:#fff!important;border:1px solid #cbd8e6!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important;overflow:hidden!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-baseweb="input"]:focus-within{border-color:#8fb4df!important;box-shadow:0 0 0 1px rgba(11,91,211,.08)!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) input[placeholder="Search by company name or ticker..."]{height:56px!important;min-height:56px!important;background:#fff!important;background-color:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;border-radius:10px!important;font-size:18px!important;color:#17345c!important;padding:0 20px 0 56px!important;line-height:56px!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) input[placeholder="Search by company name or ticker..."]::placeholder{color:#667b94!important;opacity:1!important;font-weight:500!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stTextInput"]:before{content:"⌕";position:absolute;z-index:5;left:20px;top:50%;transform:translateY(-51%);font-size:31px;line-height:1;color:#0b5bd3;font-weight:500;pointer-events:none}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button{height:58px!important;min-height:58px!important;border-radius:10px!important;font-weight:750!important;font-size:18px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;margin:0!important}
-    [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important}
-    /* V20.7.4.11 — native input behaviour + single-border search field.
-       Keep Streamlit's real input visible and interactive; style only the BaseWeb shell. */
-    .st-key-chr_company_search_input_v20747{
-        margin:0!important;padding:0!important;
+    /* V20.7.4.12 — exact reference search row. One authoritative rule set only. */
+    [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747){
+        border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;
+        padding:0!important;margin:0!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{
-        position:relative!important;margin:0!important;padding:0!important;
-        height:58px!important;min-height:58px!important;
+    [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747) [data-testid="stHorizontalBlock"]{
+        align-items:stretch!important;
     }
+    .st-key-chr_company_search_input_v20747,
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"],
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"] > div{
+        height:64px!important;min-height:64px!important;max-height:64px!important;
+        margin:0!important;padding:0!important;box-sizing:border-box!important;
+    }
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{position:relative!important;}
     .st-key-chr_company_search_input_v20747 [data-baseweb="input"]{
-        height:58px!important;min-height:58px!important;max-height:58px!important;
-        background:#fff!important;background-color:#fff!important;
-        border:1px solid #cbd8e6!important;border-radius:10px!important;
-        box-shadow:none!important;outline:none!important;overflow:hidden!important;
-        box-sizing:border-box!important;
+        height:64px!important;min-height:64px!important;max-height:64px!important;
+        background:#fff!important;border:1px solid #cbd8e6!important;border-radius:10px!important;
+        box-shadow:none!important;outline:none!important;overflow:hidden!important;box-sizing:border-box!important;
     }
     .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:hover,
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus,
     .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus-within{
-        background:#fff!important;background-color:#fff!important;
-        border:1px solid #cbd8e6!important;box-shadow:none!important;outline:none!important;
+        background:#fff!important;border-color:#cbd8e6!important;box-shadow:none!important;outline:none!important;
     }
     .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{
-        height:56px!important;min-height:56px!important;max-height:56px!important;
-        background:#fff!important;background-color:#fff!important;
-        border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
+        height:62px!important;min-height:62px!important;max-height:62px!important;
+        background:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;
     }
     .st-key-chr_company_search_input_v20747 input,
     .st-key-chr_company_search_input_v20747 input:hover,
     .st-key-chr_company_search_input_v20747 input:focus,
     .st-key-chr_company_search_input_v20747 input:active{
-        height:56px!important;min-height:56px!important;max-height:56px!important;
-        margin:0!important;padding:0 20px 0 58px!important;
-        background:#fff!important;background-color:#fff!important;
+        height:62px!important;min-height:62px!important;max-height:62px!important;
+        margin:0!important;padding:0 22px 0 64px!important;background:#fff!important;
         border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
-        color:#17345c!important;-webkit-text-fill-color:#17345c!important;
-        caret-color:#17345c!important;font-size:18px!important;line-height:normal!important;
-        opacity:1!important;box-sizing:border-box!important;
+        color:#17345c!important;-webkit-text-fill-color:#17345c!important;caret-color:#17345c!important;
+        font-size:18px!important;line-height:62px!important;opacity:1!important;box-sizing:border-box!important;
     }
     .st-key-chr_company_search_input_v20747 input::placeholder{
-        color:#667b94!important;-webkit-text-fill-color:#667b94!important;
-        opacity:1!important;font-weight:500!important;
+        color:#667b94!important;-webkit-text-fill-color:#667b94!important;opacity:1!important;font-weight:500!important;
     }
     .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{
-        content:""!important;position:absolute!important;z-index:8!important;
-        left:21px!important;top:50%!important;width:19px!important;height:19px!important;
-        border:3px solid #0b5bd3!important;border-radius:50%!important;
-        transform:translateY(-58%)!important;box-sizing:border-box!important;pointer-events:none!important;
+        content:""!important;position:absolute!important;z-index:8!important;left:25px!important;top:50%!important;
+        width:20px!important;height:20px!important;border:3px solid #0b5bd3!important;border-radius:50%!important;
+        transform:translateY(-57%)!important;box-sizing:border-box!important;pointer-events:none!important;
     }
     .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:after{
-        content:""!important;position:absolute!important;z-index:8!important;
-        left:38px!important;top:50%!important;width:11px!important;height:3px!important;
-        background:#0b5bd3!important;border-radius:2px!important;
-        transform:translateY(6px) rotate(45deg)!important;transform-origin:left center!important;
-        pointer-events:none!important;
+        content:""!important;position:absolute!important;z-index:8!important;left:43px!important;top:50%!important;
+        width:11px!important;height:3px!important;background:#0b5bd3!important;border-radius:2px!important;
+        transform:translateY(7px) rotate(45deg)!important;transform-origin:left center!important;pointer-events:none!important;
     }
     .st-key-chr_company_search_submit_v20747,
     .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{
-        margin:0!important;padding:0!important;height:58px!important;min-height:58px!important;max-height:58px!important;
+        height:64px!important;min-height:64px!important;max-height:64px!important;margin:0!important;padding:0!important;
     }
     .st-key-chr_company_search_submit_v20747 button{
-        height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;
-        padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;
-        border:1px solid #0b5bd3!important;color:#fff!important;font-size:18px!important;font-weight:750!important;
+        height:64px!important;min-height:64px!important;max-height:64px!important;width:100%!important;margin:0!important;
+        padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;border:1px solid #0b5bd3!important;
+        color:#fff!important;font-size:18px!important;font-weight:750!important;line-height:1!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;
         box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;
     }
     .st-key-chr_company_search_submit_v20747 button:hover{
