@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.3 — image-matched global company-search workspace."""
+    """V20.7.3.4 — reference-matched global company-search workspace."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4040,8 +4040,14 @@ def _chr_company_search_page():
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
     div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}div[data-testid="stForm"] [data-testid="stTextInput"] input{height:48px;border-radius:7px;font-size:14px;padding-left:15px}div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:48px;border-radius:7px;font-weight:800;font-size:14px;background:#0b5bd3!important;border-color:#0b5bd3!important;color:#fff!important}div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover{background:#084bb2!important;border-color:#084bb2!important;color:#fff!important}
-    div[data-testid="stSegmentedControl"]{margin-top:2px;margin-bottom:10px}div[data-testid="stSegmentedControl"]>div{width:100%!important;display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:8px!important}div[data-testid="stSegmentedControl"] button{width:100%!important;min-height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-weight:700!important;box-shadow:none!important}div[data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#0b5bd3!important;color:#fff!important}div[data-testid="stSegmentedControl"] button:hover{border-color:#0b5bd3!important;color:#0b5bd3!important}div[data-testid="stSegmentedControl"] button[aria-pressed="true"]:hover{background:#084bb2!important;color:#fff!important}
-    .st-key-chr_clear_company_filters_v20733 button{height:57px!important;margin-top:27px!important;border:1px solid #0b5bd3!important;border-radius:8px!important;background:#fff!important;color:#0b4f9c!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20732 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#084bb2!important}
+    /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
+    [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
+    [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
+    .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
+    .v20734-market-gap{height:3px}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{min-height:56px!important;background:#fff!important;border:1px solid #cfdbea!important;border-radius:7px!important;box-shadow:none!important}
+    .st-key-chr_sector_filter_v2073 label,.st-key-chr_cap_filter_v2073 label,.st-key-chr_exchange_filter_v2073 label{font-size:11px!important;color:#60748d!important;margin-bottom:3px!important}
+    .st-key-chr_clear_company_filters_v20734 button{height:56px!important;margin-top:27px!important;border:1px solid #0b5bd3!important;border-radius:8px!important;background:#fff!important;color:#0b4f9c!important;font-weight:750!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f2f7fd!important;color:#084bb2!important;border-color:#084bb2!important}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4056,19 +4062,31 @@ def _chr_company_search_page():
         st.session_state["chr_company_search_query"]=q.strip(); st.session_state.pop("chr_company_search_selected",None)
 
     markets=["All Markets","Australia","United States","United Kingdom","Japan","Hong Kong","Canada"]
-    country_tab=st.segmented_control("Market",markets,default=markets[0],key="chr_company_market_v2073",label_visibility="collapsed") or markets[0]
+    if "chr_company_market_v20734" not in st.session_state:
+        st.session_state["chr_company_market_v20734"]="All Markets"
+    country_tab=st.session_state["chr_company_market_v20734"]
     country_map={markets[1]:"Australia",markets[2]:"United States",markets[3]:"United Kingdom",markets[4]:"Japan",markets[5]:"Hong Kong",markets[6]:"Canada"}
 
-    # V20.7.3.3: filter toolbar closely matches the approved reference image.
-    # The change is intentionally local to this page so Home/banner/sidebar code is untouched.
-    f1,f2,f3,spacer,f4=st.columns([1.18,1.18,1.18,0.42,0.62],gap="medium")
+    # V20.7.3.4: native keyed buttons reproduce the approved reference reliably,
+    # independent of Streamlit's segmented-control/theme accent styling.
+    mcols=st.columns([1.05,.92,1.10,1.10,.72,.88,.72,1.35],gap="small")
+    mkeys=["all","au","us","uk","jp","hk","ca"]
+    for col,label,keypart in zip(mcols[:7],markets,mkeys):
+        # Active state gets its own key/class so CSS can paint it Chrímata blue.
+        css_key=f"chr_mkt_{keypart}" if label==country_tab else f"chr_mkt_off_{keypart}"
+        if col.button(label,key=css_key,use_container_width=True):
+            st.session_state["chr_company_market_v20734"]=label
+            st.rerun()
+    st.markdown('<div class="v20734-market-gap"></div>',unsafe_allow_html=True)
+
+    f1,f2,f3,spacer,f4=st.columns([1.10,1.10,1.10,.40,.60],gap="medium")
     sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
     cap_filter=f2.selectbox("Market Cap",["All Market Caps","Mega (>$200B)","Large ($10B–$200B)","Mid ($2B–$10B)","Small (<$2B)"],key="chr_cap_filter_v2073")
     exchange_filter=f3.selectbox("Exchange",["All Exchanges","ASX","NASDAQ","NYSE","LSE","HKEX","TSE","TSX"],key="chr_exchange_filter_v2073")
     with f4:
-        clear_filters=st.button("Clear Filters",key="chr_clear_company_filters_v20733",use_container_width=True)
+        clear_filters=st.button("Clear Filters",key="chr_clear_company_filters_v20734",use_container_width=True)
     if clear_filters:
-        st.session_state["chr_company_market_v2073"]=markets[0]
+        st.session_state["chr_company_market_v20734"]=markets[0]
         st.session_state["chr_sector_filter_v2073"]="All Sectors"
         st.session_state["chr_cap_filter_v2073"]="All Market Caps"
         st.session_state["chr_exchange_filter_v2073"]="All Exchanges"
