@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.6 — aligned reference-matched global company-search workspace."""
+    """V20.7.3.7 — robust reference-matched global company-search workspace."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4045,13 +4045,16 @@ def _chr_company_search_page():
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
     .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
     .v20734-market-gap{height:3px}
-    /* V20.7.3.6: clean two-line filter cards matching the approved reference.
-       IMPORTANT: every selector is scoped to the three Company Search keys only. */
-    .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{position:relative!important}
-    .st-key-chr_sector_filter_v2073 label,.st-key-chr_cap_filter_v2073 label,.st-key-chr_exchange_filter_v2073 label{position:absolute!important;z-index:10!important;left:16px!important;top:8px!important;margin:0!important;padding:0!important;height:14px!important;min-height:14px!important;pointer-events:none!important}
-    .st-key-chr_sector_filter_v2073 label p,.st-key-chr_cap_filter_v2073 label p,.st-key-chr_exchange_filter_v2073 label p{margin:0!important;padding:0!important;font-size:11px!important;line-height:14px!important;font-weight:600!important;color:#687b92!important}
-    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{height:64px!important;min-height:64px!important;background:#fff!important;border:1px solid #ccd9e8!important;border-radius:8px!important;box-shadow:0 1px 3px rgba(15,23,42,.04)!important;padding:23px 12px 5px 15px!important;align-items:center!important}
-    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div:hover,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div:hover,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div:hover{border-color:#9db7d5!important}
+    /* V20.7.3.7 — robust Company Search filter cards.
+       Native labels are hidden; the small heading is drawn by the keyed wrapper so it cannot collide with the selected value. */
+    .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{position:relative!important;padding:0!important}
+    .st-key-chr_sector_filter_v2073>div>label,.st-key-chr_cap_filter_v2073>div>label,.st-key-chr_exchange_filter_v2073>div>label,
+    .st-key-chr_sector_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_cap_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_exchange_filter_v2073 [data-testid="stWidgetLabel"]{display:none!important}
+    .st-key-chr_sector_filter_v2073:before,.st-key-chr_cap_filter_v2073:before,.st-key-chr_exchange_filter_v2073:before{position:absolute;z-index:20;left:15px;top:8px;font-size:11px;line-height:13px;font-weight:600;color:#687b92;pointer-events:none}
+    .st-key-chr_sector_filter_v2073:before{content:"Sector"}.st-key-chr_cap_filter_v2073:before{content:"Market Cap"}.st-key-chr_exchange_filter_v2073:before{content:"Exchange"}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"],.st-key-chr_cap_filter_v2073 [data-baseweb="select"],.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]{height:64px!important;min-height:64px!important;background:#fff!important;border:1px solid #ccd9e8!important;border-radius:8px!important;box-shadow:0 1px 3px rgba(15,23,42,.04)!important;overflow:hidden!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{height:62px!important;min-height:62px!important;background:#fff!important;border:0!important;box-shadow:none!important;padding:20px 11px 3px 14px!important;align-items:center!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]:hover,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]:hover,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]:hover{border-color:#9db7d5!important}
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"] span,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] span,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] span{font-size:14px!important;line-height:18px!important;font-weight:500!important;color:#172b4d!important}
     .st-key-chr_sector_filter_v2073 [data-baseweb="select"] svg,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] svg,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] svg{color:#17345c!important}
     .st-key-chr_clear_company_filters_v20734 button{height:64px!important;margin-top:0!important;border:1px solid #72a8ed!important;border-radius:8px!important;background:#fff!important;color:#174f91!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.03)!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
