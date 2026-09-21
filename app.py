@@ -4274,6 +4274,25 @@ def _chr_company_search_page():
     }
     .st-key-chr_clear_company_filters_v20734 button p{margin:0!important;line-height:1!important;}
     .st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
+    /* V20.7.4.14.2 — TRUE filter-row height fix.
+       The app-level stFragment secondary-button rule has higher specificity and
+       was overriding 14.1 with height:auto. Override that exact selector only
+       for Clear Filters so it truly matches the 64px filter cards. */
+    .main div[data-testid="stFragment"] .st-key-chr_clear_company_filters_v20734,
+    .main div[data-testid="stFragment"] .st-key-chr_clear_company_filters_v20734 > div,
+    .main div[data-testid="stFragment"] .st-key-chr_clear_company_filters_v20734 div[data-testid="stButton"]{
+        height:64px!important;min-height:64px!important;max-height:64px!important;
+        margin:0!important;padding:0!important;box-sizing:border-box!important;width:100%!important;
+    }
+    .main div[data-testid="stFragment"] .st-key-chr_clear_company_filters_v20734 div[data-testid="stButton"] button[kind="secondary"],
+    .main div[data-testid="stFragment"] .st-key-chr_clear_company_filters_v20734 button{
+        height:64px!important;min-height:64px!important;max-height:64px!important;
+        margin:0!important;padding:0 16px!important;box-sizing:border-box!important;width:100%!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;
+        border:1px solid #72a8ed!important;border-radius:8px!important;background:#fff!important;
+        color:#174f91!important;font-size:13px!important;font-weight:750!important;line-height:1!important;
+        box-shadow:0 1px 3px rgba(15,23,42,.03)!important;
+    }
     /* V20.7.4 — Search Results widget. Scoped to the Company Search results dataframe only. */
     .v2074-results-head{background:#fff;border:1px solid #dbe5f0;border-bottom:0;border-radius:9px 9px 0 0;padding:12px 16px 10px;margin-top:12px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
     .v2074-results-title{font-size:20px;line-height:1.05;font-weight:850;color:#10264b;letter-spacing:-.02em}
