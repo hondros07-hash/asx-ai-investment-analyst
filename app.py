@@ -4345,6 +4345,31 @@ def _chr_company_search_page():
         box-shadow:0 1px 3px rgba(15,23,42,.03)!important;text-align:center!important;
     }
     .st-key-chr_clear_company_filters_v20734 button p{margin:0!important;line-height:1!important;}
+    /* V20.7.4.15.1 — FILTER BORDER CONTINUITY FIX.
+       Paint the dropdown-card border as a final overlay so Streamlit/BaseWeb
+       descendants cannot visually cover the bottom edge. Geometry is unchanged. */
+    .st-key-chr_sector_filter_v2073,
+    .st-key-chr_cap_filter_v2073,
+    .st-key-chr_exchange_filter_v2073{
+        position:relative!important;
+        border-color:transparent!important;
+        overflow:visible!important;
+    }
+    .st-key-chr_sector_filter_v2073::after,
+    .st-key-chr_cap_filter_v2073::after,
+    .st-key-chr_exchange_filter_v2073::after{
+        content:""!important;
+        display:block!important;
+        position:absolute!important;
+        inset:0!important;
+        z-index:999!important;
+        pointer-events:none!important;
+        box-sizing:border-box!important;
+        border:1px solid #cbd8e6!important;
+        border-radius:8px!important;
+        background:transparent!important;
+        box-shadow:0 1px 3px rgba(15,23,42,.05)!important;
+    }
     /* V20.7.4 — Search Results widget. Scoped to the Company Search results dataframe only. */
     .v2074-results-head{background:#fff;border:1px solid #dbe5f0;border-bottom:0;border-radius:9px 9px 0 0;padding:12px 16px 10px;margin-top:12px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
     .v2074-results-title{font-size:20px;line-height:1.05;font-weight:850;color:#10264b;letter-spacing:-.02em}
