@@ -4039,7 +4039,17 @@ def _chr_company_search_page():
     .v2073-kicker{font-size:9px;font-weight:850;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}.v2073-name{font-size:17px;font-weight:850;color:#10264b;margin:2px 0}.v2073-meta{font-size:10px;color:#6d7f95;margin-bottom:7px}
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
-    div[data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}div[data-testid="stForm"] [data-testid="stTextInput"] input{height:48px;border-radius:7px;font-size:14px;padding-left:15px}div[data-testid="stForm"] button[kind="primaryFormSubmit"]{height:48px;border-radius:7px;font-weight:800;font-size:14px;background:#0b5bd3!important;border-color:#0b5bd3!important;color:#fff!important}div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover{background:#084bb2!important;border-color:#084bb2!important;color:#fff!important}
+    /* V20.7.4.4 — Reference-matched Company Search bar. Scoped to this form only. */
+    .st-key-chr_global_company_search_form_v2073{border:0!important;padding:0!important;background:transparent!important;margin:0!important}
+    .st-key-chr_global_company_search_form_v2073 [data-testid="stForm"]{border:0!important;padding:0!important;background:transparent!important}
+    .st-key-chr_global_company_search_form_v2073 [data-testid="stTextInput"]{margin:0!important}
+    .st-key-chr_global_company_search_form_v2073 [data-testid="stTextInput"]>div{height:64px!important;min-height:64px!important}
+    .st-key-chr_global_company_search_form_v2073 [data-baseweb="input"]{height:64px!important;min-height:64px!important;background:#fff!important;border:1px solid #cbd8e6!important;border-radius:9px!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important;overflow:hidden!important}
+    .st-key-chr_global_company_search_form_v2073 [data-baseweb="input"]:focus-within{border-color:#8fb4df!important;box-shadow:0 0 0 1px rgba(11,91,211,.08)!important}
+    .st-key-chr_global_company_search_form_v2073 [data-baseweb="input"] input{height:62px!important;min-height:62px!important;background:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;border-radius:9px!important;font-size:16px!important;color:#17345c!important;padding:0 18px!important;line-height:62px!important}
+    .st-key-chr_global_company_search_form_v2073 [data-baseweb="input"] input::placeholder{color:#667b94!important;opacity:1!important;font-weight:500!important}
+    .st-key-chr_global_company_search_form_v2073 button[kind="primaryFormSubmit"]{height:64px!important;min-height:64px!important;border-radius:9px!important;font-weight:750!important;font-size:16px!important;background:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;margin:0!important}
+    .st-key-chr_global_company_search_form_v2073 button[kind="primaryFormSubmit"]:hover{background:#084fb9!important;border-color:#084fb9!important;color:#fff!important}
     /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
@@ -4191,7 +4201,7 @@ def _chr_company_search_page():
     with st.form("chr_global_company_search_form_v2073", clear_on_submit=False):
         c1,c2=st.columns([5.4,1])
         with c1:
-            q=st.text_input("Global company search",value=st.session_state.get("chr_company_search_query",""),placeholder="⌕  Search by company name or ticker...",label_visibility="collapsed")
+            q=st.text_input("Global company search",value=st.session_state.get("chr_company_search_query",""),placeholder="⌕   Search by company name or ticker...",label_visibility="collapsed")
         with c2: submitted=st.form_submit_button("Search",use_container_width=True,type="primary")
     st.markdown('<div class="v2073-hint">e.g. Apple, AAPL, ZIP, Commonwealth Bank, Coca-Cola...</div>',unsafe_allow_html=True)
     if submitted:
