@@ -4370,6 +4370,16 @@ def _chr_company_search_page():
         background:transparent!important;
         box-shadow:0 1px 3px rgba(15,23,42,.05)!important;
     }
+    /* V20.7.4.16 — REFERENCE-MATCHED FILTER CARDS & HOVER FIX. */
+    .st-key-chr_sector_filter_v2073,.st-key-chr_cap_filter_v2073,.st-key-chr_exchange_filter_v2073{height:64px!important;min-height:64px!important;max-height:64px!important;padding:6px 12px 6px 13px!important;background:#fff!important;border:0!important;border-radius:8px!important;box-shadow:none!important;overflow:visible!important;position:relative!important}
+    .st-key-chr_sector_filter_v2073::after,.st-key-chr_cap_filter_v2073::after,.st-key-chr_exchange_filter_v2073::after{content:""!important;position:absolute!important;inset:0!important;z-index:20!important;pointer-events:none!important;box-sizing:border-box!important;border:1px solid #cbd8e6!important;border-radius:8px!important;background:transparent!important;box-shadow:0 1px 3px rgba(15,23,42,.04)!important}
+    .st-key-chr_sector_filter_v2073:hover::after,.st-key-chr_cap_filter_v2073:hover::after,.st-key-chr_exchange_filter_v2073:hover::after,.st-key-chr_sector_filter_v2073:focus-within::after,.st-key-chr_cap_filter_v2073:focus-within::after,.st-key-chr_exchange_filter_v2073:focus-within::after{border-color:#72a8ed!important;box-shadow:0 0 0 1px rgba(11,91,211,.08)!important}
+    .st-key-chr_sector_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_cap_filter_v2073 [data-testid="stWidgetLabel"],.st-key-chr_exchange_filter_v2073 [data-testid="stWidgetLabel"]{height:17px!important;min-height:17px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important}
+    .st-key-chr_sector_filter_v2073 [data-testid="stWidgetLabel"] p,.st-key-chr_cap_filter_v2073 [data-testid="stWidgetLabel"] p,.st-key-chr_exchange_filter_v2073 [data-testid="stWidgetLabel"] p{margin:0!important;padding:0!important;color:#60748d!important;font-size:10.5px!important;line-height:15px!important;font-weight:700!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"],.st-key-chr_cap_filter_v2073 [data-baseweb="select"],.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]{height:33px!important;min-height:33px!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_cap_filter_v2073 [data-baseweb="select"]>div,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"]>div{height:33px!important;min-height:33px!important;padding:0!important;margin:0!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;display:flex!important;align-items:center!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"] span,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] span,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] span{color:#172b4d!important;font-size:13px!important;line-height:18px!important;font-weight:650!important}
+    .st-key-chr_sector_filter_v2073 [data-baseweb="select"] *,.st-key-chr_cap_filter_v2073 [data-baseweb="select"] *,.st-key-chr_exchange_filter_v2073 [data-baseweb="select"] *{border:0!important;outline:0!important;box-shadow:none!important}
     /* V20.7.4 — Search Results widget. Scoped to the Company Search results dataframe only. */
     .v2074-results-head{background:#fff;border:1px solid #dbe5f0;border-bottom:0;border-radius:9px 9px 0 0;padding:12px 16px 10px;margin-top:12px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
     .v2074-results-title{font-size:20px;line-height:1.05;font-weight:850;color:#10264b;letter-spacing:-.02em}
@@ -4421,9 +4431,9 @@ def _chr_company_search_page():
             st.rerun()
     st.markdown('<div class="v20734-market-gap"></div>',unsafe_allow_html=True)
 
-    # V20.7.4.14: reuse the exact same 5.4:1 outer grid as the search row.
-    # This locks Clear Filters directly beneath Search at every desktop width.
-    filter_left,filter_right=st.columns([5.4,1],gap="small",vertical_alignment="top")
+    # V20.7.4.16: reference proportions — three compact filter cards, a deliberate
+    # whitespace channel, then Clear Filters at the far right.
+    filter_left,filter_spacer,filter_right=st.columns([7.2,0.9,1.3],gap="small",vertical_alignment="top")
     with filter_left:
         f1,f2,f3=st.columns(3,gap="small",vertical_alignment="top")
         sector_filter=f1.selectbox("Sector",["All Sectors","Technology","Financial Services","Healthcare","Consumer Cyclical","Consumer Defensive","Industrials","Energy","Basic Materials","Real Estate","Utilities","Communication Services"],key="chr_sector_filter_v2073")
