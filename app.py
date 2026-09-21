@@ -3793,10 +3793,15 @@ def render_global_market_overview():
 
     gm_labels=[]; gm_panels=[]
     for i,(gname,tbl) in enumerate(gp):
-        gm_params=dict(gm_base_params); gm_params["gm"]=gname
-        gm_href="?"+urlencode(gm_params)
+        gm_params=dict(gm_base_params)
+        gm_params["gm"]=gname
         active=" active" if gname==gm_selected else ""
-        gm_labels.append(f'<a class="gm-tab-label{active}" href="{html.escape(gm_href, quote=True)}" target="_self">{html.escape(gname)}</a>')
+        # V20.7.4.18.3.1: build/escape the navigation target at the point of use.
+        # This removes the temporary gm_href local that could be referenced before
+        # assignment on the deployed Streamlit execution path.
+        gm_labels.append(
+            f'<a class="gm-tab-label{active}" href="{html.escape("?" + urlencode(gm_params), quote=True)}" target="_self">{html.escape(gname)}</a>'
+        )
         if gname==gm_selected:
             gm_panels.append(f'<div class="gm-panel active">{tbl}</div>')
     glob_t=(
