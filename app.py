@@ -2744,8 +2744,9 @@ for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
         # retained for a later return to Company Command Centre.
         st.session_state["chr_primary_nav"]=_key
         primary=_key
-        # Navigation never mutates ticker state and never depends on URL state.
-        st.rerun()
+        # V20.7.4.19 — Fast Navigation Engine: a Streamlit button click already
+        # causes this script run. Do not force a second full-app rerun here.
+        # The updated `primary` value is consumed below during this same run.
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
 # V20.5.4: removed the legacy hidden sidebar company selector. It was a second
@@ -2910,7 +2911,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.2.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.19</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2951,7 +2952,13 @@ if page not in {"Dashboard","Company Search"}:
 <div class="mia-live"><span class="mia-dot"></span> Research workspace</div>
 </div>""",unsafe_allow_html=True)
 
-h=history(ticker); meta=info(ticker)
+# V20.7.4.19 — Route-aware data loading. Home and Company Search do not need
+# the active company's 5Y history/info just to render their own workspace.
+# Skipping these provider calls materially reduces cross-page navigation latency.
+if page in {"Dashboard","Company Search"}:
+    h=pd.DataFrame(); meta={}
+else:
+    h=history(ticker); meta=info(ticker)
 if h.empty and page not in {"Dashboard","Company Search"}:
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
     st.stop()
@@ -3544,12 +3551,17 @@ def render_global_market_overview():
     if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
     # buttons. This guarantees the reference white-card appearance and real flags.
-    try:
-        qp_market=st.query_params.get("market")
-        if qp_market in MARKET_OVERVIEW_CONFIG:
-            st.session_state.home_market_v2021=qp_market
-    except Exception:
-        pass
+    # V20.7.4.19 — session state is authoritative during in-app navigation.
+    # Import the URL market only once per browser session (deep-link support), then
+    # stop a stale query parameter from overwriting later country-button choices.
+    if "chr_home_market_url_seeded_v207419" not in st.session_state:
+        try:
+            qp_market=st.query_params.get("market")
+            if qp_market in MARKET_OVERVIEW_CONFIG:
+                st.session_state.home_market_v2021=qp_market
+        except Exception:
+            pass
+        st.session_state["chr_home_market_url_seeded_v207419"]=True
     search_col,market_col=st.columns([1.72,2.28],gap="small")
     with search_col:
         _home_live_search_fragment()
@@ -3564,12 +3576,12 @@ def render_global_market_overview():
                 with nav_cols[i]:
                     if st.button(m, key=f"country_v2027_{i}", use_container_width=True,
                                  type="primary" if st.session_state.home_market_v2021==m else "secondary"):
+                        # V20.7.4.19 — single-pass country switching. The button
+                        # interaction already triggered this run, so update local/session
+                        # state and continue directly into the selected market render.
+                        # Avoid query-param mutation + st.rerun(), which previously caused
+                        # extra app executions and the visible white/loading transition.
                         st.session_state.home_market_v2021=m
-                        try:
-                            st.query_params["market"]=m
-                        except Exception:
-                            pass
-                        st.rerun()
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
