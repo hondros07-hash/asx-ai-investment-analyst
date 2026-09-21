@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.4.12 — exact search bar/button alignment + pixel-matched results."""
+    """V20.7.4.13 — audited search row: matched input/button geometry + pixel-matched results."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:0!important;margin-top:0!important;padding-top:0!important}
@@ -4039,7 +4039,9 @@ def _chr_company_search_page():
     .v2073-kicker{font-size:9px;font-weight:850;color:#1d66b2;letter-spacing:.08em;text-transform:uppercase}.v2073-name{font-size:17px;font-weight:850;color:#10264b;margin:2px 0}.v2073-meta{font-size:10px;color:#6d7f95;margin-bottom:7px}
     .v2073-price{font-size:25px;font-weight:850;color:#10264b}.v2073-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:7px}.v2073-stat{display:flex;justify-content:space-between;border-top:1px solid #edf1f6;padding:5px 0;font-size:10px}.v2073-stat span{color:#708197}.v2073-stat b{color:#172b4d}
     .v2073-empty{background:#fff;border:1px dashed #cbd8e7;border-radius:7px;padding:24px;text-align:center;color:#6d7f95;margin-top:8px}.v2073-mini{font-size:10px;color:#72849a}.v2073-paneltitle{font-size:12px;font-weight:800;color:#18335c;margin-bottom:5px}
-    /* V20.7.4.12 — exact reference search row. One authoritative rule set only. */
+    /* V20.7.4.13 — audited search row.
+       IMPORTANT: selectors include .main + keyed wrappers so they outrank legacy global
+       .main .stButton and .main [data-testid="stTextInput"] rules earlier in this file. */
     [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747){
         border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;
         padding:0!important;margin:0!important;
@@ -4047,64 +4049,77 @@ def _chr_company_search_page():
     [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747) [data-testid="stHorizontalBlock"]{
         align-items:stretch!important;
     }
-    .st-key-chr_company_search_input_v20747,
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"],
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"] > div{
-        height:64px!important;min-height:64px!important;max-height:64px!important;
+    .main .st-key-chr_company_search_input_v20747,
+    .main .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"],
+    .main .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"] > div{
+        height:58px!important;min-height:58px!important;max-height:58px!important;
         margin:0!important;padding:0!important;box-sizing:border-box!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{position:relative!important;}
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]{
-        height:64px!important;min-height:64px!important;max-height:64px!important;
+    .main .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{position:relative!important;}
+    .main .st-key-chr_company_search_input_v20747 [data-baseweb="input"]{
+        height:58px!important;min-height:58px!important;max-height:58px!important;
         background:#fff!important;border:1px solid #cbd8e6!important;border-radius:10px!important;
         box-shadow:none!important;outline:none!important;overflow:hidden!important;box-sizing:border-box!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:hover,
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus-within{
+    .main .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:hover,
+    .main .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus-within{
         background:#fff!important;border-color:#cbd8e6!important;box-shadow:none!important;outline:none!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{
-        height:62px!important;min-height:62px!important;max-height:62px!important;
+    .main .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{
+        height:56px!important;min-height:56px!important;max-height:56px!important;
         background:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;
     }
-    .st-key-chr_company_search_input_v20747 input,
-    .st-key-chr_company_search_input_v20747 input:hover,
-    .st-key-chr_company_search_input_v20747 input:focus,
-    .st-key-chr_company_search_input_v20747 input:active{
-        height:62px!important;min-height:62px!important;max-height:62px!important;
-        margin:0!important;padding:0 22px 0 64px!important;background:#fff!important;
+    .main .st-key-chr_company_search_input_v20747 input,
+    .main .st-key-chr_company_search_input_v20747 input:hover,
+    .main .st-key-chr_company_search_input_v20747 input:focus,
+    .main .st-key-chr_company_search_input_v20747 input:active{
+        height:56px!important;min-height:56px!important;max-height:56px!important;
+        margin:0!important;padding:0 22px 0 58px!important;background:#fff!important;
         border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
         color:#17345c!important;-webkit-text-fill-color:#17345c!important;caret-color:#17345c!important;
-        font-size:18px!important;line-height:62px!important;opacity:1!important;box-sizing:border-box!important;
+        font-size:18px!important;line-height:56px!important;opacity:1!important;box-sizing:border-box!important;
     }
-    .st-key-chr_company_search_input_v20747 input::placeholder{
+    .main .st-key-chr_company_search_input_v20747 input::placeholder{
         color:#667b94!important;-webkit-text-fill-color:#667b94!important;opacity:1!important;font-weight:500!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{
+    .main .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{
         content:""!important;position:absolute!important;z-index:8!important;left:25px!important;top:50%!important;
         width:20px!important;height:20px!important;border:3px solid #0b5bd3!important;border-radius:50%!important;
         transform:translateY(-57%)!important;box-sizing:border-box!important;pointer-events:none!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:after{
+    .main .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:after{
         content:""!important;position:absolute!important;z-index:8!important;left:43px!important;top:50%!important;
         width:11px!important;height:3px!important;background:#0b5bd3!important;border-radius:2px!important;
         transform:translateY(7px) rotate(45deg)!important;transform-origin:left center!important;pointer-events:none!important;
     }
-    .st-key-chr_company_search_submit_v20747,
-    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{
-        height:64px!important;min-height:64px!important;max-height:64px!important;margin:0!important;padding:0!important;
+    .main .st-key-chr_company_search_submit_v20747,
+    .main .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{
+        height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0!important;
     }
-    .st-key-chr_company_search_submit_v20747 button{
-        height:64px!important;min-height:64px!important;max-height:64px!important;width:100%!important;margin:0!important;
+    .main .st-key-chr_company_search_submit_v20747 button{
+        height:58px!important;min-height:58px!important;max-height:58px!important;width:100%!important;margin:0!important;
         padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;border:1px solid #0b5bd3!important;
         color:#fff!important;font-size:18px!important;font-weight:750!important;line-height:1!important;
         display:flex!important;align-items:center!important;justify-content:center!important;
         box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;
     }
-    .st-key-chr_company_search_submit_v20747 button:hover{
+    .main .st-key-chr_company_search_submit_v20747 button:hover{
         background:#084fb9!important;border-color:#084fb9!important;color:#fff!important;
     }
-    /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
+    
+    .main [data-testid="stForm"]:has(.st-key-chr_company_search_input_v20747) [data-testid="stColumn"]{
+        padding-top:0!important;padding-bottom:0!important;align-self:stretch!important;
+    }
+    .main .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"] > button,
+    .main .st-key-chr_company_search_submit_v20747 button[kind="primary"]{
+        height:58px!important;min-height:58px!important;max-height:58px!important;
+        padding:0 18px!important;margin:0!important;border-radius:10px!important;
+        background:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;
+        font-size:16px!important;font-weight:700!important;line-height:58px!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;
+        box-sizing:border-box!important;box-shadow:none!important;
+    }
+/* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
     .st-key-chr_mkt_all button,.st-key-chr_mkt_all button:hover{background:#0b5bd3!important;color:#fff!important}
@@ -4253,7 +4268,7 @@ def _chr_company_search_page():
     """,unsafe_allow_html=True)
 
     with st.form("chr_global_company_search_form_v2073", clear_on_submit=False):
-        c1,c2=st.columns([5.4,1])
+        c1,c2=st.columns([6.6,1])
         with c1:
             q=st.text_input("Global company search",value=st.session_state.get("chr_company_search_query",""),placeholder="Search by company name or ticker...",label_visibility="collapsed",key="chr_company_search_input_v20747")
         with c2: submitted=st.form_submit_button("Search",use_container_width=True,type="primary",key="chr_company_search_submit_v20747")
