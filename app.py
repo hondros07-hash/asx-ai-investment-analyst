@@ -3481,20 +3481,20 @@ def _home_live_search_fragment():
         label="",
         clear_on_submit=True,
         rerun_on_update=False,
-        # V20.7.4.17.1 — Exact Home search height fix. The searchbox component
-        # renders its control inside its own component frame, so a nominal 38px
-        # control was visibly shorter than Streamlit's 38px country buttons.
-        # The 44px internal control compensates for that component framing and is
-        # scoped here only; no global search/input or country-button CSS changes.
+        # V20.7.4.17.2 — Home Search Border Continuity Fix. Keep the exact
+        # V20.7.4.17.1 geometry, but paint the outline INSIDE the visible control.
+        # This prevents the component frame from clipping the bottom edge. Scoped
+        # only to this Home-page searchbox; country buttons and other inputs remain unchanged.
         style_overrides={
             "searchbox": {
                 "control": {
                     "height": "44px",
                     "minHeight": "44px",
                     "backgroundColor": "#ffffff",
-                    "border": "1px solid #d7e2ef",
+                    "border": "0",
                     "borderRadius": "5px",
-                    "boxShadow": "none",
+                    "boxSizing": "border-box",
+                    "boxShadow": "inset 0 0 0 1px #d7e2ef",
                 },
                 "placeholder": {
                     "color": "#66778f",
