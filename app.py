@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.3.13 — remove inner select outlines from Company Search filter cards."""
+    """V20.7.4 — Company Search Results widget, isolated from existing Chrímata pages."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4164,6 +4164,12 @@ def _chr_company_search_page():
     }
     .st-key-chr_sector_filter_v2073:hover,.st-key-chr_cap_filter_v2073:hover,.st-key-chr_exchange_filter_v2073:hover{border-color:#9db7d5!important}
     .st-key-chr_clear_company_filters_v20734 button{height:64px!important;margin-top:0!important;border:1px solid #72a8ed!important;border-radius:8px!important;background:#fff!important;color:#174f91!important;font-size:13px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.03)!important}.st-key-chr_clear_company_filters_v20734 button:hover{background:#f4f8fd!important;color:#084bb2!important;border-color:#0b5bd3!important}
+    /* V20.7.4 — Search Results widget. Scoped to the Company Search results dataframe only. */
+    .v2074-results-head{background:#fff;border:1px solid #dbe5f0;border-bottom:0;border-radius:9px 9px 0 0;padding:12px 16px 10px;margin-top:12px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
+    .v2074-results-title{font-size:20px;line-height:1.05;font-weight:850;color:#10264b;letter-spacing:-.02em}
+    .v2074-results-sub{font-size:12px;color:#60748d;margin-top:4px}.v2074-results-sub b{color:#18335c}
+    .st-key-chr_company_search_results_v2073{border-left:1px solid #dbe5f0!important;border-right:1px solid #dbe5f0!important;border-bottom:1px solid #dbe5f0!important;border-radius:0 0 9px 9px!important;overflow:hidden!important;background:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important}
+    .st-key-chr_company_search_results_v2073 [data-testid="stDataFrame"]{border:0!important;border-radius:0!important}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4240,9 +4246,24 @@ def _chr_company_search_page():
         else: view=view[mc<2e9]
     if view.empty: st.info("Listings were found, but none match the selected Sector / Market Cap filters."); return
 
-    st.markdown(f'<div class="v2073-label">Search Results · {len(view)} listing{"s" if len(view)!=1 else ""}</div>',unsafe_allow_html=True)
-    display=view[["Company","Ticker","Exchange","Country","Currency","Price","Day %"]]
-    event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(310,72+34*len(display)),on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2073",column_config={"Price":st.column_config.NumberColumn(format="%.2f"),"Day %":st.column_config.NumberColumn(format="%+.2f%%")})
+    # V20.7.4 — image-matched Search Results widget. Keep the existing selection logic
+    # and data pipeline; only the presentation and displayed columns change here.
+    flag_map={"United States":"🇺🇸","USA":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","UK":"🇬🇧","Japan":"🇯🇵","Hong Kong":"🇭🇰","Canada":"🇨🇦","Germany":"🇩🇪","Argentina":"🇦🇷","Mexico":"🇲🇽"}
+    display=view[["Company","Ticker","Exchange","Country","Price","Day %","Market Cap"]].copy()
+    display["Country"]=[f"{flag_map.get(str(c),'🌐')}  {c}" for c in display["Country"]]
+    def _v2074_cap(v):
+        try:
+            x=float(v)
+            if not np.isfinite(x): return "—"
+            if x>=1e12: return f"US${x/1e12:.2f}T"
+            if x>=1e9: return f"US${x/1e9:.1f}B"
+            if x>=1e6: return f"US${x/1e6:.1f}M"
+            return f"US${x:,.0f}"
+        except Exception: return "—"
+    display["Market Cap"]=[_v2074_cap(v) for v in display["Market Cap"]]
+    q_label=html.escape(query)
+    st.markdown(f'<div class="v2074-results-head"><div class="v2074-results-title">Search Results</div><div class="v2074-results-sub">Showing results for <b>“{q_label}”</b> ({len(view)} result{"s" if len(view)!=1 else ""})</div></div>',unsafe_allow_html=True)
+    event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(430,38+35*len(display)),on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2073",column_config={"Company":st.column_config.TextColumn("Company",width="medium"),"Ticker":st.column_config.TextColumn("Ticker",width="small"),"Exchange":st.column_config.TextColumn("Exchange",width="small"),"Country":st.column_config.TextColumn("Country",width="medium"),"Price":st.column_config.NumberColumn("Price",format="%.2f",width="small"),"Day %":st.column_config.NumberColumn("Day",format="%+.2f%%",width="small"),"Market Cap":st.column_config.TextColumn("Market Cap",width="medium")})
     try: selected_rows=event.selection.rows
     except Exception: selected_rows=[]
     if selected_rows:
