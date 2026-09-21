@@ -4027,7 +4027,7 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_company_search_page():
-    """V20.7.4 — Company Search Results widget, isolated from existing Chrímata pages."""
+    """V20.7.4.1 — Two-widget Company Search Results + Company Preview."""
     st.markdown("""
     <style>
     .v2073-rule{border-top:3px solid #0b4f9c;margin-top:-4px;padding-top:15px}
@@ -4170,6 +4170,13 @@ def _chr_company_search_page():
     .v2074-results-sub{font-size:12px;color:#60748d;margin-top:4px}.v2074-results-sub b{color:#18335c}
     .st-key-chr_company_search_results_v2073{border-left:1px solid #dbe5f0!important;border-right:1px solid #dbe5f0!important;border-bottom:1px solid #dbe5f0!important;border-radius:0 0 9px 9px!important;overflow:hidden!important;background:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important}
     .st-key-chr_company_search_results_v2073 [data-testid="stDataFrame"]{border:0!important;border-radius:0!important}
+    /* V20.7.4.1 — two-widget Search Results + Company Preview layout */
+    .v20741-preview{background:#fff;border:1px solid #dbe5f0;border-radius:10px;padding:14px 15px 12px;box-shadow:0 1px 3px rgba(15,23,42,.035);min-height:520px}
+    .v20741-company{font-size:18px;font-weight:850;color:#10264b;line-height:1.1}.v20741-meta{font-size:11px;color:#6a7d94;margin-top:3px}
+    .v20741-price{font-size:29px;font-weight:900;color:#101820;margin:14px 0 12px}.v20741-up{font-size:16px;color:#159447;font-weight:800}.v20741-down{font-size:16px;color:#cf3c3c;font-weight:800}
+    .v20741-stats{margin-top:8px}.v20741-stat{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e7edf4;padding:6px 0;font-size:12px}.v20741-stat span{color:#63768e}.v20741-stat b{color:#172b4d;text-align:right}
+    .v20741-section{font-size:14px;font-weight:850;color:#10264b;margin:13px 0 8px}.v20741-consensus{display:flex;justify-content:space-between;align-items:center}.v20741-pill{background:#dcf4e7;color:#118348;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800}
+    .v20741-empty{background:#fff;border:1px solid #dbe5f0;border-radius:10px;padding:28px 18px;color:#6a7d94;text-align:center;min-height:520px;display:flex;align-items:center;justify-content:center}
     </style>
     <div class="v2073-rule"><div class="v2073-head"><div><div class="v2073-title">Company Search</div><div class="v2073-sub">Find and analyse stocks across global markets</div></div><div class="v2073-quote">“Better information. Better decisions.”</div></div></div>
     """,unsafe_allow_html=True)
@@ -4246,8 +4253,8 @@ def _chr_company_search_page():
         else: view=view[mc<2e9]
     if view.empty: st.info("Listings were found, but none match the selected Sector / Market Cap filters."); return
 
-    # V20.7.4 — image-matched Search Results widget. Keep the existing selection logic
-    # and data pipeline; only the presentation and displayed columns change here.
+    # V20.7.4.1 — image-matched two-widget layout: results on the left,
+    # selected-company preview on the right. Search/data logic above remains unchanged.
     flag_map={"United States":"🇺🇸","USA":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","UK":"🇬🇧","Japan":"🇯🇵","Hong Kong":"🇭🇰","Canada":"🇨🇦","Germany":"🇩🇪","Argentina":"🇦🇷","Mexico":"🇲🇽"}
     display=view[["Company","Ticker","Exchange","Country","Price","Day %","Market Cap"]].copy()
     display["Country"]=[f"{flag_map.get(str(c),'🌐')}  {c}" for c in display["Country"]]
@@ -4262,50 +4269,52 @@ def _chr_company_search_page():
         except Exception: return "—"
     display["Market Cap"]=[_v2074_cap(v) for v in display["Market Cap"]]
     q_label=html.escape(query)
-    st.markdown(f'<div class="v2074-results-head"><div class="v2074-results-title">Search Results</div><div class="v2074-results-sub">Showing results for <b>“{q_label}”</b> ({len(view)} result{"s" if len(view)!=1 else ""})</div></div>',unsafe_allow_html=True)
-    event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(430,38+35*len(display)),on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2073",column_config={"Company":st.column_config.TextColumn("Company",width="medium"),"Ticker":st.column_config.TextColumn("Ticker",width="small"),"Exchange":st.column_config.TextColumn("Exchange",width="small"),"Country":st.column_config.TextColumn("Country",width="medium"),"Price":st.column_config.NumberColumn("Price",format="%.2f",width="small"),"Day %":st.column_config.NumberColumn("Day",format="%+.2f%%",width="small"),"Market Cap":st.column_config.TextColumn("Market Cap",width="medium")})
-    try: selected_rows=event.selection.rows
-    except Exception: selected_rows=[]
-    if selected_rows:
-        idx=int(selected_rows[0]); st.session_state["chr_company_search_selected"]=view.iloc[idx].to_dict()
-        recent=st.session_state.setdefault("chr_recent_companies",[]); item=view.iloc[idx]["_resolved"]
-        st.session_state["chr_recent_companies"]=[item]+[x for x in recent if x!=item][:4]
+
+    results_col, preview_col = st.columns([1.78,1.0], gap="small")
+    with results_col:
+        st.markdown(f'<div class="v2074-results-head"><div class="v2074-results-title">Search Results</div><div class="v2074-results-sub">Showing results for <b>“{q_label}”</b> ({len(view)} result{"s" if len(view)!=1 else ""})</div></div>',unsafe_allow_html=True)
+        event=st.dataframe(display,use_container_width=True,hide_index=True,height=min(610,38+35*len(display)),on_select="rerun",selection_mode="single-row",key="chr_company_search_results_v2073",column_config={"Company":st.column_config.TextColumn("Company",width="medium"),"Ticker":st.column_config.TextColumn("Ticker",width="small"),"Exchange":st.column_config.TextColumn("Exchange",width="small"),"Country":st.column_config.TextColumn("Country",width="medium"),"Price":st.column_config.NumberColumn("Price",format="%.2f",width="small"),"Day %":st.column_config.NumberColumn("Day",format="%+.2f%%",width="small"),"Market Cap":st.column_config.TextColumn("Market Cap",width="medium")})
+        try: selected_rows=event.selection.rows
+        except Exception: selected_rows=[]
+        if selected_rows:
+            idx=int(selected_rows[0]); st.session_state["chr_company_search_selected"]=view.iloc[idx].to_dict()
+            recent=st.session_state.setdefault("chr_recent_companies",[]); item=view.iloc[idx]["_resolved"]
+            st.session_state["chr_recent_companies"]=[item]+[x for x in recent if x!=item][:4]
+
     selected=st.session_state.get("chr_company_search_selected")
-    if not selected: st.caption("Select a result to open the company preview."); return
+    if not selected and len(view):
+        selected=view.iloc[0].to_dict(); st.session_state["chr_company_search_selected"]=selected
 
-    resolved=str(selected.get("_resolved") or selected.get("Ticker") or "")
-    try: smeta=info(resolved) or {}
-    except Exception: smeta={}
-    oq=overview_quote(resolved,"1y") or {}; last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct")); company=smeta.get("longName") or smeta.get("shortName") or selected.get("Company") or resolved
-    currency=smeta.get("currency") or selected.get("Currency") or ""; cap=_mia_num(smeta.get("marketCap")); low=_mia_num(smeta.get("fiftyTwoWeekLow")); high=_mia_num(smeta.get("fiftyTwoWeekHigh")); pe=_mia_num(smeta.get("trailingPE")); dy=_mia_num(smeta.get("dividendYield")); sector=smeta.get("sector") or selected.get("Sector") or "—"; industry=smeta.get("industry") or "—"
-    def fm(v):
-        if not np.isfinite(v): return "—"
-        if abs(v)>=1e12:return f"{v/1e12:.2f}T"
-        if abs(v)>=1e9:return f"{v/1e9:.2f}B"
-        if abs(v)>=1e6:return f"{v/1e6:.2f}M"
-        return f"{v:,.0f}"
-    price_txt="—" if not np.isfinite(last) else f"{last:,.2f}"; delta="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; range_txt="—" if not(np.isfinite(low) and np.isfinite(high)) else f"{low:,.2f} – {high:,.2f}"
-    left,right=st.columns([1.05,1.65])
-    with left:
-        st.markdown(f'''<div class="v2073-card"><div class="v2073-kicker">Selected listing</div><div class="v2073-name">{html.escape(str(company))}</div><div class="v2073-meta">{html.escape(str(selected.get("Ticker","")))} · {html.escape(str(selected.get("Exchange","")))} · {html.escape(str(selected.get("Country","")))}</div><div class="v2073-price">{price_txt} <span style="font-size:13px;color:{'#159447' if np.isfinite(pct) and pct>=0 else '#cf3c3c'}">{delta}</span> <span class="v2073-mini">{html.escape(str(currency))}</span></div><div class="v2073-grid"><div class="v2073-stat"><span>Market Cap</span><b>{fm(cap)}</b></div><div class="v2073-stat"><span>52 Week Range</span><b>{range_txt}</b></div><div class="v2073-stat"><span>P/E Ratio</span><b>{'—' if not np.isfinite(pe) else f'{pe:.1f}'}</b></div><div class="v2073-stat"><span>Dividend Yield</span><b>{'—' if not np.isfinite(dy) else f'{dy*100:.2f}%'}</b></div><div class="v2073-stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v2073-stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div></div>''',unsafe_allow_html=True)
-    with right:
-        h1=history(resolved,"1y")
-        if h1 is not None and not h1.empty and "Close" in h1.columns:
-            fig=go.Figure(go.Scatter(x=h1.index,y=h1["Close"],mode="lines",line={"width":2},fill="tozeroy",fillcolor="rgba(31,111,235,.07)")); fig.update_layout(height=245,margin=dict(l=10,r=10,t=28,b=8),title=dict(text="1 Year Price Performance",font=dict(size=12)),showlegend=False,xaxis=dict(showgrid=False),yaxis=dict(gridcolor="#edf1f6")); st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
-        else: st.info("Price history is unavailable for this listing.")
-
-    target=_mia_num(smeta.get("targetMeanPrice")); rec=str(smeta.get("recommendationKey") or "No consensus").replace("_"," ").title(); analysts=smeta.get("numberOfAnalystOpinions")
-    st.markdown('<div class="v2073-label">Analyst Consensus</div>',unsafe_allow_html=True)
-    a1,a2,a3,a4=st.columns(4); a1.metric("Consensus",rec); a2.metric("Analysts","—" if analysts is None else str(analysts)); a3.metric("Average Target","—" if not np.isfinite(target) else f"{target:,.2f}"); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan; a4.metric("Target vs Price","—" if not np.isfinite(upside) else f"{upside:+.1f}%")
-    b1,b2=st.columns([2.2,1.2])
-    with b1:
-        if st.button("Open Company Command Centre",type="primary",use_container_width=True,key="chr_search_open_cc_v2073"):
-            st.session_state["chr_active_ticker"]=resolved; st.session_state["mia_search_query"]=resolved; st.session_state["chr_primary_nav"]="Company Command Centre"; st.rerun()
-    with b2:
-        if st.button("Add to Watchlist",use_container_width=True,key="chr_search_watch_v2073"):
-            try: watch_add(resolved); st.success(f"{resolved} added to Watchlist.")
-            except Exception as exc: st.warning(f"Could not add {resolved} to Watchlist: {exc}")
-
+    with preview_col:
+        if not selected:
+            st.markdown('<div class="v20741-empty">Select a result to open the company preview.</div>',unsafe_allow_html=True)
+        else:
+            resolved=str(selected.get("_resolved") or selected.get("Ticker") or "")
+            try: smeta=info(resolved) or {}
+            except Exception: smeta={}
+            oq=overview_quote(resolved,"1y") or {}; last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct")); company=smeta.get("longName") or smeta.get("shortName") or selected.get("Company") or resolved
+            currency=smeta.get("currency") or selected.get("Currency") or ""; cap=_mia_num(smeta.get("marketCap")); low=_mia_num(smeta.get("fiftyTwoWeekLow")); high=_mia_num(smeta.get("fiftyTwoWeekHigh")); pe=_mia_num(smeta.get("trailingPE")); dy=_mia_num(smeta.get("dividendYield")); sector=smeta.get("sector") or selected.get("Sector") or "—"; industry=smeta.get("industry") or "—"
+            def fm(v):
+                if not np.isfinite(v): return "—"
+                if abs(v)>=1e12:return f"US${v/1e12:.2f}T"
+                if abs(v)>=1e9:return f"US${v/1e9:.2f}B"
+                if abs(v)>=1e6:return f"US${v/1e6:.2f}M"
+                return f"US${v:,.0f}"
+            price_txt="—" if not np.isfinite(last) else f"{last:,.2f}"; delta="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; range_txt="—" if not(np.isfinite(low) and np.isfinite(high)) else f"{low:,.2f} – {high:,.2f}"
+            delta_cls="v20741-up" if np.isfinite(pct) and pct>=0 else "v20741-down"
+            target=_mia_num(smeta.get("targetMeanPrice")); rec=str(smeta.get("recommendationKey") or "No consensus").replace("_"," ").title(); analysts=smeta.get("numberOfAnalystOpinions"); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
+            pe_txt="—" if not np.isfinite(pe) else f"{pe:.1f}"; dy_txt="—" if not np.isfinite(dy) else f"{dy*100:.2f}%"; target_txt="—" if not np.isfinite(target) else f"{target:,.2f}"; upside_txt="" if not np.isfinite(upside) else f" ({upside:+.1f}%)"; analysts_txt="—" if analysts is None else html.escape(str(analysts))
+            ex=html.escape(str(selected.get("Exchange",""))); country=html.escape(str(selected.get("Country",""))); ticker_txt=html.escape(str(selected.get("Ticker","")))
+            st.markdown(f'<div class="v20741-preview"><div class="v20741-company">{html.escape(str(company))}</div><div class="v20741-meta">{ticker_txt} | {ex} | {country}</div><div class="v20741-price">{price_txt} <span class="{delta_cls}">{delta}</span></div>',unsafe_allow_html=True)
+            h1=history(resolved,"1y")
+            if h1 is not None and not h1.empty and "Close" in h1.columns:
+                fig=go.Figure(go.Scatter(x=h1.index,y=h1["Close"],mode="lines",line={"width":2,"color":"#159447"},fill="tozeroy",fillcolor="rgba(21,148,71,.08)")); fig.update_layout(height=155,margin=dict(l=0,r=0,t=4,b=4),showlegend=False,xaxis=dict(visible=False),yaxis=dict(visible=False),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)"); st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+            st.markdown(f'<div class="v20741-stats"><div class="v20741-stat"><span>Market Cap</span><b>{fm(cap)}</b></div><div class="v20741-stat"><span>52 Week Range</span><b>{range_txt}</b></div><div class="v20741-stat"><span>P/E Ratio</span><b>{pe_txt}</b></div><div class="v20741-stat"><span>Dividend Yield</span><b>{dy_txt}</b></div><div class="v20741-stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v20741-stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div><div class="v20741-consensus"><div class="v20741-section">Analyst Consensus</div><div class="v20741-pill">{html.escape(rec)}</div></div><div class="v20741-stat"><span>Analysts</span><b>{analysts_txt}</b></div><div class="v20741-stat"><span>12M Target</span><b>{target_txt}{upside_txt}</b></div></div>',unsafe_allow_html=True)
+            if st.button("Open Company Command Centre  →",type="primary",use_container_width=True,key="chr_search_open_cc_v20741"):
+                st.session_state["chr_active_ticker"]=resolved; st.session_state["mia_search_query"]=resolved; st.session_state["chr_primary_nav"]="Company Command Centre"; st.rerun()
+            if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_v20741"):
+                try: watch_add(resolved); st.success(f"{resolved} added to Watchlist.")
+                except Exception as exc: st.warning(f"Could not add {resolved} to Watchlist: {exc}")
     st.markdown('<div class="v2073-label">Market Discovery</div>',unsafe_allow_html=True)
     p1,p2,p3=st.columns(3)
     recent=st.session_state.get("chr_recent_companies",[])
