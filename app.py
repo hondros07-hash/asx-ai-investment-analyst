@@ -4052,100 +4052,74 @@ def _chr_company_search_page():
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) [data-testid="stTextInput"]:before{content:"⌕";position:absolute;z-index:5;left:20px;top:50%;transform:translateY(-51%);font-size:31px;line-height:1;color:#0b5bd3;font-weight:500;pointer-events:none}
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button{height:58px!important;min-height:58px!important;border-radius:10px!important;font-weight:750!important;font-size:18px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;margin:0!important}
     [data-testid="stForm"]:has(input[placeholder="Search by company name or ticker..."]) button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important}
-    /* V20.7.4.7 — key-scoped exact reference search row.
-       Keys avoid older global Streamlit rules overriding this one control. */
-    .st-key-chr_company_search_input_v20747{margin:0!important;padding:0!important;}
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{margin:0!important;padding:0!important;position:relative!important;}
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]>div,
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"],
-    .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{height:58px!important;min-height:58px!important;max-height:58px!important;background:#fff!important;border:1px solid #cbd8e6!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(15,23,42,.035)!important;box-sizing:border-box!important;}
-    .st-key-chr_company_search_input_v20747 input{height:56px!important;min-height:56px!important;max-height:56px!important;background:#fff!important;border:0!important;outline:0!important;box-shadow:none!important;padding:0 20px 0 58px!important;font-size:18px!important;line-height:56px!important;color:#17345c!important;box-sizing:border-box!important;}
-    .st-key-chr_company_search_input_v20747 input::placeholder{color:#667b94!important;opacity:1!important;font-weight:500!important;}
-    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{content:"⌕";position:absolute;z-index:8;left:20px;top:29px;transform:translateY(-50%);font-size:31px;line-height:1;color:#0b5bd3;font-weight:500;pointer-events:none;}
-    .st-key-chr_company_search_submit_v20747{margin:0!important;padding:0!important;height:58px!important;min-height:58px!important;max-height:58px!important;}
-    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0!important;}
-    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]>button,
-    .st-key-chr_company_search_submit_v20747 button{height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;font-size:18px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;}
-    .st-key-chr_company_search_submit_v20747 button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important;}
-
-    /* V20.7.4.10 — stable search input: one border, true vertical centring */
+    /* V20.7.4.11 — native input behaviour + single-border search field.
+       Keep Streamlit's real input visible and interactive; style only the BaseWeb shell. */
+    .st-key-chr_company_search_input_v20747{
+        margin:0!important;padding:0!important;
+    }
     .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]{
-        position:relative!important;
-        height:58px!important;
-        min-height:58px!important;
+        position:relative!important;margin:0!important;padding:0!important;
+        height:58px!important;min-height:58px!important;
     }
     .st-key-chr_company_search_input_v20747 [data-baseweb="input"]{
-        height:58px!important;
-        min-height:58px!important;
-        max-height:58px!important;
-        background:#fff!important;
-        border:1px solid #cbd8e6!important;
-        border-radius:10px!important;
-        box-shadow:none!important;
-        outline:none!important;
-        overflow:hidden!important;
+        height:58px!important;min-height:58px!important;max-height:58px!important;
+        background:#fff!important;background-color:#fff!important;
+        border:1px solid #cbd8e6!important;border-radius:10px!important;
+        box-shadow:none!important;outline:none!important;overflow:hidden!important;
         box-sizing:border-box!important;
+    }
+    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:hover,
+    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus,
+    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus-within{
+        background:#fff!important;background-color:#fff!important;
+        border:1px solid #cbd8e6!important;box-shadow:none!important;outline:none!important;
     }
     .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{
-        height:56px!important;
-        min-height:56px!important;
-        max-height:56px!important;
-        background:transparent!important;
-        border:0!important;
-        border-radius:0!important;
-        box-shadow:none!important;
-        outline:0!important;
-        box-sizing:border-box!important;
+        height:56px!important;min-height:56px!important;max-height:56px!important;
+        background:#fff!important;background-color:#fff!important;
+        border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
     }
-    .st-key-chr_company_search_input_v20747 [data-baseweb="input"]:focus-within{
-        border:1px solid #8fb4df!important;
-        box-shadow:none!important;
-        outline:none!important;
+    .st-key-chr_company_search_input_v20747 input,
+    .st-key-chr_company_search_input_v20747 input:hover,
+    .st-key-chr_company_search_input_v20747 input:focus,
+    .st-key-chr_company_search_input_v20747 input:active{
+        height:56px!important;min-height:56px!important;max-height:56px!important;
+        margin:0!important;padding:0 20px 0 58px!important;
+        background:#fff!important;background-color:#fff!important;
+        border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
+        color:#17345c!important;-webkit-text-fill-color:#17345c!important;
+        caret-color:#17345c!important;font-size:18px!important;line-height:normal!important;
+        opacity:1!important;box-sizing:border-box!important;
     }
-    .st-key-chr_company_search_input_v20747 input{
-        height:56px!important;
-        min-height:56px!important;
-        max-height:56px!important;
-        margin:0!important;
-        padding:0 20px 0 58px!important;
-        border:0!important;
-        border-radius:0!important;
-        outline:0!important;
-        box-shadow:none!important;
-        background:transparent!important;
-        font-size:18px!important;
-        line-height:normal!important;
-        color:#17345c!important;
-        box-sizing:border-box!important;
+    .st-key-chr_company_search_input_v20747 input::placeholder{
+        color:#667b94!important;-webkit-text-fill-color:#667b94!important;
+        opacity:1!important;font-weight:500!important;
     }
-    .st-key-chr_company_search_input_v20747 input:focus{border:0!important;outline:0!important;box-shadow:none!important;}
     .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{
-        content:""!important;
-        position:absolute!important;
-        z-index:8!important;
-        left:21px!important;
-        top:50%!important;
-        width:19px!important;
-        height:19px!important;
-        border:3px solid #0b5bd3!important;
-        border-radius:50%!important;
-        transform:translateY(-58%)!important;
-        box-sizing:border-box!important;
-        pointer-events:none!important;
+        content:""!important;position:absolute!important;z-index:8!important;
+        left:21px!important;top:50%!important;width:19px!important;height:19px!important;
+        border:3px solid #0b5bd3!important;border-radius:50%!important;
+        transform:translateY(-58%)!important;box-sizing:border-box!important;pointer-events:none!important;
     }
     .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:after{
-        content:""!important;
-        position:absolute!important;
-        z-index:8!important;
-        left:38px!important;
-        top:50%!important;
-        width:11px!important;
-        height:3px!important;
-        background:#0b5bd3!important;
-        border-radius:2px!important;
-        transform:translateY(6px) rotate(45deg)!important;
-        transform-origin:left center!important;
+        content:""!important;position:absolute!important;z-index:8!important;
+        left:38px!important;top:50%!important;width:11px!important;height:3px!important;
+        background:#0b5bd3!important;border-radius:2px!important;
+        transform:translateY(6px) rotate(45deg)!important;transform-origin:left center!important;
         pointer-events:none!important;
+    }
+    .st-key-chr_company_search_submit_v20747,
+    .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]{
+        margin:0!important;padding:0!important;height:58px!important;min-height:58px!important;max-height:58px!important;
+    }
+    .st-key-chr_company_search_submit_v20747 button{
+        height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;
+        padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;
+        border:1px solid #0b5bd3!important;color:#fff!important;font-size:18px!important;font-weight:750!important;
+        box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;
+    }
+    .st-key-chr_company_search_submit_v20747 button:hover{
+        background:#084fb9!important;border-color:#084fb9!important;color:#fff!important;
     }
     /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
