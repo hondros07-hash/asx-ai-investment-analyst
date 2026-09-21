@@ -4067,6 +4067,29 @@ def _chr_company_search_page():
     .st-key-chr_company_search_submit_v20747 [data-testid="stFormSubmitButton"]>button,
     .st-key-chr_company_search_submit_v20747 button{height:58px!important;min-height:58px!important;max-height:58px!important;margin:0!important;padding:0 18px!important;border-radius:10px!important;background:#0b5bd3!important;background-color:#0b5bd3!important;border:1px solid #0b5bd3!important;color:#fff!important;font-size:18px!important;font-weight:750!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;box-sizing:border-box!important;}
     .st-key-chr_company_search_submit_v20747 button:hover{background:#084fb9!important;background-color:#084fb9!important;border-color:#084fb9!important;color:#fff!important;}
+
+    /* V20.7.4.8 — flatten the keyed Company Search input and centre its contents. */
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"] > div,
+    .st-key-chr_company_search_input_v20747 [data-baseweb="input"],
+    .st-key-chr_company_search_input_v20747 [data-baseweb="base-input"]{
+        height:58px!important;min-height:58px!important;max-height:58px!important;
+        background:#fff!important;background-color:#fff!important;
+        border:0!important;outline:0!important;box-shadow:none!important;
+        border-radius:10px!important;box-sizing:border-box!important;
+    }
+    .st-key-chr_company_search_input_v20747 input{
+        height:58px!important;min-height:58px!important;max-height:58px!important;
+        padding:0 20px 0 58px!important;margin:0!important;
+        background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;
+        font-size:18px!important;line-height:normal!important;color:#17345c!important;
+        display:flex!important;align-items:center!important;box-sizing:border-box!important;
+    }
+    .st-key-chr_company_search_input_v20747 [data-testid="stTextInput"]:before{
+        content:"⌕";position:absolute!important;z-index:8!important;left:20px!important;top:50%!important;
+        transform:translateY(-50%)!important;margin:0!important;font-size:31px!important;line-height:31px!important;
+        height:31px!important;color:#0b5bd3!important;font-weight:500!important;pointer-events:none!important;
+        display:flex!important;align-items:center!important;justify-content:center!important;
+    }
     /* V20.7.3.4 toolbar: explicit keyed buttons so theme/accent colours cannot override the reference design. */
     [class*="st-key-chr_mkt_"] button{height:42px!important;border:0!important;border-radius:8px!important;background:#eaf0f7!important;color:#17345c!important;font-size:13px!important;font-weight:750!important;box-shadow:none!important;padding:0 10px!important}
     [class*="st-key-chr_mkt_"] button:hover{background:#e2ebf5!important;color:#0b4f9c!important;border:0!important}
