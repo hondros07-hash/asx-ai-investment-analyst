@@ -224,3 +224,11 @@ The country-aware volatility widget now centres its value, state and legend, and
 - Row selection opens an analysis preview with market cap, 52-week range, P/E, dividend yield, sector and industry.
 - The active company is changed only when Open Company Command Centre is clicked.
 - Banner and sidebar structure/styles are preserved from V20.7.1.
+
+
+V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
+- Built from stable V20.7.4.17.2.
+- Current price label follows final plotted value.
+- Prev Close label follows dashed previous-close line.
+- Added bottom chart breathing room.
+- Change isolated to smooth market chart rendering.
