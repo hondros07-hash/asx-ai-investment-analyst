@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import re
 import html
+import html as html_lib
 import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -3768,7 +3769,7 @@ def render_global_market_overview():
             if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
         tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
         gp.append((gname,tbl))
-    # V20.7.4.18.6 — Global Markets Instant Persistent Navigation.
+    # V20.7.4.18.6.1 — Global Markets Navigation Runtime Hotfix.
     # All five tables are already rendered inside this isolated components.html
     # document. Switching country is therefore handled entirely in the browser:
     # no Streamlit widget, no st.rerun, no query-param navigation and no API refetch.
@@ -3778,10 +3779,10 @@ def render_global_market_overview():
     gm_buttons=[]; gm_panels=[]
     for i,(gname,tbl) in enumerate(gp):
         gm_buttons.append(
-            f'<button type="button" class="gm-tab-button" data-gm="{html.escape(gname, quote=True)}">{html.escape(gname)}</button>'
+            f'<button type="button" class="gm-tab-button" data-gm="{html_lib.escape(gname, quote=True)}">{html_lib.escape(gname)}</button>'
         )
         gm_panels.append(
-            f'<div class="gm-panel" data-gm-panel="{html.escape(gname, quote=True)}">{tbl}</div>'
+            f'<div class="gm-panel" data-gm-panel="{html_lib.escape(gname, quote=True)}">{tbl}</div>'
         )
     glob_t=(
         '<div class="chr-global-tabs gm-instant-tabs" id="chr-gm-instant-v2074186"><style>'
