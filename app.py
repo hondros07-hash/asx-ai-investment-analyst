@@ -2730,23 +2730,26 @@ def _chr_nav_svg(name):
     "research": '<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5M10 7v6M7 10h6"/></svg>',
     "settings": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/><circle cx="12" cy="12" r="7"/></svg>'}
     return icons.get(name,icons["home"])
-# V20.5.0: use Streamlit's in-app event channel instead of browser URL anchors.
-# This avoids a document-level navigation/white flash; only Streamlit rerenders the app body.
+# V20.7.4.19.1 — Navigation State Synchronisation Fix.
+# Streamlit button callbacks run before the script body on the interaction rerun.
+# Updating the single authoritative route in the callback means the sidebar
+# highlight and page router read the SAME state during the SAME render.
+def _chr_set_primary_nav_v2074191(target):
+    if target in _valid_nav:
+        st.session_state["chr_primary_nav"]=target
+
+# Use Streamlit's in-app event channel instead of browser URL anchors.
+# This avoids document-level navigation/white flashes and needs no second rerun.
 st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
 for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
     _active=(_key==primary)
     _material_icons={"home":":material/home:","search":":material/search:","document":":material/description:","chart":":material/monitoring:","star":":material/star_outline:","briefcase":":material/business_center:","screen":":material/filter_alt:","bell":":material/notifications_none:","calendar":":material/calendar_month:","research":":material/query_stats:","settings":":material/settings:"}
     _clean_title=_title.split("  ",1)[-1]
-    if st.sidebar.button(_clean_title, key=f"chr_nav_native_{_idx}", use_container_width=True,
-                         type="primary" if _active else "secondary", icon=_material_icons.get(_icon)):
-        # Page navigation and selected security are intentionally independent.
-        # Clicking Home must win immediately, while the last analysed ticker is
-        # retained for a later return to Company Command Centre.
-        st.session_state["chr_primary_nav"]=_key
-        primary=_key
-        # V20.7.4.19 — Fast Navigation Engine: a Streamlit button click already
-        # causes this script run. Do not force a second full-app rerun here.
-        # The updated `primary` value is consumed below during this same run.
+    st.sidebar.button(
+        _clean_title, key=f"chr_nav_native_{_idx}", use_container_width=True,
+        type="primary" if _active else "secondary", icon=_material_icons.get(_icon),
+        on_click=_chr_set_primary_nav_v2074191, args=(_key,)
+    )
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
 # V20.5.4: removed the legacy hidden sidebar company selector. It was a second
@@ -2911,7 +2914,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.19</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.19.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
