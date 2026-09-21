@@ -232,3 +232,7 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 - Prev Close label follows dashed previous-close line.
 - Added bottom chart breathing room.
 - Change isolated to smooth market chart rendering.
+
+
+## V20.7.4.18.3 — Global Markets Persistent Country Selection Fix
+The Home-page Global Markets tabs now persist the selected country across the 60-second market-overview fragment refresh. The change is isolated to the Global Markets widget navigation; existing market tables and other Home-page components are unchanged.

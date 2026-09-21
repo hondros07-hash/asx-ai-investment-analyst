@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 import json
 import base64
 from pathlib import Path
+from urllib.parse import urlencode
 
 st.set_page_config(page_title="Chrímata - Market Investment Analyst", page_icon="🏛️", layout="wide")
 
@@ -3768,30 +3769,44 @@ def render_global_market_overview():
             if q: rows.append({'Name':label,'Last':q['last'],'Change':q['change'],'% Chg':q['pct']})
         tbl=_chr_table(rows,['Name','Last','Change','% Chg'],{'Last':lambda x:f'{x:,.2f}','Change':lambda x:f'{x:+,.2f}','% Chg':lambda x:f'{x:+.2%}'}) if rows else '<div class="chr-empty">Market data temporarily unavailable.</div>'
         gp.append((gname,tbl))
-    # V20.7.1 — Interactive Global Markets Widget.
-    # CSS-only tabs avoid script execution inside st.markdown and remain fully local
-    # to this card: no Streamlit session state, routing or main market state is changed.
-    gm_uid='chr-gm-tabs'
-    gm_inputs=[]; gm_labels=[]; gm_panels=[]
+    # V20.7.4.18.3 — Persistent Global Markets country selection.
+    # The Home overview is a timed Streamlit fragment, so the old CSS-only radio
+    # tabs were rebuilt every refresh and fell back to US. Persist the selected
+    # Global Markets tab in the URL/query state so fragment/app reruns restore it.
+    gm_names=[gname for gname,_ in gp]
+    try:
+        gm_selected=st.query_params.get("gm")
+    except Exception:
+        gm_selected=None
+    if gm_selected not in gm_names:
+        gm_selected=st.session_state.get("chr_global_markets_country_v2074183","US")
+    if gm_selected not in gm_names:
+        gm_selected="US"
+    st.session_state["chr_global_markets_country_v2074183"]=gm_selected
+
+    try:
+        gm_base_params={k:v for k,v in st.query_params.items()}
+    except Exception:
+        gm_base_params={}
+    # Always preserve the active Home market while changing only this widget.
+    gm_base_params["market"]=market
+
+    gm_labels=[]; gm_panels=[]
     for i,(gname,tbl) in enumerate(gp):
-        checked=' checked' if i==0 else ''
-        gm_inputs.append(f'<input class="gm-radio" type="radio" name="{gm_uid}" id="{gm_uid}-{i}"{checked}>')
-        gm_labels.append(f'<label class="gm-tab-label gm-label-{i}" for="{gm_uid}-{i}">{gname}</label>')
-        gm_panels.append(f'<div class="gm-panel gm-panel-{i}">{tbl}</div>')
-    gm_rules=''.join(
-        f'#{gm_uid}-{i}:checked ~ .gm-labels .gm-label-{i}{{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}}'
-        f'#{gm_uid}-{i}:checked ~ .gm-panels .gm-panel-{i}{{display:block;}}'
-        for i in range(len(gp))
-    )
+        gm_params=dict(gm_base_params); gm_params["gm"]=gname
+        gm_href="?"+urlencode(gm_params)
+        active=" active" if gname==gm_selected else ""
+        gm_labels.append(f'<a class="gm-tab-label{active}" href="{html.escape(gm_href, quote=True)}" target="_self">{html.escape(gname)}</a>')
+        if gname==gm_selected:
+            gm_panels.append(f'<div class="gm-panel active">{tbl}</div>')
     glob_t=(
-        '<div class="chr-global-tabs gm-css-tabs"><style>'
-        '.gm-css-tabs .gm-radio{position:absolute;opacity:0;pointer-events:none;}'
-        '.gm-css-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
-        '.gm-css-tabs .gm-tab-label{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;}'
-        '.gm-css-tabs .gm-tab-label:hover{background:#f5f8fc;color:#0b57d0;}'
-        '.gm-css-tabs .gm-panel{display:none;}'
-        +gm_rules+'</style>'+''.join(gm_inputs)+
-        '<div class="gm-labels">'+''.join(gm_labels)+'</div>'
+        '<div class="chr-global-tabs gm-persistent-tabs"><style>'
+        '.gm-persistent-tabs .gm-labels{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;}'
+        '.gm-persistent-tabs .gm-tab-label{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;user-select:none;text-decoration:none!important;}'
+        '.gm-persistent-tabs .gm-tab-label:hover{background:#f5f8fc;color:#0b57d0;}'
+        '.gm-persistent-tabs .gm-tab-label.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700;}'
+        '.gm-persistent-tabs .gm-panel{display:block;}'
+        '</style><div class="gm-labels">'+''.join(gm_labels)+'</div>'
         '<div class="gm-panels">'+''.join(gm_panels)+'</div></div>'
     )
     flag_class={'Australia':'au','United States':'us','United Kingdom':'gb','Japan':'jp','Hong Kong':'hk','Canada':'ca'}.get(market,'au')
