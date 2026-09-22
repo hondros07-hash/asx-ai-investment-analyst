@@ -2922,7 +2922,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.5</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.5.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4698,6 +4698,22 @@ def _chr_company_search_page():
     .st-key-chr_search_results_scroll_v20742141 [data-testid="stHorizontalBlock"]{min-height:40px!important;padding-left:14px!important;padding-right:14px!important;}
     .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]{min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;}
     .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]>div{width:100%!important;display:flex!important;align-items:center!important;}
+    /* V20.7.4.21.5.1 — compact native rows: remove Streamlit's vertical block
+       gaps/padding that were stretching rows and pushing content off-centre. */
+    .st-key-chr_search_results_scroll_v20742141{padding-top:0!important;margin-top:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 > div{padding-top:0!important;margin-top:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stVerticalBlock"]{gap:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stHorizontalBlock"]{height:52px!important;min-height:52px!important;max-height:52px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;border-bottom:1px solid #e5edf5!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]{height:52px!important;min-height:52px!important;max-height:52px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]>div{height:52px!important;min-height:52px!important;max-height:52px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;justify-content:center!important;}
+    .st-key-chr_search_results_scroll_v20742141 .chr-native-cell{height:52px!important;min-height:52px!important;max-height:52px!important;line-height:1.2!important;}
+    .st-key-chr_search_results_scroll_v20742141 .chr-native-logo,.st-key-chr_search_results_scroll_v20742141 .chr-native-avatar{margin-top:0!important;margin-bottom:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [class*="st-key-chr_pick_native_v20742141_"]{height:52px!important;min-height:52px!important;max-height:52px!important;display:flex!important;align-items:center!important;margin:0!important;padding:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [class*="st-key-chr_pick_native_v20742141_"] .stButton{height:52px!important;min-height:52px!important;display:flex!important;align-items:center!important;margin:0!important;padding:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 [class*="st-key-chr_pick_native_v20742141_"] button{height:52px!important;min-height:52px!important;max-height:52px!important;display:flex!important;align-items:center!important;margin:0!important;padding:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 div[data-testid="stMarkdownContainer"]{margin:0!important;padding:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 div[data-testid="stMarkdownContainer"] p{margin:0!important;}
+    .st-key-chr_search_results_scroll_v20742141 hr{margin:0!important;}
 .chr-native-cell{font-size:10.5px;color:#183253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0!important;margin:0!important;min-height:30px;display:flex;align-items:center}.chr-native-num{text-align:right;width:100%;justify-content:flex-end}.chr-native-country{display:flex;gap:6px;align-items:center}.chr-native-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;margin-right:6px;vertical-align:middle}.chr-native-avatar{width:30px;height:30px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-right:6px}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{min-height:0}.st-key-chr_search_results_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04)}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}
 /* V20.7.4.21.5 — reference-matched Company Quick View */
 .st-key-chr_search_quickview_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04);padding:14px!important}
@@ -4774,7 +4790,9 @@ def _chr_company_search_page():
                     except Exception: dt="—"; dc="v421flat"
                     with c5: st.markdown(f'<div class="chr-native-cell chr-native-num {dc}">{dt}</div>',unsafe_allow_html=True)
                     with c6: st.markdown(f'<div class="chr-native-cell chr-native-num">{capfmt(r.get("Market Cap"),r.get("Currency"))}</div>',unsafe_allow_html=True)
-                    st.markdown('<div style="height:1px;background:#e5edf5;margin:1px 0 3px"></div>',unsafe_allow_html=True)
+                    # V20.7.4.21.5.1 — no separate divider block here. A separate
+                    # Streamlit markdown child adds vertical layout gap and stretches
+                    # the table. Row separation is drawn with CSS on the row block.
     with rc:
         with st.container(key="chr_search_quickview_panel_v2074211"):
             qh1,qh2=st.columns([1.65,1],gap="small",vertical_alignment="center")
@@ -4820,7 +4838,7 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.5 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.5.1 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page=="Markets":
