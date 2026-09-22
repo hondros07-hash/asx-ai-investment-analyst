@@ -4084,27 +4084,45 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     return ex or "Other"
 
 def _chr_identity_country(symbol, exchange="", provider_country=""):
-    """V20.7.4.21.3 — infer listing country from provider, exchange and ticker suffix."""
+    """V20.7.4.21.6.2 — exchange-authoritative listing-country resolver.
+
+    For supported exchanges the trading venue is the source of truth. This
+    prevents stale provider metadata (for example NASDAQ + Germany) from
+    producing mismatched flag/country identities in the Quick View.
+    """
     raw=str(provider_country or "").strip()
     aliases={"USA":"United States","US":"United States","United States of America":"United States","UK":"United Kingdom","GB":"United Kingdom","Great Britain":"United Kingdom","AU":"Australia","CA":"Canada","JP":"Japan","HK":"Hong Kong","CN":"China","TW":"Taiwan","PL":"Poland"}
     known_countries={"United States","Australia","United Kingdom","Japan","Hong Kong","Canada","Germany","Argentina","Mexico","Poland","Taiwan","China"}
-    raw_norm=aliases.get(raw,raw)
-    if raw_norm in known_countries:
-        return raw_norm
     sym=str(symbol or "").upper().strip(); ex=str(exchange or "").upper().strip()
-    suffixes=[(".AX","Australia"),(".L","United Kingdom"),(".T","Japan"),(".HK","Hong Kong"),(".TO","Canada"),(".V","Canada"),(".SZ","China"),(".SS","China"),(".TW","Taiwan"),(".TWO","Taiwan"),(".WA","Poland"),(".DE","Germany"),(".F","Germany"),(".MX","Mexico"),(".BA","Argentina")]
-    for suf,country in suffixes:
-        if sym.endswith(suf): return country
+
+    # Supported trading venues are authoritative over provider country text.
     exchange_map={
-        "ASX":"Australia","AUSTRALIAN":"Australia","NASDAQ":"United States","NMS":"United States","NGM":"United States","NCM":"United States",
-        "NYSE":"United States","NYQ":"United States","AMEX":"United States","ASE":"United States","LSE":"United Kingdom","LONDON":"United Kingdom",
-        "TSE":"Japan","JPX":"Japan","TOKYO":"Japan","HKEX":"Hong Kong","HKG":"Hong Kong","HONG KONG":"Hong Kong","TSX":"Canada","TORONTO":"Canada",
-        "SHENZHEN":"China","SHANGHAI":"China","TAIPEI":"Taiwan","TAIWAN":"Taiwan","WSE":"Poland","WARSAW":"Poland","XETRA":"Germany","FRANKFURT":"Germany",
-        "BYMA":"Argentina","BMV":"Mexico","DUSSELDORF":"Germany","DÜSSELDORF":"Germany","HAMBURG":"Germany","STUTTGART":"Germany","OTC MARKETS":"United States","OTC":"United States"
+        "ASX":"Australia","AUSTRALIAN":"Australia",
+        "NASDAQ":"United States","NMS":"United States","NGM":"United States","NCM":"United States",
+        "NYSE":"United States","NYQ":"United States","AMEX":"United States","ASE":"United States",
+        "LSE":"United Kingdom","LONDON":"United Kingdom",
+        "TSE":"Japan","JPX":"Japan","TOKYO":"Japan",
+        "HKEX":"Hong Kong","HKG":"Hong Kong","HONG KONG":"Hong Kong",
+        "TSX":"Canada","TORONTO":"Canada",
+        "SHENZHEN":"China","SHANGHAI":"China","TAIPEI":"Taiwan","TAIWAN":"Taiwan",
+        "WSE":"Poland","WARSAW":"Poland","XETRA":"Germany","FRANKFURT":"Germany",
+        "BYMA":"Argentina","BMV":"Mexico","DUSSELDORF":"Germany","DÜSSELDORF":"Germany",
+        "HAMBURG":"Germany","STUTTGART":"Germany","OTC MARKETS":"United States","OTC":"United States"
     }
     if ex in exchange_map: return exchange_map[ex]
     for token,country in exchange_map.items():
         if token and token in ex: return country
+
+    # If the exchange is vague/missing, use the listing suffix next.
+    suffixes=[(".AX","Australia"),(".L","United Kingdom"),(".T","Japan"),(".HK","Hong Kong"),(".TO","Canada"),(".V","Canada"),(".SZ","China"),(".SS","China"),(".TW","Taiwan"),(".TWO","Taiwan"),(".WA","Poland"),(".DE","Germany"),(".F","Germany"),(".MX","Mexico"),(".BA","Argentina")]
+    for suf,country in suffixes:
+        if sym.endswith(suf): return country
+
+    # Provider metadata is only a final fallback once exchange/suffix identity
+    # cannot determine the listing country.
+    raw_norm=aliases.get(raw,raw)
+    if raw_norm in known_countries:
+        return raw_norm
     return ""
 
 
