@@ -3078,7 +3078,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 # Browser-tab branding is intentionally static in V19.8: Chrímata + Parthenon icon.
 
-if page not in {"Dashboard","Company Search"}:
+if page not in {"Dashboard","Company Search","Company Command Centre"}:
     st.title("Chrímata")
     st.caption("V20.7.3.1 • Chrímata • Company Search Header & Button Fix")
 
@@ -5670,7 +5670,7 @@ Adapter         Adapter
 
 
 elif page=="Company Command Centre":
-    # V21.0.1 — Company Command Centre UI & Navigation Rebuild
+    # V21.2 — AI Company Command Centre Overview Intelligence Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
     v18_db_upgrade()
     cls=safe_company_classification(ticker)
@@ -5704,12 +5704,14 @@ elif page=="Company Command Centre":
         _ccvolatility=_mia_num(tr.get("Annualised volatility",np.nan)); _close=pd.to_numeric(h["Close"],errors="coerce").dropna(); _ccmom=float(_close.iloc[-1]/_close.iloc[-127]-1) if len(_close)>126 else np.nan
 
         st.markdown("""<style>
-        .v21-overview-head{background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:12px 15px;margin:0 0 5px;box-shadow:0 1px 3px rgba(16,38,75,.04)}
+        .v21-overview-head{background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:13px 16px;margin:0 0 7px;box-shadow:0 1px 3px rgba(16,38,75,.04)}
         .v21-eyebrow{font-size:8px;letter-spacing:.14em;font-weight:900;color:#1672d8;text-transform:uppercase;margin-bottom:5px}
-        .v21-title{font-size:24px;font-weight:900;color:#10264b;letter-spacing:-.025em;margin:0}.v21-sub{font-size:10px;color:#6c8099;margin-top:3px}
+        .v21-title{font-size:25px;font-weight:900;color:#10264b;letter-spacing:-.025em;margin:0}.v21-sub{font-size:10px;color:#6c8099;margin-top:3px}
         .v21-card{background:#fff;border:1px solid #d9e5f2;border-radius:9px;padding:10px 11px;box-shadow:0 1px 3px rgba(16,38,75,.04);min-height:72px}
-        .v21-k{font-size:9px;letter-spacing:.07em;font-weight:900;color:#71849b;text-transform:uppercase}.v21-v{font-size:19px;font-weight:900;color:#10264b;margin-top:4px}.v21-s{font-size:10px;color:#71849b;margin-top:2px}
-        .v21-section{font-size:16px;font-weight:900;color:#10264b;margin:7px 0 8px}.v21-ai{background:linear-gradient(135deg,#092f5f,#0d4f89);border-radius:13px;padding:15px 17px;color:white;min-height:118px}.v21-ai h3{color:white!important;font-size:16px!important;margin:0 0 6px!important}.v21-ai p{font-size:11px;line-height:1.45;margin:0;color:#eaf3ff}
+        .v21-k{font-size:9px;letter-spacing:.07em;font-weight:900;color:#71849b;text-transform:uppercase}.v21-v{font-size:18px;font-weight:900;color:#10264b;margin-top:4px}.v21-s{font-size:10px;color:#71849b;margin-top:2px;line-height:1.3}
+        .v21-section{font-size:16px;font-weight:900;color:#10264b;margin:9px 0 7px}.v21-ai{background:linear-gradient(135deg,#092f5f,#0d4f89);border-radius:13px;padding:15px 17px;color:white;min-height:150px}.v21-ai h3{color:white!important;font-size:16px!important;margin:0 0 8px!important}.v21-ai p{font-size:11px;line-height:1.5;margin:0;color:#eaf3ff}
+        .v21-change{background:#f5f9ff;border:1px solid #cfe1f5;border-left:5px solid #1672d8;border-radius:10px;padding:10px 13px;margin:7px 0 4px}.v21-change-title{font-size:10px;font-weight:900;letter-spacing:.09em;color:#1672d8;text-transform:uppercase}.v21-change-main{font-size:14px;font-weight:800;color:#10264b;margin-top:3px}.v21-change-sub{font-size:10px;color:#6c8099;margin-top:3px}
+        .v21-engine{min-height:96px}.v21-engine-name{font-size:10px;font-weight:900;color:#1672d8;text-transform:uppercase;letter-spacing:.05em}.v21-engine-main{font-size:16px;font-weight:900;color:#10264b;margin:5px 0 2px}.v21-engine-link{font-size:9px;color:#1672d8;font-weight:800;margin-top:7px}
         .v21-risk{border-left:4px solid #d97706;background:#fffaf2}.v21-opp{border-left:4px solid #1687ff;background:#f7fbff}.v21-foot{font-size:9px;color:#7b8ca1}.v21-live{font-size:9px;font-weight:800;color:#078d4c}.v21-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#08a45c;margin-right:4px}
         </style>""",unsafe_allow_html=True)
 
@@ -5722,6 +5724,11 @@ elif page=="Company Command Centre":
         _m=st.columns(7)
         _metrics=[("52W RANGE",f"{display_price(_cclo,ticker)} – {display_price(_cchi,ticker)}","Observed/provider range"),("MARKET CAP",compact_number(_ccmcap,prefix="$") if np.isfinite(_ccmcap) else "—","Provider reported"),("AVG VOLUME",compact_number(_ccvol) if np.isfinite(_ccvol) else "—","Provider reported"),("P/E",f"{_ccpe:.1f}×" if np.isfinite(_ccpe) else "—","Trailing"),("DIV YIELD",f"{_ccdy:.2%}" if np.isfinite(_ccdy) else "—","Provider reported"),("BETA",f"{_ccbeta:.2f}" if np.isfinite(_ccbeta) else "—","Provider reported"),("RESEARCH",f"{_ccscore.get('Available',0)}/{_ccscore.get('Total',6)}","Evidence categories")]
         for _col,(_k,_v,_s) in zip(_m,_metrics): _col.markdown(f'<div class="v21-card"><div class="v21-k">{_k}</div><div class="v21-v">{_v}</div><div class="v21-s">{_s}</div></div>',unsafe_allow_html=True)
+
+        _change_count=0 if _ccattention is None or _ccattention.empty else len(_ccattention)
+        _change_main=("No material monitoring changes are currently flagged from loaded evidence." if _change_count==0 else f"{_change_count} monitoring item"+(" requires" if _change_count==1 else "s require")+" attention from the currently loaded evidence.")
+        _change_sub=f"Evidence coverage {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)} · Technical: {tr.get('Trend','—')} · Thesis: "+(f"{_ccth_met}/{_ccth_total} conditions met" if _ccth_total else "not configured")+" · Valuation: "+("loaded" if np.isfinite(_mia_num(_ccbase)) else "evidence gap")
+        st.markdown(f'<div class="v21-change"><div class="v21-change-title">Something Changed · Evidence Monitor</div><div class="v21-change-main">{html.escape(_change_main)}</div><div class="v21-change-sub">{html.escape(_change_sub)}</div></div>',unsafe_allow_html=True)
 
         _chartcol,_thesiscol=st.columns([1.75,1])
         with _chartcol:
@@ -5742,10 +5749,20 @@ elif page=="Company Command Centre":
             else: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard. The Overview will then monitor them automatically.")
             st.caption("Evidence is inherited from the independent Thesis Scorecard engine; the Overview does not invent missing conditions.")
 
-        st.markdown('<div class="v21-section">Research Engines</div>',unsafe_allow_html=True)
-        _e=st.columns(4); _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
-        _engine_cards=[("VALUATION","—" if not np.isfinite(_mia_num(_ccbase)) else display_price(_ccbase,ticker),"Base scenario"+(" · "+f"{_valup:+.1%} vs price" if np.isfinite(_valup) else "")),("FORECAST · 12M","—" if not np.isfinite(_ccf12) else f"{_ccf12:+.1%}","Historical scenario model"),("ANALYST EVIDENCE",html.escape(str(_ccanalyst.get("label") or "Unavailable")),"Target "+(display_price(_cctarget,ticker)+f" · {_tarup:+.1%}" if np.isfinite(_cctarget) and np.isfinite(_tarup) else "unavailable")),("QUANT / TECHNICAL",html.escape(str(tr.get("Trend","—"))),("Vol "+f"{_ccvolatility:.1%}" if np.isfinite(_ccvolatility) else "Vol —")+(" · 6M "+f"{_ccmom:+.1%}" if np.isfinite(_ccmom) else ""))]
-        for _col,(_k,_v,_s) in zip(_e,_engine_cards): _col.markdown(f'<div class="v21-card"><div class="v21-k">{_k}</div><div class="v21-v">{_v}</div><div class="v21-s">{_s}</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-section">Independent Research Engines</div>',unsafe_allow_html=True)
+        _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
+        _fund_state="Evidence loaded" if _ccscore.get("Available",0)>1 else "Build evidence base"
+        _engine_cards=[
+            ("FUNDAMENTALS",_fund_state,f"{_ccsector} · {_ccindustry}"),
+            ("VALUATION","—" if not np.isfinite(_mia_num(_ccbase)) else display_price(_ccbase,ticker),"Base scenario"+(" · "+f"{_valup:+.1%} vs price" if np.isfinite(_valup) else "")),
+            ("TECHNICAL",str(tr.get("Trend","—")),("Vol "+f"{_ccvolatility:.1%}" if np.isfinite(_ccvolatility) else "Vol —")),
+            ("QUANT",("6M "+f"{_ccmom:+.1%}" if np.isfinite(_ccmom) else "Evidence unavailable"),"Momentum / risk context"),
+            ("FORECASTS · 12M","—" if not np.isfinite(_ccf12) else f"{_ccf12:+.1%}","Historical scenario model"),
+            ("ANALYST EVIDENCE",str(_ccanalyst.get("label") or "Unavailable"),"Target "+(display_price(_cctarget,ticker)+f" · {_tarup:+.1%}" if np.isfinite(_cctarget) and np.isfinite(_tarup) else "unavailable")),
+        ]
+        _er1=st.columns(3); _er2=st.columns(3)
+        for _col,(_k,_v,_s) in zip(_er1+_er2,_engine_cards):
+            _col.markdown(f'<div class="v21-card v21-engine"><div class="v21-engine-name">{html.escape(_k)}</div><div class="v21-engine-main">{html.escape(str(_v))}</div><div class="v21-s">{html.escape(str(_s))}</div><div class="v21-engine-link">Independent engine →</div></div>',unsafe_allow_html=True)
 
         st.markdown('<div class="v21-section">Chrímata AI Research Brief</div>',unsafe_allow_html=True)
         _attention_text="No stored thesis/monitoring item currently requires attention."
@@ -5753,7 +5770,7 @@ elif page=="Company Command Centre":
             _attention_text="; ".join([str(x) for x in _ccattention.head(3).get("Item",pd.Series(dtype=str)).tolist() if str(x).strip()]) or _attention_text
         _ann_text="No announcement evidence loaded."
         if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
-        _brief_fallback=(f"{_ccname} is currently {display_price(price,ticker)} with a {tr.get('Trend','—')} technical regime. Chrímata has evidence in {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} research categories. "+(f"The stored base valuation scenario is {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"The 12-month historical forecast scenario is {_ccf12:+.1%}. " if np.isfinite(_ccf12) else "The 12-month forecast is unavailable. ")+f"Monitoring focus: {_attention_text}")
+        _brief_fallback=(f"WHAT CHANGED\n{_change_main}\n\nFUNDAMENTAL EVIDENCE\nEvidence coverage is {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} categories. Sector: {_ccsector}; industry: {_ccindustry}.\n\nVALUATION & EXPECTATIONS\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"12-month historical forecast scenario: {_ccf12:+.1%}." if np.isfinite(_ccf12) else "12-month forecast evidence is unavailable.")+f"\n\nTECHNICAL / QUANT\nCurrent technical regime: {tr.get('Trend','—')}. "+(f"Annualised volatility: {_ccvolatility:.1%}. " if np.isfinite(_ccvolatility) else "")+(f"Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+f"\n\nTHESIS CONFLICTS & MONITORING\n{_attention_text}\n\nCATALYSTS / ANNOUNCEMENTS\n{_ann_text}\n\nEVIDENCE GAPS\nMissing fields and unavailable engines should be completed before stronger conclusions are drawn.\n\nINVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts that can change the evidence state.")
         _ai_key=f"v21_ai_brief_{ticker}"
         if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
         _ai_left,_ai_right=st.columns([4.5,1])
@@ -5769,7 +5786,7 @@ elif page=="Company Command Centre":
                     try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
                     except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
                     _evidence={"company":_ccname,"ticker":ticker,"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else _ccpct,"sector":_ccsector,"industry":_ccindustry,"technical":tr,"research_score":_ccscore,"base_valuation":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase),"forecast_12m":None if not np.isfinite(_ccf12) else float(_ccf12),"analyst":_ccanalyst,"thesis_met":_ccth_met,"thesis_total":_ccth_total,"attention":_attention_text,"recent_announcements":_ann_text}
-                    _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise investment-research brief, not a recommendation. Separate observed facts/model outputs from interpretation. Identify: what matters now; evidence supporting the thesis; evidence weakening or contradicting it; valuation/forecast uncertainty; and the next evidence to monitor. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
+                    _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise structured investment-research brief, not a recommendation. Use these headings exactly: WHAT CHANGED; FUNDAMENTAL EVIDENCE; VALUATION & EXPECTATIONS; TECHNICAL / QUANT; THESIS CONFLICTS; CATALYSTS; EVIDENCE GAPS; INVESTIGATE NEXT. Separate observed facts/model outputs from interpretation. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
                     _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt); _txt=getattr(_resp,"output_text","") or ""
                     if not _txt.strip(): raise RuntimeError("AI provider returned an empty brief")
                     st.session_state[_ai_key]=_txt.strip()
@@ -5804,7 +5821,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.1.5 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2 architecture: AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")

@@ -253,3 +253,10 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 - Fixes every icon at the same left position and every label at the same text start.
 - Active blue state wraps the icon and label together.
 - Preserves the 11 independent research routes and their existing functionality.
+
+## V21.2 — AI Company Command Centre Overview Intelligence Rebuild
+- Removes the obsolete in-content Chrímata/V20 heading from Overview while preserving the global banner and sidebar.
+- Adds a Something Changed evidence-monitor strip.
+- Rebuilds the research-engine summary as six independent engine cards.
+- Structures the AI Research Brief around change, fundamentals, valuation, technical/quant, thesis conflicts, catalysts, evidence gaps and next investigation.
+- Keeps all specialist research engines independently routable and executable.
