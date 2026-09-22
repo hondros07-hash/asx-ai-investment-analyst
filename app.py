@@ -2711,7 +2711,7 @@ _valid_nav={x[0] for x in NAV_ITEMS}
 if "chr_router_v2054_ready" not in st.session_state:
     st.session_state["chr_primary_nav"]="Home"
     st.session_state["chr_router_v2054_ready"]=True
-# V20.7.4.21.4.2 — native result-row selection keeps Company Search authoritative.
+# V20.7.4.21.4.3 — native result-row selection keeps Company Search authoritative.
 # A chr_pick URL must never be interpreted as a request to fall back to Home.
 try:
     if st.query_params.get("chr_pick") is not None:
@@ -2922,7 +2922,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.4.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.4.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4111,7 +4111,7 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     from urllib.parse import quote
     base=company_logo_candidates(symbol,meta,size)
     sym=str(symbol or "").strip()
-    # V20.7.4.21.4.2: do not append speculative symbol-image URLs here.
+    # V20.7.4.21.4.3: do not append speculative symbol-image URLs here.
     # A remote 404 renders as a broken-image icon in Streamlit because event-handler
     # attributes can be sanitised. Prefer verified provider/domain candidates and
     # fall back cleanly to the letter avatar when no reliable logo is known.
@@ -4679,7 +4679,7 @@ def _chr_company_search_page():
     .v421results{height:620px;display:flex;flex-direction:column}.v421head{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5;flex:0 0 auto}.v421title{font-size:20px;line-height:1.05;font-weight:900;color:#10264b;letter-spacing:-.02em}.v421sub{font-size:11px;color:#60748d;margin-top:4px}.v421table{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}.v421row{display:grid;grid-template-columns:minmax(180px,1.75fr) 68px 76px minmax(112px,1.05fr) 82px 68px 92px;align-items:center;min-height:39px;border-bottom:1px solid #e5edf5;font-size:10.5px;color:#183253}.v421th{position:sticky;top:0;z-index:3;background:#edf6ff;color:#184d87;font-weight:900;min-height:38px}.v421cell{padding:5px 7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421num{text-align:right}.v421co{display:flex;align-items:center;gap:7px;font-weight:850}.v421co a{color:#0863c5;text-decoration:none;font-weight:900;overflow:hidden;text-overflow:ellipsis}.v421logo{width:30px;height:30px;object-fit:contain;border-radius:6px;flex:0 0 30px;background:#fff}.v421av{width:30px!important;height:30px!important;flex-basis:30px!important}.v421av{width:25px;height:25px;border-radius:50%;background:#eef3f8;display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 25px}.v421country{display:flex;gap:6px;align-items:center}.v421flagimg{width:22px;height:15px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(15,23,42,.08);flex:0 0 22px}.v421up{color:#079447;font-weight:900}.v421down{color:#dc3d3d;font-weight:900}.v421flat{color:#60748d;font-weight:800}
     .st-key-chr_search_results_panel_v2074211,.st-key-chr_search_quickview_panel_v2074211{height:620px;min-height:620px;max-height:620px;overflow:hidden}
     .chr-native-results-head{display:grid;grid-template-columns:2.75fr .72fr .82fr 1.55fr .9fr .8fr 1fr;align-items:center;min-height:38px;background:#edf6ff;border-bottom:1px solid #e5edf5;color:#184d87;font-size:10.5px;font-weight:900}.chr-native-results-head>div{padding:5px 7px;white-space:nowrap}.chr-native-results-head .n{text-align:right}.chr-native-results-title{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5}.chr-native-results-scroll{height:522px;overflow-y:auto;overflow-x:hidden}.chr-native-result-row{border-bottom:1px solid #e5edf5;min-height:48px;padding:4px 5px}.chr-native-result-row.selected{background:#f5f9ff}.chr-native-result-row [data-testid="stColumn"]{display:flex;align-items:center}.chr-native-result-row .stButton{width:100%}.chr-native-result-row .stButton button{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:30px!important;height:auto!important;color:#0863c5!important;font-size:10.5px!important;font-weight:900!important;justify-content:flex-start!important;text-align:left!important}.chr-native-result-row .stButton button:hover{color:#064f9d!important;background:transparent!important}
-    /* V20.7.4.21.4.2 — native selection buttons visually behave like table text. */
+    /* V20.7.4.21.4.3 — native selection buttons visually behave like table text. */
     [class*="st-key-chr_pick_native_v20742141_"]{margin:0!important;padding:0!important;min-height:30px!important;}
     [class*="st-key-chr_pick_native_v20742141_"] .stButton{margin:0!important;padding:0!important;}
     [class*="st-key-chr_pick_native_v20742141_"] button{
@@ -4692,9 +4692,13 @@ def _chr_company_search_page():
     [class*="st-key-chr_pick_native_v20742141_"] button:hover,
     [class*="st-key-chr_pick_native_v20742141_"] button:focus{background:transparent!important;color:#064f9d!important;border:0!important;box-shadow:none!important;}
     [class*="st-key-chr_pick_native_v20742141_"] button p{font-size:10.5px!important;font-weight:900!important;line-height:1.15!important;margin:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
-    .st-key-chr_search_results_scroll_v20742141 [data-testid="stHorizontalBlock"]{min-height:40px!important;}
-    .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]{min-height:40px!important;display:flex!important;align-items:center!important;}
-.chr-native-cell{font-size:10.5px;color:#183253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:7px}.chr-native-num{text-align:right;width:100%}.chr-native-country{display:flex;gap:6px;align-items:center}.chr-native-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;margin-right:6px;vertical-align:middle}.chr-native-avatar{width:30px;height:30px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-right:6px}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{min-height:0}.st-key-chr_search_results_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04)}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
+    /* V20.7.4.21.4.3 — balanced edge spacing + true vertical centering. */
+    .chr-native-results-head>div:first-child{padding-left:18px!important;}
+    .chr-native-results-head>div:last-child{padding-right:18px!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stHorizontalBlock"]{min-height:40px!important;padding-left:14px!important;padding-right:14px!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]{min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;}
+    .st-key-chr_search_results_scroll_v20742141 [data-testid="stColumn"]>div{width:100%!important;display:flex!important;align-items:center!important;}
+.chr-native-cell{font-size:10.5px;color:#183253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0!important;margin:0!important;min-height:30px;display:flex;align-items:center}.chr-native-num{text-align:right;width:100%;justify-content:flex-end}.chr-native-country{display:flex;gap:6px;align-items:center}.chr-native-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;margin-right:6px;vertical-align:middle}.chr-native-avatar{width:30px;height:30px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-right:6px}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{min-height:0}.st-key-chr_search_results_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04)}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
     </style>""",unsafe_allow_html=True)
     rows=[]; selres=str(selected.get("_resolved") or selected.get("Ticker") or "")
     for i,(_,r) in enumerate(view.iterrows()):
@@ -4726,7 +4730,7 @@ def _chr_company_search_page():
     lc,rc=st.columns([1.82,1],gap="small")
     with lc:
         with st.container(key="chr_search_results_panel_v2074211"):
-            # V20.7.4.21.4.2 — do not use an open HTML wrapper around native
+            # V20.7.4.21.4.3 — do not use an open HTML wrapper around native
             # Streamlit widgets. Each st.markdown call is its own DOM block; the old
             # 620px wrapper consumed the panel and pushed every native result row
             # below the clipped viewport. Keep the card on the keyed container and
@@ -4796,7 +4800,7 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.4.2 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.4.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page=="Markets":
