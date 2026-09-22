@@ -1,3 +1,5 @@
+Chrímata V20.7.4.20.1 — Reference-Matched Search Results Rebuild
+
 ## V20.5.4 — Search Bar Alignment & Header Polish
 
 - Removes the redundant “Global security search” label above the professional autocomplete.
