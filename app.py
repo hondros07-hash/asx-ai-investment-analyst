@@ -2757,22 +2757,17 @@ def _chr_set_cc_sub_v2111(target):
         st.session_state["chr_primary_nav"]="Company Command Centre"
 
 st.sidebar.markdown(r'''<style>
-/* V21.1.3 — compact Command Centre child navigation. */
+/* V21.1.4 - icon-based, left-aligned Command Centre child navigation. */
 [data-testid="stSidebar"] .ccnav-inline-start{height:2px!important;margin:0!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"]{margin:0 10px 1px 38px!important;padding:0!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"]{margin:0 8px 1px 10px!important;padding:0!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton{margin:0!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button{
- height:29px!important;min-height:29px!important;border-radius:5px!important;
- padding:0 8px!important;border:0!important;box-shadow:none!important;
- font-size:12px!important;font-weight:600!important;justify-content:flex-start!important;
- white-space:nowrap!important;line-height:1!important;
-}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button{height:30px!important;min-height:30px!important;border-radius:5px!important;padding:0 8px!important;border:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:27px minmax(0,1fr)!important;align-items:center!important;text-align:left!important;justify-content:stretch!important;white-space:nowrap!important;line-height:1!important;overflow:hidden!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]{background:transparent!important;color:#eef6ff!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]:hover{background:rgba(255,255,255,.075)!important;color:#fff!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="primary"]{background:#1687ef!important;color:#fff!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button span[data-testid="stIconMaterial"]{display:none!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]{position:static!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"] p{font-size:12px!important;line-height:1!important;font-weight:600!important;margin:0!important;white-space:nowrap!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button span[data-testid="stIconMaterial"],[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stIconMaterial"]{display:flex!important;position:static!important;grid-column:1!important;width:22px!important;height:22px!important;margin:0!important;align-items:center!important;justify-content:center!important;font-size:20px!important;line-height:20px!important;color:#fff!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]{position:static!important;grid-column:2!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;text-align:left!important;overflow:hidden!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"] p{position:static!important;font-size:11.5px!important;line-height:1!important;font-weight:500!important;margin:0!important;padding:0!important;text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]:after{display:none!important;content:none!important}
 </style>''',unsafe_allow_html=True)
 # V21.1.2 — authoritative sidebar renderer.
@@ -2794,14 +2789,23 @@ def _chr_render_cc_children_v2112():
     # V21.1.3: one compact flat child list. The parent already establishes
     # context, so category labels only consumed space and collided with names.
     _cc_order=[
-        "Overview","Fundamentals","Valuation","Technical","Quant","Forecasts",
-        "Announcements & Reports","Report Intelligence","News & Events",
-        "Thesis Scorecard","Catalyst Calendar"
+        ("Overview",":material/dashboard:"),
+        ("Fundamentals",":material/account_balance:"),
+        ("Valuation",":material/show_chart:"),
+        ("Technical",":material/monitoring:"),
+        ("Announcements & Reports",":material/article:"),
+        ("Report Intelligence",":material/travel_explore:"),
+        ("News & Events",":material/newspaper:"),
+        ("Thesis Scorecard",":material/fact_check:"),
+        ("Catalyst Calendar",":material/calendar_month:"),
+        ("Quant",":material/query_stats:"),
+        ("Forecasts",":material/layers:"),
     ]
     st.markdown('<div class="ccnav-inline-start"></div>',unsafe_allow_html=True)
-    for _cc_i,_item in enumerate(_cc_order):
+    for _cc_i,(_item,_item_icon) in enumerate(_cc_order):
         st.button(_item,key=f"ccinline_{_cc_i}",use_container_width=True,
                   type="primary" if st.session_state[_cc_sub_key]==_item else "secondary",
+                  icon=_item_icon,
                   on_click=_chr_set_cc_sub_v2111,args=(_item,))
 
 st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
@@ -5777,7 +5781,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.1.3 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.1.4 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
