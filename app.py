@@ -4140,7 +4140,8 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     known={
         "zip co limited":"zip.co","zip co ltd":"zip.co","ziprecruiter":"ziprecruiter.com",
         "the coca-cola company":"coca-colacompany.com","coca-cola hbc":"coca-colahellenic.com","coca-cola europacific":"cocacolaep.com",
-        "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com","pepsico":"pepsico.com","pepsi co":"pepsico.com"
+        "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com","pepsico":"pepsico.com","pepsi co":"pepsico.com",
+        "commonwealth bank of australia":"commbank.com.au","commonwealth bank":"commbank.com.au","commbank":"commbank.com.au"
     }
     dom=next((d for k,d in known.items() if k in nm),"")
     if dom:
@@ -4775,9 +4776,9 @@ def _chr_company_search_page():
 /* V20.7.4.21.6.6 — seven open timeframe buttons, matching the reference. */
 [class*="st-key-chr_qv_tf_v20742166_"]{margin:0!important;padding:0!important}
 [class*="st-key-chr_qv_tf_v20742166_"] .stButton{margin:0!important;padding:0!important}
-[class*="st-key-chr_qv_tf_v20742166_"] button{height:28px!important;min-height:28px!important;padding:0 3px!important;margin:0!important;border:0!important;border-radius:5px!important;background:transparent!important;box-shadow:none!important;color:#53677f!important;font-size:10.5px!important;font-weight:800!important}
+[class*="st-key-chr_qv_tf_v20742166_"] button{height:28px!important;min-height:28px!important;padding:0!important;margin:0!important;border:0!important;border-radius:5px!important;background:transparent!important;box-shadow:none!important;color:#53677f!important;font-size:10.5px!important;font-weight:800!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;width:100%!important}
 [class*="st-key-chr_qv_tf_v20742166_"] button:hover{background:#f3f7fb!important;color:#174f8f!important;border:0!important;box-shadow:none!important}
-[class*="st-key-chr_qv_tf_v20742166_"] button p{font-size:10.5px!important;font-weight:800!important;line-height:1!important;margin:0!important;color:inherit!important}
+[class*="st-key-chr_qv_tf_v20742166_"] button p{font-size:10.5px!important;font-weight:800!important;line-height:28px!important;margin:0!important;padding:0!important;color:inherit!important;width:100%!important;text-align:center!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]{height:104px!important;min-height:104px!important;margin:0!important;padding:0!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]>div{height:104px!important;min-height:104px!important}
 .v421stats{margin-top:0!important}.v421stat{font-size:10.5px!important;padding:4px 0!important;min-height:23px!important;align-items:center!important}.v421stat b{max-width:62%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4821,6 +4822,9 @@ def _chr_company_search_page():
     # search result (for example Taiwan listing displayed as United States).
     q_country=_chr_identity_country(resolved, selected.get("Exchange",""), selected.get("Country") or meta.get("country") or "")
     flag=flag_map.get(q_country,"🌐")
+    # V20.7.4.21.6.7 — selected-company identity uses the enriched website/logo plus
+    # the exact selected Search Results payload. This keeps Quick View on the same
+    # logo identity and adds a canonical Commonwealth Bank fallback when metadata is thin.
     qcands=_chr_identity_logo_candidates(resolved,{"logo_url":qlogo,"website":str(meta.get("website") or selected.get("Website") or "")},str(company),96)
     if qcands:
         qsrc=html.escape(qcands[0],quote=True); qrest=html.escape("|".join(qcands[1:]),quote=True); qinitial=html.escape(str(company)[:1].upper())
