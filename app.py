@@ -2919,10 +2919,36 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
+    # V21.0.1 — independent-engine navigator for Company Command Centre.
+    if primary=="Company Command Centre":
+        _cc_sub_key="chr_cc_sub_v21001"
+        if st.session_state.get(_cc_sub_key) not in SUBPAGES[primary]: st.session_state[_cc_sub_key]="Overview"
+        def _chr_set_cc_sub_v21001(target):
+            if target in SUBPAGES["Company Command Centre"]: st.session_state[_cc_sub_key]=target
+        st.sidebar.markdown("""<style>
+        [data-testid="stSidebar"] .ccnav-wrap{margin:9px 8px 3px;padding-top:7px;border-top:1px solid rgba(255,255,255,.18)}
+        [data-testid="stSidebar"] .ccnav-title{font-size:8px;letter-spacing:.13em;font-weight:800;color:#8fb4d4;margin:0 0 5px;text-transform:uppercase}
+        [data-testid="stSidebar"] .ccnav-group{font-size:7px;letter-spacing:.12em;font-weight:900;color:#e0b45a;margin:7px 10px 2px;text-transform:uppercase}
+        [data-testid="stSidebar"] [class*="st-key-ccnav_"]{margin:0 8px!important}
+        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button{height:27px!important;min-height:27px!important;border-radius:5px!important;padding:0 8px 0 12px!important;border:0!important;box-shadow:none!important;font-size:9.5px!important;font-weight:600!important;justify-content:flex-start!important}
+        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="secondary"]{background:transparent!important;color:#e8f2fb!important}
+        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="secondary"]:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
+        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="primary"]{background:#1687ff!important;color:#fff!important}
+        </style><div class="ccnav-wrap"><div class="ccnav-title">Company Command Centre</div></div>""",unsafe_allow_html=True)
+        _cc_groups=[("COMMAND CENTRE",["Overview"]),("COMPANY",["Fundamentals","Valuation"]),("MARKET",["Technical","Quant","Forecasts"]),("INTELLIGENCE",["Announcements & Reports","Report Intelligence","News & Events"]),("MONITORING",["Thesis Scorecard","Catalyst Calendar"])]
+        _cc_i=0
+        for _grp,_items in _cc_groups:
+            st.sidebar.markdown(f'<div class="ccnav-group">{_grp}</div>',unsafe_allow_html=True)
+            for _item in _items:
+                st.sidebar.button(_item,key=f"ccnav_{_cc_i}",use_container_width=True,type="primary" if st.session_state[_cc_sub_key]==_item else "secondary",on_click=_chr_set_cc_sub_v21001,args=(_item,))
+                _cc_i+=1
+        sub=st.session_state[_cc_sub_key]
+    else:
+        sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}")
+    page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.0.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -2956,7 +2982,7 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Chrímata research workspace")
-if page not in {"Dashboard","Company Search"}:
+if page not in {"Dashboard","Company Search","Company Command Centre"}:
     st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Chrímata / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
@@ -5575,7 +5601,7 @@ Adapter         Adapter
 
 
 elif page=="Company Command Centre":
-    # V21.0 — Company Command Centre Overview & AI Research Brief
+    # V21.0.1 — Company Command Centre UI & Navigation Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
     v18_db_upgrade()
     cls=safe_company_classification(ticker)
@@ -5609,15 +5635,17 @@ elif page=="Company Command Centre":
         _ccvolatility=_mia_num(tr.get("Annualised volatility",np.nan)); _close=pd.to_numeric(h["Close"],errors="coerce").dropna(); _ccmom=float(_close.iloc[-1]/_close.iloc[-127]-1) if len(_close)>126 else np.nan
 
         st.markdown("""<style>
-        .v21-title{font-size:27px;font-weight:900;color:#10264b;letter-spacing:-.025em;margin:0}.v21-sub{font-size:11px;color:#6c8099;margin-top:3px}
-        .v21-card{background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:13px 14px;box-shadow:0 1px 3px rgba(16,38,75,.04)}
+        .v21-overview-head{background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:12px 15px;margin:0 0 5px;box-shadow:0 1px 3px rgba(16,38,75,.04)}
+        .v21-eyebrow{font-size:8px;letter-spacing:.14em;font-weight:900;color:#1672d8;text-transform:uppercase;margin-bottom:5px}
+        .v21-title{font-size:24px;font-weight:900;color:#10264b;letter-spacing:-.025em;margin:0}.v21-sub{font-size:10px;color:#6c8099;margin-top:3px}
+        .v21-card{background:#fff;border:1px solid #d9e5f2;border-radius:9px;padding:10px 11px;box-shadow:0 1px 3px rgba(16,38,75,.04);min-height:72px}
         .v21-k{font-size:9px;letter-spacing:.07em;font-weight:900;color:#71849b;text-transform:uppercase}.v21-v{font-size:19px;font-weight:900;color:#10264b;margin-top:4px}.v21-s{font-size:10px;color:#71849b;margin-top:2px}
         .v21-section{font-size:16px;font-weight:900;color:#10264b;margin:7px 0 8px}.v21-ai{background:linear-gradient(135deg,#092f5f,#0d4f89);border-radius:13px;padding:15px 17px;color:white;min-height:118px}.v21-ai h3{color:white!important;font-size:16px!important;margin:0 0 6px!important}.v21-ai p{font-size:11px;line-height:1.45;margin:0;color:#eaf3ff}
         .v21-risk{border-left:4px solid #d97706;background:#fffaf2}.v21-opp{border-left:4px solid #1687ff;background:#f7fbff}.v21-foot{font-size:9px;color:#7b8ca1}.v21-live{font-size:9px;font-weight:800;color:#078d4c}.v21-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#08a45c;margin-right:4px}
         </style>""",unsafe_allow_html=True)
 
         _id1,_id2=st.columns([2.5,1])
-        with _id1: st.markdown(f'<div class="v21-title">{html.escape(str(_ccname))}</div><div class="v21-sub"><b>{html.escape(str(ticker))}</b> · {html.escape(str(_ccex))} · {html.escape(str(_cccountry or "—"))} &nbsp; | &nbsp; {html.escape(str(_ccsector))} · {html.escape(str(_ccindustry))}</div>',unsafe_allow_html=True)
+        with _id1: st.markdown(f'<div class="v21-overview-head"><div class="v21-eyebrow">Chrímata / Company Command Centre / Overview</div><div class="v21-title">{html.escape(str(_ccname))}</div><div class="v21-sub"><b>{html.escape(str(ticker))}</b> · {html.escape(str(_ccex))} · {html.escape(str(_cccountry or "—"))} &nbsp; | &nbsp; {html.escape(str(_ccsector))} · {html.escape(str(_ccindustry))}</div></div>',unsafe_allow_html=True)
         with _id2:
             _deltatxt="—" if not np.isfinite(_ccpct) else f"{_ccchg:+.3f} ({_ccpct:+.2%})"
             st.markdown(f'<div style="text-align:right"><span class="v21-k">SHARE PRICE</span><div class="v21-v" style="font-size:27px">{display_price(price,ticker)}</div><div class="v21-s">{_deltatxt} &nbsp; <span class="v21-live"><span class="v21-dot"></span>loaded data</span></div></div>',unsafe_allow_html=True)
@@ -5632,7 +5660,7 @@ elif page=="Company Command Centre":
             _fig=go.Figure(data=[go.Candlestick(x=h.index,open=h["Open"],high=h["High"],low=h["Low"],close=h["Close"],name=ticker)])
             if len(h)>=20: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.2)))
             if len(h)>=50: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.2)))
-            _fig.update_layout(height=330,margin=dict(l=8,r=8,t=8,b=8),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=1.02,x=0),paper_bgcolor="white",plot_bgcolor="white")
+            _fig.update_layout(height=255,margin=dict(l=8,r=8,t=8,b=8),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=1.02,x=0),paper_bgcolor="white",plot_bgcolor="white")
             st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
             _perfcols=st.columns(6)
             for _c,(_n,_lab) in zip(_perfcols,[(1,"1D"),(5,"1W"),(21,"1M"),(63,"3M"),(126,"6M"),(252,"1Y")]):
@@ -5641,7 +5669,7 @@ elif page=="Company Command Centre":
             st.markdown('<div class="v21-section">Thesis Scorecard</div>',unsafe_allow_html=True)
             if _ccth_total:
                 st.progress(_ccth_met/max(_ccth_total,1),text=f"{_ccth_met} of {_ccth_total} measurable conditions currently met")
-                _showcols=[x for x in ["metric","current_value","status"] if x in _ccthesis.columns]; st.dataframe(_ccthesis[_showcols].head(7),use_container_width=True,hide_index=True,height=246)
+                _showcols=[x for x in ["metric","current_value","status"] if x in _ccthesis.columns]; st.dataframe(_ccthesis[_showcols].head(7),use_container_width=True,hide_index=True,height=190)
             else: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard. The Overview will then monitor them automatically.")
             st.caption("Evidence is inherited from the independent Thesis Scorecard engine; the Overview does not invent missing conditions.")
 
@@ -5707,7 +5735,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.0 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.0.1 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
