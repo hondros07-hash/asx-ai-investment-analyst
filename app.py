@@ -2711,7 +2711,7 @@ _valid_nav={x[0] for x in NAV_ITEMS}
 if "chr_router_v2054_ready" not in st.session_state:
     st.session_state["chr_primary_nav"]="Home"
     st.session_state["chr_router_v2054_ready"]=True
-# V20.7.4.21.2 — result-row selection is an internal Company Search action.
+# V20.7.4.21.3 — result-row selection is an internal Company Search action.
 # A chr_pick URL must never be interpreted as a request to fall back to Home.
 try:
     if st.query_params.get("chr_pick") is not None:
@@ -2922,7 +2922,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.3</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4083,6 +4083,53 @@ def _chr_search_exchange_bucket(symbol, exchange, country):
     if country=="United States": return "US Other"
     return ex or "Other"
 
+def _chr_identity_country(symbol, exchange="", provider_country=""):
+    """V20.7.4.21.3 — infer listing country from provider, exchange and ticker suffix."""
+    raw=str(provider_country or "").strip()
+    aliases={"USA":"United States","US":"United States","United States of America":"United States","UK":"United Kingdom","GB":"United Kingdom","Great Britain":"United Kingdom","AU":"Australia","CA":"Canada","JP":"Japan","HK":"Hong Kong","CN":"China","TW":"Taiwan","PL":"Poland"}
+    if raw and raw not in {"—","-","None","nan"}:
+        return aliases.get(raw,raw)
+    sym=str(symbol or "").upper().strip(); ex=str(exchange or "").upper().strip()
+    suffixes=[(".AX","Australia"),(".L","United Kingdom"),(".T","Japan"),(".HK","Hong Kong"),(".TO","Canada"),(".V","Canada"),(".SZ","China"),(".SS","China"),(".TW","Taiwan"),(".TWO","Taiwan"),(".WA","Poland"),(".DE","Germany"),(".F","Germany"),(".MX","Mexico"),(".BA","Argentina")]
+    for suf,country in suffixes:
+        if sym.endswith(suf): return country
+    exchange_map={
+        "ASX":"Australia","AUSTRALIAN":"Australia","NASDAQ":"United States","NMS":"United States","NGM":"United States","NCM":"United States",
+        "NYSE":"United States","NYQ":"United States","AMEX":"United States","ASE":"United States","LSE":"United Kingdom","LONDON":"United Kingdom",
+        "TSE":"Japan","JPX":"Japan","TOKYO":"Japan","HKEX":"Hong Kong","HKG":"Hong Kong","HONG KONG":"Hong Kong","TSX":"Canada","TORONTO":"Canada",
+        "SHENZHEN":"China","SHANGHAI":"China","TAIPEI":"Taiwan","TAIWAN":"Taiwan","WSE":"Poland","WARSAW":"Poland","XETRA":"Germany","FRANKFURT":"Germany",
+        "BYMA":"Argentina","BMV":"Mexico","OTC MARKETS":"United States","OTC":"United States"
+    }
+    if ex in exchange_map: return exchange_map[ex]
+    for token,country in exchange_map.items():
+        if token and token in ex: return country
+    return ""
+
+
+def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
+    """V20.7.4.21.3 — stronger logo sources; provider/domain first, market-logo CDN fallback."""
+    from urllib.parse import quote
+    base=company_logo_candidates(symbol,meta,size)
+    sym=str(symbol or "").strip()
+    # FMP's public stock-image endpoint provides a useful symbol-level fallback when
+    # Yahoo metadata has no website/logo. Browser rendering keeps this lookup off the
+    # Python request path, so search performance is unaffected.
+    if sym:
+        fmp=f"https://financialmodelingprep.com/image-stock/{quote(sym)}.png"
+        if fmp not in base: base.append(fmp)
+    # Known canonical domains cover high-frequency names when provider metadata is thin.
+    nm=str(company or "").lower()
+    known={
+        "zip co limited":"zip.co","zip co ltd":"zip.co","ziprecruiter":"ziprecruiter.com",
+        "the coca-cola company":"coca-colacompany.com","coca-cola hbc":"coca-colahellenic.com","coca-cola europacific":"cocacolaep.com",
+        "apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com"
+    }
+    dom=next((d for k,d in known.items() if k in nm),"")
+    if dom:
+        g=f"https://www.google.com/s2/favicons?domain={quote(dom)}&sz={int(size)}"
+        if g not in base: base.insert(0,g)
+    return list(dict.fromkeys(base))
+
 def _chr_company_search_page():
     """V20.7.4.7 — exact reference search row + pixel-matched results."""
     st.markdown("""
@@ -4528,7 +4575,7 @@ def _chr_company_search_page():
         last=_mia_num(oq.get("last")); chg=_mia_num(oq.get("pct"))
         try: meta=info(resolved) or {}
         except Exception: meta={}
-        rows.append({"Company":str(meta.get("longName") or meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":str(r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Logo":str(meta.get("logo_url") or meta.get("logoUrl") or ""),"Website":str(meta.get("website") or ""),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"_resolved":resolved})
+        rows.append({"Company":str(meta.get("longName") or meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":_chr_identity_country(resolved, r.get("Exchange",""), meta.get("country") or r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Logo":str(meta.get("logo_url") or meta.get("logoUrl") or ""),"Website":str(meta.get("website") or ""),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"_resolved":resolved})
     view=pd.DataFrame(rows)
     # V20.7.4.20 — keep the strongest listing for duplicate search hits.
     # Search providers can return the same security several times with partial
@@ -4556,7 +4603,7 @@ def _chr_company_search_page():
     # V20.7.4.21 — Dual-Panel Company Search & Market Discovery Dashboard.
     flag_map={"United States":"🇺🇸","USA":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","UK":"🇬🇧","Japan":"🇯🇵","Hong Kong":"🇭🇰","Canada":"🇨🇦","Germany":"🇩🇪","Argentina":"🇦🇷","Mexico":"🇲🇽","Poland":"🇵🇱","Taiwan":"🇹🇼"}
     aliases={"USA":"United States","US":"United States","UK":"United Kingdom","GB":"United Kingdom","AU":"Australia","CA":"Canada","JP":"Japan","HK":"Hong Kong"}
-    flag_codes={"United States":"us","Australia":"au","United Kingdom":"gb","Japan":"jp","Hong Kong":"hk","Canada":"ca","Germany":"de","Argentina":"ar","Mexico":"mx","Poland":"pl","Taiwan":"tw"}
+    flag_codes={"United States":"us","Australia":"au","United Kingdom":"gb","Japan":"jp","Hong Kong":"hk","Canada":"ca","Germany":"de","Argentina":"ar","Mexico":"mx","Poland":"pl","Taiwan":"tw","China":"cn"}
     def flag_html(country):
         code=flag_codes.get(country)
         return f'<img class="v421flagimg" src="https://flagcdn.com/w40/{code}.png" alt="{html.escape(country)}">' if code else '<span style="font-size:16px">🌐</span>'
@@ -4584,7 +4631,7 @@ def _chr_company_search_page():
     if not selected or str(selected.get("_resolved","")) not in set(view["_resolved"].astype(str)):
         selected=view.iloc[0].to_dict(); st.session_state["chr_company_search_selected"]=selected
     st.markdown("""<style>
-    /* V20.7.4.21.2 — reference-matched dual-panel geometry and dense results table. */
+    /* V20.7.4.21.3 — reference-matched dual-panel geometry and dense results table. */
     .v421card{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.04)}
     .v421results{height:620px;display:flex;flex-direction:column}.v421head{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5;flex:0 0 auto}.v421title{font-size:20px;line-height:1.05;font-weight:900;color:#10264b;letter-spacing:-.02em}.v421sub{font-size:11px;color:#60748d;margin-top:4px}.v421table{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}.v421row{display:grid;grid-template-columns:minmax(180px,1.75fr) 68px 76px minmax(112px,1.05fr) 82px 68px 92px;align-items:center;min-height:39px;border-bottom:1px solid #e5edf5;font-size:10.5px;color:#183253}.v421th{position:sticky;top:0;z-index:3;background:#edf6ff;color:#184d87;font-weight:900;min-height:38px}.v421cell{padding:5px 7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421num{text-align:right}.v421co{display:flex;align-items:center;gap:7px;font-weight:850}.v421co a{color:#0863c5;text-decoration:none;font-weight:900;overflow:hidden;text-overflow:ellipsis}.v421logo{width:30px;height:30px;object-fit:contain;border-radius:6px;flex:0 0 30px;background:#fff}.v421av{width:30px!important;height:30px!important;flex-basis:30px!important}.v421av{width:25px;height:25px;border-radius:50%;background:#eef3f8;display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 25px}.v421country{display:flex;gap:6px;align-items:center}.v421flagimg{width:22px;height:15px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(15,23,42,.08);flex:0 0 22px}.v421up{color:#079447;font-weight:900}.v421down{color:#dc3d3d;font-weight:900}.v421flat{color:#60748d;font-weight:800}
     .st-key-chr_search_results_panel_v2074211,.st-key-chr_search_quickview_panel_v2074211{height:620px;min-height:620px;max-height:620px;overflow:hidden}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{height:100%}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
@@ -4592,9 +4639,9 @@ def _chr_company_search_page():
     rows=[]; selres=str(selected.get("_resolved") or selected.get("Ticker") or "")
     for i,(_,r) in enumerate(view.iterrows()):
         cr=aliases.get(str(r.get("Country") or ""),str(r.get("Country") or "")); flag=flag_map.get(cr,"🌐")
-        # V20.7.4.21.2 — real company logo first, with multiple browser fallbacks.
+        # V20.7.4.21.3 — real company logo first, with multiple browser fallbacks.
         logo_meta={"logo_url":str(r.get("Logo") or ""),"website":str(r.get("Website") or "")}
-        candidates=company_logo_candidates(str(r.get("_resolved") or r.get("Ticker") or ""),logo_meta,96)
+        candidates=_chr_identity_logo_candidates(str(r.get("_resolved") or r.get("Ticker") or ""),logo_meta,str(r.get("Company") or ""),96)
         initial=html.escape(str(r.get("Company") or "?")[:1].upper())
         if candidates:
             src=html.escape(candidates[0],quote=True); rest=html.escape("|".join(candidates[1:]),quote=True)
@@ -4613,7 +4660,7 @@ def _chr_company_search_page():
     except:meta={}
     oq=overview_quote(resolved,"5d") or {}; last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct")); company=meta.get("longName") or meta.get("shortName") or selected.get("Company") or resolved; cur=meta.get("currency") or selected.get("Currency") or ""
     mc=_mia_num(meta.get("marketCap")); lo=_mia_num(meta.get("fiftyTwoWeekLow")); hi=_mia_num(meta.get("fiftyTwoWeekHigh")); pe=_mia_num(meta.get("trailingPE")); dy=_mia_num(meta.get("dividendYield")); sector=meta.get("sector") or selected.get("Sector") or "—"; industry=meta.get("industry") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
-    qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or ""); cr=aliases.get(str(selected.get("Country") or ""),str(selected.get("Country") or "")); flag=flag_map.get(cr,"🌐"); qlh=f'<img class="v421qlogo" src="{html.escape(qlogo,quote=True)}">' if qlogo.startswith("http") else f'<span class="v421av" style="width:42px;height:42px">{html.escape(str(company)[:1].upper())}</span>'; dcls="v421up" if np.isfinite(pct) and pct>0 else ("v421down" if np.isfinite(pct) and pct<0 else "v421flat"); dt="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; rng="—" if not(np.isfinite(lo) and np.isfinite(hi)) else f"{price(lo,cur)} – {price(hi,cur)}"; pet="—" if not np.isfinite(pe) else f"{pe:.1f}"; dyt="—" if not np.isfinite(dy) else f"{dy*100:.2f}%"; tt="—" if not np.isfinite(target) else price(target,cur)+(f" ({upside:+.1f}%)" if np.isfinite(upside) else "")
+    qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or ""); cr=_chr_identity_country(resolved, selected.get("Exchange",""), meta.get("country") or selected.get("Country") or ""); flag=flag_map.get(cr,"🌐"); qlh=f'<img class="v421qlogo" src="{html.escape(qlogo,quote=True)}">' if qlogo.startswith("http") else f'<span class="v421av" style="width:42px;height:42px">{html.escape(str(company)[:1].upper())}</span>'; dcls="v421up" if np.isfinite(pct) and pct>0 else ("v421down" if np.isfinite(pct) and pct<0 else "v421flat"); dt="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; rng="—" if not(np.isfinite(lo) and np.isfinite(hi)) else f"{price(lo,cur)} – {price(hi,cur)}"; pet="—" if not np.isfinite(pe) else f"{pe:.1f}"; dyt="—" if not np.isfinite(dy) else f"{dy*100:.2f}%"; tt="—" if not np.isfinite(target) else price(target,cur)+(f" ({upside:+.1f}%)" if np.isfinite(upside) else "")
     lc,rc=st.columns([1.82,1],gap="small")
     with lc:
         with st.container(key="chr_search_results_panel_v2074211"):
@@ -4654,7 +4701,7 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.2 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page=="Markets":
