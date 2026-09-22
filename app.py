@@ -2922,7 +2922,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.6</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.0</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4198,7 +4198,7 @@ def _chr_search_market_enrichment_v2074214(symbol):
                 out[k]=v
     except Exception:
         pass
-    # V20.7.4.21.6.9 — Global Fundamental Data Enrichment Fix.
+    # V20.8.0 — Global Fundamental Data Enrichment Fix.
     # Derive commonly missing Quick View fundamentals from independent Yahoo
     # fields when the primary info payload is thin. Never fabricate a value.
     try:
@@ -5575,91 +5575,139 @@ Adapter         Adapter
 
 
 elif page=="Company Command Centre":
+    # V21.0 — Company Command Centre Overview & AI Research Brief
+    # Overview orchestrates the independent research engines; it is not a dependency for them.
     v18_db_upgrade()
     cls=safe_company_classification(ticker)
     h=history(ticker,"1y")
     if h.empty:
-        st.warning("No price history available.")
+        st.warning("No price history available for the selected listing. The other Company Command Centre modules remain available from the sidebar.")
     else:
         price=float(h["Close"].iloc[-1]); hold=holding_for(ticker); tr=technical_regime(h,ticker)
-        st.markdown(f"""<div class="mia-hero">
-          <div class="mia-hero-kicker">Company Command Centre</div>
-          <div class="mia-hero-title">{name} · {ticker}</div>
-          <div class="mia-hero-sub">Price {display_price(price,ticker)} · Evidence, valuation, forecasting, thesis and change monitoring in one workspace.</div>
-        </div>""",unsafe_allow_html=True)
-        company_snapshot_header(ticker, meta, h, cls)
-        st.markdown('<div class="mia-section-label">Research scorecard</div>',unsafe_allow_html=True)
-        render_mia_research_score(ticker,h,meta)
-        st.divider()
-        st.markdown('<div class="mia-section-label">Research stack</div>',unsafe_allow_html=True)
-        st.subheader("Investment Command Centre")
-        render_analyst_consensus(ticker,price)
-        st.divider()
-        render_forecast_tool(ticker,h)
-        st.divider()
-        render_market_vs_model(ticker,price,h)
-        st.divider()
-        render_phase2_company_research(ticker,h,price,meta)
-        st.divider()
-        render_something_changed(ticker,h,meta)
-        st.divider()
-        st.subheader("Your position")
-        a,b,c,d=st.columns(4)
-        a.metric("Shares",f"{hold['quantity']:,.0f}")
-        b.metric("Average cost",f"${hold['avg_cost']:,.3f}" if hold["quantity"] else "—")
-        c.metric("Market value",f"${hold['quantity']*price:,.0f}")
-        pnl=(price-hold["avg_cost"])*hold["quantity"] if hold["quantity"] else 0
-        d.metric("Unrealised P&L",f"${pnl:,.0f}" if hold["quantity"] else "—")
+        _ccmeta=meta if isinstance(meta,dict) else {}
+        _ccname=_ccmeta.get("longName") or _ccmeta.get("shortName") or cls.get("name") or name or ticker
+        _ccmarket=detect_market(ticker,_ccmeta); _ccex=_ccmarket.get("exchange") or _ccmeta.get("exchange") or "—"
+        _cccountry=_chr_identity_country(ticker,_ccex,_ccmeta.get("country") or "")
+        _ccsector=_ccmeta.get("sector") or cls.get("sector") or "Sector unavailable"; _ccindustry=_ccmeta.get("industry") or cls.get("industry") or "Industry unavailable"
+        _ccprev=float(h["Close"].iloc[-2]) if len(h)>1 else np.nan; _ccchg=price-_ccprev if np.isfinite(_ccprev) else np.nan; _ccpct=_ccchg/_ccprev if np.isfinite(_ccprev) and _ccprev else np.nan
+        _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
+        if not np.isfinite(_cclo): _cclo=float(h["Low"].min())
+        if not np.isfinite(_cchi): _cchi=float(h["High"].max())
+        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccvals=valuation_snapshot(ticker,price)
+        _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
+        _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
+        _ccf12=np.nan
+        if _ccfc is not None and not _ccfc.empty:
+            _z=_ccfc.loc[_ccfc["Horizon"]=="12 Months","Median return"]
+            if len(_z) and pd.notna(_z.iloc[0]): _ccf12=float(_z.iloc[0])
+        _ccbase=np.nan
+        if _ccvals is not None and not _ccvals.empty and "scenario" in _ccvals.columns and "value_per_share" in _ccvals.columns:
+            _q=_ccvals[_ccvals["scenario"].astype(str).str.lower()=="base"]
+            if not _q.empty: _ccbase=pd.to_numeric(_q["value_per_share"],errors="coerce").iloc[0]
+        _cctarget=_mia_num(_ccanalyst.get("target")); _cctarget=_mia_num(_ccmeta.get("targetMeanPrice")) if not np.isfinite(_cctarget) else _cctarget
+        _ccmcap=_mia_num(_ccmeta.get("marketCap")); _ccpe=_mia_num(_ccmeta.get("trailingPE")); _ccdy=_mia_num(_ccmeta.get("dividendYield")); _ccvol=_mia_num(_ccmeta.get("averageVolume")); _ccbeta=_mia_num(_ccmeta.get("beta"))
+        _ccvolatility=_mia_num(tr.get("Annualised volatility",np.nan)); _close=pd.to_numeric(h["Close"],errors="coerce").dropna(); _ccmom=float(_close.iloc[-1]/_close.iloc[-127]-1) if len(_close)>126 else np.nan
 
-        st.subheader("What requires my attention?")
-        st.dataframe(v18_attention(ticker,0,price),use_container_width=True,hide_index=True)
+        st.markdown("""<style>
+        .v21-title{font-size:27px;font-weight:900;color:#10264b;letter-spacing:-.025em;margin:0}.v21-sub{font-size:11px;color:#6c8099;margin-top:3px}
+        .v21-card{background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:13px 14px;box-shadow:0 1px 3px rgba(16,38,75,.04)}
+        .v21-k{font-size:9px;letter-spacing:.07em;font-weight:900;color:#71849b;text-transform:uppercase}.v21-v{font-size:19px;font-weight:900;color:#10264b;margin-top:4px}.v21-s{font-size:10px;color:#71849b;margin-top:2px}
+        .v21-section{font-size:16px;font-weight:900;color:#10264b;margin:7px 0 8px}.v21-ai{background:linear-gradient(135deg,#092f5f,#0d4f89);border-radius:13px;padding:15px 17px;color:white;min-height:118px}.v21-ai h3{color:white!important;font-size:16px!important;margin:0 0 6px!important}.v21-ai p{font-size:11px;line-height:1.45;margin:0;color:#eaf3ff}
+        .v21-risk{border-left:4px solid #d97706;background:#fffaf2}.v21-opp{border-left:4px solid #1687ff;background:#f7fbff}.v21-foot{font-size:9px;color:#7b8ca1}.v21-live{font-size:9px;font-weight:800;color:#078d4c}.v21-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#08a45c;margin-right:4px}
+        </style>""",unsafe_allow_html=True)
 
-        l,r=st.columns(2)
-        with l:
-            st.subheader("Thesis")
-            t=thesis_table(ticker)
-            if t.empty: st.info("No measurable thesis conditions yet.")
-            else:
-                met=int((t["status"]=="Met").sum())
-                st.metric("Conditions met",f"{met} / {len(t)}")
-                st.dataframe(t[["metric","current_value","operator","threshold","status","source"]],use_container_width=True,hide_index=True)
-            st.subheader("What changed since last review?")
-            kc=kpi_latest_comparison(ticker)
-            if kc.empty: st.info("No KPI observations have been recorded yet. Use Monitor My Thesis → Evidence capture.")
-            else: st.dataframe(kc,use_container_width=True,hide_index=True)
-        with r:
-            st.subheader("Market structure")
-            q1,q2=st.columns(2)
-            q1.metric("Trend regime",tr.get("Trend","—"))
-            q2.metric("Relative strength 3M","—" if pd.isna(tr.get("Relative 3M",np.nan)) else f"{tr['Relative 3M']:+.1%}")
-            st.write(f"Support **${tr['Support']:,.3f}** · Resistance **${tr['Resistance']:,.3f}**")
-            st.write(f"20D volume **{tr['Volume ratio']:.2f}×** · Annualised volatility **{tr['Annualised volatility']:.1%}**")
-            st.caption(f"Relative-strength benchmark: {tr.get('Benchmark','—')}")
+        _id1,_id2=st.columns([2.5,1])
+        with _id1: st.markdown(f'<div class="v21-title">{html.escape(str(_ccname))}</div><div class="v21-sub"><b>{html.escape(str(ticker))}</b> · {html.escape(str(_ccex))} · {html.escape(str(_cccountry or "—"))} &nbsp; | &nbsp; {html.escape(str(_ccsector))} · {html.escape(str(_ccindustry))}</div>',unsafe_allow_html=True)
+        with _id2:
+            _deltatxt="—" if not np.isfinite(_ccpct) else f"{_ccchg:+.3f} ({_ccpct:+.2%})"
+            st.markdown(f'<div style="text-align:right"><span class="v21-k">SHARE PRICE</span><div class="v21-v" style="font-size:27px">{display_price(price,ticker)}</div><div class="v21-s">{_deltatxt} &nbsp; <span class="v21-live"><span class="v21-dot"></span>loaded data</span></div></div>',unsafe_allow_html=True)
 
-            st.subheader("Valuation scenarios")
-            vv=valuation_snapshot(ticker,price)
-            if vv.empty: st.info("Valuation scenario could not be calculated.")
-            else: st.dataframe(vv,use_container_width=True,hide_index=True)
+        _m=st.columns(7)
+        _metrics=[("52W RANGE",f"{display_price(_cclo,ticker)} – {display_price(_cchi,ticker)}","Observed/provider range"),("MARKET CAP",compact_number(_ccmcap,prefix="$") if np.isfinite(_ccmcap) else "—","Provider reported"),("AVG VOLUME",compact_number(_ccvol) if np.isfinite(_ccvol) else "—","Provider reported"),("P/E",f"{_ccpe:.1f}×" if np.isfinite(_ccpe) else "—","Trailing"),("DIV YIELD",f"{_ccdy:.2%}" if np.isfinite(_ccdy) else "—","Provider reported"),("BETA",f"{_ccbeta:.2f}" if np.isfinite(_ccbeta) else "—","Provider reported"),("RESEARCH",f"{_ccscore.get('Available',0)}/{_ccscore.get('Total',6)}","Evidence categories")]
+        for _col,(_k,_v,_s) in zip(_m,_metrics): _col.markdown(f'<div class="v21-card"><div class="v21-k">{_k}</div><div class="v21-v">{_v}</div><div class="v21-s">{_s}</div></div>',unsafe_allow_html=True)
 
-        st.subheader("Latest announcements")
-        aa=latest_announcements_safe(ticker,5)
-        if aa.empty: st.info("No announcement rows are available from the current announcement provider.")
-        else: st.dataframe(aa,use_container_width=True,hide_index=True)
+        _chartcol,_thesiscol=st.columns([1.75,1])
+        with _chartcol:
+            st.markdown('<div class="v21-section">Price Intelligence</div>',unsafe_allow_html=True)
+            _fig=go.Figure(data=[go.Candlestick(x=h.index,open=h["Open"],high=h["High"],low=h["Low"],close=h["Close"],name=ticker)])
+            if len(h)>=20: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.2)))
+            if len(h)>=50: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.2)))
+            _fig.update_layout(height=330,margin=dict(l=8,r=8,t=8,b=8),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=1.02,x=0),paper_bgcolor="white",plot_bgcolor="white")
+            st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
+            _perfcols=st.columns(6)
+            for _c,(_n,_lab) in zip(_perfcols,[(1,"1D"),(5,"1W"),(21,"1M"),(63,"3M"),(126,"6M"),(252,"1Y")]):
+                _rr=np.nan if len(_close)<=_n else float(_close.iloc[-1]/_close.iloc[-_n-1]-1); _c.metric(_lab,"—" if pd.isna(_rr) else f"{_rr:+.1%}")
+        with _thesiscol:
+            st.markdown('<div class="v21-section">Thesis Scorecard</div>',unsafe_allow_html=True)
+            if _ccth_total:
+                st.progress(_ccth_met/max(_ccth_total,1),text=f"{_ccth_met} of {_ccth_total} measurable conditions currently met")
+                _showcols=[x for x in ["metric","current_value","status"] if x in _ccthesis.columns]; st.dataframe(_ccthesis[_showcols].head(7),use_container_width=True,hide_index=True,height=246)
+            else: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard. The Overview will then monitor them automatically.")
+            st.caption("Evidence is inherited from the independent Thesis Scorecard engine; the Overview does not invent missing conditions.")
 
-        st.subheader("Catalysts")
-        cats=catalysts_safe(ticker,6)
-        if not cats.empty:
-            st.dataframe(cats,use_container_width=True,hide_index=True)
-        else:
-            st.info("No catalysts recorded yet.")
+        st.markdown('<div class="v21-section">Research Engines</div>',unsafe_allow_html=True)
+        _e=st.columns(4); _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
+        _engine_cards=[("VALUATION","—" if not np.isfinite(_mia_num(_ccbase)) else display_price(_ccbase,ticker),"Base scenario"+(" · "+f"{_valup:+.1%} vs price" if np.isfinite(_valup) else "")),("FORECAST · 12M","—" if not np.isfinite(_ccf12) else f"{_ccf12:+.1%}","Historical scenario model"),("ANALYST EVIDENCE",html.escape(str(_ccanalyst.get("label") or "Unavailable")),"Target "+(display_price(_cctarget,ticker)+f" · {_tarup:+.1%}" if np.isfinite(_cctarget) and np.isfinite(_tarup) else "unavailable")),("QUANT / TECHNICAL",html.escape(str(tr.get("Trend","—"))),("Vol "+f"{_ccvolatility:.1%}" if np.isfinite(_ccvolatility) else "Vol —")+(" · 6M "+f"{_ccmom:+.1%}" if np.isfinite(_ccmom) else ""))]
+        for _col,(_k,_v,_s) in zip(_e,_engine_cards): _col.markdown(f'<div class="v21-card"><div class="v21-k">{_k}</div><div class="v21-v">{_v}</div><div class="v21-s">{_s}</div></div>',unsafe_allow_html=True)
 
-        st.markdown("---")
-        st.markdown("### Core workflows")
-        x,y=st.columns(2)
-        x.info("**BEFORE I INVEST**\n\nRun a decision brief that combines position impact, valuation, thesis evidence, market structure and catalysts.")
-        y.info("**MONITOR MY THESIS**\n\nCapture company-reported KPI evidence and compare the latest observation with the previous one.")
-        st.caption("Evidence discipline: company-reported KPI values are only shown after they have been explicitly captured with a source. The app does not invent missing reported figures.")
+        st.markdown('<div class="v21-section">Chrímata AI Research Brief</div>',unsafe_allow_html=True)
+        _attention_text="No stored thesis/monitoring item currently requires attention."
+        if _ccattention is not None and not _ccattention.empty:
+            _attention_text="; ".join([str(x) for x in _ccattention.head(3).get("Item",pd.Series(dtype=str)).tolist() if str(x).strip()]) or _attention_text
+        _ann_text="No announcement evidence loaded."
+        if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
+        _brief_fallback=(f"{_ccname} is currently {display_price(price,ticker)} with a {tr.get('Trend','—')} technical regime. Chrímata has evidence in {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} research categories. "+(f"The stored base valuation scenario is {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"The 12-month historical forecast scenario is {_ccf12:+.1%}. " if np.isfinite(_ccf12) else "The 12-month forecast is unavailable. ")+f"Monitoring focus: {_attention_text}")
+        _ai_key=f"v21_ai_brief_{ticker}"
+        if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
+        _ai_left,_ai_right=st.columns([4.5,1])
+        with _ai_right:
+            if st.button("Generate AI Brief",type="primary",use_container_width=True,key=f"v21_generate_ai_{ticker}"):
+                try:
+                    import os
+                    from openai import OpenAI
+                    try: _secret_key=str(st.secrets.get("OPENAI_API_KEY","") or "")
+                    except Exception: _secret_key=""
+                    _secret_key=_secret_key or os.environ.get("OPENAI_API_KEY","")
+                    if not _secret_key: raise RuntimeError("OPENAI_API_KEY is not configured")
+                    try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
+                    except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
+                    _evidence={"company":_ccname,"ticker":ticker,"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else _ccpct,"sector":_ccsector,"industry":_ccindustry,"technical":tr,"research_score":_ccscore,"base_valuation":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase),"forecast_12m":None if not np.isfinite(_ccf12) else float(_ccf12),"analyst":_ccanalyst,"thesis_met":_ccth_met,"thesis_total":_ccth_total,"attention":_attention_text,"recent_announcements":_ann_text}
+                    _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise investment-research brief, not a recommendation. Separate observed facts/model outputs from interpretation. Identify: what matters now; evidence supporting the thesis; evidence weakening or contradicting it; valuation/forecast uncertainty; and the next evidence to monitor. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
+                    _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt); _txt=getattr(_resp,"output_text","") or ""
+                    if not _txt.strip(): raise RuntimeError("AI provider returned an empty brief")
+                    st.session_state[_ai_key]=_txt.strip()
+                except Exception as _aie:
+                    st.session_state[_ai_key]=_brief_fallback; st.warning(f"AI synthesis unavailable ({_aie}). Showing the evidence-driven fallback brief instead.")
+        with _ai_left: st.markdown(f'<div class="v21-ai"><h3>Research synthesis</h3><p>{html.escape(str(st.session_state.get(_ai_key,_brief_fallback))).replace(chr(10),"<br>")}</p></div>',unsafe_allow_html=True)
+        st.caption("AI synthesis is constrained to loaded evidence and model outputs. It explains and challenges the research; it does not make the investment decision.")
 
+        _catcol,_anncol=st.columns([1,1.35])
+        with _catcol:
+            st.markdown('<div class="v21-section">Upcoming / Stored Catalysts</div>',unsafe_allow_html=True)
+            if _cccatalysts is None or _cccatalysts.empty: st.info("No catalysts are stored yet. Add them in Catalyst Calendar.")
+            else: st.dataframe(_cccatalysts.head(6),use_container_width=True,hide_index=True,height=220)
+        with _anncol:
+            st.markdown('<div class="v21-section">Latest Announcements & Evidence</div>',unsafe_allow_html=True)
+            if _ccann is None or _ccann.empty: st.info("No announcement rows are available from the current provider.")
+            else: st.dataframe(_ccann.head(5),use_container_width=True,hide_index=True,height=220)
+
+        _riskcol,_oppcol=st.columns(2)
+        with _riskcol:
+            st.markdown('<div class="v21-section">Risks / Contradictions to Investigate</div>',unsafe_allow_html=True)
+            if _ccattention is not None and not _ccattention.empty: st.dataframe(_ccattention.head(5),use_container_width=True,hide_index=True,height=190)
+            else: st.markdown('<div class="v21-card v21-risk"><div class="v21-v" style="font-size:13px">No stored alert is currently triggered.</div><div class="v21-s">This does not mean the company has no risks. Add measurable thesis conditions and evidence to improve monitoring coverage.</div></div>',unsafe_allow_html=True)
+        with _oppcol:
+            st.markdown('<div class="v21-section">Evidence That Could Strengthen the Thesis</div>',unsafe_allow_html=True)
+            if _ccthesis is not None and not _ccthesis.empty:
+                _met=_ccthesis[_ccthesis["status"]=="Met"] if "status" in _ccthesis else pd.DataFrame()
+                if not _met.empty: st.dataframe(_met.head(5),use_container_width=True,hide_index=True,height=190)
+                else: st.info("No stored thesis condition is currently marked Met.")
+            else: st.markdown('<div class="v21-card v21-opp"><div class="v21-v" style="font-size:13px">Build the evidence base.</div><div class="v21-s">Use Fundamentals, Report Intelligence and Thesis Scorecard to define measurable evidence before the Overview draws stronger conclusions.</div></div>',unsafe_allow_html=True)
+
+        st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
+        _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
+        _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
+        st.markdown('<div class="v21-foot">V21.0 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
