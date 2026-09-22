@@ -4131,7 +4131,20 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     from urllib.parse import quote
     base=company_logo_candidates(symbol,meta,size)
     sym=str(symbol or "").strip()
-    # V20.7.4.21.4.3: do not append speculative symbol-image URLs here.
+    # V20.7.4.21.6.8 — global symbol-logo fallbacks. Provider metadata and
+    # company website remain first choice, but search results often arrive with
+    # no website/logo metadata. Add symbol-aware public logo endpoints before
+    # falling back to initials so ASX and other global listings can still show
+    # their real company identity.
+    if sym:
+        clean_sym=sym.upper().strip()
+        symbol_logo_candidates=[
+            f"https://financialmodelingprep.com/image-stock/{quote(clean_sym)}.png",
+            f"https://images.financialmodelingprep.com/symbol/{quote(clean_sym)}.png",
+        ]
+        for u in symbol_logo_candidates:
+            if u not in base: base.append(u)
+    # V20.7.4.21.4.3: do not append other speculative symbol-image URLs here.
     # A remote 404 renders as a broken-image icon in Streamlit because event-handler
     # attributes can be sanitised. Prefer verified provider/domain candidates and
     # fall back cleanly to the letter avatar when no reliable logo is known.
@@ -4141,7 +4154,8 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
         "zip co limited":"zip.co","zip co ltd":"zip.co","ziprecruiter":"ziprecruiter.com",
         "the coca-cola company":"coca-colacompany.com","coca-cola hbc":"coca-colahellenic.com","coca-cola europacific":"cocacolaep.com",
         "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com","pepsico":"pepsico.com","pepsi co":"pepsico.com",
-        "commonwealth bank of australia":"commbank.com.au","commonwealth bank":"commbank.com.au","commbank":"commbank.com.au"
+        "commonwealth bank of australia":"commbank.com.au","commonwealth bank":"commbank.com.au","commbank":"commbank.com.au",
+        "anz group holdings":"anz.com.au","australia and new zealand banking group":"anz.com.au","anz":"anz.com.au"
     }
     dom=next((d for k,d in known.items() if k in nm),"")
     if dom:
