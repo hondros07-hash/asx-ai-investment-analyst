@@ -2746,18 +2746,79 @@ def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
         st.session_state["chr_primary_nav"]=target
 
-# Use Streamlit's in-app event channel instead of browser URL anchors.
-# This avoids document-level navigation/white flashes and needs no second rerun.
-st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
-for _idx,(_key,_icon,_title,_sub) in enumerate(NAV_ITEMS):
+# V21.1.1 — integrated Company Command Centre navigation.
+_cc_sub_key="chr_cc_sub_v21001"
+_cc_items=["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence","News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"]
+if st.session_state.get(_cc_sub_key) not in _cc_items:
+    st.session_state[_cc_sub_key]="Overview"
+def _chr_set_cc_sub_v2111(target):
+    if target in _cc_items:
+        st.session_state[_cc_sub_key]=target
+        st.session_state["chr_primary_nav"]="Company Command Centre"
+
+st.sidebar.markdown(r'''<style>
+[data-testid="stSidebar"] .ccnav-inline{margin:-2px 8px 5px 28px;padding:2px 0 4px 8px;border-left:1px solid rgba(143,180,212,.38)}
+[data-testid="stSidebar"] .ccnav-inline-group{font-size:6.6px;letter-spacing:.12em;font-weight:900;color:#e0b45a;margin:5px 6px 1px;text-transform:uppercase}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"]{margin:0!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button{height:24px!important;min-height:24px!important;border-radius:4px!important;padding:0 6px 0 9px!important;border:0!important;box-shadow:none!important;font-size:9px!important;font-weight:600!important;justify-content:flex-start!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]{background:transparent!important;color:#e8f2fb!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="primary"]{background:#1687ff!important;color:#fff!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button span[data-testid="stIconMaterial"]{display:none!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]{position:static!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"] p{font-size:9px!important;line-height:1.05!important;font-weight:600!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]:after{display:none!important;content:none!important}
+</style>''',unsafe_allow_html=True)
+# V21.1.2 — authoritative sidebar renderer.
+# The Command Centre and its children live in ONE Streamlit container placed
+# between Company Search and Markets.  This makes DOM/render order explicit
+# instead of relying on interleaved root-level sidebar deltas.
+_material_icons={"home":":material/home:","search":":material/search:","document":":material/description:","chart":":material/monitoring:","star":":material/star_outline:","briefcase":":material/business_center:","screen":":material/filter_alt:","bell":":material/notifications_none:","calendar":":material/calendar_month:","research":":material/query_stats:","settings":":material/settings:"}
+
+def _chr_render_primary_nav_item_v2112(idx, item):
+    _key,_icon,_title,_sub=item
     _active=(_key==primary)
-    _material_icons={"home":":material/home:","search":":material/search:","document":":material/description:","chart":":material/monitoring:","star":":material/star_outline:","briefcase":":material/business_center:","screen":":material/filter_alt:","bell":":material/notifications_none:","calendar":":material/calendar_month:","research":":material/query_stats:","settings":":material/settings:"}
     _clean_title=_title.split("  ",1)[-1]
-    st.sidebar.button(
-        _clean_title, key=f"chr_nav_native_{_idx}", use_container_width=True,
-        type="primary" if _active else "secondary", icon=_material_icons.get(_icon),
-        on_click=_chr_set_primary_nav_v2074191, args=(_key,)
-    )
+    st.button(_clean_title,key=f"chr_nav_native_{idx}",use_container_width=True,
+              type="primary" if _active else "secondary",
+              icon=_material_icons.get(_icon),
+              on_click=_chr_set_primary_nav_v2074191,args=(_key,))
+
+def _chr_render_cc_children_v2112():
+    _cc_groups=[
+        ("COMMAND CENTRE",["Overview"]),
+        ("COMPANY",["Fundamentals","Valuation"]),
+        ("MARKET",["Technical","Quant","Forecasts"]),
+        ("INTELLIGENCE",["Announcements & Reports","Report Intelligence","News & Events"]),
+        ("MONITORING",["Thesis Scorecard","Catalyst Calendar"]),
+    ]
+    _cc_i=0
+    st.markdown('<div class="ccnav-inline-start"></div>',unsafe_allow_html=True)
+    for _grp,_items in _cc_groups:
+        st.markdown(f'<div class="ccnav-inline-group">{_grp}</div>',unsafe_allow_html=True)
+        for _item in _items:
+            st.button(_item,key=f"ccinline_{_cc_i}",use_container_width=True,
+                      type="primary" if st.session_state[_cc_sub_key]==_item else "secondary",
+                      on_click=_chr_set_cc_sub_v2111,args=(_item,))
+            _cc_i+=1
+
+st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
+# Top-level entries that must precede the Command Centre.
+with st.sidebar.container():
+    _chr_render_primary_nav_item_v2112(0,NAV_ITEMS[0])
+    _chr_render_primary_nav_item_v2112(1,NAV_ITEMS[1])
+
+# Authoritative Command Centre block: parent and all 11 children are emitted
+# inside the same container, so no later primary item can render between them.
+with st.sidebar.container():
+    _chr_render_primary_nav_item_v2112(2,NAV_ITEMS[2])
+    if primary=="Company Command Centre":
+        _chr_render_cc_children_v2112()
+
+# All remaining global navigation follows the complete Command Centre block.
+with st.sidebar.container():
+    for _idx in range(3,len(NAV_ITEMS)):
+        _chr_render_primary_nav_item_v2112(_idx,NAV_ITEMS[_idx])
 st.sidebar.markdown('</nav>',unsafe_allow_html=True)
 
 # V20.5.4: removed the legacy hidden sidebar company selector. It was a second
@@ -2919,36 +2980,15 @@ elif primary=="Screening": page="Markets"
 elif primary=="Alerts": page="Something Changed"
 elif primary=="Calendar": page="Catalyst Calendar"
 elif primary in SUBPAGES:
-    # V21.0.1 — independent-engine navigator for Company Command Centre.
+    # V21.1.1 — submenu is rendered inline directly beneath Company Command Centre.
     if primary=="Company Command Centre":
-        _cc_sub_key="chr_cc_sub_v21001"
-        if st.session_state.get(_cc_sub_key) not in SUBPAGES[primary]: st.session_state[_cc_sub_key]="Overview"
-        def _chr_set_cc_sub_v21001(target):
-            if target in SUBPAGES["Company Command Centre"]: st.session_state[_cc_sub_key]=target
-        st.sidebar.markdown("""<style>
-        [data-testid="stSidebar"] .ccnav-wrap{margin:9px 8px 3px;padding-top:7px;border-top:1px solid rgba(255,255,255,.18)}
-        [data-testid="stSidebar"] .ccnav-title{font-size:8px;letter-spacing:.13em;font-weight:800;color:#8fb4d4;margin:0 0 5px;text-transform:uppercase}
-        [data-testid="stSidebar"] .ccnav-group{font-size:7px;letter-spacing:.12em;font-weight:900;color:#e0b45a;margin:7px 10px 2px;text-transform:uppercase}
-        [data-testid="stSidebar"] [class*="st-key-ccnav_"]{margin:0 8px!important}
-        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button{height:27px!important;min-height:27px!important;border-radius:5px!important;padding:0 8px 0 12px!important;border:0!important;box-shadow:none!important;font-size:9.5px!important;font-weight:600!important;justify-content:flex-start!important}
-        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="secondary"]{background:transparent!important;color:#e8f2fb!important}
-        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="secondary"]:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
-        [data-testid="stSidebar"] [class*="st-key-ccnav_"] .stButton>button[kind="primary"]{background:#1687ff!important;color:#fff!important}
-        </style><div class="ccnav-wrap"><div class="ccnav-title">Company Command Centre</div></div>""",unsafe_allow_html=True)
-        _cc_groups=[("COMMAND CENTRE",["Overview"]),("COMPANY",["Fundamentals","Valuation"]),("MARKET",["Technical","Quant","Forecasts"]),("INTELLIGENCE",["Announcements & Reports","Report Intelligence","News & Events"]),("MONITORING",["Thesis Scorecard","Catalyst Calendar"])]
-        _cc_i=0
-        for _grp,_items in _cc_groups:
-            st.sidebar.markdown(f'<div class="ccnav-group">{_grp}</div>',unsafe_allow_html=True)
-            for _item in _items:
-                st.sidebar.button(_item,key=f"ccnav_{_cc_i}",use_container_width=True,type="primary" if st.session_state[_cc_sub_key]==_item else "secondary",on_click=_chr_set_cc_sub_v21001,args=(_item,))
-                _cc_i+=1
-        sub=st.session_state[_cc_sub_key]
+        sub=st.session_state.get(_cc_sub_key,"Overview")
     else:
         sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}")
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.0.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.1.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit

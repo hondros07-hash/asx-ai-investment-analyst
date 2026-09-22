@@ -1,3 +1,10 @@
+# Chrímata V21.1.2 — Authoritative Sidebar Navigation Renderer Fix
+
+- Rebuilds the Company Command Centre sidebar order using explicit Streamlit containers.
+- Renders Home and Company Search first, then the Company Command Centre parent plus all 11 independent research pages as one authoritative block, then Markets through Settings.
+- Removes reliance on interleaved root-level sidebar rendering for submenu placement.
+- Preserves the existing research engines and page routing.
+
 # Chrímata V20.7.4.21.4 — Interactive Search Selection & Market Data Enrichment Fix
 
 Native in-app company selection plus cached market metadata enrichment for Company Search and Quick View.
