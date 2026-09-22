@@ -4273,10 +4273,14 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     }
     dom=next((d for k,d in known.items() if k in nm),"")
     if dom:
-        # V21.2.6 — prefer a full-resolution brand mark for known canonical domains.
-        branded=[
-            f"https://www.google.com/s2/favicons?domain_url=https://{quote(dom)}&sz={max(256,int(size)*2)}",
+        # V21.2.12 — prefer verified official brand assets where Chrímata knows one,
+        # then retain provider/domain fallbacks. This avoids stretching tiny favicons.
+        official_assets={
+            "zip.co":["https://zip.co/nz/wp-content/uploads/2021/08/logo-dark.svg"],
+        }
+        branded=list(official_assets.get(dom,[])) + [
             f"https://logo.clearbit.com/{quote(dom)}?size={max(256,int(size)*2)}",
+            f"https://www.google.com/s2/favicons?domain_url=https://{quote(dom)}&sz={max(256,int(size)*2)}",
         ]
         for u in branded:
             if u in base: base.remove(u)
@@ -5842,7 +5846,13 @@ elif page=="Company Command Centre":
         _deltatxt="—" if not np.isfinite(_ccpct) else f"{_ccchg:+.3f} ({_ccpct:+.2%})"; _delta_cls="v2121-up" if np.isfinite(_ccchg) and _ccchg>=0 else "v2121-down"
         _range_pos=50.0 if _cchi<=_cclo else max(0.0,min(100.0,(price-_cclo)/(_cchi-_cclo)*100.0)); _logo_candidates=_chr_identity_logo_candidates(ticker,_ccmeta,_ccname,192); _initials="".join([x[0] for x in str(_ccname).split()[:3] if x])[:3].upper() or str(ticker).split(".")[0][:3].upper()
         if _logo_candidates:
-            _src=html.escape(_logo_candidates[0],quote=True); _logo_html=f'<img src="{_src}" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';"><div class="v2121-fallback" style="display:none">{html.escape(_initials)}</div>'
+            _src=html.escape(_logo_candidates[0],quote=True)
+            _rest=html.escape("|".join(_logo_candidates[1:]),quote=True)
+            _logo_html=(f'<img src="{_src}" data-fallbacks="{_rest}" '
+                        f'onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];'
+                        f'if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}'
+                        f'else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';}}">'
+                        f'<div class="v2121-fallback" style="display:none">{html.escape(_initials)}</div>')
         else: _logo_html=f'<div class="v2121-fallback">{html.escape(_initials)}</div>'
         _desc=str(_ccmeta.get("tagline") or _ccmeta.get("description") or "").strip()
         if not _desc:
