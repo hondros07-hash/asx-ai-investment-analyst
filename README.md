@@ -1,4 +1,4 @@
-Chrímata V20.7.4.20.1 — Reference-Matched Search Results Rebuild
+Chrímata V20.7.4.20.2 — Search Results Layout Containment Fix
 
 ## V20.5.4 — Search Bar Alignment & Header Polish
 
