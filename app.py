@@ -4755,12 +4755,22 @@ def _chr_company_search_page():
 .v421qhero{gap:9px!important}.v421qhero .v421qlogo,.v421qhero .v421av{width:38px!important;height:38px!important}.v421qname{font-size:17px!important}.v421meta{font-size:9.5px!important;margin-top:2px!important}
 .v421price-line{margin:4px 0 2px!important;gap:12px!important}.v421price-main{font-size:29px!important}.v421price-change{font-size:14px!important}
 .st-key-chr_search_watch_top_v2074215 button{height:31px!important;min-height:31px!important;font-size:10px!important;padding:0 7px!important}
-.st-key-chr_qv_range_v207421{margin:0!important;padding:0!important}
-.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]{width:100%!important}.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]>div{display:flex!important;width:100%!important;gap:2px!important}.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button{flex:1 1 0!important;min-height:30px!important;padding:4px 7px!important;border-radius:7px!important;font-size:10.5px!important;font-weight:800!important}
-.st-key-chr_qv_range_v207421 label{border:0!important;background:transparent!important;min-height:28px!important;height:28px!important;padding:0 8px!important;border-radius:5px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important}
+/* V20.7.4.21.6.3 — reference-matched chart range controls.
+   Remove the segmented-control rail/dividers and present seven evenly spaced
+   text choices. Only the active timeframe receives the compact blue pill. */
+.st-key-chr_qv_range_v207421{margin:0 0 3px!important;padding:0!important}
+.st-key-chr_qv_range_v207421 [data-testid="stWidgetLabel"],
+.st-key-chr_qv_range_v207421 > label{display:none!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]{width:100%!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]>div{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;gap:8px!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button{flex:1 1 0!important;min-width:0!important;min-height:29px!important;height:29px!important;padding:0 6px!important;margin:0!important;border:0!important;border-radius:5px!important;background:transparent!important;box-shadow:none!important;font-size:10.5px!important;font-weight:800!important;color:#53677f!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button+button{border-left:0!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button[data-selected="true"]{background:#0d67d7!important;color:#fff!important}
+.st-key-chr_qv_range_v207421 label{border:0!important;background:transparent!important;box-shadow:none!important;min-height:29px!important;height:29px!important;padding:0 6px!important;margin:0!important;border-radius:5px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important}
 .st-key-chr_qv_range_v207421 label>div:first-child{display:none!important}
-.st-key-chr_qv_range_v207421 label p{font-size:10px!important;font-weight:800!important;color:#53677f!important;margin:0!important}
-.st-key-chr_qv_range_v207421 label:has(input:checked){background:#0d67d7!important;border:0!important}
+.st-key-chr_qv_range_v207421 label p{font-size:10.5px!important;font-weight:800!important;color:#53677f!important;margin:0!important}
+.st-key-chr_qv_range_v207421 label:has(input:checked){background:#0d67d7!important;border:0!important;box-shadow:none!important}
 .st-key-chr_qv_range_v207421 label:has(input:checked) p{color:#fff!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]{height:104px!important;min-height:104px!important;margin:0!important;padding:0!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]>div{height:104px!important;min-height:104px!important}
@@ -4895,7 +4905,7 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.6 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.6.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page=="Markets":
