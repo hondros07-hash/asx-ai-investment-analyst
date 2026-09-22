@@ -2711,7 +2711,7 @@ _valid_nav={x[0] for x in NAV_ITEMS}
 if "chr_router_v2054_ready" not in st.session_state:
     st.session_state["chr_primary_nav"]="Home"
     st.session_state["chr_router_v2054_ready"]=True
-# V20.7.4.21.4 — native result-row selection keeps Company Search authoritative.
+# V20.7.4.21.4.1 — native result-row selection keeps Company Search authoritative.
 # A chr_pick URL must never be interpreted as a request to fall back to Home.
 try:
     if st.query_params.get("chr_pick") is not None:
@@ -2922,7 +2922,7 @@ elif primary in SUBPAGES:
     sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}"); page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.4</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v20.7.4.21.4.1</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4680,7 +4680,7 @@ def _chr_company_search_page():
     .v421card{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.04)}
     .v421results{height:620px;display:flex;flex-direction:column}.v421head{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5;flex:0 0 auto}.v421title{font-size:20px;line-height:1.05;font-weight:900;color:#10264b;letter-spacing:-.02em}.v421sub{font-size:11px;color:#60748d;margin-top:4px}.v421table{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}.v421row{display:grid;grid-template-columns:minmax(180px,1.75fr) 68px 76px minmax(112px,1.05fr) 82px 68px 92px;align-items:center;min-height:39px;border-bottom:1px solid #e5edf5;font-size:10.5px;color:#183253}.v421th{position:sticky;top:0;z-index:3;background:#edf6ff;color:#184d87;font-weight:900;min-height:38px}.v421cell{padding:5px 7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421num{text-align:right}.v421co{display:flex;align-items:center;gap:7px;font-weight:850}.v421co a{color:#0863c5;text-decoration:none;font-weight:900;overflow:hidden;text-overflow:ellipsis}.v421logo{width:30px;height:30px;object-fit:contain;border-radius:6px;flex:0 0 30px;background:#fff}.v421av{width:30px!important;height:30px!important;flex-basis:30px!important}.v421av{width:25px;height:25px;border-radius:50%;background:#eef3f8;display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 25px}.v421country{display:flex;gap:6px;align-items:center}.v421flagimg{width:22px;height:15px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(15,23,42,.08);flex:0 0 22px}.v421up{color:#079447;font-weight:900}.v421down{color:#dc3d3d;font-weight:900}.v421flat{color:#60748d;font-weight:800}
     .st-key-chr_search_results_panel_v2074211,.st-key-chr_search_quickview_panel_v2074211{height:620px;min-height:620px;max-height:620px;overflow:hidden}
-    .chr-native-results-head{display:grid;grid-template-columns:2.75fr .72fr .82fr 1.55fr .9fr .8fr 1fr;align-items:center;min-height:38px;background:#edf6ff;border-bottom:1px solid #e5edf5;color:#184d87;font-size:10.5px;font-weight:900}.chr-native-results-head>div{padding:5px 7px;white-space:nowrap}.chr-native-results-head .n{text-align:right}.chr-native-results-title{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5}.chr-native-results-scroll{height:522px;overflow-y:auto;overflow-x:hidden}.chr-native-result-row{border-bottom:1px solid #e5edf5;min-height:48px;padding:4px 5px}.chr-native-result-row.selected{background:#f5f9ff}.chr-native-result-row [data-testid="stColumn"]{display:flex;align-items:center}.chr-native-result-row .stButton{width:100%}.chr-native-result-row .stButton button{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:30px!important;height:auto!important;color:#0863c5!important;font-size:10.5px!important;font-weight:900!important;justify-content:flex-start!important;text-align:left!important}.chr-native-result-row .stButton button:hover{color:#064f9d!important;background:transparent!important}.chr-native-cell{font-size:10.5px;color:#183253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:7px}.chr-native-num{text-align:right;width:100%}.chr-native-country{display:flex;gap:6px;align-items:center}.chr-native-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;margin-right:6px;vertical-align:middle}.chr-native-avatar{width:30px;height:30px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-right:6px}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{height:100%}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
+    .chr-native-results-head{display:grid;grid-template-columns:2.75fr .72fr .82fr 1.55fr .9fr .8fr 1fr;align-items:center;min-height:38px;background:#edf6ff;border-bottom:1px solid #e5edf5;color:#184d87;font-size:10.5px;font-weight:900}.chr-native-results-head>div{padding:5px 7px;white-space:nowrap}.chr-native-results-head .n{text-align:right}.chr-native-results-title{padding:12px 15px 9px;border-bottom:1px solid #e1ebf5}.chr-native-results-scroll{height:522px;overflow-y:auto;overflow-x:hidden}.chr-native-result-row{border-bottom:1px solid #e5edf5;min-height:48px;padding:4px 5px}.chr-native-result-row.selected{background:#f5f9ff}.chr-native-result-row [data-testid="stColumn"]{display:flex;align-items:center}.chr-native-result-row .stButton{width:100%}.chr-native-result-row .stButton button{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:30px!important;height:auto!important;color:#0863c5!important;font-size:10.5px!important;font-weight:900!important;justify-content:flex-start!important;text-align:left!important}.chr-native-result-row .stButton button:hover{color:#064f9d!important;background:transparent!important}.chr-native-cell{font-size:10.5px;color:#183253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:7px}.chr-native-num{text-align:right;width:100%}.chr-native-country{display:flex;gap:6px;align-items:center}.chr-native-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;margin-right:6px;vertical-align:middle}.chr-native-avatar{width:30px;height:30px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-right:6px}.st-key-chr_search_results_panel_v2074211>div,.st-key-chr_search_quickview_panel_v2074211>div{min-height:0}.st-key-chr_search_results_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04)}.st-key-chr_search_quickview_panel_v2074211{display:flex;flex-direction:column}.st-key-chr_search_quickview_panel_v2074211 .v421card{flex:1 1 auto}.v421q{padding:14px 15px}.v421qtop{display:flex;gap:10px;align-items:center}.v421qlogo{width:42px;height:42px;object-fit:contain;border-radius:7px}.v421qname{font-size:18px;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:3px}.v421qprice{font-size:28px;font-weight:900;margin:12px 0;color:#101820}.v421stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #e7edf4;font-size:11.5px}.v421stat span{color:#64778e}.v421stat b{color:#172b4d;text-align:right}.v421cons{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.v421pill{background:#dcf4e7;color:#118348;border-radius:12px;padding:4px 9px;font-size:11px;font-weight:850}.v421mini{background:#fff;border:1px solid #d8e3ef;border-radius:10px;padding:11px 13px;min-height:165px}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
     </style>""",unsafe_allow_html=True)
     rows=[]; selres=str(selected.get("_resolved") or selected.get("Ticker") or "")
     for i,(_,r) in enumerate(view.iterrows()):
@@ -4712,37 +4712,40 @@ def _chr_company_search_page():
     lc,rc=st.columns([1.82,1],gap="small")
     with lc:
         with st.container(key="chr_search_results_panel_v2074211"):
-            st.markdown(f'<div class="v421card" style="height:620px;overflow:hidden"><div class="chr-native-results-title"><div class="v421title">Search Results</div><div class="v421sub">Showing results for <b>“{html.escape(query)}”</b> ({len(view)} results)</div></div><div class="chr-native-results-head"><div>Company ↕</div><div>Ticker ↕</div><div>Exchange</div><div>Country</div><div class="n">Price</div><div class="n">Day</div><div class="n">Market Cap</div></div>',unsafe_allow_html=True)
-            # Native Streamlit buttons provide selection without URL navigation.
-            for i,(_,r) in enumerate(view.iterrows()):
-                payload=r.to_dict(); rres=str(r.get("_resolved") or r.get("Ticker") or "")
-                selected_cls=" selected" if rres==selres else ""
-                st.markdown(f'<div class="chr-native-result-row{selected_cls}">',unsafe_allow_html=True)
-                c0,c1,c2,c3,c4,c5,c6=st.columns([2.75,.72,.82,1.55,.9,.8,1],gap="small",vertical_alignment="center")
-                cr=aliases.get(str(r.get("Country") or ""),str(r.get("Country") or ""))
-                logo_meta={"logo_url":str(r.get("Logo") or ""),"website":str(r.get("Website") or "")}
-                candidates=_chr_identity_logo_candidates(rres,logo_meta,str(r.get("Company") or ""),96)
-                with c0:
-                    a,b=st.columns([.18,.82],gap="small",vertical_alignment="center")
-                    with a:
-                        if candidates:
-                            # Browser-side fallbacks keep failed logo hosts from breaking the row.
-                            src=html.escape(candidates[0],quote=True); rest=html.escape("|".join(candidates[1:]),quote=True); initial=html.escape(str(r.get("Company") or "?")[:1].upper())
-                            st.markdown(f'<img class="chr-native-logo" src="{src}" data-fallbacks="{rest}" onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';}}"><span class="chr-native-avatar" style="display:none">{initial}</span>',unsafe_allow_html=True)
-                        else:
-                            st.markdown(f'<span class="chr-native-avatar">{html.escape(str(r.get("Company") or "?")[:1].upper())}</span>',unsafe_allow_html=True)
-                    with b:
-                        st.button(str(r.get("Company") or "—"),key=f"chr_pick_native_v2074214_{i}_{rres}",use_container_width=True,on_click=_chr_pick_company_v2074214,args=(payload,))
-                with c1: st.markdown(f'<div class="chr-native-cell">{html.escape(str(r.get("Ticker") or "—"))}</div>',unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="chr-native-cell">{html.escape(exch(r.get("Exchange")))}</div>',unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="chr-native-cell chr-native-country">{flag_html(cr)}{html.escape(cr or "—")}</div>',unsafe_allow_html=True)
-                with c4: st.markdown(f'<div class="chr-native-cell chr-native-num">{price(r.get("Price"),r.get("Currency"))}</div>',unsafe_allow_html=True)
-                try: dv=float(r.get("Day %")); dt="—" if not np.isfinite(dv) else f"{dv:+.2f}%"; dc="v421up" if dv>0 else ("v421down" if dv<0 else "v421flat")
-                except Exception: dt="—"; dc="v421flat"
-                with c5: st.markdown(f'<div class="chr-native-cell chr-native-num {dc}">{dt}</div>',unsafe_allow_html=True)
-                with c6: st.markdown(f'<div class="chr-native-cell chr-native-num">{capfmt(r.get("Market Cap"),r.get("Currency"))}</div>',unsafe_allow_html=True)
-                st.markdown('</div>',unsafe_allow_html=True)
-            st.markdown('</div>',unsafe_allow_html=True)
+            # V20.7.4.21.4.1 — do not use an open HTML wrapper around native
+            # Streamlit widgets. Each st.markdown call is its own DOM block; the old
+            # 620px wrapper consumed the panel and pushed every native result row
+            # below the clipped viewport. Keep the card on the keyed container and
+            # render the title/header as normal children instead.
+            st.markdown(f'<div class="chr-native-results-title"><div class="v421title">Search Results</div><div class="v421sub">Showing results for <b>“{html.escape(query)}”</b> ({len(view)} results)</div></div><div class="chr-native-results-head"><div>Company ↕</div><div>Ticker ↕</div><div>Exchange</div><div>Country</div><div class="n">Price</div><div class="n">Day</div><div class="n">Market Cap</div></div>',unsafe_allow_html=True)
+            # A real Streamlit scroll container keeps all native selection buttons
+            # visible/clickable while preserving the fixed-height dual-panel layout.
+            with st.container(height=520, border=False, key="chr_search_results_scroll_v20742141"):
+                for i,(_,r) in enumerate(view.iterrows()):
+                    payload=r.to_dict(); rres=str(r.get("_resolved") or r.get("Ticker") or "")
+                    c0,c1,c2,c3,c4,c5,c6=st.columns([2.75,.72,.82,1.55,.9,.8,1],gap="small",vertical_alignment="center")
+                    cr=_chr_identity_country(rres, r.get("Exchange",""), r.get("Country", ""))
+                    logo_meta={"logo_url":str(r.get("Logo") or ""),"website":str(r.get("Website") or "")}
+                    candidates=_chr_identity_logo_candidates(rres,logo_meta,str(r.get("Company") or ""),96)
+                    with c0:
+                        a,b=st.columns([.18,.82],gap="small",vertical_alignment="center")
+                        with a:
+                            if candidates:
+                                src=html.escape(candidates[0],quote=True); rest=html.escape("|".join(candidates[1:]),quote=True); initial=html.escape(str(r.get("Company") or "?")[:1].upper())
+                                st.markdown(f'<img class="chr-native-logo" src="{src}" data-fallbacks="{rest}" onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';}}"><span class="chr-native-avatar" style="display:none">{initial}</span>',unsafe_allow_html=True)
+                            else:
+                                st.markdown(f'<span class="chr-native-avatar">{html.escape(str(r.get("Company") or "?")[:1].upper())}</span>',unsafe_allow_html=True)
+                        with b:
+                            st.button(str(r.get("Company") or "—"),key=f"chr_pick_native_v20742141_{i}_{rres}",use_container_width=True,on_click=_chr_pick_company_v2074214,args=(payload,))
+                    with c1: st.markdown(f'<div class="chr-native-cell">{html.escape(str(r.get("Ticker") or "—"))}</div>',unsafe_allow_html=True)
+                    with c2: st.markdown(f'<div class="chr-native-cell">{html.escape(exch(r.get("Exchange")))}</div>',unsafe_allow_html=True)
+                    with c3: st.markdown(f'<div class="chr-native-cell chr-native-country">{flag_html(cr)}{html.escape(cr or "—")}</div>',unsafe_allow_html=True)
+                    with c4: st.markdown(f'<div class="chr-native-cell chr-native-num">{price(r.get("Price"),r.get("Currency"))}</div>',unsafe_allow_html=True)
+                    try: dv=float(r.get("Day %")); dt="—" if not np.isfinite(dv) else f"{dv:+.2f}%"; dc="v421up" if dv>0 else ("v421down" if dv<0 else "v421flat")
+                    except Exception: dt="—"; dc="v421flat"
+                    with c5: st.markdown(f'<div class="chr-native-cell chr-native-num {dc}">{dt}</div>',unsafe_allow_html=True)
+                    with c6: st.markdown(f'<div class="chr-native-cell chr-native-num">{capfmt(r.get("Market Cap"),r.get("Currency"))}</div>',unsafe_allow_html=True)
+                    st.markdown('<div style="height:1px;background:#e5edf5;margin:1px 0 3px"></div>',unsafe_allow_html=True)
     with rc:
         with st.container(key="chr_search_quickview_panel_v2074211"):
             st.markdown(f'<div class="v421card"><div class="v421q"><div class="v421qtop">{qlh}<div><div class="v421qname">{html.escape(str(company))}</div><div class="v421meta">{html.escape(str(selected.get("Ticker") or resolved))} | {html.escape(exch(selected.get("Exchange")))} | {flag} {html.escape(cr or "—")}</div></div></div><div class="v421qprice">{price(last,cur)} <span class="{dcls}" style="font-size:14px">{dt}</span></div>',unsafe_allow_html=True)
@@ -4779,7 +4782,7 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.4 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.4.1 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page=="Markets":
