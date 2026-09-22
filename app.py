@@ -4198,14 +4198,56 @@ def _chr_search_market_enrichment_v2074214(symbol):
                 out[k]=v
     except Exception:
         pass
-    # Last-resort market-cap calculation when shares are known.
+    # V20.7.4.21.6.9 — Global Fundamental Data Enrichment Fix.
+    # Derive commonly missing Quick View fundamentals from independent Yahoo
+    # fields when the primary info payload is thin. Never fabricate a value.
     try:
-        mc=_mia_num(out.get("marketCap"))
-        sh=_mia_num(out.get("sharesOutstanding"))
-        if not np.isfinite(mc) and np.isfinite(sh) and sh>0:
-            q=overview_quote(symbol,"5d") or {}
-            px=_mia_num(q.get("last"))
-            if np.isfinite(px) and px>0: out["marketCap"]=float(px*sh)
+        q=overview_quote(symbol,"5d") or {}
+        px=_mia_num(q.get("last"))
+        mc=_mia_num(out.get("marketCap")); sh=_mia_num(out.get("sharesOutstanding"))
+        if not np.isfinite(mc) and np.isfinite(sh) and sh>0 and np.isfinite(px) and px>0:
+            out["marketCap"]=float(px*sh)
+
+        # P/E: trailing -> forward -> price / trailing EPS -> price / forward EPS.
+        pe=_mia_num(out.get("trailingPE"))
+        if not np.isfinite(pe): pe=_mia_num(out.get("forwardPE"))
+        if not np.isfinite(pe) and np.isfinite(px) and px>0:
+            eps=_mia_num(out.get("trailingEps"))
+            if not np.isfinite(eps): eps=_mia_num(out.get("epsTrailingTwelveMonths"))
+            if not np.isfinite(eps): eps=_mia_num(out.get("forwardEps"))
+            if np.isfinite(eps) and eps>0: out["trailingPE"]=float(px/eps)
+
+        # Dividend yield: provider yield -> annual dividend rate / price ->
+        # trailing 12-month cash dividends / current price. A confirmed empty
+        # dividend history is represented as 0.0 rather than an unknown dash.
+        dy=_mia_num(out.get("dividendYield"))
+        if not np.isfinite(dy): dy=_mia_num(out.get("trailingAnnualDividendYield"))
+        if not np.isfinite(dy) and np.isfinite(px) and px>0:
+            rate=_mia_num(out.get("dividendRate"))
+            if not np.isfinite(rate): rate=_mia_num(out.get("trailingAnnualDividendRate"))
+            if np.isfinite(rate) and rate>=0:
+                out["dividendYield"]=float(rate/px)
+            else:
+                try:
+                    div=yf.Ticker(symbol).get_dividends(period="1y")
+                    if div is not None:
+                        vals=pd.to_numeric(div,errors="coerce").dropna()
+                        out["dividendYield"]=float(vals.sum()/px) if len(vals) else 0.0
+                except Exception:
+                    pass
+
+        # Newer yfinance exposes stable sector/industry keys even when the
+        # display labels are absent. Convert those keys into readable labels.
+        def _pretty_key(v):
+            v=str(v or "").strip()
+            if not v: return ""
+            return v.replace("—","-").replace("_","-").replace("-"," ").title()
+        if not (out.get("sector") or out.get("sectorDisp")):
+            sk=out.get("sectorKey")
+            if sk: out["sector"]=_pretty_key(sk)
+        if not (out.get("industry") or out.get("industryDisp")):
+            ik=out.get("industryKey")
+            if ik: out["industry"]=_pretty_key(ik)
     except Exception:
         pass
     return out
@@ -4828,7 +4870,7 @@ def _chr_company_search_page():
     if not np.isfinite(pe): pe=_mia_num(meta.get("forwardPE"))
     dy=_mia_num(meta.get("dividendYield"));
     if not np.isfinite(dy): dy=_mia_num(meta.get("trailingAnnualDividendYield"))
-    sector=meta.get("sector") or meta.get("sectorDisp") or selected.get("Sector") or "—"; industry=meta.get("industry") or meta.get("industryDisp") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
+    sector=meta.get("sector") or meta.get("sectorDisp") or meta.get("sectorKey") or selected.get("Sector") or "—"; industry=meta.get("industry") or meta.get("industryDisp") or meta.get("industryKey") or selected.get("Industry") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
     qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or "")
     # V20.7.4.21.6.5 — keep the selected listing identity isolated from the
     # Search Results row loop. Previously the shared `cr` variable was overwritten
