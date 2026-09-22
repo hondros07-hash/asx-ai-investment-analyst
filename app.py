@@ -2711,13 +2711,25 @@ _valid_nav={x[0] for x in NAV_ITEMS}
 if "chr_router_v2054_ready" not in st.session_state:
     st.session_state["chr_primary_nav"]="Home"
     st.session_state["chr_router_v2054_ready"]=True
-# V20.7.4.21.4.3 — native result-row selection keeps Company Search authoritative.
-# A chr_pick URL must never be interpreted as a request to fall back to Home.
+# V21.2.11 — listing-aware Command Centre deep links.
+# chr_cc duplicates the current research context in a new tab. chr_compare opens
+# the dedicated comparison workspace with the originating listing preloaded.
 try:
-    if st.query_params.get("chr_pick") is not None:
+    _chr_cc_deep=str(st.query_params.get("chr_cc") or "").strip().upper()
+    _chr_compare_deep=str(st.query_params.get("chr_compare") or "").strip().upper()
+    if _chr_cc_deep:
+        st.session_state["chr_active_ticker"]=_chr_cc_deep
+        st.session_state["mia_search_query"]=_chr_cc_deep
+        st.session_state["chr_primary_nav"]="Company Command Centre"
+        st.session_state["chr_cc_sub_v21001"]=str(st.query_params.get("chr_cc_page") or "Overview")
+    elif _chr_compare_deep:
+        st.session_state["chr_active_ticker"]=_chr_compare_deep
+        st.session_state["mia_search_query"]=_chr_compare_deep
+        st.session_state["chr_primary_nav"]="Company Command Centre"
+    elif st.query_params.get("chr_pick") is not None:
         st.session_state["chr_primary_nav"]="Company Search"
 except Exception:
-    pass
+    _chr_cc_deep=""; _chr_compare_deep=""
 primary=st.session_state.get("chr_primary_nav","Home")
 if primary not in _valid_nav:
     primary="Home"
@@ -3016,6 +3028,13 @@ elif primary in SUBPAGES:
         sub=st.sidebar.selectbox("Inside this workspace",SUBPAGES[primary],key=f"chr_sub_v209_{primary}")
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
+
+# Comparison is a utility workspace, not a twelfth Command Centre research engine.
+try:
+    if str(st.query_params.get("chr_compare") or "").strip():
+        page="Company Comparison"
+except Exception:
+    pass
 
 st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.1.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
@@ -5675,6 +5694,52 @@ Adapter         Adapter
 - Obtain legal advice on the exact Australian licensing/authorisation model before offering execution to other users.""")
 
 
+elif page=="Company Comparison":
+    # V21.2.11 — dedicated comparison utility. It deliberately reuses existing
+    # provider/history helpers and does not alter any independent research engine.
+    st.markdown('<div id="company-comparison"></div>',unsafe_allow_html=True)
+    _cmp_a=str(st.query_params.get("chr_compare") or ticker).strip().upper() or ticker
+    st.markdown("### Company Comparison")
+    st.caption("Compare the selected listing with another company. The originating company remains fixed on the left.")
+    _cmp_input=st.text_input("Compare with",value=str(st.session_state.get("chr_compare_input", "")),placeholder="Ticker or company symbol, e.g. SQ, PYPL, QAN.AX",key="chr_compare_input")
+    _cmp_b=resolve_bare_ticker(str(_cmp_input).strip().upper()) if str(_cmp_input).strip() else ""
+
+    def _cmp_snapshot(_t):
+        _h=history(_t,"1y")
+        _m={}
+        try: _m=_chr_search_market_enrichment_v2074214(_t) or {}
+        except Exception: _m={}
+        _nm=_m.get("longName") or _m.get("shortName") or (company_name(_t) if 'company_name' in globals() else _t) or _t
+        _px=float(_h["Close"].iloc[-1]) if _h is not None and not _h.empty else np.nan
+        _ret=np.nan
+        if _h is not None and not _h.empty and len(_h)>21:
+            _c=pd.to_numeric(_h["Close"],errors="coerce").dropna(); _ret=float(_c.iloc[-1]/_c.iloc[-22]-1) if len(_c)>21 else np.nan
+        return {"ticker":_t,"name":_nm,"price":_px,"marketCap":_mia_num(_m.get("marketCap")),"pe":_mia_num(_m.get("trailingPE")),"beta":_mia_num(_m.get("beta")),"sector":_m.get("sector") or "—","industry":_m.get("industry") or "—","ret1m":_ret}
+
+    _a=_cmp_snapshot(_cmp_a)
+    _b=_cmp_snapshot(_cmp_b) if _cmp_b and _cmp_b!=_cmp_a else None
+    st.markdown("""<style>.chr-cmp-head{border:1px solid #d9e5f2;border-radius:10px;background:#fff;padding:14px 16px;margin:4px 0 12px}.chr-cmp-name{font-size:18px;font-weight:900;color:#10264b}.chr-cmp-tick{font-size:11px;font-weight:800;color:#1769d2}.chr-cmp-meta{font-size:11px;color:#687f9b;margin-top:4px}</style>""",unsafe_allow_html=True)
+    _ca,_cb=st.columns(2)
+    with _ca:
+        st.markdown(f'<div class="chr-cmp-head"><div class="chr-cmp-name">{html.escape(str(_a["name"]))}</div><div class="chr-cmp-tick">{html.escape(_a["ticker"])}</div><div class="chr-cmp-meta">{html.escape(str(_a["sector"]))} · {html.escape(str(_a["industry"]))}</div></div>',unsafe_allow_html=True)
+    with _cb:
+        if _b:
+            st.markdown(f'<div class="chr-cmp-head"><div class="chr-cmp-name">{html.escape(str(_b["name"]))}</div><div class="chr-cmp-tick">{html.escape(_b["ticker"])}</div><div class="chr-cmp-meta">{html.escape(str(_b["sector"]))} · {html.escape(str(_b["industry"]))}</div></div>',unsafe_allow_html=True)
+        else:
+            st.info("Enter a second ticker above to begin the comparison.")
+    if _b:
+        def _money(v,t): return "—" if not np.isfinite(v) else display_price(v,t)
+        def _cap(v): return "—" if not np.isfinite(v) else (f"{v/1e9:.2f}B" if v>=1e9 else f"{v/1e6:.2f}M")
+        _rows=[
+            ("Share price",_money(_a["price"],_a["ticker"]),_money(_b["price"],_b["ticker"])),
+            ("Market cap",_cap(_a["marketCap"]),_cap(_b["marketCap"])),
+            ("P/E (TTM)","—" if not np.isfinite(_a["pe"]) else f'{_a["pe"]:.1f}×',"—" if not np.isfinite(_b["pe"]) else f'{_b["pe"]:.1f}×'),
+            ("Beta","—" if not np.isfinite(_a["beta"]) else f'{_a["beta"]:.2f}',"—" if not np.isfinite(_b["beta"]) else f'{_b["beta"]:.2f}'),
+            ("1M performance","—" if not np.isfinite(_a["ret1m"]) else f'{_a["ret1m"]:+.1%}',"—" if not np.isfinite(_b["ret1m"]) else f'{_b["ret1m"]:+.1%}'),
+        ]
+        st.dataframe(pd.DataFrame(_rows,columns=["Metric",_a["ticker"],_b["ticker"]]),use_container_width=True,hide_index=True)
+        st.caption("V21.2.11 comparison is evidence-first. Deeper Fundamentals, Valuation, Technical, Quant and Forecast engine comparisons can be layered onto this workspace without changing those engines.")
+
 elif page=="Company Command Centre":
     # V21.2 — AI Company Command Centre Overview Intelligence Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
@@ -5805,8 +5870,9 @@ elif page=="Company Command Centre":
             _data_status="Live data"; _data_status_cls="live"
         else:
             _data_status="Provider offline"; _data_status_cls="provider"
-        _cc_href=f"?chr_pick={html.escape(str(ticker),quote=True)}#investment-command-centre"
-        st.markdown(f"""<div class="v2121-shell"><div class="v2121-top"><div><div class="v2121-titleline"><span class="v2121-cc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13"></path><path d="M8.5 6.5 12 3l3.5 3.5"></path><path d="M7 9.5h10"></path><path d="M6 9.5 3.5 14h5L6 9.5Z"></path><path d="M18 9.5 15.5 14h5L18 9.5Z"></path><path d="M9 20h6"></path><path d="M10 16h4v4h-4z"></path></svg></span><div class="v2121-cc-title">Company Command Centre</div></div><div class="v2121-cc-sub"><b>Overview</b><span class="v2121-sep">|</span>{html.escape(str(ticker))} – {html.escape(str(_ccname))}</div></div><div class="v2121-motto">All the evidence. A clearer perspective.</div><div class="v2123-actions"><a class="v2123-btn" href="#watchlist">☆&nbsp; Add to Watchlist</a><a class="v2123-btn" href="#compare">↗&nbsp; Compare</a><a class="v2123-btn primary" href="{_cc_href}" target="_blank">Open in new tab&nbsp; →</a></div></div></div>""",unsafe_allow_html=True)
+        _cc_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Overview#investment-command-centre"
+        _compare_href=f"?chr_compare={_urlquote(str(ticker))}#company-comparison"
+        st.markdown(f"""<div class="v2121-shell"><div class="v2121-top"><div><div class="v2121-titleline"><span class="v2121-cc-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13"></path><path d="M8.5 6.5 12 3l3.5 3.5"></path><path d="M7 9.5h10"></path><path d="M6 9.5 3.5 14h5L6 9.5Z"></path><path d="M18 9.5 15.5 14h5L18 9.5Z"></path><path d="M9 20h6"></path><path d="M10 16h4v4h-4z"></path></svg></span><div class="v2121-cc-title">Company Command Centre</div></div><div class="v2121-cc-sub"><b>Overview</b><span class="v2121-sep">|</span>{html.escape(str(ticker))} – {html.escape(str(_ccname))}</div></div><div class="v2121-motto">All the evidence. A clearer perspective.</div><div class="v2123-actions"><a class="v2123-btn" href="#watchlist">☆&nbsp; Add to Watchlist</a><a class="v2123-btn" href="{_compare_href}">↗&nbsp; Compare</a><a class="v2123-btn primary" href="{_cc_href}" target="_blank" rel="noopener">Open in new tab&nbsp; →</a></div></div></div>""",unsafe_allow_html=True)
         st.markdown(f"""<div class="v2121-company"><div class="v2121-logo">{_logo_html}</div><div class="v2121-ident"><div class="v2121-name">{html.escape(str(_ccname))}<span class="v2121-ticker">{html.escape(str(ticker))}</span></div><div class="v2121-meta">{html.escape(str(_ccsector))}<span class="v2121-sep">|</span>{html.escape(str(_ccindustry))}</div><div class="v2121-desc">{html.escape(_desc)}</div></div><div class="v2121-stat"><div class="v2121-k">Share Price</div><div class="v2121-v">{display_price(price,ticker)}</div><div class="{_delta_cls}">{html.escape(_deltatxt)}</div></div><div class="v2121-stat"><div class="v2121-k">52 Week Range</div><div class="v2121-v">{display_price(_cclo,ticker)} – {display_price(_cchi,ticker)}</div><div class="v2121-range"><span class="v2121-range-dot" style="left:{_range_pos:.1f}%"></span></div></div><div class="v2121-stat"><div class="v2121-k">Market Cap</div><div class="v2121-v">{html.escape(_mcap_txt)}</div></div><div class="v2121-stat"><div class="v2121-k">Volume (Avg)</div><div class="v2121-v">{html.escape(_vol_txt)}</div></div><div class="v2121-stat"><div class="v2121-k">P/E (TTM)</div><div class="v2121-v">{html.escape(_pe_txt)}</div></div><div class="v2121-stat"><div class="v2121-k">Dividend Yield</div><div class="v2121-v">{html.escape(_dy_txt)}</div></div><div class="v2121-stat"><div class="v2121-k">Beta (5Y)</div><div class="v2121-v">{html.escape(_beta_txt)}</div></div><div class="v2121-stat v2121-update"><div class="v2121-k">Last Updated</div><div class="v2121-v">{html.escape(_updated)}</div></div><div class="v2121-live {_data_status_cls}"><span class="v2121-dot"></span>{html.escape(_data_status)}</div></div>""",unsafe_allow_html=True)
 
         _change_count=0 if _ccattention is None or _ccattention.empty else len(_ccattention)
@@ -5905,7 +5971,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.9 architecture: Company Identity, Market Metrics & Timestamp Containment Fix · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.11 architecture: Compare & New-Tab Research Workflow · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
