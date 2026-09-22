@@ -4277,6 +4277,7 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
         # then retain provider/domain fallbacks. This avoids stretching tiny favicons.
         official_assets={
             "zip.co":["https://zip.co/nz/wp-content/uploads/2021/08/logo-dark.svg"],
+            "coca-colacompany.com":["https://www.coca-colacompany.com/content/dam/corporate/us/en/header-footer/Footer%20Icon.svg"],
         }
         branded=list(official_assets.get(dom,[])) + [
             f"https://logo.clearbit.com/{quote(dom)}?size={max(256,int(size)*2)}",
@@ -5781,7 +5782,7 @@ elif page=="Company Command Centre":
                 _rn=company_name(ticker) if 'company_name' in globals() else None
                 if _rn and str(_rn).strip().upper() not in _invalid_names: _ccname=_rn
             except Exception: pass
-        # V21.2.14 — always query the exact Yahoo listing once for current identity, logo and market-session metadata.
+        # V21.2.15 — always query the exact Yahoo listing once for current identity, logo and market-session metadata.
         # Search quote payloads can expose logoUrl/marketState even when Ticker.info is otherwise complete.
         _quote_probe_ok=False
         try:
@@ -5881,6 +5882,22 @@ elif page=="Company Command Centre":
         _explicit_live=bool(_ccmeta.get("isRealtime") is True or _ccmeta.get("realtime") is True or str(_ccmeta.get("dataStatus") or "").strip().lower() in {"live","real-time","realtime"} or "real time" in _source_name.lower() or "realtime" in _source_name.lower())
         _market_open=_market_state in {"regular","open","continuous","trading"}
         _market_closed=_market_state in {"closed","post","postpost","pre","prepre"}
+        # V21.2.15 — Yahoo Search often omits marketState. Use the listing's current
+        # regular trading-period timestamps from history metadata as the authoritative
+        # session fallback. This is exchange-aware and handles US/AU/UK/etc time zones
+        # without assuming the user's local clock.
+        try:
+            _hm2=yf.Ticker(ticker).get_history_metadata() or {}
+            _ctp=_hm2.get("currentTradingPeriod") or _hm2.get("current_trading_period") or {}
+            _reg=_ctp.get("regular") or {}
+            _rs=_mia_num(_reg.get("start")); _re=_mia_num(_reg.get("end"))
+            _now_epoch=float(pd.Timestamp.now(tz="UTC").timestamp())
+            if np.isfinite(_rs) and np.isfinite(_re):
+                _market_open=bool(_rs <= _now_epoch < _re)
+                if not _market_open and not _market_state:
+                    _market_closed=True
+        except Exception:
+            pass
         if _market_open:
             _data_status="Market open"; _data_status_cls="live"
         elif np.isfinite(_delay) and _delay > 0:
