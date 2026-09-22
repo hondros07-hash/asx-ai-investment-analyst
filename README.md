@@ -1,3 +1,7 @@
+# Chrímata V20.7.4.21.4 — Interactive Search Selection & Market Data Enrichment Fix
+
+Native in-app company selection plus cached market metadata enrichment for Company Search and Quick View.
+
 Chrímata V20.7.4.20.2 — Search Results Layout Containment Fix
 
 ## V20.5.4 — Search Bar Alignment & Header Polish
