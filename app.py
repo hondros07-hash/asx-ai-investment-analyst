@@ -2757,18 +2757,41 @@ def _chr_set_cc_sub_v2111(target):
         st.session_state["chr_primary_nav"]="Company Command Centre"
 
 st.sidebar.markdown(r'''<style>
-/* V21.1.4 - icon-based, left-aligned Command Centre child navigation. */
+/* V21.1.5 — unified icon + text Command Centre child rows.
+   Each child is one positioned button row: icon at 12px, label at 46px.
+   This deliberately overrides the older global sidebar rule that absolutely
+   positions every button label at 45px. */
 [data-testid="stSidebar"] .ccnav-inline-start{height:2px!important;margin:0!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"]{margin:0 8px 1px 10px!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton{margin:0!important;padding:0!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button{height:30px!important;min-height:30px!important;border-radius:5px!important;padding:0 8px!important;border:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:27px minmax(0,1fr)!important;align-items:center!important;text-align:left!important;justify-content:stretch!important;white-space:nowrap!important;line-height:1!important;overflow:hidden!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"]{margin:0 8px 1px 18px!important;padding:0!important;width:calc(100% - 26px)!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton{margin:0!important;padding:0!important;width:100%!important}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button{
+  position:relative!important;display:block!important;width:100%!important;
+  height:31px!important;min-height:31px!important;margin:0!important;padding:0!important;
+  border:0!important;border-radius:5px!important;box-shadow:none!important;
+  overflow:hidden!important;text-align:left!important;white-space:nowrap!important;
+}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]{background:transparent!important;color:#eef6ff!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="secondary"]:hover{background:rgba(255,255,255,.075)!important;color:#fff!important}
 [data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button[kind="primary"]{background:#1687ef!important;color:#fff!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button span[data-testid="stIconMaterial"],[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stIconMaterial"]{display:flex!important;position:static!important;grid-column:1!important;width:22px!important;height:22px!important;margin:0!important;align-items:center!important;justify-content:center!important;font-size:20px!important;line-height:20px!important;color:#fff!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]{position:static!important;grid-column:2!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;text-align:left!important;overflow:hidden!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"] p{position:static!important;font-size:11.5px!important;line-height:1!important;font-weight:500!important;margin:0!important;padding:0!important;text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
-[data-testid="stSidebar"] [class*="st-key-ccinline_"] button [data-testid="stMarkdownContainer"]:after{display:none!important;content:none!important}
+/* Icon and label share the SAME button coordinate system. */
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button [data-testid="stIconMaterial"],
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button span[data-testid="stIconMaterial"]{
+  position:absolute!important;left:10px!important;top:50%!important;transform:translateY(-50%)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:24px!important;height:24px!important;margin:0!important;padding:0!important;
+  font-size:20px!important;line-height:20px!important;color:#fff!important;
+}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button [data-testid="stMarkdownContainer"]{
+  position:absolute!important;left:44px!important;right:6px!important;top:50%!important;
+  transform:translateY(-50%)!important;width:auto!important;max-width:none!important;
+  margin:0!important;padding:0!important;text-align:left!important;overflow:hidden!important;
+}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button [data-testid="stMarkdownContainer"] p{
+  position:static!important;margin:0!important;padding:0!important;text-align:left!important;
+  font-size:11.2px!important;line-height:1!important;font-weight:550!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+[data-testid="stSidebar"] [class*="st-key-ccinline_"] .stButton>button [data-testid="stMarkdownContainer"]:after{display:none!important;content:none!important}
 </style>''',unsafe_allow_html=True)
 # V21.1.2 — authoritative sidebar renderer.
 # The Command Centre and its children live in ONE Streamlit container placed
@@ -5781,7 +5804,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.1.4 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.1.5 architecture: Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")

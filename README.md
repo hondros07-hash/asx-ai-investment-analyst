@@ -245,3 +245,11 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 - Prev Close label follows dashed previous-close line.
 - Added bottom chart breathing room.
 - Change isolated to smooth market chart rendering.
+
+
+## V21.1.5 — Unified Icon & Text Subnavigation Alignment Fix
+- Keeps the V21.1.2 authoritative sidebar render order.
+- Rebuilds each Company Command Centre child as one unified button coordinate system.
+- Fixes every icon at the same left position and every label at the same text start.
+- Active blue state wraps the icon and label together.
+- Preserves the 11 independent research routes and their existing functionality.
