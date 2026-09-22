@@ -4087,8 +4087,10 @@ def _chr_identity_country(symbol, exchange="", provider_country=""):
     """V20.7.4.21.3 — infer listing country from provider, exchange and ticker suffix."""
     raw=str(provider_country or "").strip()
     aliases={"USA":"United States","US":"United States","United States of America":"United States","UK":"United Kingdom","GB":"United Kingdom","Great Britain":"United Kingdom","AU":"Australia","CA":"Canada","JP":"Japan","HK":"Hong Kong","CN":"China","TW":"Taiwan","PL":"Poland"}
-    if raw and raw not in {"—","-","None","nan"}:
-        return aliases.get(raw,raw)
+    known_countries={"United States","Australia","United Kingdom","Japan","Hong Kong","Canada","Germany","Argentina","Mexico","Poland","Taiwan","China"}
+    raw_norm=aliases.get(raw,raw)
+    if raw_norm in known_countries:
+        return raw_norm
     sym=str(symbol or "").upper().strip(); ex=str(exchange or "").upper().strip()
     suffixes=[(".AX","Australia"),(".L","United Kingdom"),(".T","Japan"),(".HK","Hong Kong"),(".TO","Canada"),(".V","Canada"),(".SZ","China"),(".SS","China"),(".TW","Taiwan"),(".TWO","Taiwan"),(".WA","Poland"),(".DE","Germany"),(".F","Germany"),(".MX","Mexico"),(".BA","Argentina")]
     for suf,country in suffixes:
@@ -4120,7 +4122,7 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     known={
         "zip co limited":"zip.co","zip co ltd":"zip.co","ziprecruiter":"ziprecruiter.com",
         "the coca-cola company":"coca-colacompany.com","coca-cola hbc":"coca-colahellenic.com","coca-cola europacific":"cocacolaep.com",
-        "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com"
+        "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com","pepsico":"pepsico.com","pepsi co":"pepsico.com"
     }
     dom=next((d for k,d in known.items() if k in nm),"")
     if dom:
@@ -4134,6 +4136,13 @@ def _chr_search_market_enrichment_v2074214(symbol):
     out={}
     try:
         out.update(info(symbol) or {})
+    except Exception:
+        pass
+    try:
+        richer=yf.Ticker(symbol).get_info() or {}
+        for k,v in richer.items():
+            if out.get(k) in (None, "", 0, "—") and v not in (None, "", "—"):
+                out[k]=v
     except Exception:
         pass
     try:
@@ -4718,7 +4727,7 @@ def _chr_company_search_page():
 /* V20.7.4.21.5 — reference-matched Company Quick View */
 .st-key-chr_search_quickview_panel_v2074211{background:#fff;border:1px solid #d8e3ef;border-radius:11px;overflow:hidden!important;box-shadow:0 1px 4px rgba(15,23,42,.04);padding:14px!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stHorizontalBlock"]{align-items:center}
-.v421qhero{display:flex;align-items:center;gap:11px;min-width:0}.v421qhero .v421qlogo{width:46px;height:46px;object-fit:contain;border-radius:8px}.v421qhero .v421av{width:46px;height:46px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;color:#17365d}.v421qname{font-size:19px!important;line-height:1.12;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:4px}.v421price-line{display:flex;align-items:baseline;gap:14px;margin:10px 0 4px;flex-wrap:wrap}.v421price-main{font-size:31px;line-height:1;font-weight:900;color:#111827}.v421price-change{font-size:15px;font-weight:850}.v421stats{margin-top:4px}.v421stat{font-size:11.5px!important;padding:5px 0!important}.v421section-rule{height:1px;background:#e4ebf3;margin:10px -14px 9px}.v421cons-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.v421cons-title b{font-size:14px;color:#10264b}.v421consbar{height:10px;border-radius:999px;overflow:hidden;display:flex;gap:4px;margin:5px 0 8px}.v421consbar span{display:block;border-radius:999px}.v421consbar .buy{background:#18a05e;flex:6}.v421consbar .hold{background:#f4a621;flex:2}.v421consbar .sell{background:#e53935;flex:1}.v421analyst-note{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#6b7f96;margin-bottom:3px}.v421target{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-top:6px}.v421target span{color:#64778e}.v421target b{color:#159447;font-size:12.5px}.st-key-chr_qv_range_v207421 [data-baseweb="radio"]{gap:4px!important}.st-key-chr_qv_range_v207421 label{min-height:30px!important;padding:4px 7px!important;border:1px solid #d8e3ef!important;border-radius:7px!important;background:#fff!important}.st-key-chr_qv_range_v207421 label:has(input:checked){border-color:#1769d2!important;background:#eef5ff!important;color:#0b57d0!important}.st-key-chr_search_watch_top_v2074215 button{min-height:34px!important;height:34px!important;padding:0 9px!important;font-size:11px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.st-key-chr_search_open_cc_v207421 button{min-height:42px!important}.st-key-chr_search_watch_v207421 button{min-height:40px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v421qhero{display:flex;align-items:center;gap:11px;min-width:0}.v421qhero .v421qlogo{width:46px;height:46px;object-fit:contain;border-radius:8px}.v421qhero .v421av{width:46px;height:46px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;color:#17365d}.v421qname{font-size:19px!important;line-height:1.12;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:4px}.v421price-line{display:flex;align-items:baseline;gap:14px;margin:10px 0 4px;flex-wrap:wrap}.v421price-main{font-size:31px;line-height:1;font-weight:900;color:#111827}.v421price-change{font-size:15px;font-weight:850}.v421stats{margin-top:4px}.v421stat{font-size:11.5px!important;padding:5px 0!important}.v421section-rule{height:1px;background:#e4ebf3;margin:10px -14px 9px}.v421cons-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.v421cons-title b{font-size:14px;color:#10264b}.v421consbar{height:10px;border-radius:999px;overflow:hidden;display:flex;gap:4px;margin:5px 0 8px}.v421consbar span{display:block;border-radius:999px}.v421consbar .buy{background:#18a05e;flex:6}.v421consbar .hold{background:#f4a621;flex:2}.v421consbar .sell{background:#e53935;flex:1}.v421analyst-note{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#6b7f96;margin-bottom:3px}.v421target{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-top:6px}.v421target span{color:#64778e}.v421target b{color:#159447;font-size:12.5px}.st-key-chr_qv_range_v207421{margin:0!important}.st-key-chr_search_watch_top_v2074215 button{min-height:34px!important;height:34px!important;padding:0 9px!important;font-size:11px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.st-key-chr_search_open_cc_v207421 button{min-height:42px!important}.st-key-chr_search_watch_v207421 button{min-height:40px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
 /* V20.7.4.21.6 — reference-matched compact Company Quick View. */
 .st-key-chr_search_quickview_panel_v2074211{height:620px!important;min-height:620px!important;max-height:620px!important;padding:12px 14px!important;overflow:hidden!important}
@@ -4729,7 +4738,7 @@ def _chr_company_search_page():
 .v421price-line{margin:4px 0 2px!important;gap:12px!important}.v421price-main{font-size:29px!important}.v421price-change{font-size:14px!important}
 .st-key-chr_search_watch_top_v2074215 button{height:31px!important;min-height:31px!important;font-size:10px!important;padding:0 7px!important}
 .st-key-chr_qv_range_v207421{margin:0!important;padding:0!important}
-.st-key-chr_qv_range_v207421 [role="radiogroup"]{display:flex!important;width:100%!important;justify-content:space-between!important;gap:2px!important}
+.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]{width:100%!important}.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"]>div{display:flex!important;width:100%!important;gap:2px!important}.st-key-chr_qv_range_v207421 [data-testid="stSegmentedControl"] button{flex:1 1 0!important;min-height:30px!important;padding:4px 7px!important;border-radius:7px!important;font-size:10.5px!important;font-weight:800!important}
 .st-key-chr_qv_range_v207421 label{border:0!important;background:transparent!important;min-height:28px!important;height:28px!important;padding:0 8px!important;border-radius:5px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important}
 .st-key-chr_qv_range_v207421 label>div:first-child{display:none!important}
 .st-key-chr_qv_range_v207421 label p{font-size:10px!important;font-weight:800!important;color:#53677f!important;margin:0!important}
@@ -4766,14 +4775,18 @@ def _chr_company_search_page():
     oq=overview_quote(resolved,"5d") or {}; last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct")); company=meta.get("longName") or meta.get("shortName") or selected.get("Company") or resolved; cur=meta.get("currency") or selected.get("Currency") or ""
     mc=_mia_num(meta.get("marketCap"));
     if not np.isfinite(mc): mc=_mia_num(selected.get("Market Cap"))
-    lo=_mia_num(meta.get("fiftyTwoWeekLow")); hi=_mia_num(meta.get("fiftyTwoWeekHigh")); pe=_mia_num(meta.get("trailingPE")); dy=_mia_num(meta.get("dividendYield")); sector=meta.get("sector") or selected.get("Sector") or "—"; industry=meta.get("industry") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
+    lo=_mia_num(meta.get("fiftyTwoWeekLow")); hi=_mia_num(meta.get("fiftyTwoWeekHigh")); pe=_mia_num(meta.get("trailingPE"));
+    if not np.isfinite(pe): pe=_mia_num(meta.get("forwardPE"))
+    dy=_mia_num(meta.get("dividendYield"));
+    if not np.isfinite(dy): dy=_mia_num(meta.get("trailingAnnualDividendYield"))
+    sector=meta.get("sector") or meta.get("sectorDisp") or selected.get("Sector") or "—"; industry=meta.get("industry") or meta.get("industryDisp") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
     qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or ""); cr=_chr_identity_country(resolved, selected.get("Exchange",""), meta.get("country") or selected.get("Country") or ""); flag=flag_map.get(cr,"🌐")
     qcands=_chr_identity_logo_candidates(resolved,{"logo_url":qlogo,"website":str(meta.get("website") or selected.get("Website") or "")},str(company),96)
     if qcands:
         qsrc=html.escape(qcands[0],quote=True); qrest=html.escape("|".join(qcands[1:]),quote=True); qinitial=html.escape(str(company)[:1].upper())
         qlh=f'<img class="v421qlogo" src="{qsrc}" data-fallbacks="{qrest}" onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';}}"><span class="v421av" style="display:none">{qinitial}</span>'
     else: qlh=f'<span class="v421av">{html.escape(str(company)[:1].upper())}</span>'
-    dcls="v421up" if np.isfinite(pct) and pct>0 else ("v421down" if np.isfinite(pct) and pct<0 else "v421flat"); dt="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; rng="—" if not(np.isfinite(lo) and np.isfinite(hi)) else f"{price(lo,cur)} – {price(hi,cur)}"; pet="—" if not np.isfinite(pe) else f"{pe:.1f}"; dyt="—" if not np.isfinite(dy) else f"{dy*100:.2f}%"; tt="—" if not np.isfinite(target) else price(target,cur)+(f" ({upside:+.1f}%)" if np.isfinite(upside) else "")
+    dcls="v421up" if np.isfinite(pct) and pct>0 else ("v421down" if np.isfinite(pct) and pct<0 else "v421flat"); dt="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; rng="—" if not(np.isfinite(lo) and np.isfinite(hi)) else f"{price(lo,cur)} – {price(hi,cur)}"; pet="—" if not np.isfinite(pe) else f"{pe:.1f}"; dyt="—" if not np.isfinite(dy) else f"{(dy if dy>1 else dy*100):.2f}%"; tt="—" if not np.isfinite(target) else price(target,cur)+(f" ({upside:+.1f}%)" if np.isfinite(upside) else "")
     analyst_n=meta.get("numberOfAnalystOpinions"); analyst_txt=(f"{int(analyst_n)} analyst opinions" if isinstance(analyst_n,(int,float)) and analyst_n else "Consensus data where available")
     lc,rc=st.columns([1.82,1],gap="small")
     with lc:
@@ -4824,7 +4837,12 @@ def _chr_company_search_page():
                     try: watch_add(resolved); st.toast(f"{resolved} added to Watchlist.")
                     except Exception as exc: st.warning(f"Could not add {resolved}: {exc}")
             st.markdown(f'<div class="v421price-line"><span class="v421price-main">{price(last,cur)}</span><span class="v421price-change {dcls}">{dt}</span></div>',unsafe_allow_html=True)
-            tf=st.radio("Chart range",["1D","1W","1M","3M","6M","1Y","5Y"],horizontal=True,label_visibility="collapsed",key="chr_qv_range_v207421"); pm={"1D":("1d","5m"),"1W":("5d","30m"),"1M":("1mo",None),"3M":("3mo",None),"6M":("6mo",None),"1Y":("1y",None),"5Y":("5y",None)}; per,itv=pm[tf]
+            ranges=["1D","1W","1M","3M","6M","1Y","5Y"]
+            if hasattr(st,"segmented_control"):
+                tf=st.segmented_control("Chart range",ranges,default="1D",label_visibility="collapsed",key="chr_qv_range_v207421") or "1D"
+            else:
+                tf=st.selectbox("Chart range",ranges,index=0,label_visibility="collapsed",key="chr_qv_range_v207421")
+            pm={"1D":("1d","5m"),"1W":("5d","30m"),"1M":("1mo",None),"3M":("3mo",None),"6M":("6mo",None),"1Y":("1y",None),"5Y":("5y",None)}; per,itv=pm[tf]
             try: hd=yf.Ticker(resolved).history(period=per,interval=itv,auto_adjust=True) if itv else history(resolved,per)
             except: hd=pd.DataFrame()
             if hd is not None and not hd.empty and "Close" in hd.columns:
