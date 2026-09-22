@@ -4772,6 +4772,12 @@ def _chr_company_search_page():
 .st-key-chr_qv_range_v207421 label p{font-size:10.5px!important;font-weight:800!important;color:#53677f!important;margin:0!important}
 .st-key-chr_qv_range_v207421 label:has(input:checked){background:#0d67d7!important;border:0!important;box-shadow:none!important}
 .st-key-chr_qv_range_v207421 label:has(input:checked) p{color:#fff!important}
+/* V20.7.4.21.6.6 — seven open timeframe buttons, matching the reference. */
+[class*="st-key-chr_qv_tf_v20742166_"]{margin:0!important;padding:0!important}
+[class*="st-key-chr_qv_tf_v20742166_"] .stButton{margin:0!important;padding:0!important}
+[class*="st-key-chr_qv_tf_v20742166_"] button{height:28px!important;min-height:28px!important;padding:0 3px!important;margin:0!important;border:0!important;border-radius:5px!important;background:transparent!important;box-shadow:none!important;color:#53677f!important;font-size:10.5px!important;font-weight:800!important}
+[class*="st-key-chr_qv_tf_v20742166_"] button:hover{background:#f3f7fb!important;color:#174f8f!important;border:0!important;box-shadow:none!important}
+[class*="st-key-chr_qv_tf_v20742166_"] button p{font-size:10.5px!important;font-weight:800!important;line-height:1!important;margin:0!important;color:inherit!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]{height:104px!important;min-height:104px!important;margin:0!important;padding:0!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stPlotlyChart"]>div{height:104px!important;min-height:104px!important}
 .v421stats{margin-top:0!important}.v421stat{font-size:10.5px!important;padding:4px 0!important;min-height:23px!important;align-items:center!important}.v421stat b{max-width:62%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4871,11 +4877,27 @@ def _chr_company_search_page():
                     try: watch_add(resolved); st.toast(f"{resolved} added to Watchlist.")
                     except Exception as exc: st.warning(f"Could not add {resolved}: {exc}")
             st.markdown(f'<div class="v421price-line"><span class="v421price-main">{price(last,cur)}</span><span class="v421price-change {dcls}">{dt}</span></div>',unsafe_allow_html=True)
+            # V20.7.4.21.6.6 — reference-matched timeframe selector.
+            # Use seven independent Streamlit buttons instead of segmented_control.
+            # This avoids the native segmented rail/dividers entirely while keeping
+            # every range interactive and preserving selection across reruns.
             ranges=["1D","1W","1M","3M","6M","1Y","5Y"]
-            if hasattr(st,"segmented_control"):
-                tf=st.segmented_control("Chart range",ranges,default="1D",label_visibility="collapsed",key="chr_qv_range_v207421") or "1D"
-            else:
-                tf=st.selectbox("Chart range",ranges,index=0,label_visibility="collapsed",key="chr_qv_range_v207421")
+            qv_tf_key="chr_qv_timeframe_v20742166"
+            if st.session_state.get(qv_tf_key) not in ranges:
+                st.session_state[qv_tf_key]="1D"
+            tf=st.session_state[qv_tf_key]
+            tf_cols=st.columns(7,gap="small")
+            for _tf_i,_tf_label in enumerate(ranges):
+                with tf_cols[_tf_i]:
+                    if st.button(_tf_label,key=f"chr_qv_tf_v20742166_{_tf_label}",use_container_width=True):
+                        if st.session_state.get(qv_tf_key)!=_tf_label:
+                            st.session_state[qv_tf_key]=_tf_label
+                            st.rerun()
+            tf=st.session_state[qv_tf_key]
+            st.markdown(f"""<style>
+            .st-key-chr_qv_tf_v20742166_{tf} button{{background:#0d67d7!important;color:#fff!important;border:0!important;box-shadow:0 1px 3px rgba(13,103,215,.18)!important}}
+            .st-key-chr_qv_tf_v20742166_{tf} button:hover{{background:#0d67d7!important;color:#fff!important}}
+            </style>""",unsafe_allow_html=True)
             pm={"1D":("1d","5m"),"1W":("5d","30m"),"1M":("1mo",None),"3M":("3mo",None),"6M":("6mo",None),"1Y":("1y",None),"5Y":("5y",None)}; per,itv=pm[tf]
             try: hd=yf.Ticker(resolved).history(period=per,interval=itv,auto_adjust=True) if itv else history(resolved,per)
             except: hd=pd.DataFrame()
