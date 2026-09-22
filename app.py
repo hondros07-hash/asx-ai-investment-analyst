@@ -4808,7 +4808,13 @@ def _chr_company_search_page():
     dy=_mia_num(meta.get("dividendYield"));
     if not np.isfinite(dy): dy=_mia_num(meta.get("trailingAnnualDividendYield"))
     sector=meta.get("sector") or meta.get("sectorDisp") or selected.get("Sector") or "—"; industry=meta.get("industry") or meta.get("industryDisp") or "—"; target=_mia_num(meta.get("targetMeanPrice")); rec=str(meta.get("recommendationKey") or "No consensus").replace("_"," ").title(); upside=(target/last-1)*100 if np.isfinite(target) and np.isfinite(last) and last else np.nan
-    qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or ""); cr=_chr_identity_country(resolved, selected.get("Exchange",""), meta.get("country") or selected.get("Country") or ""); flag=flag_map.get(cr,"🌐")
+    qlogo=str(meta.get("logo_url") or meta.get("logoUrl") or selected.get("Logo") or "")
+    # V20.7.4.21.6.5 — keep the selected listing identity isolated from the
+    # Search Results row loop. Previously the shared `cr` variable was overwritten
+    # while rendering rows, so Quick View could inherit the country of the final
+    # search result (for example Taiwan listing displayed as United States).
+    q_country=_chr_identity_country(resolved, selected.get("Exchange",""), selected.get("Country") or meta.get("country") or "")
+    flag=flag_map.get(q_country,"🌐")
     qcands=_chr_identity_logo_candidates(resolved,{"logo_url":qlogo,"website":str(meta.get("website") or selected.get("Website") or "")},str(company),96)
     if qcands:
         qsrc=html.escape(qcands[0],quote=True); qrest=html.escape("|".join(qcands[1:]),quote=True); qinitial=html.escape(str(company)[:1].upper())
@@ -4859,7 +4865,7 @@ def _chr_company_search_page():
         with st.container(key="chr_search_quickview_panel_v2074211"):
             qh1,qh2=st.columns([1.65,1],gap="small",vertical_alignment="center")
             with qh1:
-                st.markdown(f'<div class="v421qhero">{qlh}<div><div class="v421qname">{html.escape(str(company))}</div><div class="v421meta v421qmeta">{html.escape(str(selected.get("Ticker") or resolved))} | {html.escape(exch(selected.get("Exchange")))} | {flag_html(cr)} {html.escape(cr or "—")}</div></div></div>',unsafe_allow_html=True)
+                st.markdown(f'<div class="v421qhero">{qlh}<div><div class="v421qname">{html.escape(str(company))}</div><div class="v421meta v421qmeta">{html.escape(str(selected.get("Ticker") or resolved))} | {html.escape(exch(selected.get("Exchange")))} | {flag_html(q_country)} {html.escape(q_country or "—")}</div></div></div>',unsafe_allow_html=True)
             with qh2:
                 if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_top_v2074215"):
                     try: watch_add(resolved); st.toast(f"{resolved} added to Watchlist.")
