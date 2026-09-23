@@ -5918,7 +5918,8 @@ elif page=="Company Command Centre":
         _change_count=0 if _ccattention is None or _ccattention.empty else len(_ccattention)
         _change_main=("No material monitoring changes are currently flagged from loaded evidence." if _change_count==0 else f"{_change_count} monitoring item"+(" requires" if _change_count==1 else "s require")+" attention from the currently loaded evidence.")
         _change_sub=f"Evidence coverage {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)} · Technical: {tr.get('Trend','—')} · Thesis: "+(f"{_ccth_met}/{_ccth_total} conditions met" if _ccth_total else "not configured")+" · Valuation: "+("loaded" if np.isfinite(_mia_num(_ccbase)) else "evidence gap")
-        st.markdown(f'<div class="v21-change"><div class="v21-change-title">Something Changed · Evidence Monitor</div><div class="v21-change-main">{html.escape(_change_main)}</div><div class="v21-change-sub">{html.escape(_change_sub)}</div></div>',unsafe_allow_html=True)
+        # V21.2.17 — Overview Evidence Monitor banner intentionally removed.
+        # The standalone Something Changed research tool remains available elsewhere in Chrímata.
 
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
