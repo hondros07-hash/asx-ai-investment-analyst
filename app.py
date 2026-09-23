@@ -4356,6 +4356,31 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
         base = branded + base
     return list(dict.fromkeys(base))
 
+@st.cache_data(ttl=21600, show_spinner=False)
+def _chr_resolved_logo_data_uri(symbol, company, candidates):
+    """V21.2.35: validate logo candidates server-side and embed the first working image."""
+    import base64, urllib.request
+    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.35)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
+    for url in list(candidates or []):
+        try:
+            req=urllib.request.Request(str(url),headers=headers)
+            with urllib.request.urlopen(req,timeout=4) as resp:
+                raw=resp.read(2_000_000); ctype=str(resp.headers.get_content_type() or "").lower()
+            if not raw: continue
+            head=raw[:512].lstrip().lower()
+            if b"<html" in head or b"<!doctype html" in head: continue
+            if ctype.startswith("image/"): mime=ctype
+            elif raw.startswith(b"\x89PNG"): mime="image/png"
+            elif raw[:3]==b"\xff\xd8\xff": mime="image/jpeg"
+            elif raw[:4]==b"GIF8": mime="image/gif"
+            elif b"<svg" in head: mime="image/svg+xml"
+            elif raw[:4] in (b"\x00\x00\x01\x00",b"\x00\x00\x02\x00"): mime="image/x-icon"
+            else: continue
+            return "data:%s;base64,%s"%(mime,base64.b64encode(raw).decode("ascii"))
+        except Exception:
+            continue
+    return ""
+
 @st.cache_data(ttl=900, show_spinner=False)
 def _chr_search_market_enrichment_v2074214(symbol):
     """Lightweight cached metadata used by Company Search and Quick View."""
@@ -5921,15 +5946,13 @@ elif page=="Company Command Centre":
         </style>""",unsafe_allow_html=True)
         _deltatxt="—" if not np.isfinite(_ccpct) else f"{_ccchg:+.3f} ({_ccpct:+.2%})"; _delta_cls="v2121-up" if np.isfinite(_ccchg) and _ccchg>=0 else "v2121-down"
         _range_pos=50.0 if _cchi<=_cclo else max(0.0,min(100.0,(price-_cclo)/(_cchi-_cclo)*100.0)); _logo_candidates=_chr_identity_logo_candidates(ticker,_ccmeta,_ccname,192); _initials="".join([x[0] for x in str(_ccname).split()[:3] if x])[:3].upper() or str(ticker).split(".")[0][:3].upper()
-        if _logo_candidates:
-            _src=html.escape(_logo_candidates[0],quote=True)
-            _rest=html.escape("|".join(_logo_candidates[1:]),quote=True)
-            _logo_html=(f'<img src="{_src}" data-fallbacks="{_rest}" '
-                        f'onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];'
-                        f'if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}'
-                        f'else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';}}">'
-                        f'<div class="v2121-fallback" style="display:none">{html.escape(_initials)}</div>')
-        else: _logo_html=f'<div class="v2121-fallback">{html.escape(_initials)}</div>'
+        # V21.2.35 — resolve every candidate server-side. Browser hot-link/CSP failures
+        # can no longer leave a broken-image icon in the Command Centre.
+        _resolved_logo=_chr_resolved_logo_data_uri(ticker,_ccname,tuple(_logo_candidates)) if _logo_candidates else ""
+        if _resolved_logo:
+            _logo_html=f'<img src="{html.escape(_resolved_logo,quote=True)}" alt="{html.escape(str(_ccname),quote=True)} logo">'
+        else:
+            _logo_html=f'<div class="v2121-fallback">{html.escape(_initials)}</div>'
         _desc=str(_ccmeta.get("tagline") or _ccmeta.get("description") or "").strip()
         if not _desc:
             _summary=str(_ccmeta.get("longBusinessSummary") or "").strip()
@@ -6164,7 +6187,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.34 architecture: Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.35 architecture: Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
