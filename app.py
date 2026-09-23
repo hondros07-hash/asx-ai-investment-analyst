@@ -4341,10 +4341,16 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     }
     dom=next((d for k,d in known.items() if k in nm),"")
     if dom:
-        # V21.2.12 — prefer verified official brand assets where Chrímata knows one,
-        # then retain provider/domain fallbacks. This avoids stretching tiny favicons.
+        # V21.2.38 — official-brand-first policy. For companies with a verified canonical
+        # domain, full corporate wordmarks are placed ahead of provider logoUrl/app icons.
+        # This prevents a technically valid square icon from winning before the brand logo.
         official_assets={
-            "zip.co":["https://zip.co/nz/wp-content/uploads/2021/08/logo-dark.svg"],
+            # V21.2.38 — prefer the full official corporate wordmark, not a provider app/icon tile.
+            # Zip's official 2026 AU brand resources continue to use the full ZIP wordmark.
+            "zip.co":[
+                "https://upload.wikimedia.org/wikipedia/commons/9/9d/Zip_Logo.svg",
+                "https://zip.co/nz/wp-content/uploads/2021/08/logo-dark.svg",
+            ],
             "coca-colacompany.com":["https://www.coca-colacompany.com/content/dam/corporate/us/en/header-footer/Footer%20Icon.svg"],
         }
         branded=list(official_assets.get(dom,[])) + [
@@ -4358,10 +4364,10 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
 
 @st.cache_data(ttl=21600, show_spinner=False)
 def _chr_resolved_logo_data_uri(symbol, company, candidates):
-    """V21.2.36: validate and normalise logos without stretching/corrupting aspect ratio."""
+    """V21.2.38: official-brand-first logo resolution with preserved aspect ratio."""
     import base64, io, urllib.request
     from PIL import Image, ImageOps
-    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.36)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
+    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.38)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
     for url in list(candidates or []):
         try:
             req=urllib.request.Request(str(url),headers=headers)

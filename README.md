@@ -267,3 +267,7 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 - Command Centre deep links are consumed once per session/signature instead of re-applied on every Streamlit rerun.
 - Deliberate top-level sidebar navigation clears stale Command Centre routing parameters.
 - Preserves V21.2.20 smooth in-browser Price Chart timeframe switching.
+
+
+## V21.2.38 — Official Brand-First Logo Engine
+Company Command Centre logo resolution now prioritises verified full corporate brand assets ahead of provider app icons/favicons, while preserving aspect ratio and retaining validated fallbacks.
