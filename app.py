@@ -5999,7 +5999,7 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
-        /* V21.2.23 — tighter reference-matched Price Chart */
+        /* V21.2.24 — tighter reference-matched Price Chart */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 4px;padding:0 0 4px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
         .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
@@ -6057,7 +6057,7 @@ elif page=="Company Command Centre":
                 _fig.update_layout(
                     height=205,margin=dict(l=2,r=2,t=34,b=4),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.18,xanchor="left",yanchor="top",
-                        buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="rgba(0,0,0,0)",activecolor="#086ee8",borderwidth=0,font=dict(size=10,color="#557398"))],
+                        buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     legend=dict(orientation="h",y=-.16,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True),
