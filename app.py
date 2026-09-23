@@ -5931,12 +5931,12 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
-        /* V21.2.18 — compact reference-matched Price Chart controls */
-        .v21218-chart-tabs{display:flex;align-items:center;gap:24px;border-bottom:1px solid #e4edf7;margin:0 0 7px;padding:0 1px 5px}
-        .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:11px;font-weight:800;line-height:1;padding:7px 7px;border-radius:5px;min-width:28px;text-align:center}
+        /* V21.2.19 — tighter reference-matched Price Chart */
+        .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 4px;padding:0 0 4px}
+        .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
         .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
         .v21218-chart-tabs a.active{background:#086ee8;color:#fff!important;box-shadow:0 1px 3px rgba(8,110,232,.25)}
-        .v21218-tech-link{display:block;text-align:right;color:#086ee8!important;text-decoration:none!important;font-size:11px;font-weight:900;margin:1px 4px 0 0}
+        .v21218-tech-link{display:block;text-align:right;color:#086ee8!important;text-decoration:none!important;font-size:10px;font-weight:900;margin:-3px 2px 0 0}
         .v21218-tech-link:hover{text-decoration:underline!important}
         </style>""",unsafe_allow_html=True)
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
@@ -5956,23 +5956,26 @@ elif page=="Company Command Centre":
                 for _opt in _tf_options:
                     _active=" active" if _opt==_tf else ""
                     _tab_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Overview&chr_chart_tf={_urlquote(_opt)}#investment-command-centre"
-                    _tab_html.append(f'<a class="{_active.strip()}" href="{_tab_href}">{_opt}</a>')
+                    _tab_html.append(f'<a class="{_active.strip()}" target="_self" href="{_tab_href}">{_opt}</a>')
                 st.markdown('<div class="v21218-chart-tabs">'+''.join(_tab_html)+'</div>',unsafe_allow_html=True)
                 _period_map={"1D":"1d","1W":"5d","1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}
                 _chart_h=h if _tf=="1Y" else history(ticker,_period_map[_tf])
                 if _chart_h is None or _chart_h.empty: _chart_h=h
                 _chart_h=_chart_h.copy()
                 _fig=go.Figure()
-                _fig.add_trace(go.Candlestick(x=_chart_h.index,open=_chart_h["Open"],high=_chart_h["High"],low=_chart_h["Low"],close=_chart_h["Close"],name=ticker,increasing_line_color="#00a66a",decreasing_line_color="#f04444"))
+                _fig.add_trace(go.Candlestick(x=_chart_h.index,open=_chart_h["Open"],high=_chart_h["High"],low=_chart_h["Low"],close=_chart_h["Close"],name=ticker,showlegend=False,increasing_line_color="#00a66a",decreasing_line_color="#f04444"))
                 if len(_chart_h)>=20: _fig.add_trace(go.Scatter(x=_chart_h.index,y=_chart_h["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.5,color="#24aee8")))
                 if len(_chart_h)>=50: _fig.add_trace(go.Scatter(x=_chart_h.index,y=_chart_h["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.5,color="#ff334f")))
+                _v=pd.Series(dtype=float)
                 if "Volume" in _chart_h.columns:
                     _v=pd.to_numeric(_chart_h["Volume"],errors="coerce")
-                    if _v.notna().any(): _fig.add_trace(go.Bar(x=_chart_h.index,y=_v,name="Volume",opacity=.22,yaxis="y2",marker_color="#f3a51f"))
-                _fig.update_layout(height=250,margin=dict(l=3,r=3,t=2,b=18),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=-.18,x=0,font=dict(size=9),traceorder="normal"),paper_bgcolor="white",plot_bgcolor="white",yaxis=dict(side="right",gridcolor="#e8eef6"),yaxis2=dict(overlaying="y",side="left",range=[0,float(_v.max()*5) if 'Volume' in _chart_h.columns and _v.notna().any() else 1],showgrid=False,showticklabels=False))
+                    if _v.notna().any():
+                        _vc=np.where(pd.to_numeric(_chart_h["Close"],errors="coerce")>=pd.to_numeric(_chart_h["Open"],errors="coerce"),"#00a66a","#f04444")
+                        _fig.add_trace(go.Bar(x=_chart_h.index,y=_v,name="Volume",opacity=.42,yaxis="y2",marker_color=_vc))
+                _fig.update_layout(height=205,margin=dict(l=2,r=2,t=1,b=8),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=-.20,x=0,font=dict(size=9),traceorder="normal"),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(gridcolor="#eef3f8",showgrid=True),yaxis=dict(side="right",gridcolor="#e8eef6",rangemode="tozero"),yaxis2=dict(overlaying="y",side="left",range=[0,float(_v.max()*5) if len(_v) and _v.notna().any() else 1],showgrid=False,showticklabels=False))
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
-                st.markdown(f'<a class="v21218-tech-link" href="{_tech_href}">View Full Technical Analysis&nbsp; →</a>',unsafe_allow_html=True)
+                st.markdown(f'<a class="v21218-tech-link" target="_self" href="{_tech_href}">View Full Technical Analysis&nbsp; →</a>',unsafe_allow_html=True)
         with _w_thesis:
             with st.container(border=True):
                 st.markdown('<div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
