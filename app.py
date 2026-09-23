@@ -6066,6 +6066,10 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
+        /* V21.2.44 — in-app Technical link: looks like the chart footer link, behaves like native Streamlit navigation. */
+        [class*="st-key-v21244_technical_"]{margin-top:-13px!important;position:relative!important;z-index:8!important}
+        [class*="st-key-v21244_technical_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;min-height:22px!important;height:22px!important;white-space:nowrap!important}
+        [class*="st-key-v21244_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         /* V21.2.34 — footer rebuilt inside Plotly so legend + technical link share one compact row */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 8px;padding:0 0 7px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
@@ -6155,23 +6159,31 @@ elif page=="Company Command Centre":
                     else:
                         _layout_update["xaxis.rangebreaks"]=[]
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},_layout_update]))
-                _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
+                # V21.2.44 — Technical navigation is handled by Streamlit state rather than
+                # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=300,margin=dict(l=2,r=40,t=34,b=34),xaxis_rangeslider_visible=False,
+                    height=282,margin=dict(l=2,r=40,t=34,b=28),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     legend=dict(orientation="h",y=-.15,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
-                    annotations=[dict(
-                        x=1.0,y=-.15,xref="paper",yref="paper",xanchor="right",yanchor="top",
-                        text=f'<a href="{_tech_href}" target="_self"><b>View Full Technical Analysis&nbsp; →</b></a>',
-                        showarrow=False,font=dict(size=10,color="#086ee8"),align="right"
-                    )],
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1]),
                     yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.25,1.0]),
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.0,0.17]),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
+                # Same in-app router used by the Command Centre sidebar: no URL navigation,
+                # no browser refresh, and therefore no intermediate white screen.
+                _tech_btn_cols=st.columns([1,0.43],gap="small")
+                with _tech_btn_cols[1]:
+                    st.button(
+                        "View Full Technical Analysis  →",
+                        key=f"v21244_technical_{ticker}",
+                        type="tertiary",
+                        use_container_width=True,
+                        on_click=_chr_set_cc_sub_v2111,
+                        args=("Technical",),
+                    )
         with _w_thesis:
             with st.container(border=True,height=_overview_widget_height):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
