@@ -274,3 +274,10 @@ Company Command Centre logo resolution now prioritises verified full corporate b
 
 ## V21.2.58 — Dynamic Company Thesis Scorecard
 The Company Command Centre Overview thesis widget is now company-specific. Stored user thesis rules still take precedence. When no stored rules exist, Chrímata builds six monitoring conditions from the selected company/sector/industry and evaluates only fields supported by currently loaded provider/model evidence. Unsupported conditions remain Pending. Hovering a row exposes the supporting evidence/source where available.
+
+## V21.2.59 — Command Centre Performance & Navigation Engine
+- Cached interval price histories used by the Overview chart so navigation reruns do not re-download the same eight chart datasets.
+- Cached company classification and analyst-consensus provider calls.
+- Reused the existing cached company-info path instead of repeated direct Yahoo info calls in common Command Centre flows.
+- Cached history metadata used by market-status logic.
+- Preserves the V21.2.58 Dynamic Company Thesis Scorecard and existing Command Centre design.

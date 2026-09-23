@@ -519,6 +519,23 @@ def info(t):
     try: return yf.Ticker(t).info
     except: return {}
 
+@st.cache_data(ttl=120, show_spinner=False)
+def history_interval(t, period="1y", interval="1d"):
+    """Cached interval history used by interactive charts and technical workspaces.
+    Prevents a Streamlit navigation rerun from downloading identical bars again.
+    """
+    try:
+        return yf.Ticker(t).history(period=period, interval=interval, auto_adjust=True)
+    except Exception:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=900, show_spinner=False)
+def history_metadata(t):
+    try:
+        return yf.Ticker(t).get_history_metadata() or {}
+    except Exception:
+        return {}
+
 def change(s,n):
     return np.nan if len(s)<=n else s.iloc[-1]/s.iloc[-n-1]-1
 
@@ -876,6 +893,7 @@ BROKER_ADAPTER_REQUIREMENTS=pd.DataFrame([
 
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def classify_company(ticker):
     """Best-effort company classification used by KPI templates.
 
@@ -897,6 +915,7 @@ def classify_company(ticker):
     return {"ticker":ticker, "name":name, "sector":sector, "industry":industry}
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def safe_company_classification(ticker):
     """Always return a usable company classification dictionary."""
     result={"ticker":str(ticker), "name":str(ticker), "sector":"", "industry":""}
@@ -913,7 +932,7 @@ def safe_company_classification(ticker):
     try:
         # Optional metadata enrichment only; failure must never break a page.
         if "yf" in globals():
-            info=getattr(yf.Ticker(ticker),"info",{}) or {}
+            info=info(ticker) or {}
             result["name"]=str(info.get("longName") or info.get("shortName") or ticker)
             result["sector"]=str(info.get("sector") or "")
             result["industry"]=str(info.get("industry") or "")
@@ -1495,6 +1514,7 @@ def research_forecast(df):
     except Exception:
         return pd.DataFrame(columns=cols)
 
+@st.cache_data(ttl=1800, show_spinner=False)
 def analyst_consensus_snapshot(ticker):
     """Best-effort Yahoo/yfinance analyst consensus. This reports analysts' views, not the app's rating."""
     out={"label":"Unavailable","strongBuy":0,"buy":0,"hold":0,"sell":0,"strongSell":0,
@@ -1789,7 +1809,7 @@ def _mia_linear(v, bad, good, reverse=False):
 def mia_research_score(ticker,h,meta=None):
     """Explainable research score. Missing evidence stays N/A; it is not a recommendation."""
     if meta is None:
-        try: meta=yf.Ticker(ticker).info or {}
+        try: meta=info(ticker) or {}
         except Exception: meta={}
     meta=meta if isinstance(meta,dict) else {}
     evidence={}
@@ -2233,7 +2253,7 @@ def monitoring_snapshot_now(ticker, h=None, meta=None):
     """Build a point-in-time evidence snapshot without inventing unavailable fields."""
     if h is None: h=history(ticker,"2y")
     if meta is None:
-        try: meta=yf.Ticker(ticker).info or {}
+        try: meta=info(ticker) or {}
         except Exception: meta={}
     if h is None or h.empty:
         return {}
@@ -3161,7 +3181,7 @@ try:
 except Exception:
     pass
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.1.2</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.2.59</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -4201,7 +4221,7 @@ def forecast_driver_snapshot(ticker, h, meta=None):
         vr=ms["Volume vs 20D"]
         add("Participation","Volume vs 20D average",f"{vr:.2f}×","Elevated participation" if vr>=1.5 else "Normal/lower participation")
     if meta is None:
-        try: meta=yf.Ticker(ticker).info or {}
+        try: meta=info(ticker) or {}
         except Exception: meta={}
     for key,label in [("revenueGrowth","Revenue growth"),("earningsGrowth","Earnings growth"),
                       ("profitMargins","Profit margin"),("operatingMargins","Operating margin"),
@@ -4266,7 +4286,7 @@ def render_phase2_company_research(ticker, h, price=None, meta=None, compact=Fal
     if price is None:
         price=float(pd.to_numeric(h["Close"],errors="coerce").dropna().iloc[-1])
     if meta is None:
-        try: meta=yf.Ticker(ticker).info or {}
+        try: meta=info(ticker) or {}
         except Exception: meta={}
     name=(meta.get("longName") or meta.get("shortName") or identity(ticker)) if isinstance(meta,dict) else identity(ticker)
 
@@ -6100,7 +6120,7 @@ elif page=="Company Command Centre":
         _market_state=str(_ccmeta.get("marketState") or "").strip().lower()
         if not _market_state:
             try:
-                _hm=yf.Ticker(ticker).get_history_metadata() or {}
+                _hm=history_metadata(ticker)
                 _market_state=str(_hm.get("marketState") or _hm.get("market_state") or "").strip().lower()
             except Exception:
                 pass
@@ -6114,7 +6134,7 @@ elif page=="Company Command Centre":
         # session fallback. This is exchange-aware and handles US/AU/UK/etc time zones
         # without assuming the user's local clock.
         try:
-            _hm2=yf.Ticker(ticker).get_history_metadata() or {}
+            _hm2=history_metadata(ticker)
             _ctp=_hm2.get("currentTradingPeriod") or _hm2.get("current_trading_period") or {}
             _reg=_ctp.get("regular") or {}
             _rs=_mia_num(_reg.get("start")); _re=_mia_num(_reg.get("end"))
@@ -6234,13 +6254,9 @@ elif page=="Company Command Centre":
                     "3Y":("5y","1wk"), "5Y":("10y","1wk"),
                 }
                 _chart_sets={}
-                _yt=yf.Ticker(ticker)
                 for _opt in _tf_options:
                     _per,_int=_tf_calc[_opt]
-                    try:
-                        _calc=_yt.history(period=_per,interval=_int,auto_adjust=True)
-                    except Exception:
-                        _calc=pd.DataFrame()
+                    _calc=history_interval(ticker,_per,_int)
                     if _calc is None or _calc.empty:
                         _calc=h.copy() if _opt=="1Y" else pd.DataFrame()
                     if _calc is not None and not _calc.empty:
@@ -6468,7 +6484,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.58 dynamic thesis architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.59 performance architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
