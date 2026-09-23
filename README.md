@@ -271,3 +271,6 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 
 ## V21.2.38 — Official Brand-First Logo Engine
 Company Command Centre logo resolution now prioritises verified full corporate brand assets ahead of provider app icons/favicons, while preserving aspect ratio and retaining validated fallbacks.
+
+## V21.2.58 — Dynamic Company Thesis Scorecard
+The Company Command Centre Overview thesis widget is now company-specific. Stored user thesis rules still take precedence. When no stored rules exist, Chrímata builds six monitoring conditions from the selected company/sector/industry and evaluates only fields supported by currently loaded provider/model evidence. Unsupported conditions remain Pending. Hovering a row exposes the supporting evidence/source where available.

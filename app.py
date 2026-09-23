@@ -994,6 +994,80 @@ def overview_thesis_template(ticker, sector="", industry=""):
         labels.append(["Valuation","Balance sheet","Catalyst","Guidance","Cash generation","Risk monitor"][len(labels)%6])
     return labels[:6]
 
+def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_value=np.nan, current_price=np.nan):
+    """Build a company-specific six-condition overview thesis from available evidence.
+
+    This is deliberately evidence-constrained: a condition is only marked On track or
+    Watch when the currently loaded provider/model fields can support that state.
+    Otherwise it remains Pending. User-stored thesis rules still take precedence.
+    """
+    meta=meta or {}
+    try:
+        name=(company_name(ticker) if 'company_name' in globals() else ticker)
+    except Exception:
+        name=ticker
+    ident=f"{ticker} {name} {sector} {industry}".lower()
+
+    def num(*keys):
+        for k in keys:
+            try:
+                v=_mia_num(meta.get(k))
+                if np.isfinite(v): return float(v)
+            except Exception:
+                pass
+        return np.nan
+    def growth(label, value, source="Market-data provider"):
+        if not np.isfinite(value): return (label,"Pending","Evidence unavailable","")
+        return (label,"On track" if value>0 else "Watch",f"{value:+.1%}",source)
+    def positive(label, value, fmt="currency", source="Market-data provider"):
+        if not np.isfinite(value): return (label,"Pending","Evidence unavailable","")
+        if fmt=="pct": ev=f"{value:.1%}"
+        else: ev=compact_number(value)
+        return (label,"On track" if value>0 else "Watch",ev,source)
+    def pending(label): return (label,"Pending","Evidence unavailable","")
+
+    rev_g=num("revenueGrowth")
+    earn_g=num("earningsGrowth","earningsQuarterlyGrowth")
+    op_margin=num("operatingMargins","operatingMargin")
+    fcf=num("freeCashflow","freeCashFlow")
+    roe=num("returnOnEquity")
+    ebitda=num("ebitda")
+    debt_eq=num("debtToEquity")
+
+    if "zip" in ident:
+        rows=[
+            pending("US TTV growth"),
+            positive("Cash EBITDA positive",ebitda),
+            positive("Operating margin",op_margin,"pct"),
+            pending("Credit losses / bad debts"),
+            pending("NASDAQ listing catalyst"),
+        ]
+        bv=_mia_num(base_value); cp=_mia_num(current_price)
+        if np.isfinite(bv) and np.isfinite(cp) and cp>0:
+            gap=bv/cp-1
+            rows.append(("Valuation vs base case","On track" if gap>0 else "Watch",f"Base case {gap:+.0%} vs price","Chrímata valuation model"))
+        else: rows.append(pending("Valuation vs base case"))
+    elif any(x in ident for x in ["airline","airlines","air transportation","qantas"]):
+        rows=[growth("Revenue growth",rev_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),
+              pending("Capacity / demand trend"),pending("Fleet / fuel cost discipline")]
+        if np.isfinite(debt_eq): rows.append(("Balance-sheet leverage","On track" if debt_eq<150 else "Watch",f"Debt/equity {debt_eq:.0f}%","Market-data provider"))
+        else: rows.append(pending("Balance-sheet leverage"))
+    elif any(x in ident for x in ["beverage","consumer defensive","soft drink","coca-cola","coca cola"]):
+        rows=[growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),positive("Operating margin",op_margin,"pct"),
+              positive("Free cash flow",fcf),positive("Return on equity",roe,"pct")]
+        bv=_mia_num(base_value); cp=_mia_num(current_price)
+        rows.append(("Valuation vs base case","On track" if np.isfinite(bv) and np.isfinite(cp) and cp>0 and bv>cp else "Watch" if np.isfinite(bv) and np.isfinite(cp) and cp>0 else "Pending",f"Base case {bv/cp-1:+.0%} vs price" if np.isfinite(bv) and np.isfinite(cp) and cp>0 else "Evidence unavailable","Chrímata valuation model" if np.isfinite(bv) else ""))
+    elif any(x in ident for x in ["bank","banks"]):
+        rows=[pending("Net interest margin"),pending("CET1 / capital strength"),growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),pending("Credit losses / bad debts"),positive("Return on equity",roe,"pct")]
+    elif any(x in ident for x in ["mining","miner","materials","gold","copper","lithium"]):
+        rows=[pending("Production trend"),pending("Unit costs / AISC"),growth("Revenue growth",rev_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),pending("Reserves / resource quality")]
+    elif any(x in ident for x in ["reit","real estate"]):
+        rows=[pending("FFO / AFFO growth"),pending("Occupancy"),pending("WALE / lease quality"),positive("Free cash flow",fcf),pending("Gearing"),pending("Distribution sustainability")]
+    else:
+        rows=[growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),positive("Return on equity",roe,"pct"),pending("Guidance / catalyst execution")]
+
+    return pd.DataFrame(rows[:6],columns=["metric","status","evidence","source"])
+
 def provenance_badge(kind):
     return {"Reported":"🟢 Company reported","Exchange":"🔵 Exchange / regulatory",
             "Market":"🟣 Market data","Calculated":"🟠 Model calculated",
@@ -6267,10 +6341,15 @@ elif page=="Company Command Centre":
                     _display_total=len(_thesis_rows)
                     _display_met=int(sum(str(v).strip().lower() in {"met","on track","pass","passed","true"} for v in _thesis_rows.get("status",pd.Series(dtype=str)).tolist()))
                 else:
-                    _starter=overview_thesis_template(ticker,_ccsector,_ccindustry)
-                    _thesis_rows=pd.DataFrame({"metric":_starter,"status":["Pending"]*len(_starter)})
-                    _display_total=len(_starter)
-                    _display_met=0
+                    # V21.2.58 — company-specific evidence engine. The selected ticker,
+                    # sector and industry determine the monitoring conditions. Available
+                    # provider/model evidence can move a condition to On track or Watch;
+                    # unsupported conditions stay Pending rather than being guessed.
+                    _thesis_rows=overview_dynamic_thesis(
+                        ticker,_ccsector,_ccindustry,_ccmeta,_ccbase,price
+                    )
+                    _display_total=len(_thesis_rows)
+                    _display_met=int(sum(str(v).strip().lower() in {"met","on track","pass","passed","true"} for v in _thesis_rows.get("status",pd.Series(dtype=str)).tolist()))
                 _ratio=(_display_met/max(_display_total,1)) if _display_total else 0.0
                 st.markdown(f'<div class="v21216-thesis-score">{_display_met} / {_display_total} <span>conditions on track</span></div>',unsafe_allow_html=True)
                 _pct=int(round(_ratio*100)) if _display_total else 0
@@ -6282,7 +6361,9 @@ elif page=="Company Command Centre":
                     _cls="met" if _sl in {"met","on track","pass","passed","true"} else ("watch" if _sl in {"watch","watch / broken","warning","at risk","attention","broken"} else "pending")
                     _icon="✓" if _cls in {"met","pending"} else "●"
                     _display="On track" if _cls=="met" else ("Watch" if _cls=="watch" else "Pending")
-                    _rows.append(f'<div class="v21216-thesis-row"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
+                    _evidence=str(_r.get("evidence") or "").strip(); _source=str(_r.get("source") or "").strip()
+                    _tip=" · ".join([x for x in [_evidence,_source] if x]) or "No supporting evidence loaded yet"
+                    _rows.append(f'<div class="v21216-thesis-row" title="{html.escape(_tip,quote=True)}"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
                 st.markdown('<div class="v21254-thesis-list">'+"".join(_rows)+'</div>',unsafe_allow_html=True)
                 st.button("View Thesis Scorecard  →",key=f"v21255_thesis_link_{ticker}",type="tertiary",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Thesis Scorecard",))
         # Prepare the evidence packet here so the compact AI widget is functional in the same row.
@@ -6387,7 +6468,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.55 architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.58 dynamic thesis architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
