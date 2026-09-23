@@ -6069,18 +6069,18 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
-        /* V21.2.48 — deterministic reference footer. Plotly legend is replaced with a
-           fixed HTML legend; the Streamlit navigation button overlays the same baseline. */
-        .v21248-chart-legend{display:flex;align-items:center;gap:18px;height:24px;margin:-5px 0 0 4px;padding:0;font-size:10px;color:#162a46;line-height:24px;white-space:nowrap}
-        .v21248-chart-legend .lg{display:inline-flex;align-items:center;gap:7px}
-        .v21248-chart-legend .line{display:inline-block;width:30px;height:4px;border-radius:0}
-        .v21248-chart-legend .sma20{background:#24aee8}.v21248-chart-legend .sma50{background:#ff334f}
-        .v21248-chart-legend .vol{display:inline-block;width:12px;height:12px;background:rgba(0,166,106,.42)}
-        [class*="st-key-v21248_technical_"]{margin-top:-31px!important;margin-bottom:0!important;position:relative!important;z-index:30!important;width:100%!important;height:24px!important}
-        [class*="st-key-v21248_technical_"] .stButton{display:flex!important;justify-content:flex-end!important;align-items:center!important;width:100%!important;height:24px!important}
-        [class*="st-key-v21248_technical_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0 4px 0 0!important;min-height:24px!important;height:24px!important;width:auto!important;min-width:max-content!important;max-width:none!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
-        [class*="st-key-v21248_technical_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;margin:0!important}
-        [class*="st-key-v21248_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
+        /* V21.2.49 — exact reference footer: one real Streamlit row, no overlay/negative positioning. */
+        .v21249-chart-legend{display:flex;align-items:center;gap:18px;height:26px;margin:0;padding:0 0 0 2px;font-size:10px;color:#162a46;line-height:26px;white-space:nowrap}
+        .v21249-chart-legend .lg{display:inline-flex;align-items:center;gap:7px}
+        .v21249-chart-legend .line{display:inline-block;width:30px;height:4px;border-radius:0}
+        .v21249-chart-legend .sma20{background:#24aee8}.v21249-chart-legend .sma50{background:#ff334f}
+        .v21249-chart-legend .volbars{display:inline-flex;align-items:flex-end;gap:2px;width:15px;height:13px}
+        .v21249-chart-legend .volbars i{display:block;width:3px;background:#f5a300;border-radius:1px 1px 0 0}.v21249-chart-legend .volbars i:nth-child(1){height:8px}.v21249-chart-legend .volbars i:nth-child(2){height:13px}.v21249-chart-legend .volbars i:nth-child(3){height:10px}.v21249-chart-legend .volbars i:nth-child(4){height:6px}
+        [class*="st-key-v21249_technical_"]{margin:0!important;padding:0!important;height:26px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important}
+        [class*="st-key-v21249_technical_"] .stButton{display:flex!important;justify-content:flex-end!important;align-items:center!important;width:100%!important;height:26px!important;margin:0!important;padding:0!important}
+        [class*="st-key-v21249_technical_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;margin:0!important;min-height:26px!important;height:26px!important;width:auto!important;min-width:max-content!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+        [class*="st-key-v21249_technical_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;margin:0!important;line-height:26px!important}
+        [class*="st-key-v21249_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         /* V21.2.34 — footer rebuilt inside Plotly so legend + technical link share one compact row */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 8px;padding:0 0 7px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
@@ -6173,7 +6173,7 @@ elif page=="Company Command Centre":
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=270,margin=dict(l=2,r=40,t=34,b=20),xaxis_rangeslider_visible=False,
+                    height=250,margin=dict(l=2,r=40,t=34,b=8),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     showlegend=False,
@@ -6183,25 +6183,27 @@ elif page=="Company Command Centre":
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.0,0.17]),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
-                # V21.2.48 — fixed reference footer. Keeping the legend outside Plotly makes
-                # its baseline deterministic across every timeframe; the native Streamlit
-                # button is overlaid on the right so navigation remains smooth (no href flash).
-                st.markdown(
-                    '<div class="v21248-chart-legend">'
-                    '<span class="lg"><span class="line sma20"></span>SMA 20</span>'
-                    '<span class="lg"><span class="line sma50"></span>SMA 50</span>'
-                    '<span class="lg"><span class="vol"></span>Volume</span>'
-                    '</div>',
-                    unsafe_allow_html=True,
-                )
-                st.button(
-                    "View Full Technical Analysis  →",
-                    key=f"v21248_technical_{ticker}",
-                    type="tertiary",
-                    use_container_width=False,
-                    on_click=_chr_set_cc_sub_v2111,
-                    args=("Technical",),
-                )
+                # V21.2.49 — reference footer is one physical row: legend left, navigation right.
+                # No negative margins or overlays: both sides share the exact same baseline.
+                _foot_legend, _foot_link = st.columns([1.30, 1.00], gap="small", vertical_alignment="center")
+                with _foot_legend:
+                    st.markdown(
+                        '<div class="v21249-chart-legend">'
+                        '<span class="lg"><span class="line sma20"></span>SMA 20</span>'
+                        '<span class="lg"><span class="line sma50"></span>SMA 50</span>'
+                        '<span class="lg"><span class="volbars"><i></i><i></i><i></i><i></i></span>Volume</span>'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
+                with _foot_link:
+                    st.button(
+                        "View Full Technical Analysis  →",
+                        key=f"v21249_technical_{ticker}",
+                        type="tertiary",
+                        use_container_width=False,
+                        on_click=_chr_set_cc_sub_v2111,
+                        args=("Technical",),
+                    )
         with _w_thesis:
             with st.container(border=True,height=_overview_widget_height,key="v21245_thesis_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
