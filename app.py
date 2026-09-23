@@ -6084,6 +6084,14 @@ elif page=="Company Command Centre":
         [class*="st-key-v21252_technical_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;margin:0!important;min-height:22px!important;height:22px!important;width:auto!important;min-width:max-content!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
         [class*="st-key-v21252_technical_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;margin:0!important;padding:0!important;line-height:22px!important;height:22px!important;display:flex!important;align-items:center!important}
         [class*="st-key-v21252_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
+        /* V21.2.53 — reference active timeframe styling only. Plotly 6.5.2 marks the
+           active/hover update-menu button with #F4FAFF; recolour that state to Chrímata blue. */
+        [class*="st-key-v21243_price_card"] g.updatemenu-button:has(rect.updatemenu-item-rect[style*="244, 250, 255"]) rect.updatemenu-item-rect{
+            fill:#086ee8!important;stroke:#086ee8!important;
+        }
+        [class*="st-key-v21243_price_card"] g.updatemenu-button:has(rect.updatemenu-item-rect[style*="244, 250, 255"]) text.updatemenu-item-text{
+            fill:#ffffff!important;
+        }
         /* V21.2.34 — footer rebuilt inside Plotly so legend + technical link share one compact row */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 8px;padding:0 0 7px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
