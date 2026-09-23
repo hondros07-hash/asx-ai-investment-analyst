@@ -5918,7 +5918,7 @@ elif page=="Company Command Centre":
         _change_count=0 if _ccattention is None or _ccattention.empty else len(_ccattention)
         _change_main=("No material monitoring changes are currently flagged from loaded evidence." if _change_count==0 else f"{_change_count} monitoring item"+(" requires" if _change_count==1 else "s require")+" attention from the currently loaded evidence.")
         _change_sub=f"Evidence coverage {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)} · Technical: {tr.get('Trend','—')} · Thesis: "+(f"{_ccth_met}/{_ccth_total} conditions met" if _ccth_total else "not configured")+" · Valuation: "+("loaded" if np.isfinite(_mia_num(_ccbase)) else "evidence gap")
-        # V21.2.17 — Overview Evidence Monitor banner intentionally removed.
+        # V21.2.18 — Overview Evidence Monitor remains removed; Price Chart restyled to reference proportions.
         # The standalone Something Changed research tool remains available elsewhere in Chrímata.
 
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
@@ -5931,13 +5931,33 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
+        /* V21.2.18 — compact reference-matched Price Chart controls */
+        .v21218-chart-tabs{display:flex;align-items:center;gap:24px;border-bottom:1px solid #e4edf7;margin:0 0 7px;padding:0 1px 5px}
+        .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:11px;font-weight:800;line-height:1;padding:7px 7px;border-radius:5px;min-width:28px;text-align:center}
+        .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
+        .v21218-chart-tabs a.active{background:#086ee8;color:#fff!important;box-shadow:0 1px 3px rgba(8,110,232,.25)}
+        .v21218-tech-link{display:block;text-align:right;color:#086ee8!important;text-decoration:none!important;font-size:11px;font-weight:900;margin:1px 4px 0 0}
+        .v21218-tech-link:hover{text-decoration:underline!important}
         </style>""",unsafe_allow_html=True)
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
         with _w_chart:
             with st.container(border=True):
                 st.markdown('<div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
                 _tf_key=f"v21216_tf_{ticker}"
-                _tf=st.radio("Chart timeframe",["1D","1W","1M","3M","6M","1Y","3Y","5Y"],index=5,horizontal=True,label_visibility="collapsed",key=_tf_key)
+                _tf_options=["1D","1W","1M","3M","6M","1Y","3Y","5Y"]
+                try:
+                    _tf_query=str(st.query_params.get("chr_chart_tf") or "").upper()
+                except Exception:
+                    _tf_query=""
+                if _tf_query in _tf_options: st.session_state[_tf_key]=_tf_query
+                _tf=st.session_state.get(_tf_key,"1Y")
+                if _tf not in _tf_options: _tf="1Y"
+                _tab_html=[]
+                for _opt in _tf_options:
+                    _active=" active" if _opt==_tf else ""
+                    _tab_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Overview&chr_chart_tf={_urlquote(_opt)}#investment-command-centre"
+                    _tab_html.append(f'<a class="{_active.strip()}" href="{_tab_href}">{_opt}</a>')
+                st.markdown('<div class="v21218-chart-tabs">'+''.join(_tab_html)+'</div>',unsafe_allow_html=True)
                 _period_map={"1D":"1d","1W":"5d","1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}
                 _chart_h=h if _tf=="1Y" else history(ticker,_period_map[_tf])
                 if _chart_h is None or _chart_h.empty: _chart_h=h
@@ -5949,10 +5969,10 @@ elif page=="Company Command Centre":
                 if "Volume" in _chart_h.columns:
                     _v=pd.to_numeric(_chart_h["Volume"],errors="coerce")
                     if _v.notna().any(): _fig.add_trace(go.Bar(x=_chart_h.index,y=_v,name="Volume",opacity=.22,yaxis="y2",marker_color="#f3a51f"))
-                _fig.update_layout(height=275,margin=dict(l=3,r=3,t=2,b=2),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=-.13,x=0,font=dict(size=9)),paper_bgcolor="white",plot_bgcolor="white",yaxis=dict(side="right",gridcolor="#e8eef6"),yaxis2=dict(overlaying="y",side="left",range=[0,float(_v.max()*5) if 'Volume' in _chart_h.columns and _v.notna().any() else 1],showgrid=False,showticklabels=False))
+                _fig.update_layout(height=250,margin=dict(l=3,r=3,t=2,b=18),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=-.18,x=0,font=dict(size=9),traceorder="normal"),paper_bgcolor="white",plot_bgcolor="white",yaxis=dict(side="right",gridcolor="#e8eef6"),yaxis2=dict(overlaying="y",side="left",range=[0,float(_v.max()*5) if 'Volume' in _chart_h.columns and _v.notna().any() else 1],showgrid=False,showticklabels=False))
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
-                if st.button("View Full Technical Analysis  →",key=f"v21216_tech_{ticker}",use_container_width=True):
-                    st.session_state[_cc_sub_key]="Technical"; st.session_state["chr_primary_nav"]="Company Command Centre"; st.rerun()
+                _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
+                st.markdown(f'<a class="v21218-tech-link" href="{_tech_href}">View Full Technical Analysis&nbsp; →</a>',unsafe_allow_html=True)
         with _w_thesis:
             with st.container(border=True):
                 st.markdown('<div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
