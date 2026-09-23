@@ -2717,12 +2717,19 @@ if "chr_router_v2054_ready" not in st.session_state:
 try:
     _chr_cc_deep=str(st.query_params.get("chr_cc") or "").strip().upper()
     _chr_compare_deep=str(st.query_params.get("chr_compare") or "").strip().upper()
-    if _chr_cc_deep:
+    _chr_deep_sig=(
+        f"cc:{_chr_cc_deep}:{str(st.query_params.get('chr_cc_page') or 'Overview')}" if _chr_cc_deep
+        else (f"compare:{_chr_compare_deep}" if _chr_compare_deep else "")
+    )
+    _chr_deep_new=bool(_chr_deep_sig and st.session_state.get("chr_consumed_deep_link_v21221")!=_chr_deep_sig)
+    if _chr_cc_deep and _chr_deep_new:
+        st.session_state["chr_consumed_deep_link_v21221"]=_chr_deep_sig
         st.session_state["chr_active_ticker"]=_chr_cc_deep
         st.session_state["mia_search_query"]=_chr_cc_deep
         st.session_state["chr_primary_nav"]="Company Command Centre"
         st.session_state["chr_cc_sub_v21001"]=str(st.query_params.get("chr_cc_page") or "Overview")
-    elif _chr_compare_deep:
+    elif _chr_compare_deep and _chr_deep_new:
+        st.session_state["chr_consumed_deep_link_v21221"]=_chr_deep_sig
         st.session_state["chr_active_ticker"]=_chr_compare_deep
         st.session_state["mia_search_query"]=_chr_compare_deep
         st.session_state["chr_primary_nav"]="Company Command Centre"
@@ -2757,6 +2764,17 @@ def _chr_nav_svg(name):
 def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
         st.session_state["chr_primary_nav"]=target
+        # V21.2.21 — a Command Centre deep-link query is only an entry route.
+        # Once the user deliberately chooses another sidebar page, remove the
+        # stale deep-link parameters so the next Streamlit rerun cannot force
+        # Company Command Centre open again.
+        if target != "Company Command Centre":
+            try:
+                for _qp in ("chr_cc","chr_cc_page","chr_compare"):
+                    if _qp in st.query_params:
+                        del st.query_params[_qp]
+            except Exception:
+                pass
 
 # V21.1.1 — integrated Company Command Centre navigation.
 _cc_sub_key="chr_cc_sub_v21001"

@@ -260,3 +260,10 @@ V20.7.4.18.1 — Market Chart Dynamic Label Alignment Fix
 - Rebuilds the research-engine summary as six independent engine cards.
 - Structures the AI Research Brief around change, fundamentals, valuation, technical/quant, thesis conflicts, catalysts, evidence gaps and next investigation.
 - Keeps all specialist research engines independently routable and executable.
+
+
+## V21.2.21 — Sidebar Navigation Deep-Link State Fix
+- Fixes stale `chr_cc` / `chr_cc_page` query parameters trapping the app on Company Command Centre.
+- Command Centre deep links are consumed once per session/signature instead of re-applied on every Streamlit rerun.
+- Deliberate top-level sidebar navigation clears stale Command Centre routing parameters.
+- Preserves V21.2.20 smooth in-browser Price Chart timeframe switching.
