@@ -2764,7 +2764,7 @@ def _chr_nav_svg(name):
 def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
         st.session_state["chr_primary_nav"]=target
-        # V21.2.21 — a Command Centre deep-link query is only an entry route.
+        # V21.2.22 — a Command Centre deep-link query is only an entry route.
         # Once the user deliberately chooses another sidebar page, remove the
         # stale deep-link parameters so the next Streamlit rerun cannot force
         # Company Command Centre open again.
@@ -3689,9 +3689,57 @@ def _home_live_search_fragment():
             st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
 
+def _chr_detect_home_market_v21222():
+    """Choose a country-level Home market from browser timezone/locale only.
+
+    No GPS, street address, or precise geolocation is requested. The result is only
+    a first-visit default; an explicit user market choice remains authoritative.
+    """
+    tz = ""
+    locale = ""
+    try:
+        tz = str(getattr(st.context, "timezone", "") or "")
+    except Exception:
+        pass
+    try:
+        locale = str(getattr(st.context, "locale", "") or "")
+    except Exception:
+        pass
+
+    tz_map = {
+        # Australia
+        "Australia/Sydney":"Australia", "Australia/Melbourne":"Australia",
+        "Australia/Brisbane":"Australia", "Australia/Adelaide":"Australia",
+        "Australia/Perth":"Australia", "Australia/Hobart":"Australia",
+        "Australia/Darwin":"Australia", "Australia/Broken_Hill":"Australia",
+        # United States
+        "America/New_York":"United States", "America/Chicago":"United States",
+        "America/Denver":"United States", "America/Los_Angeles":"United States",
+        "America/Phoenix":"United States", "America/Anchorage":"United States",
+        "Pacific/Honolulu":"United States",
+        # Supported international markets
+        "Europe/London":"United Kingdom",
+        "Asia/Tokyo":"Japan",
+        "Asia/Hong_Kong":"Hong Kong",
+        "America/Toronto":"Canada", "America/Vancouver":"Canada",
+        "America/Edmonton":"Canada", "America/Winnipeg":"Canada",
+        "America/Halifax":"Canada", "America/St_Johns":"Canada",
+    }
+    if tz in tz_map:
+        return tz_map[tz]
+    # Locale is deliberately a fallback because language/region preference can differ
+    # from physical location. Timezone therefore wins whenever it is available.
+    region = locale.replace("_", "-").split("-")[-1].upper() if "-" in locale or "_" in locale else ""
+    return {"AU":"Australia", "US":"United States", "GB":"United Kingdom",
+            "JP":"Japan", "HK":"Hong Kong", "CA":"Canada"}.get(region, "Australia")
+
 @st.fragment(run_every="60s")
 def render_global_market_overview():
-    if "home_market_v2021" not in st.session_state: st.session_state.home_market_v2021="Australia"
+    # V21.2.22 — Home Market Localisation Engine. Detect once per browser session.
+    # Explicit user choices always win after the initial seed.
+    if "home_market_v2021" not in st.session_state:
+        st.session_state.home_market_v2021=_chr_detect_home_market_v21222()
+        st.session_state["chr_home_market_auto_v21222"]=True
     # V20.3.0: query-param navigation uses plain HTML anchors instead of Streamlit
     # buttons. This guarantees the reference white-card appearance and real flags.
     # V20.7.4.19 — session state is authoritative during in-app navigation.
@@ -3725,6 +3773,8 @@ def render_global_market_overview():
                         # Avoid query-param mutation + st.rerun(), which previously caused
                         # extra app executions and the visible white/loading transition.
                         st.session_state.home_market_v2021=m
+                        st.session_state["chr_home_market_user_selected_v21222"]=True
+                        st.session_state["chr_home_market_auto_v21222"]=False
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
