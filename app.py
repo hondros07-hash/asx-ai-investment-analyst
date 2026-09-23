@@ -6044,7 +6044,15 @@ elif page=="Company Command Centre":
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
         st.markdown("""<style>
-        /* V21.2.42 — full-card white chart + isolated volume band. */
+        /* V21.2.43 — true white Price Chart card + isolated volume band. */
+        .st-key-v21243_price_card,
+        .st-key-v21243_price_card > div,
+        .st-key-v21243_price_card [data-testid="stVerticalBlockBorderWrapper"],
+        .st-key-v21243_price_card [data-testid="stVerticalBlock"],
+        .st-key-v21243_price_card [data-testid="stElementContainer"],
+        .st-key-v21243_price_card [data-testid="stPlotlyChart"]{background:#fff!important;background-color:#fff!important;}
+        .st-key-v21243_price_card [data-testid="stVerticalBlockBorderWrapper"]{border-color:#fff!important;box-shadow:none!important;}
+        .st-key-v21243_price_card{background:#fff!important;border-radius:9px!important;overflow:hidden!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card){background:#fff!important;background-color:#fff!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) > div{background:#fff!important;background-color:#fff!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) [data-testid="stVerticalBlock"]{background:#fff!important;background-color:#fff!important;}
@@ -6069,7 +6077,7 @@ elif page=="Company Command Centre":
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
         _overview_widget_height=350
         with _w_chart:
-            with st.container(border=True,height=_overview_widget_height):
+            with st.container(border=True,height=_overview_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
                 # V21.2.20 — client-side timeframe switching. All chart ranges are loaded once,
                 # then Plotly switches traces in-browser so the Streamlit page does not reload/flash.
@@ -6149,19 +6157,19 @@ elif page=="Company Command Centre":
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},_layout_update]))
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
                 _fig.update_layout(
-                    height=315,margin=dict(l=2,r=40,t=36,b=40),xaxis_rangeslider_visible=False,
+                    height=300,margin=dict(l=2,r=40,t=34,b=34),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
-                    legend=dict(orientation="h",y=-.17,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
+                    legend=dict(orientation="h",y=-.15,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
                     annotations=[dict(
-                        x=1.0,y=-.17,xref="paper",yref="paper",xanchor="right",yanchor="top",
+                        x=1.0,y=-.15,xref="paper",yref="paper",xanchor="right",yanchor="top",
                         text=f'<a href="{_tech_href}" target="_self"><b>View Full Technical Analysis&nbsp; →</b></a>',
                         showarrow=False,font=dict(size=10,color="#086ee8"),align="right"
                     )],
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1]),
-                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.22,1.0]),
-                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.0,0.18]),
+                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.25,1.0]),
+                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.0,0.17]),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
         with _w_thesis:
@@ -6259,7 +6267,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.42 architecture: Full-Card White Price Chart + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.43 architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
