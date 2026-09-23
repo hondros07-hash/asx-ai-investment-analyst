@@ -4358,25 +4358,48 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
 
 @st.cache_data(ttl=21600, show_spinner=False)
 def _chr_resolved_logo_data_uri(symbol, company, candidates):
-    """V21.2.35: validate logo candidates server-side and embed the first working image."""
-    import base64, urllib.request
-    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.35)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
+    """V21.2.36: validate and normalise logos without stretching/corrupting aspect ratio."""
+    import base64, io, urllib.request
+    from PIL import Image, ImageOps
+    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.36)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
     for url in list(candidates or []):
         try:
             req=urllib.request.Request(str(url),headers=headers)
             with urllib.request.urlopen(req,timeout=4) as resp:
                 raw=resp.read(2_000_000); ctype=str(resp.headers.get_content_type() or "").lower()
             if not raw: continue
-            head=raw[:512].lstrip().lower()
+            head=raw[:1024].lstrip().lower()
             if b"<html" in head or b"<!doctype html" in head: continue
-            if ctype.startswith("image/"): mime=ctype
-            elif raw.startswith(b"\x89PNG"): mime="image/png"
-            elif raw[:3]==b"\xff\xd8\xff": mime="image/jpeg"
-            elif raw[:4]==b"GIF8": mime="image/gif"
-            elif b"<svg" in head: mime="image/svg+xml"
-            elif raw[:4] in (b"\x00\x00\x01\x00",b"\x00\x00\x02\x00"): mime="image/x-icon"
-            else: continue
-            return "data:%s;base64,%s"%(mime,base64.b64encode(raw).decode("ascii"))
+
+            # Convert SVG to a high-resolution PNG before embedding. Browsers/providers
+            # can disagree on SVG sizing; rasterising here gives the header one stable asset.
+            if ctype=="image/svg+xml" or b"<svg" in head:
+                try:
+                    import cairosvg
+                    raw=cairosvg.svg2png(bytestring=raw,output_width=640,output_height=360)
+                except Exception:
+                    continue
+
+            try:
+                im=Image.open(io.BytesIO(raw))
+                im.load()
+            except Exception:
+                continue
+            if im.width < 24 or im.height < 24:
+                continue
+
+            # Never resize by forcing width and height independently. Fit the original
+            # aspect ratio inside a transparent 640x360 brand canvas instead.
+            if im.mode not in ("RGBA","LA"):
+                im=im.convert("RGBA")
+            else:
+                im=im.convert("RGBA")
+            fitted=ImageOps.contain(im,(600,320),method=Image.Resampling.LANCZOS)
+            canvas=Image.new("RGBA",(640,360),(255,255,255,0))
+            x=(640-fitted.width)//2; y=(360-fitted.height)//2
+            canvas.alpha_composite(fitted,(x,y))
+            out=io.BytesIO(); canvas.save(out,format="PNG",optimize=True)
+            return "data:image/png;base64,"+base64.b64encode(out.getvalue()).decode("ascii")
         except Exception:
             continue
     return ""
@@ -6187,7 +6210,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.35 architecture: Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.36 architecture: Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
