@@ -6044,10 +6044,11 @@ elif page=="Company Command Centre":
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
         st.markdown("""<style>
-        /* V21.2.40 — reference-matched white cards that fully use the locked 350px row height. */
-        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21240-overview-card){background:#fff!important;}
-        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21240-overview-card) > div{background:#fff!important;}
-        .v21240-overview-card{height:0;margin:0;padding:0;overflow:hidden}
+        /* V21.2.41 — white fixed-height cards + corrected timeframe/indicator chart engine. */
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card){background:#fff!important;background-color:#fff!important;}
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) > div{background:#fff!important;background-color:#fff!important;}
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) [data-testid="stVerticalBlock"]{background:#fff!important;background-color:#fff!important;}
+        .v21241-overview-card{height:0;margin:0;padding:0;overflow:hidden}
         .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 2px}
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700}
         .v21216-thesis-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:6px 0;font-size:11px;color:#26466e}
@@ -6067,7 +6068,7 @@ elif page=="Company Command Centre":
         _overview_widget_height=350
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
                 # V21.2.20 — client-side timeframe switching. All chart ranges are loaded once,
                 # then Plotly switches traces in-browser so the Streamlit page does not reload/flash.
                 _tf_options=["1D","1W","1M","3M","6M","1Y","3Y","5Y"]
@@ -6076,41 +6077,74 @@ elif page=="Company Command Centre":
                     "3M":("3mo","1d"), "6M":("6mo","1d"), "1Y":("1y","1d"),
                     "3Y":("3y","1wk"), "5Y":("5y","1wk"),
                 }
+                # Fetch a longer calculation window than the visible window. This prevents
+                # SMA 20/50 from disappearing on 1M/3M and avoids starting each average from zero history.
+                _tf_calc={
+                    "1D":("5d","5m"), "1W":("1mo","30m"), "1M":("6mo","1d"),
+                    "3M":("1y","1d"), "6M":("1y","1d"), "1Y":("2y","1d"),
+                    "3Y":("5y","1wk"), "5Y":("10y","1wk"),
+                }
                 _chart_sets={}
                 _yt=yf.Ticker(ticker)
                 for _opt in _tf_options:
-                    _per,_int=_tf_spec[_opt]
+                    _per,_int=_tf_calc[_opt]
                     try:
-                        _hh=_yt.history(period=_per,interval=_int,auto_adjust=True)
+                        _calc=_yt.history(period=_per,interval=_int,auto_adjust=True)
                     except Exception:
+                        _calc=pd.DataFrame()
+                    if _calc is None or _calc.empty:
+                        _calc=h.copy() if _opt=="1Y" else pd.DataFrame()
+                    if _calc is not None and not _calc.empty:
+                        _calc=_calc.copy()
+                        _calc["SMA20"]=_calc["Close"].rolling(20,min_periods=20).mean()
+                        _calc["SMA50"]=_calc["Close"].rolling(50,min_periods=50).mean()
+                        # Slice only after indicators are calculated so short tabs retain valid SMAs.
+                        _vis_per,_=_tf_spec[_opt]
+                        _cut_days={"1D":1,"1W":7,"1M":31,"3M":93,"6M":186,"1Y":366,"3Y":1098,"5Y":1830}[_opt]
+                        _end_ts=_calc.index.max()
+                        _start_ts=_end_ts-pd.Timedelta(days=_cut_days)
+                        _hh=_calc.loc[_calc.index>=_start_ts].copy()
+                    else:
                         _hh=pd.DataFrame()
-                    if _hh is None or _hh.empty:
-                        _hh=h.copy() if _opt=="1Y" else pd.DataFrame()
-                    _chart_sets[_opt]=_hh.copy()
+                    _chart_sets[_opt]=_hh
                 _fig=go.Figure()
                 _trace_groups=[]
+                _axis_updates=[]
                 for _opt in _tf_options:
                     _hh=_chart_sets[_opt]
                     _idx=[]
                     if _hh is not None and not _hh.empty and all(c in _hh.columns for c in ["Open","High","Low","Close"]):
                         _idx.append(len(_fig.data))
                         _fig.add_trace(go.Candlestick(x=_hh.index,open=_hh["Open"],high=_hh["High"],low=_hh["Low"],close=_hh["Close"],name=ticker,showlegend=False,increasing_line_color="#00a66a",decreasing_line_color="#f04444",visible=(_opt=="1Y")))
-                        if len(_hh)>=20:
-                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.5,color="#24aee8"),visible=(_opt=="1Y")))
-                        if len(_hh)>=50:
-                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.5,color="#ff334f"),visible=(_opt=="1Y")))
+                        if "SMA20" in _hh and _hh["SMA20"].notna().any():
+                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA20"],name="SMA 20",line=dict(width=1.5,color="#24aee8"),connectgaps=False,visible=(_opt=="1Y")))
+                        if "SMA50" in _hh and _hh["SMA50"].notna().any():
+                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA50"],name="SMA 50",line=dict(width=1.5,color="#ff334f"),connectgaps=False,visible=(_opt=="1Y")))
                         if "Volume" in _hh.columns:
                             _vv=pd.to_numeric(_hh["Volume"],errors="coerce")
                             if _vv.notna().any():
                                 _vc=np.where(pd.to_numeric(_hh["Close"],errors="coerce")>=pd.to_numeric(_hh["Open"],errors="coerce"),"rgba(0,166,106,.42)","rgba(240,68,68,.42)")
                                 _idx.append(len(_fig.data)); _fig.add_trace(go.Bar(x=_hh.index,y=_vv,name="Volume",yaxis="y2",marker_color=_vc,visible=(_opt=="1Y")))
+                        _lo=float(pd.to_numeric(_hh["Low"],errors="coerce").min()); _hi=float(pd.to_numeric(_hh["High"],errors="coerce").max())
+                        _span=max(_hi-_lo,0.0001)
+                        _tickfmt=".3f" if _span<0.20 else (".2f" if _span<1.0 else ".1f")
+                    else:
+                        _tickfmt=".2f"
                     _trace_groups.append(_idx)
+                    _axis_updates.append(_tickfmt)
                 _buttons=[]
                 _ntr=len(_fig.data)
                 for _i,_opt in enumerate(_tf_options):
                     _vis=[False]*_ntr
                     for _j in _trace_groups[_i]: _vis[_j]=True
-                    _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},{"xaxis.autorange":True,"yaxis.autorange":True,"yaxis2.autorange":True}]))
+                    _layout_update={"xaxis.autorange":True,"yaxis.autorange":True,"yaxis.tickformat":_axis_updates[_i],"yaxis2.autorange":True}
+                    # Remove non-trading gaps on intraday views so overnight/weekend whitespace
+                    # does not create misleading long horizontal indicator segments.
+                    if _opt in ("1D","1W"):
+                        _layout_update["xaxis.rangebreaks"]=[dict(bounds=["sat","mon"]),dict(bounds=[16,10],pattern="hour")]
+                    else:
+                        _layout_update["xaxis.rangebreaks"]=[]
+                    _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},_layout_update]))
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
                 _fig.update_layout(
                     height=282,margin=dict(l=2,r=40,t=36,b=42),xaxis_rangeslider_visible=False,
@@ -6124,13 +6158,13 @@ elif page=="Company Command Centre":
                     )],
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1]),
-                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=".1f",ticksuffix="",automargin=True,domain=[0,1.0]),
+                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0,1.0]),
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",overlaying="y"),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
         with _w_thesis:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
                 _ratio=(_ccth_met/max(_ccth_total,1)) if _ccth_total else 0.0
                 st.markdown(f'<div class="v21216-thesis-score">{_ccth_met} / {_ccth_total or 0} <span>conditions on track</span></div>',unsafe_allow_html=True)
                 st.progress(float(_ratio),text=f"{_ratio:.0%}" if _ccth_total else "Not configured")
@@ -6159,7 +6193,7 @@ elif page=="Company Command Centre":
         if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
         with _w_ai:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21241-overview-card"></div><div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
                 st.markdown('<div class="v21216-ai-info">Get an AI-generated research brief based on all available evidence across fundamentals, valuation, technicals, announcements, news and forecasts. This is not a buy/sell recommendation.</div>',unsafe_allow_html=True)
                 if st.button("✦  Generate AI Research Brief",type="primary",use_container_width=True,key=f"v21216_generate_ai_{ticker}"):
                     try:
@@ -6223,7 +6257,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.40 architecture: Reference-Matched White Full-Height Overview Intelligence Widgets · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.41 architecture: White Card + Corrected Timeframe/Indicator Price Chart Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
