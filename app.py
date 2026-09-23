@@ -5992,14 +5992,14 @@ elif page=="Company Command Centre":
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
         st.markdown("""<style>
-        .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 5px}
+        .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 2px}
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700}
         .v21216-thesis-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:6px 0;font-size:11px;color:#26466e}
         .v21216-thesis-icon{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;background:#91a4ba}.v21216-thesis-icon.met{background:#0aa64a}.v21216-thesis-icon.watch{background:#f5a300}.v21216-thesis-status{font-size:10px;font-weight:800}.v21216-thesis-status.met{color:#0aa64a}.v21216-thesis-status.watch{color:#f5a300}.v21216-thesis-status.pending{color:#7890aa}
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
-        /* V21.2.30 — reference-match chart: volume sits inside the lower plot area */
+        /* V21.2.31 — tighter reference-match chart geometry */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 8px;padding:0 0 7px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
         .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
@@ -6055,14 +6055,14 @@ elif page=="Company Command Centre":
                     for _j in _trace_groups[_i]: _vis[_j]=True
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},{"xaxis.autorange":True,"yaxis.autorange":True,"yaxis2.autorange":True}]))
                 _fig.update_layout(
-                    height=250,margin=dict(l=2,r=40,t=44,b=38),xaxis_rangeslider_visible=False,
+                    height=238,margin=dict(l=2,r=40,t=38,b=30),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
-                    legend=dict(orientation="h",y=-.24,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
+                    legend=dict(orientation="h",y=-.19,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1]),
-                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=".1f",ticksuffix="",automargin=True,domain=[0.12,1.0]),
-                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,domain=[0.12,0.25],anchor="x",overlaying="y"),
+                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=".1f",ticksuffix="",automargin=True,domain=[0,1.0]),
+                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",overlaying="y"),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
@@ -6162,7 +6162,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.30 architecture: Reference-Matched Integrated Volume Price Chart · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.31 architecture: Reference-Matched Price Chart Geometry Rebuild · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
