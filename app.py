@@ -5920,24 +5920,91 @@ elif page=="Company Command Centre":
         _change_sub=f"Evidence coverage {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)} · Technical: {tr.get('Trend','—')} · Thesis: "+(f"{_ccth_met}/{_ccth_total} conditions met" if _ccth_total else "not configured")+" · Valuation: "+("loaded" if np.isfinite(_mia_num(_ccbase)) else "evidence gap")
         st.markdown(f'<div class="v21-change"><div class="v21-change-title">Something Changed · Evidence Monitor</div><div class="v21-change-main">{html.escape(_change_main)}</div><div class="v21-change-sub">{html.escape(_change_sub)}</div></div>',unsafe_allow_html=True)
 
-        _chartcol,_thesiscol=st.columns([1.75,1])
-        with _chartcol:
-            st.markdown('<div class="v21-section">Price Intelligence</div>',unsafe_allow_html=True)
-            _fig=go.Figure(data=[go.Candlestick(x=h.index,open=h["Open"],high=h["High"],low=h["Low"],close=h["Close"],name=ticker)])
-            if len(h)>=20: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.2)))
-            if len(h)>=50: _fig.add_trace(go.Scatter(x=h.index,y=h["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.2)))
-            _fig.update_layout(height=255,margin=dict(l=8,r=8,t=8,b=8),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=1.02,x=0),paper_bgcolor="white",plot_bgcolor="white")
-            st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
-            _perfcols=st.columns(6)
-            for _c,(_n,_lab) in zip(_perfcols,[(1,"1D"),(5,"1W"),(21,"1M"),(63,"3M"),(126,"6M"),(252,"1Y")]):
-                _rr=np.nan if len(_close)<=_n else float(_close.iloc[-1]/_close.iloc[-_n-1]-1); _c.metric(_lab,"—" if pd.isna(_rr) else f"{_rr:+.1%}")
-        with _thesiscol:
-            st.markdown('<div class="v21-section">Thesis Scorecard</div>',unsafe_allow_html=True)
-            if _ccth_total:
-                st.progress(_ccth_met/max(_ccth_total,1),text=f"{_ccth_met} of {_ccth_total} measurable conditions currently met")
-                _showcols=[x for x in ["metric","current_value","status"] if x in _ccthesis.columns]; st.dataframe(_ccthesis[_showcols].head(7),use_container_width=True,hide_index=True,height=190)
-            else: st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard. The Overview will then monitor them automatically.")
-            st.caption("Evidence is inherited from the independent Thesis Scorecard engine; the Overview does not invent missing conditions.")
+        # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
+        # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
+        st.markdown("""<style>
+        .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 5px}
+        .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700}
+        .v21216-thesis-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:6px 0;font-size:11px;color:#26466e}
+        .v21216-thesis-icon{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;background:#91a4ba}.v21216-thesis-icon.met{background:#0aa64a}.v21216-thesis-icon.watch{background:#f5a300}.v21216-thesis-status{font-size:10px;font-weight:800}.v21216-thesis-status.met{color:#0aa64a}.v21216-thesis-status.watch{color:#f5a300}.v21216-thesis-status.pending{color:#7890aa}
+        .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
+        .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
+        .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
+        </style>""",unsafe_allow_html=True)
+        _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
+        with _w_chart:
+            with st.container(border=True):
+                st.markdown('<div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
+                _tf_key=f"v21216_tf_{ticker}"
+                _tf=st.radio("Chart timeframe",["1D","1W","1M","3M","6M","1Y","3Y","5Y"],index=5,horizontal=True,label_visibility="collapsed",key=_tf_key)
+                _period_map={"1D":"1d","1W":"5d","1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}
+                _chart_h=h if _tf=="1Y" else history(ticker,_period_map[_tf])
+                if _chart_h is None or _chart_h.empty: _chart_h=h
+                _chart_h=_chart_h.copy()
+                _fig=go.Figure()
+                _fig.add_trace(go.Candlestick(x=_chart_h.index,open=_chart_h["Open"],high=_chart_h["High"],low=_chart_h["Low"],close=_chart_h["Close"],name=ticker,increasing_line_color="#00a66a",decreasing_line_color="#f04444"))
+                if len(_chart_h)>=20: _fig.add_trace(go.Scatter(x=_chart_h.index,y=_chart_h["Close"].rolling(20).mean(),name="SMA 20",line=dict(width=1.5,color="#24aee8")))
+                if len(_chart_h)>=50: _fig.add_trace(go.Scatter(x=_chart_h.index,y=_chart_h["Close"].rolling(50).mean(),name="SMA 50",line=dict(width=1.5,color="#ff334f")))
+                if "Volume" in _chart_h.columns:
+                    _v=pd.to_numeric(_chart_h["Volume"],errors="coerce")
+                    if _v.notna().any(): _fig.add_trace(go.Bar(x=_chart_h.index,y=_v,name="Volume",opacity=.22,yaxis="y2",marker_color="#f3a51f"))
+                _fig.update_layout(height=275,margin=dict(l=3,r=3,t=2,b=2),xaxis_rangeslider_visible=False,legend=dict(orientation="h",y=-.13,x=0,font=dict(size=9)),paper_bgcolor="white",plot_bgcolor="white",yaxis=dict(side="right",gridcolor="#e8eef6"),yaxis2=dict(overlaying="y",side="left",range=[0,float(_v.max()*5) if 'Volume' in _chart_h.columns and _v.notna().any() else 1],showgrid=False,showticklabels=False))
+                st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False})
+                if st.button("View Full Technical Analysis  →",key=f"v21216_tech_{ticker}",use_container_width=True):
+                    st.session_state[_cc_sub_key]="Technical"; st.session_state["chr_primary_nav"]="Company Command Centre"; st.rerun()
+        with _w_thesis:
+            with st.container(border=True):
+                st.markdown('<div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
+                _ratio=(_ccth_met/max(_ccth_total,1)) if _ccth_total else 0.0
+                st.markdown(f'<div class="v21216-thesis-score">{_ccth_met} / {_ccth_total or 0} <span>conditions on track</span></div>',unsafe_allow_html=True)
+                st.progress(float(_ratio),text=f"{_ratio:.0%}" if _ccth_total else "Not configured")
+                if _ccth_total and _ccthesis is not None and not _ccthesis.empty:
+                    _rows=[]
+                    for _,_r in _ccthesis.head(6).iterrows():
+                        _label=str(_r.get("metric") or _r.get("condition") or _r.get("Item") or "Thesis condition")
+                        _raw=str(_r.get("status") or "Pending").strip(); _sl=_raw.lower()
+                        _cls="met" if _sl in {"met","on track","pass","passed","true"} else ("watch" if _sl in {"watch","warning","at risk","attention"} else "pending")
+                        _icon="✓" if _cls=="met" else ("!" if _cls=="watch" else "•")
+                        _display="On track" if _cls=="met" else ("Watch" if _cls=="watch" else _raw)
+                        _rows.append(f'<div class="v21216-thesis-row"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
+                    st.markdown("".join(_rows),unsafe_allow_html=True)
+                else:
+                    st.info("No measurable thesis conditions yet. Add them in Thesis Scorecard.")
+                if st.button("View Thesis Scorecard  →",key=f"v21216_thesis_{ticker}",use_container_width=True):
+                    st.session_state[_cc_sub_key]="Thesis Scorecard"; st.session_state["chr_primary_nav"]="Company Command Centre"; st.rerun()
+        # Prepare the evidence packet here so the compact AI widget is functional in the same row.
+        _attention_text="No stored thesis/monitoring item currently requires attention."
+        if _ccattention is not None and not _ccattention.empty:
+            _attention_text="; ".join([str(x) for x in _ccattention.head(3).get("Item",pd.Series(dtype=str)).tolist() if str(x).strip()]) or _attention_text
+        _ann_text="No announcement evidence loaded."
+        if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
+        _brief_fallback=(f"WHAT CHANGED\n{_change_main}\n\nFUNDAMENTAL EVIDENCE\nEvidence coverage is {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} categories. Sector: {_ccsector}; industry: {_ccindustry}.\n\nVALUATION & EXPECTATIONS\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"12-month historical forecast scenario: {_ccf12:+.1%}." if np.isfinite(_ccf12) else "12-month forecast evidence is unavailable.")+f"\n\nTECHNICAL / QUANT\nCurrent technical regime: {tr.get('Trend','—')}. "+(f"Annualised volatility: {_ccvolatility:.1%}. " if np.isfinite(_ccvolatility) else "")+(f"Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+f"\n\nTHESIS CONFLICTS & MONITORING\n{_attention_text}\n\nCATALYSTS / ANNOUNCEMENTS\n{_ann_text}\n\nEVIDENCE GAPS\nMissing fields and unavailable engines should be completed before stronger conclusions are drawn.\n\nINVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts that can change the evidence state.")
+        _ai_key=f"v21_ai_brief_{ticker}"; _ai_time_key=f"v21216_ai_time_{ticker}"
+        if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
+        with _w_ai:
+            with st.container(border=True):
+                st.markdown('<div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21216-ai-info">Get an AI-generated research brief based on all available evidence across fundamentals, valuation, technicals, announcements, news and forecasts. This is not a buy/sell recommendation.</div>',unsafe_allow_html=True)
+                if st.button("✦  Generate AI Research Brief",type="primary",use_container_width=True,key=f"v21216_generate_ai_{ticker}"):
+                    try:
+                        import os
+                        from openai import OpenAI
+                        try: _secret_key=str(st.secrets.get("OPENAI_API_KEY","") or "")
+                        except Exception: _secret_key=""
+                        _secret_key=_secret_key or os.environ.get("OPENAI_API_KEY","")
+                        if not _secret_key: raise RuntimeError("OPENAI_API_KEY is not configured")
+                        try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
+                        except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
+                        _evidence={"company":_ccname,"ticker":ticker,"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else _ccpct,"sector":_ccsector,"industry":_ccindustry,"technical":tr,"research_score":_ccscore,"base_valuation":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase),"forecast_12m":None if not np.isfinite(_ccf12) else float(_ccf12),"analyst":_ccanalyst,"thesis_met":_ccth_met,"thesis_total":_ccth_total,"attention":_attention_text,"recent_announcements":_ann_text}
+                        _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise structured investment-research brief, not a recommendation. Separate observed facts/model outputs from interpretation. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
+                        _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt); _txt=getattr(_resp,"output_text","") or ""
+                        if not _txt.strip(): raise RuntimeError("AI provider returned an empty brief")
+                        st.session_state[_ai_key]=_txt.strip(); st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST")
+                    except Exception as _aie:
+                        st.session_state[_ai_key]=_brief_fallback; st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST"); st.warning(f"AI synthesis unavailable ({_aie}). Evidence fallback prepared instead.")
+                _last_ai=st.session_state.get(_ai_time_key,"Not generated in this session")
+                st.markdown(f'<div class="v21216-ai-time">Last generated: {html.escape(str(_last_ai))}</div>',unsafe_allow_html=True)
+                with st.expander("View current research brief",expanded=False): st.write(st.session_state.get(_ai_key,_brief_fallback))
 
         st.markdown('<div class="v21-section">Independent Research Engines</div>',unsafe_allow_html=True)
         _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
@@ -5953,37 +6020,6 @@ elif page=="Company Command Centre":
         _er1=st.columns(3); _er2=st.columns(3)
         for _col,(_k,_v,_s) in zip(_er1+_er2,_engine_cards):
             _col.markdown(f'<div class="v21-card v21-engine"><div class="v21-engine-name">{html.escape(_k)}</div><div class="v21-engine-main">{html.escape(str(_v))}</div><div class="v21-s">{html.escape(str(_s))}</div><div class="v21-engine-link">Independent engine →</div></div>',unsafe_allow_html=True)
-
-        st.markdown('<div class="v21-section">Chrímata AI Research Brief</div>',unsafe_allow_html=True)
-        _attention_text="No stored thesis/monitoring item currently requires attention."
-        if _ccattention is not None and not _ccattention.empty:
-            _attention_text="; ".join([str(x) for x in _ccattention.head(3).get("Item",pd.Series(dtype=str)).tolist() if str(x).strip()]) or _attention_text
-        _ann_text="No announcement evidence loaded."
-        if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
-        _brief_fallback=(f"WHAT CHANGED\n{_change_main}\n\nFUNDAMENTAL EVIDENCE\nEvidence coverage is {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} categories. Sector: {_ccsector}; industry: {_ccindustry}.\n\nVALUATION & EXPECTATIONS\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"12-month historical forecast scenario: {_ccf12:+.1%}." if np.isfinite(_ccf12) else "12-month forecast evidence is unavailable.")+f"\n\nTECHNICAL / QUANT\nCurrent technical regime: {tr.get('Trend','—')}. "+(f"Annualised volatility: {_ccvolatility:.1%}. " if np.isfinite(_ccvolatility) else "")+(f"Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+f"\n\nTHESIS CONFLICTS & MONITORING\n{_attention_text}\n\nCATALYSTS / ANNOUNCEMENTS\n{_ann_text}\n\nEVIDENCE GAPS\nMissing fields and unavailable engines should be completed before stronger conclusions are drawn.\n\nINVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts that can change the evidence state.")
-        _ai_key=f"v21_ai_brief_{ticker}"
-        if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
-        _ai_left,_ai_right=st.columns([4.5,1])
-        with _ai_right:
-            if st.button("Generate AI Brief",type="primary",use_container_width=True,key=f"v21_generate_ai_{ticker}"):
-                try:
-                    import os
-                    from openai import OpenAI
-                    try: _secret_key=str(st.secrets.get("OPENAI_API_KEY","") or "")
-                    except Exception: _secret_key=""
-                    _secret_key=_secret_key or os.environ.get("OPENAI_API_KEY","")
-                    if not _secret_key: raise RuntimeError("OPENAI_API_KEY is not configured")
-                    try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
-                    except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
-                    _evidence={"company":_ccname,"ticker":ticker,"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else _ccpct,"sector":_ccsector,"industry":_ccindustry,"technical":tr,"research_score":_ccscore,"base_valuation":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase),"forecast_12m":None if not np.isfinite(_ccf12) else float(_ccf12),"analyst":_ccanalyst,"thesis_met":_ccth_met,"thesis_total":_ccth_total,"attention":_attention_text,"recent_announcements":_ann_text}
-                    _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise structured investment-research brief, not a recommendation. Use these headings exactly: WHAT CHANGED; FUNDAMENTAL EVIDENCE; VALUATION & EXPECTATIONS; TECHNICAL / QUANT; THESIS CONFLICTS; CATALYSTS; EVIDENCE GAPS; INVESTIGATE NEXT. Separate observed facts/model outputs from interpretation. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
-                    _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt); _txt=getattr(_resp,"output_text","") or ""
-                    if not _txt.strip(): raise RuntimeError("AI provider returned an empty brief")
-                    st.session_state[_ai_key]=_txt.strip()
-                except Exception as _aie:
-                    st.session_state[_ai_key]=_brief_fallback; st.warning(f"AI synthesis unavailable ({_aie}). Showing the evidence-driven fallback brief instead.")
-        with _ai_left: st.markdown(f'<div class="v21-ai"><h3>Research synthesis</h3><p>{html.escape(str(st.session_state.get(_ai_key,_brief_fallback))).replace(chr(10),"<br>")}</p></div>',unsafe_allow_html=True)
-        st.caption("AI synthesis is constrained to loaded evidence and model outputs. It explains and challenges the research; it does not make the investment decision.")
 
         _catcol,_anncol=st.columns([1,1.35])
         with _catcol:
@@ -6011,7 +6047,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.11 architecture: Compare & New-Tab Research Workflow · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.16 architecture: Overview Intelligence Widgets · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
