@@ -1013,78 +1013,157 @@ def overview_thesis_template(ticker, sector="", industry=""):
         labels.append(["Valuation","Balance sheet","Catalyst","Guidance","Cash generation","Risk monitor"][len(labels)%6])
     return labels[:6]
 
-def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_value=np.nan, current_price=np.nan):
-    """Build a company-specific six-condition overview thesis from available evidence.
+@st.cache_data(ttl=3600, show_spinner=False)
+def thesis_financial_evidence(ticker):
+    """Build a small, cached evidence set from provider statements.
 
-    This is deliberately evidence-constrained: a condition is only marked On track or
-    Watch when the currently loaded provider/model fields can support that state.
-    Otherwise it remains Pending. User-stored thesis rules still take precedence.
+    Uses reported statement rows where available and records the comparison used.
+    Missing rows stay missing; callers must not infer a thesis state from absence.
     """
-    meta=meta or {}
+    out={}
+    def _frame(obj, attr):
+        try:
+            x=getattr(obj,attr)
+            return x if isinstance(x,pd.DataFrame) else pd.DataFrame()
+        except Exception:
+            return pd.DataFrame()
+    def _series(df,names):
+        if df is None or df.empty: return None
+        idx={str(i).strip().lower():i for i in df.index}
+        for n in names:
+            key=str(n).strip().lower()
+            if key in idx:
+                try: return pd.to_numeric(df.loc[idx[key]],errors="coerce").dropna()
+                except Exception: return None
+        return None
+    def _pair(series):
+        if series is None or len(series)<2: return (np.nan,np.nan)
+        # yfinance normally supplies newest statement first.
+        return (float(series.iloc[0]),float(series.iloc[1]))
+    def _growth(cur,prior):
+        return np.nan if not np.isfinite(cur) or not np.isfinite(prior) or prior==0 else cur/abs(prior)-1
     try:
-        name=(company_name(ticker) if 'company_name' in globals() else ticker)
+        t=yf.Ticker(ticker)
+        inc=_frame(t,"income_stmt")
+        qinc=_frame(t,"quarterly_income_stmt")
+        cf=_frame(t,"cashflow")
+        qcf=_frame(t,"quarterly_cashflow")
+        bs=_frame(t,"balance_sheet")
+        qbs=_frame(t,"quarterly_balance_sheet")
+        # Prefer annual comparisons for thesis monitoring; fall back to quarterly.
+        for df,period in ((inc,"annual"),(qinc,"quarterly")):
+            rev=_series(df,["Total Revenue","Operating Revenue"])
+            cur,prior=_pair(rev)
+            if np.isfinite(_growth(cur,prior)):
+                out["revenue_growth"]={"value":_growth(cur,prior),"current":cur,"prior":prior,"source":f"Provider {period} income statement"}; break
+        for df,period in ((inc,"annual"),(qinc,"quarterly")):
+            ni=_series(df,["Net Income","Net Income Common Stockholders","Net Income Including Noncontrolling Interests"])
+            cur,prior=_pair(ni)
+            if np.isfinite(_growth(cur,prior)):
+                out["earnings_growth"]={"value":_growth(cur,prior),"current":cur,"prior":prior,"source":f"Provider {period} income statement"}; break
+        for df,period in ((inc,"annual"),(qinc,"quarterly")):
+            rev=_series(df,["Total Revenue","Operating Revenue"]); op=_series(df,["Operating Income"])
+            rc,rp=_pair(rev); oc,oprior=_pair(op)
+            if all(np.isfinite(x) for x in [rc,rp,oc,oprior]) and rc and rp:
+                out["operating_margin"]={"value":oc/rc,"prior":oprior/rp,"source":f"Provider {period} income statement"}; break
+        for df,period in ((cf,"annual"),(qcf,"quarterly")):
+            fcf=_series(df,["Free Cash Flow"])
+            cur,prior=_pair(fcf)
+            if np.isfinite(cur):
+                out["free_cash_flow"]={"value":cur,"prior":prior,"growth":_growth(cur,prior),"source":f"Provider {period} cash-flow statement"}; break
+            ocf=_series(df,["Operating Cash Flow","Total Cash From Operating Activities"]); capex=_series(df,["Capital Expenditure","Capital Expenditures"])
+            oc,oprior=_pair(ocf); cc,cprior=_pair(capex)
+            if np.isfinite(oc) and np.isfinite(cc):
+                cur=oc+cc; prior=oprior+cprior if np.isfinite(oprior) and np.isfinite(cprior) else np.nan
+                out["free_cash_flow"]={"value":cur,"prior":prior,"growth":_growth(cur,prior),"source":f"Provider {period} cash-flow statement"}; break
+        for idf,bdf,period in ((inc,bs,"annual"),(qinc,qbs,"quarterly")):
+            ni=_series(idf,["Net Income","Net Income Common Stockholders"]); eq=_series(bdf,["Stockholders Equity","Total Stockholder Equity"])
+            nc,_=_pair(ni); ec,_=_pair(eq)
+            if np.isfinite(nc) and np.isfinite(ec) and ec:
+                out["roe"]={"value":nc/ec,"source":f"Provider {period} financial statements"}; break
     except Exception:
-        name=ticker
-    ident=f"{ticker} {name} {sector} {industry}".lower()
+        pass
+    return out
 
+def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_value=np.nan, current_price=np.nan):
+    """Evaluate a company-specific six-condition thesis from traceable evidence.
+
+    Reported statement comparisons take priority over snapshot metadata. A status is
+    only assigned where the evidence supports an explicit rule; otherwise Pending.
+    """
+    meta=meta or {}; stmt=thesis_financial_evidence(ticker)
+    try: name=(company_name(ticker) if 'company_name' in globals() else ticker)
+    except Exception: name=ticker
+    ident=f"{ticker} {name} {sector} {industry}".lower()
     def num(*keys):
         for k in keys:
             try:
                 v=_mia_num(meta.get(k))
                 if np.isfinite(v): return float(v)
-            except Exception:
-                pass
+            except Exception: pass
         return np.nan
-    def growth(label, value, source="Market-data provider"):
-        if not np.isfinite(value): return (label,"Pending","Evidence unavailable","")
-        return (label,"On track" if value>0 else "Watch",f"{value:+.1%}",source)
-    def positive(label, value, fmt="currency", source="Market-data provider"):
-        if not np.isfinite(value): return (label,"Pending","Evidence unavailable","")
-        if fmt=="pct": ev=f"{value:.1%}"
-        else: ev=compact_number(value)
-        return (label,"On track" if value>0 else "Watch",ev,source)
-    def pending(label): return (label,"Pending","Evidence unavailable","")
-
-    rev_g=num("revenueGrowth")
-    earn_g=num("earningsGrowth","earningsQuarterlyGrowth")
-    op_margin=num("operatingMargins","operatingMargin")
-    fcf=num("freeCashflow","freeCashFlow")
-    roe=num("returnOnEquity")
-    ebitda=num("ebitda")
-    debt_eq=num("debtToEquity")
+    def pending(label,why="Evidence unavailable"):
+        return (label,"Pending",why,"")
+    def growth_row(label,key,*fallback_keys):
+        e=stmt.get(key,{})
+        v=_mia_num(e.get("value"))
+        src=str(e.get("source") or "")
+        if not np.isfinite(v):
+            v=num(*fallback_keys)
+            src="Market-data provider snapshot" if np.isfinite(v) else ""
+        if not np.isfinite(v): return pending(label)
+        return (label,"On track" if v>0 else "Watch",f"Growth {v:+.1%}",src)
+    def margin_row(label="Operating margin"):
+        e=stmt.get("operating_margin",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior"))
+        if np.isfinite(cur) and np.isfinite(prior):
+            delta=cur-prior
+            return (label,"On track" if delta>=0 else "Watch",f"{cur:.1%} vs {prior:.1%} prior ({delta:+.1%})",str(e.get("source") or "Provider statements"))
+        cur=num("operatingMargins","operatingMargin")
+        if np.isfinite(cur): return (label,"Pending",f"Current margin {cur:.1%}; prior comparison unavailable","Market-data provider snapshot")
+        return pending(label)
+    def fcf_row():
+        e=stmt.get("free_cash_flow",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior")); g=_mia_num(e.get("growth"))
+        if np.isfinite(cur) and np.isfinite(prior):
+            return ("Free cash flow","On track" if cur>0 and (not np.isfinite(g) or g>=0) else "Watch",f"{compact_number(cur)} vs {compact_number(prior)} prior"+(f" ({g:+.1%})" if np.isfinite(g) else ""),str(e.get("source") or "Provider cash-flow statement"))
+        cur=num("freeCashflow","freeCashFlow")
+        if np.isfinite(cur): return ("Free cash flow","On track" if cur>0 else "Watch",f"Current {compact_number(cur)}","Market-data provider snapshot")
+        return pending("Free cash flow")
+    def roe_row():
+        e=stmt.get("roe",{}); v=_mia_num(e.get("value")); src=str(e.get("source") or "")
+        if not np.isfinite(v): v=num("returnOnEquity"); src="Market-data provider snapshot" if np.isfinite(v) else ""
+        if not np.isfinite(v): return pending("Return on equity")
+        # Positive ROE is evidence of positive return on equity; it is not a claim that ROE is improving.
+        return ("Return on equity","On track" if v>0 else "Watch",f"{v:.1%}",src)
+    def valuation_row():
+        bv=_mia_num(base_value); cp=_mia_num(current_price)
+        if not (np.isfinite(bv) and np.isfinite(cp) and cp>0): return pending("Valuation vs base case","Base valuation unavailable")
+        gap=bv/cp-1
+        return ("Valuation vs base case","On track" if gap>0 else "Watch",f"Base case {gap:+.0%} vs price","Chrímata valuation model")
 
     if "zip" in ident:
-        rows=[
-            pending("US TTV growth"),
-            positive("Cash EBITDA positive",ebitda),
-            positive("Operating margin",op_margin,"pct"),
-            pending("Credit losses / bad debts"),
-            pending("NASDAQ listing catalyst"),
-        ]
-        bv=_mia_num(base_value); cp=_mia_num(current_price)
-        if np.isfinite(bv) and np.isfinite(cp) and cp>0:
-            gap=bv/cp-1
-            rows.append(("Valuation vs base case","On track" if gap>0 else "Watch",f"Base case {gap:+.0%} vs price","Chrímata valuation model"))
-        else: rows.append(pending("Valuation vs base case"))
+        # ZIP-specific items require ZIP-specific reported evidence. Generic EBITDA is
+        # not treated as Cash EBITDA and generic credit fields are not treated as losses.
+        rows=[pending("US TTV growth","ZIP-specific TTV evidence not loaded"),
+              pending("Cash EBITDA growth","ZIP-specific Cash EBITDA comparison not loaded"),
+              margin_row("Operating margin improvement"),
+              pending("Credit losses / bad debts","ZIP-specific credit-loss evidence not loaded"),
+              pending("NASDAQ listing catalyst","Catalyst evidence not loaded"),valuation_row()]
     elif any(x in ident for x in ["airline","airlines","air transportation","qantas"]):
-        rows=[growth("Revenue growth",rev_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),
-              pending("Capacity / demand trend"),pending("Fleet / fuel cost discipline")]
-        if np.isfinite(debt_eq): rows.append(("Balance-sheet leverage","On track" if debt_eq<150 else "Watch",f"Debt/equity {debt_eq:.0f}%","Market-data provider"))
-        else: rows.append(pending("Balance-sheet leverage"))
+        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),margin_row(),fcf_row(),
+              pending("Capacity / demand trend","Airline operating KPI evidence not loaded"),
+              pending("Fleet / fuel cost discipline","Airline cost KPI evidence not loaded")]
+        de=num("debtToEquity")
+        rows.append(("Balance-sheet leverage","On track" if de<150 else "Watch",f"Debt/equity {de:.0f}%","Market-data provider snapshot") if np.isfinite(de) else pending("Balance-sheet leverage"))
     elif any(x in ident for x in ["beverage","consumer defensive","soft drink","coca-cola","coca cola"]):
-        rows=[growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),positive("Operating margin",op_margin,"pct"),
-              positive("Free cash flow",fcf),positive("Return on equity",roe,"pct")]
-        bv=_mia_num(base_value); cp=_mia_num(current_price)
-        rows.append(("Valuation vs base case","On track" if np.isfinite(bv) and np.isfinite(cp) and cp>0 and bv>cp else "Watch" if np.isfinite(bv) and np.isfinite(cp) and cp>0 else "Pending",f"Base case {bv/cp-1:+.0%} vs price" if np.isfinite(bv) and np.isfinite(cp) and cp>0 else "Evidence unavailable","Chrímata valuation model" if np.isfinite(bv) else ""))
+        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),fcf_row(),roe_row(),valuation_row()]
     elif any(x in ident for x in ["bank","banks"]):
-        rows=[pending("Net interest margin"),pending("CET1 / capital strength"),growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),pending("Credit losses / bad debts"),positive("Return on equity",roe,"pct")]
+        rows=[pending("Net interest margin","Bank KPI evidence not loaded"),pending("CET1 / capital strength","Bank capital evidence not loaded"),growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth"),pending("Credit losses / bad debts","Bank credit-loss evidence not loaded"),roe_row()]
     elif any(x in ident for x in ["mining","miner","materials","gold","copper","lithium"]):
-        rows=[pending("Production trend"),pending("Unit costs / AISC"),growth("Revenue growth",rev_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),pending("Reserves / resource quality")]
+        rows=[pending("Production trend","Production KPI evidence not loaded"),pending("Unit costs / AISC","Unit-cost evidence not loaded"),growth_row("Revenue growth","revenue_growth","revenueGrowth"),margin_row(),fcf_row(),pending("Reserves / resource quality","Resource evidence not loaded")]
     elif any(x in ident for x in ["reit","real estate"]):
-        rows=[pending("FFO / AFFO growth"),pending("Occupancy"),pending("WALE / lease quality"),positive("Free cash flow",fcf),pending("Gearing"),pending("Distribution sustainability")]
+        rows=[pending("FFO / AFFO growth","REIT KPI evidence not loaded"),pending("Occupancy","Occupancy evidence not loaded"),pending("WALE / lease quality","Lease evidence not loaded"),fcf_row(),pending("Gearing","REIT gearing evidence not loaded"),pending("Distribution sustainability","Distribution evidence not loaded")]
     else:
-        rows=[growth("Revenue growth",rev_g),growth("Earnings growth",earn_g),positive("Operating margin",op_margin,"pct"),positive("Free cash flow",fcf),positive("Return on equity",roe,"pct"),pending("Guidance / catalyst execution")]
-
+        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),fcf_row(),roe_row(),pending("Guidance / catalyst execution","Guidance/catalyst evidence not loaded")]
     return pd.DataFrame(rows[:6],columns=["metric","status","evidence","source"])
 
 def provenance_badge(kind):
@@ -6687,7 +6766,18 @@ elif page=="Thesis Scorecard":
     if not df.empty:
         st.dataframe(df,use_container_width=True,hide_index=True)
     else:
-        st.info("No measurable thesis conditions yet.")
+        st.info("No user-defined thesis conditions yet. Showing the automatic evidence scorecard used by Overview.")
+        _auto_meta=info(ticker) or {}
+        _auto_class=safe_company_classification(ticker)
+        _auto_price=np.nan
+        try:
+            _auto_h=history(ticker,"5d")
+            if _auto_h is not None and not _auto_h.empty: _auto_price=float(_auto_h["Close"].iloc[-1])
+        except Exception: pass
+        _auto=overview_dynamic_thesis(ticker,_auto_class.get("sector",""),_auto_class.get("industry",""),_auto_meta,np.nan,_auto_price)
+        if _auto is not None and not _auto.empty:
+            st.dataframe(_auto.rename(columns={"metric":"Condition","status":"Status","evidence":"Evidence","source":"Source"}),use_container_width=True,hide_index=True)
+            st.caption("Automatic statuses use traceable provider statement comparisons where available. Pending means Chrímata does not yet have enough evidence to classify the condition.")
 
 elif page=="Catalyst Calendar":
     st.header(f"Catalyst Calendar — {ticker}")

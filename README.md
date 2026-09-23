@@ -281,3 +281,12 @@ The Company Command Centre Overview thesis widget is now company-specific. Store
 - Reused the existing cached company-info path instead of repeated direct Yahoo info calls in common Command Centre flows.
 - Cached history metadata used by market-status logic.
 - Preserves the V21.2.58 Dynamic Company Thesis Scorecard and existing Command Centre design.
+
+## V21.2.60 — Thesis Evidence Evaluation Engine
+- Adds cached financial-statement evidence for thesis monitoring.
+- Revenue and earnings growth use reported current-vs-prior statement comparisons when available.
+- Operating margin compares current and prior reported margins before assigning On track/Watch.
+- Free cash flow and ROE use reported/provider evidence with explicit source labels.
+- Company/industry-specific conditions remain Pending when the required KPI evidence is unavailable.
+- ZIP-specific TTV, Cash EBITDA, credit-loss and NASDAQ conditions are no longer inferred from generic proxy fields.
+- The full Thesis Scorecard page now shows the same automatic evidence table when no custom rules exist.
