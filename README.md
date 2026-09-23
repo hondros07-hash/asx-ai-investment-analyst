@@ -290,3 +290,7 @@ The Company Command Centre Overview thesis widget is now company-specific. Store
 - Company/industry-specific conditions remain Pending when the required KPI evidence is unavailable.
 - ZIP-specific TTV, Cash EBITDA, credit-loss and NASDAQ conditions are no longer inferred from generic proxy fields.
 - The full Thesis Scorecard page now shows the same automatic evidence table when no custom rules exist.
+
+
+## V21.2.61
+Added Company Overview Intelligence Widgets: valuation, forecasts, analyst consensus, TTM metrics, market position, announcements, news, catalysts, risks/opportunities, portfolio context and scenario framing.

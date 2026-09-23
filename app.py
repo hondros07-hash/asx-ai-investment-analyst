@@ -2987,6 +2987,30 @@ _cc_sub_key="chr_cc_sub_v21001"
 _cc_items=["Overview","Fundamentals","Valuation","Technical","Announcements & Reports","Report Intelligence","News & Events","Thesis Scorecard","Catalyst Calendar","Quant","Forecasts"]
 if st.session_state.get(_cc_sub_key) not in _cc_items:
     st.session_state[_cc_sub_key]="Overview"
+@st.cache_data(ttl=600, show_spinner=False)
+def overview_news_safe(ticker, limit=5):
+    """Best-effort recent provider news for the Overview. Cached to protect navigation speed."""
+    rows=[]
+    try:
+        items=getattr(yf.Ticker(ticker),"news",None) or []
+        for item in items[:max(limit*2,limit)]:
+            if not isinstance(item,dict): continue
+            c=item.get("content") if isinstance(item.get("content"),dict) else item
+            title=str(c.get("title") or item.get("title") or "").strip()
+            if not title: continue
+            provider=c.get("provider") if isinstance(c.get("provider"),dict) else {}
+            source=str(provider.get("displayName") or item.get("publisher") or "Provider")
+            raw_dt=c.get("pubDate") or item.get("providerPublishTime") or ""
+            date="—"
+            try:
+                if isinstance(raw_dt,(int,float)): date=pd.to_datetime(raw_dt,unit="s",utc=True).strftime("%d %b %Y")
+                elif raw_dt: date=pd.to_datetime(raw_dt).strftime("%d %b %Y")
+            except Exception: pass
+            rows.append({"Date":date,"Headline":title,"Source":source})
+            if len(rows)>=limit: break
+    except Exception: pass
+    return pd.DataFrame(rows,columns=["Date","Headline","Source"])
+
 def _chr_set_cc_sub_v2111(target):
     if target in _cc_items:
         st.session_state[_cc_sub_key]=target
@@ -6522,48 +6546,113 @@ elif page=="Company Command Centre":
                     with st.expander("View current research brief",expanded=False):
                         st.markdown(st.session_state.get(_ai_key,_brief_fallback))
 
-        st.markdown('<div class="v21-section">Independent Research Engines</div>',unsafe_allow_html=True)
-        _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
-        _fund_state="Evidence loaded" if _ccscore.get("Available",0)>1 else "Build evidence base"
-        _engine_cards=[
-            ("FUNDAMENTALS",_fund_state,f"{_ccsector} · {_ccindustry}"),
-            ("VALUATION","—" if not np.isfinite(_mia_num(_ccbase)) else display_price(_ccbase,ticker),"Base scenario"+(" · "+f"{_valup:+.1%} vs price" if np.isfinite(_valup) else "")),
-            ("TECHNICAL",str(tr.get("Trend","—")),("Vol "+f"{_ccvolatility:.1%}" if np.isfinite(_ccvolatility) else "Vol —")),
-            ("QUANT",("6M "+f"{_ccmom:+.1%}" if np.isfinite(_ccmom) else "Evidence unavailable"),"Momentum / risk context"),
-            ("FORECASTS · 12M","—" if not np.isfinite(_ccf12) else f"{_ccf12:+.1%}","Historical scenario model"),
-            ("ANALYST EVIDENCE",str(_ccanalyst.get("label") or "Unavailable"),"Target "+(display_price(_cctarget,ticker)+f" · {_tarup:+.1%}" if np.isfinite(_cctarget) and np.isfinite(_tarup) else "unavailable")),
-        ]
-        _er1=st.columns(3); _er2=st.columns(3)
-        for _col,(_k,_v,_s) in zip(_er1+_er2,_engine_cards):
-            _col.markdown(f'<div class="v21-card v21-engine"><div class="v21-engine-name">{html.escape(_k)}</div><div class="v21-engine-main">{html.escape(str(_v))}</div><div class="v21-s">{html.escape(str(_s))}</div><div class="v21-engine-link">Independent engine →</div></div>',unsafe_allow_html=True)
+        # V21.2.61 — Company Overview Intelligence Widgets.
+        # Reference-matched compact research dashboard; values come only from loaded/provider/stored evidence.
+        st.markdown("""<style>
+        .v21261-title{font-size:14px;font-weight:900;color:#10264b;margin:0 0 6px}.v21261-card{background:#fff;border:1px solid #d8e5f2;border-radius:8px;padding:8px 10px;min-height:158px;box-sizing:border-box;overflow:hidden}.v21261-center{text-align:center}.v21261-k{font-size:10px;color:#45688f;font-weight:700}.v21261-v{font-size:21px;line-height:1.05;color:#10264b;font-weight:900;margin:3px 0}.v21261-pos{color:#08a142;font-weight:900}.v21261-neg{color:#e32636;font-weight:900}.v21261-watch{color:#e89a00;font-weight:900}.v21261-muted{color:#7b91aa}.v21261-table{width:100%;border-collapse:collapse;font-size:9px;color:#29476f}.v21261-table td{border:1px solid #dfe8f2;padding:4px 5px}.v21261-table td:nth-child(2){font-weight:850;color:#10264b}.v21261-row{display:grid;grid-template-columns:72px minmax(0,1fr) 65px;gap:5px;border-bottom:1px solid #dfe8f2;padding:4px 2px;font-size:8.7px;color:#29476f;line-height:1.2}.v21261-row:last-child{border-bottom:0}.v21261-row b{color:#10264b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-r{text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-risk{background:#fff0f3;border-color:#ffd5dd;min-height:76px}.v21261-opp{background:#eefaf4;border-color:#d3f0df;min-height:76px}.v21261-risk .v21261-title{color:#e32636}.v21261-opp .v21261-title{color:#079447}.v21261-list{font-size:8.7px;line-height:1.25;color:#29476f;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}.v21261-dot{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;margin-right:4px}.v21261-risk .v21261-dot{background:#ef3340}.v21261-opp .v21261-dot{background:#0aa04f}.v21261-range{height:13px;background:#dce7f2;border-radius:10px;position:relative;margin:11px 10px 5px}.v21261-range i{position:absolute;top:-4px;width:7px;height:21px;border-radius:4px;background:#086ee8}.v21261-range .bear{left:0;background:#ffb000}.v21261-range .base{left:50%}.v21261-range .bull{right:0;background:#a9bfd5}.v21261-range-labels{display:flex;justify-content:space-between;font-size:8px;color:#527298}.v21261-spark{height:42px;margin:5px 2px}.v21261-spark svg{width:100%;height:100%}.v21261-bottom{background:#fff;border:1px solid #d8e5f2;border-radius:8px;padding:9px 12px;min-height:94px;box-sizing:border-box}.v21261-bottom-title{font-size:13px;font-weight:900;color:#086ee8;margin-bottom:7px}.v21261-stats{display:grid;grid-template-columns:repeat(4,1fr)}.v21261-stat{padding:0 9px;border-right:1px solid #dfe8f2}.v21261-stat:last-child{border-right:0}.v21261-stat .k{font-size:8px;color:#67809c;font-weight:700}.v21261-stat .v{font-size:12px;color:#10264b;font-weight:900;margin-top:2px}.v21261-scenario{font-size:9.3px;color:#29476f;line-height:1.4}.v21261-quote{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#1e5ca9;font-style:italic;font-weight:800;height:72px}[class*="st-key-v21261_nav_"] .stButton>button{font-size:9px!important;font-weight:850!important;min-height:24px!important;height:24px!important;padding:0 3px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important}
+        </style>""",unsafe_allow_html=True)
 
-        _catcol,_anncol=st.columns([1,1.35])
-        with _catcol:
-            st.markdown('<div class="v21-section">Upcoming / Stored Catalysts</div>',unsafe_allow_html=True)
-            if _cccatalysts is None or _cccatalysts.empty: st.info("No catalysts are stored yet. Add them in Catalyst Calendar.")
-            else: st.dataframe(_cccatalysts.head(6),use_container_width=True,hide_index=True,height=220)
-        with _anncol:
-            st.markdown('<div class="v21-section">Latest Announcements & Evidence</div>',unsafe_allow_html=True)
-            if _ccann is None or _ccann.empty: st.info("No announcement rows are available from the current provider.")
-            else: st.dataframe(_ccann.head(5),use_container_width=True,hide_index=True,height=220)
+        def _ov_fmt(v,prefix=""):
+            x=_mia_num(v)
+            return "—" if not np.isfinite(x) else compact_number(x,prefix=prefix)
+        def _ov_rowdate(v):
+            try: return pd.to_datetime(v).strftime("%d %b %Y")
+            except Exception: return str(v)[:14] if str(v).strip() else "—"
+        def _ov_records(df,limit=5):
+            if df is None or df.empty:return []
+            out=[]
+            for _,r in df.head(limit).iterrows():
+                vals=[str(x) for x in r.tolist() if pd.notna(x) and str(x).strip() not in ("","nan","None")]
+                if vals:out.append(vals)
+            return out
 
-        _riskcol,_oppcol=st.columns(2)
-        with _riskcol:
-            st.markdown('<div class="v21-section">Risks / Contradictions to Investigate</div>',unsafe_allow_html=True)
-            if _ccattention is not None and not _ccattention.empty: st.dataframe(_ccattention.head(5),use_container_width=True,hide_index=True,height=190)
-            else: st.markdown('<div class="v21-card v21-risk"><div class="v21-v" style="font-size:13px">No stored alert is currently triggered.</div><div class="v21-s">This does not mean the company has no risks. Add measurable thesis conditions and evidence to improve monitoring coverage.</div></div>',unsafe_allow_html=True)
-        with _oppcol:
-            st.markdown('<div class="v21-section">Evidence That Could Strengthen the Thesis</div>',unsafe_allow_html=True)
-            if _ccthesis is not None and not _ccthesis.empty:
-                _met=_ccthesis[_ccthesis["status"]=="Met"] if "status" in _ccthesis else pd.DataFrame()
-                if not _met.empty: st.dataframe(_met.head(5),use_container_width=True,hide_index=True,height=190)
-                else: st.info("No stored thesis condition is currently marked Met.")
-            else: st.markdown('<div class="v21-card v21-opp"><div class="v21-v" style="font-size:13px">Build the evidence base.</div><div class="v21-s">Use Fundamentals, Report Intelligence and Thesis Scorecard to define measurable evidence before the Overview draws stronger conclusions.</div></div>',unsafe_allow_html=True)
+        _cur="A$" if str(_currency).upper()=="AUD" else ("£" if str(_currency).upper()=="GBP" else "$" )
+        _valup=(_ccbase/price-1) if np.isfinite(_mia_num(_ccbase)) and price else np.nan
+        _bear=_bull=np.nan
+        if _ccvals is not None and not _ccvals.empty and "scenario" in _ccvals.columns and "value_per_share" in _ccvals.columns:
+            for _nm,_dest in [("bear","bear"),("bull","bull")]:
+                _q=_ccvals[_ccvals["scenario"].astype(str).str.lower()==_nm]
+                if not _q.empty:
+                    if _nm=="bear":_bear=_mia_num(_q.iloc[0]["value_per_share"])
+                    else:_bull=_mia_num(_q.iloc[0]["value_per_share"])
+        _f12=pd.DataFrame()
+        if _ccfc is not None and not _ccfc.empty and "Horizon" in _ccfc.columns:_f12=_ccfc[_ccfc["Horizon"]=="12 Months"].head(1)
+        _f_target=_mia_num(_f12.iloc[0].get("Median forecast")) if not _f12.empty else np.nan
+        _f_prob=_mia_num(_f12.iloc[0].get("Positive-return frequency")) if not _f12.empty else np.nan
+        _at=_mia_num(_ccanalyst.get("target_mean")); _at=_cctarget if not np.isfinite(_at) else _at
+        _aup=(_at/price-1) if np.isfinite(_at) and price else np.nan
+        _rev=_mia_num(_ccmeta.get("totalRevenue")); _ebitda=_mia_num(_ccmeta.get("ebitda")); _ni=_mia_num(_ccmeta.get("netIncomeToCommon")); _eps=_mia_num(_ccmeta.get("trailingEps")); _fcf=_mia_num(_ccmeta.get("freeCashflow")); _shares=_mia_num(_ccmeta.get("sharesOutstanding")); _short=_mia_num(_ccmeta.get("shortPercentOfFloat"))
+        _range_pos=((price-_cclo)/(_cchi-_cclo)) if np.isfinite(_cclo) and np.isfinite(_cchi) and _cchi>_cclo else np.nan
+        _dist_hi=(price/_cchi-1) if np.isfinite(_cchi) and _cchi else np.nan; _dist_lo=(price/_cclo-1) if np.isfinite(_cclo) and _cclo else np.nan
 
-        st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
-        _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
-        _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.59 performance architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        _w1,_w2,_w3,_w4,_w5=st.columns([1,1,1,1.08,1.18],gap="small")
+        with _w1:
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Valuation Summary</div><div class="v21261-center"><div class="v21261-k">Base Case</div><div class="v21261-v">{html.escape(display_price(_ccbase,ticker) if np.isfinite(_mia_num(_ccbase)) else "—")}</div><div class="{"v21261-pos" if np.isfinite(_valup) and _valup>=0 else "v21261-neg" if np.isfinite(_valup) else "v21261-muted"}">{f"{_valup:+.0%} vs current price" if np.isfinite(_valup) else "Base case unavailable"}</div><div class="v21261-range"><i class="bear"></i><i class="base"></i><i class="bull"></i></div><div class="v21261-range-labels"><span>{display_price(_bear,ticker) if np.isfinite(_bear) else "—"}<br>Bear</span><span>{display_price(_ccbase,ticker) if np.isfinite(_mia_num(_ccbase)) else "—"}<br>Base</span><span>{display_price(_bull,ticker) if np.isfinite(_bull) else "—"}<br>Bull</span></div></div></div>',unsafe_allow_html=True)
+            st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+        with _w2:
+            _sparkpts="10,36 35,31 60,32 85,26 110,21 135,15 160,20 185,22 210,16 235,12 260,2"
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Forecasts (Model)</div><div class="v21261-center"><div class="v21261-k">12 Month Target</div><div class="v21261-v">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="{"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.0%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div><div class="v21261-spark"><svg viewBox="0 0 270 42" preserveAspectRatio="none"><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/><polygon points="10,36 {_sparkpts.split(" ",1)[1]} 260,42 10,42" fill="#d9ebfb" opacity=".8"/></svg></div><div class="v21261-k">Positive-return frequency {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
+            st.button("View Full Forecasts  →",key=f"v21261_nav_fc_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
+        with _w3:
+            _al=str(_ccanalyst.get("label") or "Unavailable"); _ac="v21261-pos" if "buy" in _al.lower() else "v21261-neg" if "sell" in _al.lower() else "v21261-muted"
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Analyst Consensus</div><div class="{_ac}" style="font-size:20px">{html.escape(_al)}</div><div class="v21261-k">{_ccanalyst.get("analysts") or "—"} analysts</div><div style="height:13px"></div><span class="v21261-k">Mean target</span><div class="v21261-v">{display_price(_at,ticker) if np.isfinite(_at) else "—"}</div><div class="{_ac}">{f"{_aup:+.0%} vs current price" if np.isfinite(_aup) else "Target unavailable"}</div></div>',unsafe_allow_html=True)
+            st.button("View Analyst Forecasts  →",key=f"v21261_nav_an_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
+        with _w4:
+            _metrics=[("Revenue",_ov_fmt(_rev,_cur)),("EBITDA",_ov_fmt(_ebitda,_cur)),("Net Income",_ov_fmt(_ni,_cur)),("EPS",f"{_cur}{_eps:,.2f}" if np.isfinite(_eps) else "—"),("Free Cash Flow",_ov_fmt(_fcf,_cur))]
+            _mh="".join(f'<tr><td>{html.escape(k)}</td><td>{html.escape(v)}</td></tr>' for k,v in _metrics)
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Key Metrics (TTM)</div><table class="v21261-table">{_mh}</table></div>',unsafe_allow_html=True)
+            st.button("View Full Fundamentals  →",key=f"v21261_nav_fund_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
+        with _w5:
+            _quart="lower quartile" if np.isfinite(_range_pos) and _range_pos<.25 else "upper quartile" if np.isfinite(_range_pos) and _range_pos>=.75 else "middle range" if np.isfinite(_range_pos) else "—"
+            _market=[("52W High",display_price(_cchi,ticker),f"{_dist_hi:+.0%}" if np.isfinite(_dist_hi) else ""),("52W Low",display_price(_cclo,ticker),f"{_dist_lo:+.0%}" if np.isfinite(_dist_lo) else ""),("Current vs 52W",f"{_range_pos:.0%} ({_quart})" if np.isfinite(_range_pos) else "—",""),("Avg Daily Volume",_ov_fmt(_ccvol),""),("Short Interest",f"{_short:.1%}" if np.isfinite(_short) else "—",""),("Shares Outstanding",_ov_fmt(_shares),"")]
+            _mk="".join(f'<tr><td>{html.escape(k)}</td><td>{html.escape(v)} {html.escape(x)}</td></tr>' for k,v,x in _market)
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Market Position</div><table class="v21261-table">{_mk}</table></div>',unsafe_allow_html=True)
+            st.button("View Company Details  →",key=f"v21261_nav_det_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
+
+        _news=overview_news_safe(ticker,5); _ann=_ov_records(_ccann,5); _cats=_ov_records(_cccatalysts,5)
+        _m1,_m2,_m3,_m4=st.columns([1.35,1.15,.85,.92],gap="small")
+        with _m1:
+            _body="".join(f'<div class="v21261-row"><span>{html.escape(r[0][:14])}</span><b>{html.escape((r[1] if len(r)>1 else r[0])[:65])}</b><span class="v21261-r">{html.escape(r[-1][:18])}</span></div>' for r in _ann) if _ann else '<div class="v21261-k">No announcement evidence available from the current provider.</div>'
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Latest Announcements &amp; Reports</div>{_body}</div>',unsafe_allow_html=True)
+            st.button("View all  →",key=f"v21261_nav_ann_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
+        with _m2:
+            _body="".join(f'<div class="v21261-row"><span>{html.escape(str(r.Date))}</span><b title="{html.escape(str(r.Headline),quote=True)}">{html.escape(str(r.Headline))}</b><span class="v21261-r">{html.escape(str(r.Source))}</span></div>' for r in _news.itertuples()) if _news is not None and not _news.empty else '<div class="v21261-k">No recent provider news is available.</div>'
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Recent News</div>{_body}</div>',unsafe_allow_html=True)
+            st.button("View all  →",key=f"v21261_nav_news_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("News & Events",))
+        with _m3:
+            _body="".join(f'<div class="v21261-row" style="grid-template-columns:70px minmax(0,1fr) 18px"><span>{html.escape(r[0][:14])}</span><b>{html.escape((r[1] if len(r)>1 else "Catalyst")[:52])}</b><span class="v21261-r">○</span></div>' for r in _cats) if _cats else '<div class="v21261-k">No stored catalysts yet.</div>'
+            st.markdown(f'<div class="v21261-card"><div class="v21261-title">Upcoming Catalysts</div>{_body}</div>',unsafe_allow_html=True)
+            st.button("View all  →",key=f"v21261_nav_cat_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Catalyst Calendar",))
+        with _m4:
+            _risk=[]; _opp=[]
+            if '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
+                for _,r in _thesis_rows.iterrows():
+                    lab=str(r.get("metric") or r.get("condition") or "Condition"); stt=str(r.get("status") or "Pending").lower()
+                    if stt in {"watch","warning","at risk","attention","broken"}:_risk.append(lab)
+                    elif stt in {"met","on track","pass","passed","true"}:_opp.append(lab)
+            if _ccattention is not None and not _ccattention.empty:
+                for x in _ccattention.head(4).get("Item",pd.Series(dtype=str)).tolist():
+                    if str(x).strip() and str(x) not in _risk:_risk.append(str(x))
+            _rh="".join(f'<div><span class="v21261-dot">!</span>{html.escape(x[:54])}</div>' for x in _risk[:4]) or '<div>No evidence-backed risk alert is currently triggered.</div>'
+            _oh="".join(f'<div><span class="v21261-dot">+</span>{html.escape(x[:54])}</div>' for x in _opp[:4]) or '<div>No thesis condition is currently evidenced as on track.</div>'
+            st.markdown(f'<div class="v21261-card v21261-risk"><div class="v21261-title">Key Risks</div><div class="v21261-list">{_rh}</div></div><div style="height:5px"></div><div class="v21261-card v21261-opp"><div class="v21261-title">Key Opportunities</div><div class="v21261-list">{_oh}</div></div>',unsafe_allow_html=True)
+
+        _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
+        _b1,_b2,_b3=st.columns([1.05,1.05,.62],gap="small")
+        with _b1:
+            st.markdown(f'<div class="v21261-bottom"><div class="v21261-bottom-title">♙ &nbsp; Position Context (if in Portfolio)</div><div class="v21261-stats"><div class="v21261-stat"><div class="k">Shares</div><div class="v">{f"{_qty:,.0f}" if _qty else "—"}</div></div><div class="v21261-stat"><div class="k">Avg. Cost</div><div class="v">{display_price(_avg,ticker) if _qty else "—"}</div></div><div class="v21261-stat"><div class="k">Market Value</div><div class="v">{_cur+f"{_mv:,.0f}" if _qty else "—"}</div></div><div class="v21261-stat"><div class="k">P/L</div><div class="v {"v21261-pos" if np.isfinite(_pnl) and _pnl>=0 else "v21261-neg"}">{f"{_pp:+.1%} ({_cur}{_pnl:+,.0f})" if np.isfinite(_pnl) else "—"}</div></div></div></div>',unsafe_allow_html=True)
+        with _b2:
+            _needs=[]
+            if np.isfinite(_ccbase):_needs.append(f"support the base valuation case of {display_price(_ccbase,ticker)}")
+            if _risk:_needs.append("resolve the current Watch conditions")
+            if _opp:_needs.append("keep the evidenced thesis conditions on track")
+            _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions.")
+            st.markdown(f'<div class="v21261-bottom"><div class="v21261-bottom-title">◎ &nbsp; What Would Need to Happen?</div><div class="v21261-scenario">{html.escape(_sc)}</div></div>',unsafe_allow_html=True)
+            st.button("View Scenario Analysis  →",key=f"v21261_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+        with _b3:
+            st.markdown('<div class="v21261-bottom"><div class="v21261-quote">“Better information. Better questions. Better decisions.”<br>— Chrímata</div></div>',unsafe_allow_html=True)
+
+        st.markdown('<div class="v21-foot">V21.2.61 · Company Overview Intelligence Widgets. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
