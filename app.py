@@ -6058,9 +6058,9 @@ elif page=="Company Command Centre":
         .v21218-chart-tabs a.active{background:#086ee8;color:#fff!important;box-shadow:0 1px 3px rgba(8,110,232,.25)}
                 </style>""",unsafe_allow_html=True)
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
-        # V21.2.37 — lock all three Overview intelligence cards to the Thesis Scorecard height.
-        # Fixed-height containers prevent Price Chart / AI content from changing the row geometry.
-        _overview_widget_height=535
+        # V21.2.39 — compact fixed equal-height Overview widgets.
+        # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
+        _overview_widget_height=350
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height):
                 st.markdown('<div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
@@ -6219,7 +6219,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.37 architecture: Fixed Equal-Height Overview Intelligence Widgets · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.39 architecture: Compact Fixed Equal-Height Overview Intelligence Widgets · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
