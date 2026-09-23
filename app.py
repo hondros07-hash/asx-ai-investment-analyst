@@ -5999,12 +5999,12 @@ elif page=="Company Command Centre":
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
-        /* V21.2.20 — reference-matched Price Chart with client-side timeframe switching */
+        /* V21.2.23 — tighter reference-matched Price Chart */
         .v21218-chart-tabs{display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4edf7;margin:0 0 4px;padding:0 0 4px}
         .v21218-chart-tabs a{color:#557398!important;text-decoration:none!important;font-size:10px;font-weight:800;line-height:1;padding:6px 9px;border-radius:5px;min-width:26px;text-align:center}
         .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
         .v21218-chart-tabs a.active{background:#086ee8;color:#fff!important;box-shadow:0 1px 3px rgba(8,110,232,.25)}
-        .v21218-tech-link{display:block;text-align:right;color:#086ee8!important;text-decoration:none!important;font-size:10px;font-weight:900;margin:-3px 2px 0 0}
+        .v21218-tech-link{display:block;text-align:right;color:#086ee8!important;text-decoration:none!important;font-size:10px;font-weight:900;margin:-12px 2px 0 0;position:relative;z-index:3}
         .v21218-tech-link:hover{text-decoration:underline!important}
         </style>""",unsafe_allow_html=True)
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
@@ -6055,14 +6055,14 @@ elif page=="Company Command Centre":
                     for _j in _trace_groups[_i]: _vis[_j]=True
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},{"xaxis.autorange":True,"yaxis.autorange":True,"yaxis2.autorange":True}]))
                 _fig.update_layout(
-                    height=235,margin=dict(l=2,r=2,t=42,b=8),xaxis_rangeslider_visible=False,
-                    updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.19,xanchor="left",yanchor="top",
-                        buttons=_buttons,pad=dict(r=4,t=0),showactive=True,bgcolor="rgba(0,0,0,0)",borderwidth=0,font=dict(size=10,color="#557398"))],
-                    legend=dict(orientation="h",y=-.20,x=0,font=dict(size=9),traceorder="normal"),
+                    height=205,margin=dict(l=2,r=2,t=34,b=4),xaxis_rangeslider_visible=False,
+                    updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.18,xanchor="left",yanchor="top",
+                        buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="rgba(0,0,0,0)",activecolor="#086ee8",borderwidth=0,font=dict(size=10,color="#557398"))],
+                    legend=dict(orientation="h",y=-.16,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True),
                     yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True),
-                    yaxis2=dict(overlaying="y",side="left",showgrid=False,showticklabels=False,autorange=True),
+                    yaxis2=dict(overlaying="y",side="left",showgrid=False,showticklabels=False,autorange=True,domain=[0,1]),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
