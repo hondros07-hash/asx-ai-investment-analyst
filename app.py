@@ -6044,6 +6044,10 @@ elif page=="Company Command Centre":
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
         st.markdown("""<style>
+        /* V21.2.40 — reference-matched white cards that fully use the locked 350px row height. */
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21240-overview-card){background:#fff!important;}
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21240-overview-card) > div{background:#fff!important;}
+        .v21240-overview-card{height:0;margin:0;padding:0;overflow:hidden}
         .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 2px}
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700}
         .v21216-thesis-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:6px 0;font-size:11px;color:#26466e}
@@ -6063,7 +6067,7 @@ elif page=="Company Command Centre":
         _overview_widget_height=350
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
                 # V21.2.20 — client-side timeframe switching. All chart ranges are loaded once,
                 # then Plotly switches traces in-browser so the Streamlit page does not reload/flash.
                 _tf_options=["1D","1W","1M","3M","6M","1Y","3Y","5Y"]
@@ -6109,7 +6113,7 @@ elif page=="Company Command Centre":
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},{"xaxis.autorange":True,"yaxis.autorange":True,"yaxis2.autorange":True}]))
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
                 _fig.update_layout(
-                    height=210,margin=dict(l=2,r=40,t=36,b=42),xaxis_rangeslider_visible=False,
+                    height=282,margin=dict(l=2,r=40,t=36,b=42),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     legend=dict(orientation="h",y=-.205,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
@@ -6126,7 +6130,7 @@ elif page=="Company Command Centre":
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
         with _w_thesis:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
                 _ratio=(_ccth_met/max(_ccth_total,1)) if _ccth_total else 0.0
                 st.markdown(f'<div class="v21216-thesis-score">{_ccth_met} / {_ccth_total or 0} <span>conditions on track</span></div>',unsafe_allow_html=True)
                 st.progress(float(_ratio),text=f"{_ratio:.0%}" if _ccth_total else "Not configured")
@@ -6155,7 +6159,7 @@ elif page=="Company Command Centre":
         if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
         with _w_ai:
             with st.container(border=True,height=_overview_widget_height):
-                st.markdown('<div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
+                st.markdown('<div class="v21240-overview-card"></div><div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
                 st.markdown('<div class="v21216-ai-info">Get an AI-generated research brief based on all available evidence across fundamentals, valuation, technicals, announcements, news and forecasts. This is not a buy/sell recommendation.</div>',unsafe_allow_html=True)
                 if st.button("✦  Generate AI Research Brief",type="primary",use_container_width=True,key=f"v21216_generate_ai_{ticker}"):
                     try:
@@ -6219,7 +6223,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.39 architecture: Compact Fixed Equal-Height Overview Intelligence Widgets · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.40 architecture: Reference-Matched White Full-Height Overview Intelligence Widgets · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
