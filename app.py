@@ -961,6 +961,39 @@ def company_kpi_template(ticker,sector="",industry=""):
         return ["FFO/AFFO","Occupancy","WALE","NTA","Gearing","Distribution per security","Cap rate"]
     return ["Revenue growth","Earnings growth","Operating margin","Free cash flow","ROIC / ROE","Net debt","Guidance"]
 
+def overview_thesis_template(ticker, sector="", industry=""):
+    """Return a six-row monitoring template without inventing evidence or status.
+
+    Stored thesis rules always take precedence. These rows are only a starter
+    structure for an unconfigured company and therefore remain Pending until
+    the user records measurable evidence in Thesis Scorecard.
+    """
+    try:
+        name=(company_name(ticker) if 'company_name' in globals() else ticker)
+    except Exception:
+        name=ticker
+    text=f"{ticker} {name} {sector} {industry}".lower()
+    if "zip" in text:
+        return [
+            "US TTV growth",
+            "Cash EBITDA growth",
+            "Operating margin improvement",
+            "Credit losses / bad debts",
+            "NASDAQ listing catalyst",
+            "Valuation attractive at current price",
+        ]
+    base=company_kpi_template(ticker,sector,industry)
+    labels=[]
+    for x in base:
+        x=str(x).strip()
+        if x and x not in labels:
+            labels.append(x)
+        if len(labels)>=6:
+            break
+    while len(labels)<6:
+        labels.append(["Valuation","Balance sheet","Catalyst","Guidance","Cash generation","Risk monitor"][len(labels)%6])
+    return labels[:6]
+
 def provenance_badge(kind):
     return {"Reported":"🟢 Company reported","Exchange":"🔵 Exchange / regulatory",
             "Market":"🟣 Market data","Calculated":"🟠 Model calculated",
@@ -6060,15 +6093,15 @@ elif page=="Company Command Centre":
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card){overflow:hidden!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) [data-testid="stPlotlyChart"]{background:#fff!important;margin-bottom:0!important;}
         .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 2px}
-        /* V21.2.54 — reference Thesis Scorecard geometry. */
+        /* V21.2.55 — functional reference Thesis Scorecard: six-row starter template + stored-rule live status. */
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1.05;margin:2px 0 7px}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700;margin-left:3px}
         .v21245-thesis-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;margin:1px 0 8px}.v21245-thesis-track{height:11px;background:#dfe9f4;border-radius:99px;overflow:hidden}.v21245-thesis-fill{height:100%;background:#08a142;border-radius:99px}.v21245-thesis-pct{font-size:11px;font-weight:900;color:#29476f}
         .v21254-thesis-list{margin:0;padding:0}
         .v21216-thesis-row{display:grid;grid-template-columns:20px minmax(0,1fr) 62px;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:5px 0;font-size:11px;font-weight:650;color:#26466e;line-height:1.15;min-height:27px;box-sizing:border-box}.v21216-thesis-row:last-child{border-bottom:0}
         .v21216-thesis-icon{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;background:#91a4ba}.v21216-thesis-icon.met{background:#0aa64a}.v21216-thesis-icon.watch{background:#f5a300}.v21216-thesis-status{font-size:10px;font-weight:800;white-space:nowrap;text-align:right}.v21216-thesis-status.met{color:#0aa64a}.v21216-thesis-status.watch{color:#f5a300}.v21216-thesis-status.pending{color:#7890aa}
-        .v21245-thesis-empty{font-size:10px;color:#7890aa;padding:12px 0 0;min-height:146px}.st-key-v21245_thesis_card,[class*="st-key-v21245_thesis_card"]{background:#fff!important}.st-key-v21245_thesis_card [data-testid="stVerticalBlockBorderWrapper"],.st-key-v21245_thesis_card [data-testid="stVerticalBlock"],.st-key-v21245_thesis_card [data-testid="stElementContainer"]{background:#fff!important;background-color:#fff!important}.st-key-v21245_thesis_card [data-testid="stVerticalBlockBorderWrapper"]{border-color:#d9e5f2!important;box-shadow:none!important}.st-key-v21245_thesis_card{border-radius:9px!important;overflow:hidden!important}
-        [class*="st-key-v21245_thesis_card"] [data-testid="stVerticalBlock"]{gap:0!important;row-gap:0!important}
-        [class*="st-key-v21245_thesis_link_"]{margin-top:4px!important;width:100%!important}[class*="st-key-v21245_thesis_link_"] .stButton{display:flex!important;justify-content:flex-end!important;width:100%!important}[class*="st-key-v21245_thesis_link_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;min-height:22px!important;height:22px!important;white-space:nowrap!important;width:auto!important;max-width:none!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21245_thesis_link_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21245_thesis_link_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
+        .v21245-thesis-empty{font-size:10px;color:#7890aa;padding:12px 0 0;min-height:146px}.st-key-v21255_thesis_card,[class*="st-key-v21255_thesis_card"]{background:#fff!important}.st-key-v21255_thesis_card [data-testid="stVerticalBlockBorderWrapper"],.st-key-v21255_thesis_card [data-testid="stVerticalBlock"],.st-key-v21255_thesis_card [data-testid="stElementContainer"]{background:#fff!important;background-color:#fff!important}.st-key-v21255_thesis_card [data-testid="stVerticalBlockBorderWrapper"]{border-color:#d9e5f2!important;box-shadow:none!important}.st-key-v21255_thesis_card{border-radius:9px!important;overflow:hidden!important}
+        [class*="st-key-v21255_thesis_card"] [data-testid="stVerticalBlock"]{gap:0!important;row-gap:0!important}
+        [class*="st-key-v21255_thesis_link_"]{margin-top:4px!important;width:100%!important}[class*="st-key-v21255_thesis_link_"] .stButton{display:flex!important;justify-content:flex-end!important;width:100%!important}[class*="st-key-v21255_thesis_link_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;min-height:22px!important;height:22px!important;white-space:nowrap!important;width:auto!important;max-width:none!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21255_thesis_link_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21255_thesis_link_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
@@ -6220,25 +6253,35 @@ elif page=="Company Command Centre":
                         args=("Technical",),
                     )
         with _w_thesis:
-            with st.container(border=True,height=_overview_widget_height,key="v21245_thesis_card"):
+            with st.container(border=True,height=_overview_widget_height,key="v21255_thesis_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
-                _ratio=(_ccth_met/max(_ccth_total,1)) if _ccth_total else 0.0
-                st.markdown(f'<div class="v21216-thesis-score">{_ccth_met} / {_ccth_total or 0} <span>conditions on track</span></div>',unsafe_allow_html=True)
-                _pct=int(round(_ratio*100)) if _ccth_total else 0
-                st.markdown(f'<div class="v21245-thesis-progress"><div class="v21245-thesis-track"><div class="v21245-thesis-fill" style="width:{_pct}%"></div></div><div class="v21245-thesis-pct">{_pct}%</div></div>',unsafe_allow_html=True)
-                if _ccth_total and _ccthesis is not None and not _ccthesis.empty:
-                    _rows=[]
-                    for _,_r in _ccthesis.head(6).iterrows():
-                        _label=str(_r.get("metric") or _r.get("condition") or _r.get("Item") or "Thesis condition")
-                        _raw=str(_r.get("status") or "Pending").strip(); _sl=_raw.lower()
-                        _cls="met" if _sl in {"met","on track","pass","passed","true"} else ("watch" if _sl in {"watch","watch / broken","warning","at risk","attention","broken"} else "pending")
-                        _icon="✓" if _cls in {"met","pending"} else "●"
-                        _display="On track" if _cls=="met" else ("Watch" if _cls=="watch" else ("Pending" if not _raw or _sl=="pending" else _raw))
-                        _rows.append(f'<div class="v21216-thesis-row"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
-                    st.markdown('<div class="v21254-thesis-list">'+"".join(_rows)+'</div>',unsafe_allow_html=True)
+                # V21.2.55 — stored rules drive the score. If none exist, render a real
+                # six-row starter monitoring template as Pending instead of an empty card.
+                # This matches the reference widget without fabricating evidence.
+                _thesis_has_rules=bool(_ccth_total and _ccthesis is not None and not _ccthesis.empty)
+                if _thesis_has_rules:
+                    _thesis_rows=_ccthesis.head(6).copy()
+                    _display_total=len(_thesis_rows)
+                    _display_met=int(sum(str(v).strip().lower() in {"met","on track","pass","passed","true"} for v in _thesis_rows.get("status",pd.Series(dtype=str)).tolist()))
                 else:
-                    st.markdown('<div class="v21245-thesis-empty">No measurable thesis conditions configured yet.</div>',unsafe_allow_html=True)
-                st.button("View Thesis Scorecard  →",key=f"v21245_thesis_link_{ticker}",type="tertiary",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Thesis Scorecard",))
+                    _starter=overview_thesis_template(ticker,_ccsector,_ccindustry)
+                    _thesis_rows=pd.DataFrame({"metric":_starter,"status":["Pending"]*len(_starter)})
+                    _display_total=len(_starter)
+                    _display_met=0
+                _ratio=(_display_met/max(_display_total,1)) if _display_total else 0.0
+                st.markdown(f'<div class="v21216-thesis-score">{_display_met} / {_display_total} <span>conditions on track</span></div>',unsafe_allow_html=True)
+                _pct=int(round(_ratio*100)) if _display_total else 0
+                st.markdown(f'<div class="v21245-thesis-progress"><div class="v21245-thesis-track"><div class="v21245-thesis-fill" style="width:{_pct}%"></div></div><div class="v21245-thesis-pct">{_pct}%</div></div>',unsafe_allow_html=True)
+                _rows=[]
+                for _,_r in _thesis_rows.iterrows():
+                    _label=str(_r.get("metric") or _r.get("condition") or _r.get("Item") or "Thesis condition")
+                    _raw=str(_r.get("status") or "Pending").strip(); _sl=_raw.lower()
+                    _cls="met" if _sl in {"met","on track","pass","passed","true"} else ("watch" if _sl in {"watch","watch / broken","warning","at risk","attention","broken"} else "pending")
+                    _icon="✓" if _cls in {"met","pending"} else "●"
+                    _display="On track" if _cls=="met" else ("Watch" if _cls=="watch" else "Pending")
+                    _rows.append(f'<div class="v21216-thesis-row"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
+                st.markdown('<div class="v21254-thesis-list">'+"".join(_rows)+'</div>',unsafe_allow_html=True)
+                st.button("View Thesis Scorecard  →",key=f"v21255_thesis_link_{ticker}",type="tertiary",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Thesis Scorecard",))
         # Prepare the evidence packet here so the compact AI widget is functional in the same row.
         _attention_text="No stored thesis/monitoring item currently requires attention."
         if _ccattention is not None and not _ccattention.empty:
@@ -6314,7 +6357,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.54 architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.55 architecture: True-White Price Chart Card + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
