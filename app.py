@@ -6104,6 +6104,7 @@ elif page=="Company Command Centre":
         [class*="st-key-v21255_thesis_link_"]{margin-top:4px!important;width:100%!important}[class*="st-key-v21255_thesis_link_"] .stButton{display:flex!important;justify-content:flex-end!important;width:100%!important}[class*="st-key-v21255_thesis_link_"] .stButton>button{background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;font-size:10px!important;font-weight:900!important;padding:0!important;min-height:22px!important;height:22px!important;white-space:nowrap!important;width:auto!important;max-width:none!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21255_thesis_link_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}[class*="st-key-v21255_thesis_link_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         .v21216-ai-head{display:flex;gap:10px;align-items:center}.v21216-ai-icon{font-size:28px}.v21216-ai-title{font-size:17px;font-weight:900;color:#10264b}.v21216-beta{display:inline-block;background:#0b6ee8;color:#fff;border-radius:4px;font-size:9px;padding:2px 6px;margin-left:6px;vertical-align:2px}.v21216-ai-sub{font-size:10px;color:#567292;font-weight:700}
         .v21216-ai-info{background:#eef6ff;border:1px solid #d9eaff;border-radius:9px;padding:10px 11px;font-size:10px;line-height:1.45;color:#315d96;margin:9px 0 8px}.v21216-ai-time{text-align:center;color:#748aa4;font-size:9px;margin-top:5px}
+        .st-key-v21256_ai_card,[class*="st-key-v21256_ai_card"]{background:#fff!important;border-radius:9px!important;overflow:hidden!important}.st-key-v21256_ai_card [data-testid="stVerticalBlockBorderWrapper"],.st-key-v21256_ai_card [data-testid="stVerticalBlock"],.st-key-v21256_ai_card [data-testid="stElementContainer"]{background:#fff!important;background-color:#fff!important}
         .v21216-link{font-size:10px;font-weight:900;color:#086ee8;text-align:right;margin-top:3px}.v21216-range-note{font-size:9px;color:#7287a1;margin-top:-5px;margin-bottom:2px}
         /* V21.2.52 — compact reference geometry: no dead gaps, readable volume, footer locked inside card. */
         [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlock"]{gap:0!important;row-gap:0!important}
@@ -6289,13 +6290,31 @@ elif page=="Company Command Centre":
         _ann_text="No announcement evidence loaded."
         if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
         _brief_fallback=(f"WHAT CHANGED\n{_change_main}\n\nFUNDAMENTAL EVIDENCE\nEvidence coverage is {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} categories. Sector: {_ccsector}; industry: {_ccindustry}.\n\nVALUATION & EXPECTATIONS\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"12-month historical forecast scenario: {_ccf12:+.1%}." if np.isfinite(_ccf12) else "12-month forecast evidence is unavailable.")+f"\n\nTECHNICAL / QUANT\nCurrent technical regime: {tr.get('Trend','—')}. "+(f"Annualised volatility: {_ccvolatility:.1%}. " if np.isfinite(_ccvolatility) else "")+(f"Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+f"\n\nTHESIS CONFLICTS & MONITORING\n{_attention_text}\n\nCATALYSTS / ANNOUNCEMENTS\n{_ann_text}\n\nEVIDENCE GAPS\nMissing fields and unavailable engines should be completed before stronger conclusions are drawn.\n\nINVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts that can change the evidence state.")
-        _ai_key=f"v21_ai_brief_{ticker}"; _ai_time_key=f"v21216_ai_time_{ticker}"
+        # V21.2.56 — functional cross-module AI Research Brief.
+        # The compact widget synthesises the evidence already loaded by Chrímata; it never invents missing evidence.
+        _ai_key=f"v21256_ai_brief_{ticker}"; _ai_time_key=f"v21256_ai_time_{ticker}"; _ai_source_key=f"v21256_ai_source_{ticker}"
+        _thesis_evidence=[]
+        if _ccthesis is not None and not _ccthesis.empty:
+            for _,_r in _ccthesis.head(10).iterrows():
+                _thesis_evidence.append({"condition":str(_r.get("metric") or _r.get("condition") or _r.get("Item") or "Thesis condition"),"status":str(_r.get("status") or "Pending")})
+        _evidence={
+            "company":{"name":_ccname,"ticker":ticker,"sector":_ccsector,"industry":_ccindustry},
+            "market":{"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else float(_ccpct),"annualised_volatility":None if not np.isfinite(_ccvolatility) else float(_ccvolatility),"six_month_momentum":None if not np.isfinite(_ccmom) else float(_ccmom)},
+            "fundamentals":{"research_score":_ccscore},
+            "valuation":{"base_scenario":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase)},
+            "technical":tr,
+            "forecast":{"twelve_month_return_scenario":None if not np.isfinite(_ccf12) else float(_ccf12)},
+            "analyst_evidence":_ccanalyst,
+            "thesis":{"met":_ccth_met,"total":_ccth_total,"conditions":_thesis_evidence,"attention":_attention_text},
+            "announcements":_ann_text,
+        }
+        _brief_fallback=(f"EXECUTIVE SUMMARY\n{_ccname} ({ticker}) has {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} core evidence categories currently loaded. The current technical regime is {tr.get('Trend','—')}. This brief does not make a buy/sell recommendation.\n\nWHAT CHANGED\n{_change_main}\n\nFUNDAMENTALS\nSector: {_ccsector}. Industry: {_ccindustry}. Evidence coverage: {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)}.\n\nVALUATION\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}." if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently loaded.")+"\n\nTECHNICAL PICTURE\nCurrent trend: "+str(tr.get('Trend','—'))+(f". Annualised volatility: {_ccvolatility:.1%}." if np.isfinite(_ccvolatility) else ". Volatility evidence unavailable.")+(f" Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+"\n\nTHESIS SCORECARD\n"+(f"{_ccth_met}/{_ccth_total} stored conditions are currently on track. " if _ccth_total else "No measured thesis conditions are currently stored. ")+_attention_text+"\n\nCATALYSTS & ANNOUNCEMENTS\n"+_ann_text+"\n\nFORECASTS & ANALYST EVIDENCE\n"+(f"Stored 12-month model scenario: {_ccf12:+.1%}. " if np.isfinite(_ccf12) else "12-month model evidence is unavailable. ")+"Analyst evidence is shown only where supplied by the loaded data source.\n\nEVIDENCE GAPS / INVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts where evidence is missing or stale.")
         if _ai_key not in st.session_state: st.session_state[_ai_key]=_brief_fallback
         with _w_ai:
-            with st.container(border=True,height=_overview_widget_height):
+            with st.container(border=True,height=_overview_widget_height,key="v21256_ai_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-ai-head"><div class="v21216-ai-icon">🧠</div><div><div class="v21216-ai-title">AI Research Brief <span class="v21216-beta">BETA</span></div><div class="v21216-ai-sub">Evidence-based analysis. No hype. No recommendations.</div></div></div>',unsafe_allow_html=True)
-                st.markdown('<div class="v21216-ai-info">Get an AI-generated research brief based on all available evidence across fundamentals, valuation, technicals, announcements, news and forecasts. This is not a buy/sell recommendation.</div>',unsafe_allow_html=True)
-                if st.button("✦  Generate AI Research Brief",type="primary",use_container_width=True,key=f"v21216_generate_ai_{ticker}"):
+                st.markdown('<div class="v21216-ai-info">Synthesises the evidence already loaded across fundamentals, valuation, technicals, announcements, thesis monitoring and forecasts. Missing evidence is identified rather than invented.</div>',unsafe_allow_html=True)
+                if st.button("✦  Generate AI Research Brief",type="primary",use_container_width=True,key=f"v21256_generate_ai_{ticker}"):
                     try:
                         import os
                         from openai import OpenAI
@@ -6305,16 +6324,24 @@ elif page=="Company Command Centre":
                         if not _secret_key: raise RuntimeError("OPENAI_API_KEY is not configured")
                         try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
                         except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
-                        _evidence={"company":_ccname,"ticker":ticker,"price":price,"day_change_pct":None if not np.isfinite(_ccpct) else _ccpct,"sector":_ccsector,"industry":_ccindustry,"technical":tr,"research_score":_ccscore,"base_valuation":None if not np.isfinite(_mia_num(_ccbase)) else float(_ccbase),"forecast_12m":None if not np.isfinite(_ccf12) else float(_ccf12),"analyst":_ccanalyst,"thesis_met":_ccth_met,"thesis_total":_ccth_total,"attention":_attention_text,"recent_announcements":_ann_text}
-                        _prompt="You are the Chrímata research synthesis engine. Use ONLY the supplied evidence. Write a concise structured investment-research brief, not a recommendation. Separate observed facts/model outputs from interpretation. Never invent figures, events, sources, targets, probabilities or analyst views. If evidence is missing, say it is unavailable. Do not say buy, sell or hold. EVIDENCE: "+json.dumps(_evidence,default=str)
-                        _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt); _txt=getattr(_resp,"output_text","") or ""
-                        if not _txt.strip(): raise RuntimeError("AI provider returned an empty brief")
-                        st.session_state[_ai_key]=_txt.strip(); st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST")
+                        _prompt=("You are Chrímata's evidence-synthesis engine. Use ONLY the JSON evidence supplied below. "
+                                 "Create a concise investment research brief with these exact sections: EXECUTIVE SUMMARY; WHAT CHANGED; FUNDAMENTALS; VALUATION; TECHNICAL PICTURE; THESIS SCORECARD; CATALYSTS & ANNOUNCEMENTS; FORECASTS & ANALYST EVIDENCE; RISKS / CONFLICTING EVIDENCE; EVIDENCE GAPS; INVESTIGATE NEXT. "
+                                 "Clearly distinguish observed/provider facts from model outputs and interpretation. Never invent figures, events, sources, analyst views, probabilities or catalysts. Say 'unavailable' when evidence is missing. Do not issue buy, sell, hold, or investment recommendations. Keep it decision-useful and company-specific. EVIDENCE JSON: "+json.dumps(_evidence,default=str))
+                        _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt)
+                        _txt=(getattr(_resp,"output_text","") or "").strip()
+                        if not _txt: raise RuntimeError("AI provider returned an empty brief")
+                        st.session_state[_ai_key]=_txt
+                        st.session_state[_ai_source_key]="AI synthesis"
                     except Exception as _aie:
-                        st.session_state[_ai_key]=_brief_fallback; st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST"); st.warning(f"AI synthesis unavailable ({_aie}). Evidence fallback prepared instead.")
+                        st.session_state[_ai_key]=_brief_fallback
+                        st.session_state[_ai_source_key]="Evidence fallback"
+                        st.warning(f"AI synthesis unavailable ({_aie}). Chrímata generated the evidence-only fallback instead.")
+                    st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST")
                 _last_ai=st.session_state.get(_ai_time_key,"Not generated in this session")
-                st.markdown(f'<div class="v21216-ai-time">Last generated: {html.escape(str(_last_ai))}</div>',unsafe_allow_html=True)
-                with st.expander("View current research brief",expanded=False): st.write(st.session_state.get(_ai_key,_brief_fallback))
+                _source_ai=st.session_state.get(_ai_source_key,"")
+                st.markdown(f'<div class="v21216-ai-time">Last generated: {html.escape(str(_last_ai))}'+(f' · {html.escape(_source_ai)}' if _source_ai else '')+'</div>',unsafe_allow_html=True)
+                with st.expander("View current research brief",expanded=False):
+                    st.markdown(st.session_state.get(_ai_key,_brief_fallback))
 
         st.markdown('<div class="v21-section">Independent Research Engines</div>',unsafe_allow_html=True)
         _valup=np.nan if not np.isfinite(_mia_num(_ccbase)) or not price else float(_ccbase/price-1); _tarup=np.nan if not np.isfinite(_cctarget) or not price else float(_cctarget/price-1)
