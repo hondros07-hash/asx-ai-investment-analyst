@@ -6044,11 +6044,13 @@ elif page=="Company Command Centre":
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
         st.markdown("""<style>
-        /* V21.2.41 — white fixed-height cards + corrected timeframe/indicator chart engine. */
+        /* V21.2.42 — full-card white chart + isolated volume band. */
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card){background:#fff!important;background-color:#fff!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) > div{background:#fff!important;background-color:#fff!important;}
         [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) [data-testid="stVerticalBlock"]{background:#fff!important;background-color:#fff!important;}
         .v21241-overview-card{height:0;margin:0;padding:0;overflow:hidden}
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card){overflow:hidden!important;}
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.v21241-overview-card) [data-testid="stPlotlyChart"]{background:#fff!important;margin-bottom:0!important;}
         .v21216-widget-title{font-size:16px;font-weight:900;color:#10264b;margin:0 0 2px}
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700}
         .v21216-thesis-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:6px 0;font-size:11px;color:#26466e}
@@ -6147,19 +6149,19 @@ elif page=="Company Command Centre":
                     _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},_layout_update]))
                 _tech_href=f"?chr_cc={_urlquote(str(ticker))}&chr_cc_page=Technical#investment-command-centre"
                 _fig.update_layout(
-                    height=282,margin=dict(l=2,r=40,t=36,b=42),xaxis_rangeslider_visible=False,
+                    height=315,margin=dict(l=2,r=40,t=36,b=40),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
-                    legend=dict(orientation="h",y=-.205,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
+                    legend=dict(orientation="h",y=-.17,x=0,font=dict(size=9),traceorder="normal",itemsizing="constant"),
                     annotations=[dict(
-                        x=1.0,y=-.205,xref="paper",yref="paper",xanchor="right",yanchor="top",
+                        x=1.0,y=-.17,xref="paper",yref="paper",xanchor="right",yanchor="top",
                         text=f'<a href="{_tech_href}" target="_self"><b>View Full Technical Analysis&nbsp; →</b></a>',
                         showarrow=False,font=dict(size=10,color="#086ee8"),align="right"
                     )],
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1]),
-                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0,1.0]),
-                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",overlaying="y"),
+                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.22,1.0]),
+                    yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.0,0.18]),
                 )
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
         with _w_thesis:
@@ -6257,7 +6259,7 @@ elif page=="Company Command Centre":
         st.markdown('<div class="v21-section">Position Context</div>',unsafe_allow_html=True)
         _p=st.columns(4); _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else 0
         _p[0].metric("Shares",f"{_qty:,.0f}"); _p[1].metric("Average cost",f"${_avg:,.3f}" if _qty else "—"); _p[2].metric("Market value",f"${_mv:,.0f}" if _qty else "—"); _p[3].metric("Unrealised P&L",f"${_pnl:,.0f}" if _qty else "—")
-        st.markdown('<div class="v21-foot">V21.2.41 architecture: White Card + Corrected Timeframe/Indicator Price Chart Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.42 architecture: Full-Card White Price Chart + Isolated Volume Band + Corrected Timeframe/Indicator Engine · Integrated Reference Price Chart Footer · AI Company Command Centre Overview synthesises independent engines. Fundamentals, Valuation, Technical, Announcements & Reports, Report Intelligence, News & Events, Thesis Scorecard, Catalyst Calendar, Quant and Forecasts remain independently routable and independently executable.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
