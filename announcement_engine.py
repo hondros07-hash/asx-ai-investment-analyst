@@ -124,22 +124,33 @@ def _parse_asx(html, code):
             if label and not any(x in label.lower() for x in ('search again','adobe','how and when')): score+=1
             anchors.append((score,href,label))
         anchors.sort(reverse=True,key=lambda x:x[0])
-        if not anchors or anchors[0][0] < 2: continue
-        _,raw_href,title=anchors[0]; href=_asx_abs_url(raw_href)
-        if href in seen: continue
+        # V21.3.09: ASX has changed announcement-row markup more than once. Do not
+        # discard a valid row merely because its headline link is not an asxpdf/
+        # displayAnnouncement URL. A dated table row is still useful disclosure
+        # metadata; in that case route VIEW to the official company search page.
+        raw_href=''; title=''
+        if anchors:
+            _,raw_href,title=anchors[0]
+        href=_asx_abs_url(raw_href) if raw_href else ''
         date=dm.group(1); tm=re.search(r'\b(\d{1,2}:\d{2}\s*(?:am|pm))\b',text,flags=re.I); time=tm.group(1) if tm else ''
         if not title:
-            # Remove mechanical fields, retaining the announcement headline.
             title=text
-            for pat in (r'\d{1,2}/\d{1,2}/\d{4}',r'\b\d{1,2}:\d{2}\s*(?:am|pm)?\b',r'\b\d+\s+pages?\b',r'\b[\d.]+\s*(?:KB|MB)\b'):
+            for pat in (r'\d{1,2}/\d{1,2}/\d{4}',r'\b\d{1,2}:\d{2}\s*(?:am|pm)?\b',r'\b\d+\s+pages?\b',r'\b[\d.]+\s*(?:KB|MB)\b',r'Price\s*sens\.?'):
                 title=re.sub(pat,' ',title,flags=re.I)
             title=re.sub(r'\s+',' ',title).strip(' |-')
+        # Reject page chrome / non-announcement rows.
+        if not title or any(x in title.lower() for x in ('released between','search results','search again','useful information','viewing market announcements')):
+            continue
+        fallback=ASX_ARCHIVE+'?'+urllib.parse.urlencode({'asxCode':code,'by':'asxCode','period':'M6','timeframe':'D'})
+        read_url=href or fallback
+        dedupe=(date+'|'+time+'|'+title).lower()
+        if dedupe in seen: continue
+        has_pdf=bool(href and ('asxpdf' in href.lower() or href.lower().split('?')[0].endswith('.pdf')))
         rows.append({'Date':date,'Time':time,'Group':'ASX Announcements','Type':classify(title),
-                     'Title':title or 'ASX announcement','Price Sensitive':bool(re.search(r'price sensitive',block,re.I)),
-                     'Source':'ASX Market Announcements','URL':href,'PDFURL':href,'ReadURL':href,
-                     'Has PDF':('asxpdf' in href.lower() or href.lower().split('?')[0].endswith('.pdf')),
-                     'ID':href.rsplit('/',1)[-1]})
-        seen.add(href)
+                     'Title':title,'Price Sensitive':bool(re.search(r'price sensitive',block,re.I)),
+                     'Source':'ASX Market Announcements','URL':read_url,'PDFURL':href if has_pdf else '',
+                     'ReadURL':read_url,'Has PDF':has_pdf,'ID':dedupe})
+        seen.add(dedupe)
     return rows
 
 def asx_public_archive(code, years=12, limit=250):
@@ -165,7 +176,7 @@ def asx_public_archive(code, years=12, limit=250):
             diagnostics.append({'query':params,'bytes':len(raw),'rows':len(parsed),'content_type':ctype})
             if parsed: rows=parsed; break
         except Exception as e:
-            diagnostics.append({'query':params,'error':type(e).__name__+': '+str(e)[:160]})
+            diagnostics.append({'query':params,'url':url if 'url' in locals() else ASX_ARCHIVE,'error':type(e).__name__+': '+str(e)[:240]})
     if not rows:
         df=pd.DataFrame(columns=cols); df.attrs.update({'status':'ASX_NO_PARSED_ROWS','ticker':code,'diagnostics':diagnostics}); return df
     df=pd.DataFrame(rows).drop_duplicates('URL'); df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')

@@ -49,3 +49,12 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - The Overview disclosure card is rebuilt to the compact five-row reference layout.
 - `View all →` remains a real Streamlit control and targets the selected ticker's Announcements & Reports workspace.
 - No ticker-specific announcement data is hard-coded.
+
+## V21.3.09 — Live Disclosure Diagnostics + Retrieval & Header Navigation Repair
+- Keeps disclosure retrieval dynamic to the currently selected listing/ticker; no company-specific announcement data is hard-coded.
+- ASX parser now retains valid dated announcement rows even when ASX markup does not expose an `asxpdf`/`displayAnnouncement` link in the expected form; document access falls back to the official ASX company-announcement search rather than discarding the row.
+- ASX transport/parser diagnostics retain query, response byte count, content type, parsed row count, and exception details for deployed troubleshooting.
+- Empty disclosure cards expose a collapsed `Disclosure diagnostics` panel so Streamlit Cloud failures can be diagnosed from the deployed app.
+- Rebuilt `View all →` as a native Streamlit button inside the card's header columns. No absolute/fixed positioning is used, preventing the control from escaping beneath the sidebar.
+- `View all →` deterministically selects `Announcements & Reports` and reruns while preserving the selected security identity.
+- Acceptance tests cover ASX no-PDF markup, ASX PDF markup, non-overlapping View-All layout, and diagnostics wiring.
