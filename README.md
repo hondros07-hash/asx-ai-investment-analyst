@@ -83,3 +83,11 @@ Rebuilt dynamic disclosure card: selected listing drives market adapter; ASX use
 - Added News & Events Intelligence Centre with All Relevant Events, Company News, Sector & Competitors, and Macro & Market Events views.
 - Expandable event intelligence explains relevance channel, affected KPI, what to watch, source and original-source link when available.
 - Current provider is Yahoo Finance through yfinance; contextual sector/macro discovery is not presented as a prediction or as verified company impact.
+
+
+## V21.3.17 — Security Identity Validation + Metadata Fallback + Smart Refresh Engine
+- Canonical listing identity is resolved before Company Command Centre data is loaded.
+- Verified primary-listing overrides are company-name based, never inferred from price magnitude.
+- International sector/industry metadata uses a safe cascade and leaves genuinely missing classifications unavailable.
+- Refresh policy separates fast quote data (60s), medium market/news data (10m), and slow company metadata/fundamentals (6h).
+- Nike search includes the verified NYSE primary listing NKE.

@@ -17,6 +17,7 @@ from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
+from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
 from portfolio_engine import portfolio_analytics, concentration
 from model_monitor import registry
@@ -518,7 +519,7 @@ def history(t, period="5y"):
     try: return yf.Ticker(t).history(period=period, auto_adjust=True)
     except: return pd.DataFrame()
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=21600, show_spinner=False)
 def info(t):
     try: return yf.Ticker(t).info
     except: return {}
@@ -6504,6 +6505,14 @@ elif page=="Company Command Centre":
     # V21.2 — AI Company Command Centre Overview Intelligence Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
     v18_db_upgrade()
+    # V21.3.17 — canonical security identity is resolved before price, metadata,
+    # financials or news are loaded. Price magnitude is never used to guess identity.
+    _preselected=st.session_state.get("chr_company_search_selected") or {}
+    _expected_company=str(_preselected.get("Company") or name or "").strip()
+    _identity_resolution=canonicalize_security(ticker,_expected_company)
+    if _identity_resolution.get("changed"):
+        ticker=_identity_resolution["ticker"]
+        st.session_state["ticker"]=ticker
     cls=safe_company_classification(ticker)
     h=history(ticker,"1y")
     if h.empty:
@@ -6557,7 +6566,13 @@ elif page=="Company Command Centre":
             _quote_probe_ok=False
         _ccmarket=detect_market(ticker,_ccmeta); _ccex=_ccmarket.get("exchange") or _ccmeta.get("exchange") or "—"
         _cccountry=_chr_identity_country(ticker,_ccex,_ccmeta.get("country") or "")
-        _ccsector=_ccmeta.get("sector") or _ccmeta.get("sectorDisp") or cls.get("sector") or "Sector unavailable"; _ccindustry=_ccmeta.get("industry") or _ccmeta.get("industryDisp") or cls.get("industry") or "Industry unavailable"
+        # International-safe classification cascade. Never substitutes a Nike-specific
+        # sector/industry for an unrelated company when provider metadata is missing.
+        _safe_tags=safe_classification(_ccmeta,cls)
+        _ccsector=_safe_tags["sector"]; _ccindustry=_safe_tags["industry"]
+        _identity_check=validate_identity(ticker,_expected_company or _ccname,_ccmeta)
+        if not _identity_check.get("valid"):
+            st.warning(f"Listing identity could not be verified for {ticker}. Price and company metrics may be withheld until the selected listing is confirmed.")
         _ccprev=float(h["Close"].iloc[-2]) if len(h)>1 else np.nan; _ccchg=price-_ccprev if np.isfinite(_ccprev) else np.nan; _ccpct=_ccchg/_ccprev if np.isfinite(_ccprev) and _ccprev else np.nan
         _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
         if not np.isfinite(_cclo): _cclo=float(h["Low"].min())

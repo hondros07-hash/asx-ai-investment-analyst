@@ -7,6 +7,7 @@ ALIASES={
  "coca cola":[("KO","The Coca-Cola Company","NYSE")],
  "coca-cola":[("KO","The Coca-Cola Company","NYSE")],
  "apple":[("AAPL","Apple Inc.","NASDAQ")],
+ "nike":[("NKE","NIKE, Inc.","NYSE")],
  "qantas":[("QAN.AX","Qantas Airways Limited","ASX")],
  "zip":[("ZIP.AX","Zip Co Limited","ASX"),("ZIP","ZipRecruiter, Inc.","NYSE")],
  "bhp":[("BHP.AX","BHP Group Limited","ASX"),("BHP","BHP Group Limited","NYSE")],
