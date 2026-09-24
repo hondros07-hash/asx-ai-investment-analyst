@@ -2002,9 +2002,15 @@ def valuation_fx_rate(a,b):
  return np.nan
 @st.cache_data(ttl=21600, show_spinner=False)
 def valuation_statement_bundle(ticker):
+    """Return the richest available Yahoo statements; quarterly can expose fresher/TTM evidence."""
     try:
         t=yf.Ticker(ticker)
-        return t.cashflow, t.balance_sheet, t.financials
+        def richest(*frames):
+            valid=[x for x in frames if isinstance(x,pd.DataFrame) and not x.empty]
+            return max(valid,key=lambda x:(x.notna().sum().sum(),x.shape[0]*x.shape[1])) if valid else pd.DataFrame()
+        return (richest(getattr(t,"quarterly_cashflow",pd.DataFrame()),getattr(t,"cashflow",pd.DataFrame())),
+                richest(getattr(t,"quarterly_balance_sheet",pd.DataFrame()),getattr(t,"balance_sheet",pd.DataFrame())),
+                richest(getattr(t,"quarterly_financials",pd.DataFrame()),getattr(t,"financials",pd.DataFrame())))
     except Exception:
         return pd.DataFrame(),pd.DataFrame(),pd.DataFrame()
 
@@ -2023,7 +2029,17 @@ def _valuation_meta(ticker):
 def automatic_valuation_snapshot(meta,price,ticker=None):
     selected_ticker=str(ticker or (meta or {}).get("symbol") or "").upper()
     cf,bs,inc=valuation_statement_bundle(selected_ticker) if selected_ticker else (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
-    recovered=recover_financial_inputs(meta or {},cf,bs,inc)
+    _vmeta=dict(meta or {})
+    if not _mia_num(_vmeta.get("sharesOutstanding")) and selected_ticker:
+        try:
+            _sh=shares_history(selected_ticker)
+            if _sh is not None and len(_sh):
+                _vmeta["sharesOutstanding"]=float(pd.to_numeric(_sh,errors="coerce").dropna().iloc[-1])
+                _vmeta["_shares_source"]="provider_shares_history"
+        except Exception: pass
+    recovered=recover_financial_inputs(_vmeta,cf,bs,inc)
+    if _vmeta.get("_shares_source") and recovered.get("audit",{}).get("inputs",{}).get("shares",{}).get("status")=="verified":
+        recovered["audit"]["inputs"]["shares"]["source"]=_vmeta["_shares_source"]
     bridge={"status":"not_used","verified":False,"reason":"Selected listing evidence used","ai_calculated":False}
 
     # If essential evidence is missing, consider only an explicit provider-supplied candidate and
@@ -6903,7 +6919,14 @@ elif page=="Company Command Centre":
             _confidence_score=float(np.mean(_parts)) if _parts else np.nan
             _val_conf=("High confidence" if np.isfinite(_confidence_score) and _confidence_score>=.75 else "Moderate confidence" if np.isfinite(_confidence_score) and _confidence_score>=.55 else "Low confidence" if np.isfinite(_confidence_score) else "Validation pending")
         _val_conf_text=f"{_val_conf} · {_val_obs} matured obs" if _val_obs else "Validation pending · no matured observations"
-        _val_move=(f"+{_val_pct:.0%} upside" if np.isfinite(_val_pct) and _val_pct>0 else f"{_val_pct:.0%} downside" if np.isfinite(_val_pct) and _val_pct<0 else "At model base case" if np.isfinite(_val_pct) else "Evidence required")
+        if not np.isfinite(_val_pct):
+            _derived_fcf=isinstance(_vinputs.get("fcf"),dict) and _vinputs.get("fcf",{}).get("status")=="derived"
+            if _derived_fcf: _val_conf_text="FCF derived from cash-flow statement · validation pending"
+        _vaudit=_ccauto_val.get("audit",{}) if isinstance(_ccauto_val,dict) else {}
+        _vinputs=_vaudit.get("inputs",{}) if isinstance(_vaudit,dict) else {}
+        _vmissing=[k.replace("_"," ").title() for k,v in _vinputs.items() if isinstance(v,dict) and v.get("status")=="missing"]
+        _vreason=str(_ccauto_val.get("reason") or "") if isinstance(_ccauto_val,dict) else ""
+        _val_move=(f"Model gap: {_val_pct:+.0%}" if np.isfinite(_val_pct) else ("Missing: "+", ".join(_vmissing[:2]) if _vmissing else (_vreason[:42] if _vreason else "Evidence required")))
         _val_move_cls=("up" if np.isfinite(_val_pct) and _val_pct>=.10 else "down" if np.isfinite(_val_pct) and _val_pct<=-.10 else "neutral")
         # V21.3.20 — compact Technicals card uses the deterministic composite engine,
         # not an RSI-only label. Missing indicators remain Pending and reduce evidence coverage.

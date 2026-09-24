@@ -12,7 +12,7 @@ def _norm(s): return re.sub(r"[^a-z0-9]","",str(s or "").lower())
 
 ALIASES={
 "operating_cash_flow":("Operating Cash Flow","Total Cash From Operating Activities","Cash Flow From Continuing Operating Activities"),
-"capex":("Capital Expenditure","Capital Expenditures","Capital Expenditure Reported","Purchase Of PPE","Purchases Of Property Plant And Equipment"),
+ "capex":("Capital Expenditure","Capital Expenditures","Capital Expenditure Reported","Purchase Of PPE","Purchases Of PPE","Purchase Of Property Plant And Equipment","Purchases Of Property Plant And Equipment"),
 "cash":("Cash Cash Equivalents And Short Term Investments","Cash And Cash Equivalents","Cash"),
 "debt":("Total Debt","Long Term Debt And Capital Lease Obligation","Long Term Debt","Current Debt And Capital Lease Obligation"),
 "shares":("Ordinary Shares Number","Share Issued","Diluted Average Shares","Basic Average Shares"),
@@ -21,12 +21,33 @@ ALIASES={
 def _latest_statement_value(df: Optional[pd.DataFrame], aliases: Iterable[str]) -> Tuple[Optional[float],Optional[str],Optional[str]]:
     if df is None or getattr(df,"empty",True): return None,None,None
     rows={_norm(i):i for i in df.index}
+    # Exact normalized alias first, then conservative contains matching for provider label variations.
+    candidates=[]
     for a in aliases:
-        key=_norm(a)
-        if key in rows:
-            row=pd.to_numeric(df.loc[rows[key]],errors="coerce").dropna()
-            if not row.empty:
-                col=str(row.index[0]); return _num(row.iloc[0]),str(rows[key]),col
+        k=_norm(a)
+        if k in rows: candidates.append(rows[k])
+    if not candidates:
+        for a in aliases:
+            k=_norm(a)
+            if len(k)>=8:
+                for nk,raw in rows.items():
+                    if k in nk or nk in k:
+                        candidates.append(raw)
+    for raw in dict.fromkeys(candidates):
+        row=pd.to_numeric(df.loc[raw],errors="coerce").dropna()
+        if row.empty: continue
+        # Prefer TTM when explicitly present; otherwise newest datetime column; otherwise first provider column.
+        chosen=None
+        for c in row.index:
+            if "ttm" in str(c).lower() or "trailing" in str(c).lower(): chosen=c; break
+        if chosen is None:
+            dated=[]
+            for c in row.index:
+                try: dated.append((pd.Timestamp(c),c))
+                except: pass
+            if dated: chosen=max(dated,key=lambda x:x[0])[1]
+        if chosen is None: chosen=row.index[0]
+        return _num(row.loc[chosen]),str(raw),str(chosen)
     return None,None,None
 
 def recover_financial_inputs(meta: Mapping[str,Any], cashflow: Optional[pd.DataFrame]=None,
