@@ -1,7 +1,8 @@
-# Chrímata V21.2.81 — Unified Forecast Model + Reference Card Fix
+# Chrímata V21.2.83 — Key Metrics TTM Reference Card + Growth Engine
 
-- Uses the same canonical 12M advanced ensemble output in both the intelligence strip and Investment Snapshot.
-- Investment Snapshot now reads the same 12M model target, expected return, and calibrated positive-return probability.
-- Reworked Forecasts (Model) card toward the supplied reference: left-aligned target/return, larger target, taller trajectory chart, probability beneath chart, compact integrated footer.
-- No analyst target is substituted for the Chrímata model forecast.
-- No changes to the underlying forecast algorithm, valuation model, analyst data, or other dashboard cards.
+- Rebuilds Investment Snapshot → Key Metrics (TTM) to the three-column reference layout.
+- Uses latest four quarterly statement periods for TTM flow metrics where available.
+- Publishes YoY growth only when eight comparable quarterly periods support current-vs-prior TTM comparison.
+- Falls back to provider trailing/latest values when a four-quarter statement series is unavailable, without fabricating growth.
+- Adds metric-level provenance/basis detail to the information tooltip.
+- Leaves all other Investment Snapshot and intelligence widgets unchanged.

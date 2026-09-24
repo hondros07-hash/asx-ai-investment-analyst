@@ -1014,6 +1014,69 @@ def overview_thesis_template(ticker, sector="", industry=""):
     return labels[:6]
 
 @st.cache_data(ttl=3600, show_spinner=False)
+def investment_snapshot_ttm_metrics(ticker):
+    """Return defensible TTM metrics plus like-for-like TTM YoY growth where available.
+
+    Flow metrics are summed from the latest four provider quarters. YoY growth is only
+    published when eight comparable quarters are available. Missing comparisons remain
+    unavailable rather than mixing annual and TTM periods.
+    """
+    out={}
+    def _frame(obj, attr):
+        try:
+            x=getattr(obj,attr)
+            return x if isinstance(x,pd.DataFrame) else pd.DataFrame()
+        except Exception:
+            return pd.DataFrame()
+    def _row(df,names):
+        if df is None or df.empty: return None
+        idx={str(i).strip().lower():i for i in df.index}
+        for n in names:
+            key=str(n).strip().lower()
+            if key in idx:
+                try:
+                    ser=pd.to_numeric(df.loc[idx[key]],errors="coerce").dropna()
+                    return ser
+                except Exception: return None
+        return None
+    def _ttm(ser):
+        if ser is None or len(ser)<4: return (np.nan,np.nan,None)
+        vals=[float(x) for x in ser.iloc[:4]]
+        cur=float(np.sum(vals)) if all(np.isfinite(vals)) else np.nan
+        prior=np.nan
+        if len(ser)>=8:
+            p=[float(x) for x in ser.iloc[4:8]]
+            if all(np.isfinite(p)): prior=float(np.sum(p))
+        growth=np.nan if not np.isfinite(cur) or not np.isfinite(prior) or prior==0 else cur/abs(prior)-1
+        return cur,growth,"4-quarter TTM; YoY uses prior four quarters" if np.isfinite(growth) else "4-quarter TTM; prior four-quarter comparison unavailable"
+    try:
+        t=yf.Ticker(ticker)
+        inc=_frame(t,"quarterly_income_stmt")
+        cf=_frame(t,"quarterly_cashflow")
+        mapping={
+            "Revenue": (inc,["Total Revenue","Operating Revenue"]),
+            "EBITDA": (inc,["EBITDA","Normalized EBITDA"]),
+            "Net Income": (inc,["Net Income","Net Income Common Stockholders","Net Income Including Noncontrolling Interests"]),
+            "EPS": (inc,["Diluted EPS","Basic EPS"]),
+            "Free Cash Flow": (cf,["Free Cash Flow"]),
+        }
+        for label,(df,names) in mapping.items():
+            cur,growth,basis=_ttm(_row(df,names))
+            out[label]={"value":cur,"growth":growth,"basis":basis or "TTM unavailable from quarterly statements"}
+        # If provider does not expose an FCF row, derive each quarter as OCF + capex.
+        if not np.isfinite(out["Free Cash Flow"]["value"]):
+            ocf=_row(cf,["Operating Cash Flow","Total Cash From Operating Activities"])
+            cap=_row(cf,["Capital Expenditure","Capital Expenditures"])
+            if ocf is not None and cap is not None:
+                n=min(len(ocf),len(cap))
+                derived=pd.Series([float(ocf.iloc[i])+float(cap.iloc[i]) for i in range(n)])
+                cur,growth,basis=_ttm(derived)
+                out["Free Cash Flow"]={"value":cur,"growth":growth,"basis":((basis or "")+"; derived as operating cash flow + capex").strip("; ")}
+    except Exception:
+        pass
+    return out
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def thesis_financial_evidence(ticker):
     """Build a small, cached evidence set from provider statements.
 
@@ -6892,7 +6955,8 @@ elif page=="Company Command Centre":
         # V21.2.61 — Company Overview Intelligence Widgets.
         # Reference-matched compact research dashboard; values come only from loaded/provider/stored evidence.
         st.markdown("""<style>
-        .v21261-snapshot-heading{font-size:16px;font-weight:950;color:#10264b;margin:2px 0 5px}.v21261-title{font-size:10.5px;font-weight:900;color:#10264b;margin:0 0 5px;display:flex;align-items:center;gap:4px}.v21261-info{display:inline-flex;width:11px;height:11px;border:1px solid #9bb4cf;border-radius:50%;align-items:center;justify-content:center;font-size:7px;color:#6f8cab;font-weight:900}.v21261-card{background:#fff;border:1px solid #d8e5f2;border-radius:7px;padding:6px 8px 27px;min-height:158px;height:158px;box-sizing:border-box;overflow:hidden;position:relative}.v21261-center{text-align:center}.v21261-k{font-size:8px;color:#45688f;font-weight:700}.v21261-v{font-size:16px;line-height:1.02;color:#10264b;font-weight:900;margin:2px 0}.v21261-pos{color:#08a142;font-weight:900}.v21261-neg{color:#e32636;font-weight:900}.v21261-watch{color:#e89a00;font-weight:900}.v21261-muted{color:#7b91aa}.v21261-table{width:100%;border-collapse:collapse;font-size:8.2px;color:#29476f}.v21261-table td{border:1px solid #dfe8f2;padding:4px 5px;height:22px}.v21261-table td:nth-child(2){font-weight:850;color:#10264b}.v21261-table td:nth-child(3){font-weight:900;text-align:right}.v21261-row{display:grid;grid-template-columns:72px minmax(0,1fr) 65px;gap:5px;border-bottom:1px solid #dfe8f2;padding:4px 2px;font-size:8.7px;color:#29476f;line-height:1.2}.v21261-row:last-child{border-bottom:0}.v21261-row b{color:#10264b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-r{text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-risk{background:#fff0f3;border-color:#ffd5dd;min-height:76px;height:auto;padding-bottom:8px}.v21261-opp{background:#eefaf4;border-color:#d3f0df;min-height:76px;height:auto;padding-bottom:8px}.v21261-risk .v21261-title{color:#e32636}.v21261-opp .v21261-title{color:#079447}.v21261-list{font-size:8.7px;line-height:1.25;color:#29476f;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}.v21261-dot{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;margin-right:4px}.v21261-risk .v21261-dot{background:#ef3340}.v21261-opp .v21261-dot{background:#0aa04f}.v21261-val-grid{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;margin-top:1px}.v21261-val-grid>div{border-right:1px solid #e3ebf4}.v21261-val-grid>div:last-child{border-right:0}.v21261-val-lbl{font-size:8px;font-weight:900}.v21261-val-num{font-size:10px;font-weight:900;color:#10264b;margin:1px 0}.v21261-range{height:8px;background:#dce7f2;border-radius:10px;position:relative;margin:9px 8px 4px}.v21261-range i{position:absolute;top:-4px;width:6px;height:16px;border-radius:4px;background:#086ee8}.v21261-range .bear{left:0;background:#ffb000}.v21261-range .base{left:50%}.v21261-range .bull{right:0;background:#a9bfd5}.v21261-range-labels{display:flex;justify-content:space-between;font-size:7.5px;color:#527298}.v21261-spark{height:39px;margin:3px 2px}.v21261-spark svg{width:100%;height:100%}.v21281-fc{padding:6px 8px 27px}.v21281-fc-body{padding:1px 7px 0;text-align:left}.v21281-fc .v21261-k{font-size:8.5px}.v21281-fc-target{font-size:17px;line-height:1.05;color:#10264b;font-weight:950;margin:2px 0}.v21281-fc-return{font-size:12px;line-height:1.05;font-weight:950;margin:1px 0 2px}.v21281-fc .v21261-spark{height:49px;margin:2px 0 2px}.v21281-fc-prob{font-size:8.5px;color:#29476f;font-weight:750;margin-top:1px}.v21261-analyst-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:7px}.v21261-analyst-dist{font-size:7.8px;color:#29476f}.v21261-analyst-dist div{display:flex;justify-content:space-between;margin:3px 0}.v21261-adot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}.v21282-analyst{padding:6px 8px 27px}.v21282-analyst-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:10px;align-items:start}.v21282-analyst-left{display:flex;flex-direction:column;min-width:0}.v21282-analyst-status{font-size:17px;line-height:1.02;font-weight:950;margin:5px 0 2px}.v21282-analyst-count{font-size:8.5px;color:#527298;font-weight:750}.v21282-analyst-target{margin-top:20px}.v21282-analyst-target-label{font-size:8.5px;color:#45688f;font-weight:800}.v21282-analyst-target-value{font-size:17px;line-height:1.05;color:#10264b;font-weight:950;margin-top:2px}.v21282-analyst-dist{font-size:8.3px;color:#29476f;padding-top:2px}.v21282-analyst-dist div{display:grid;grid-template-columns:1fr 18px;align-items:center;gap:4px;margin:5px 0}.v21282-analyst-dist b{text-align:right;color:#10264b}.v21282-analyst-dist span{white-space:nowrap}.v21282-analyst-dist .v21261-adot{width:8px;height:8px;margin-right:6px}.v21261-market-range{margin:1px 2px 7px}.v21261-market-track{height:7px;border-radius:8px;background:#dce7f2;position:relative;margin:8px 10px 4px}.v21261-market-now{position:absolute;top:-3px;width:7px;height:13px;border-radius:5px;background:#1638a7;transform:translateX(-50%)}.v21261-market-low{position:absolute;left:0;top:-2px;width:6px;height:11px;border-radius:4px;background:#ffad00}.v21261-market-high{position:absolute;right:0;top:-2px;width:6px;height:11px;border-radius:4px;background:#ff284d}.v21261-market-labels{display:flex;justify-content:space-between;font-size:7.3px;color:#7890aa}.v21261-bottom{background:#fff;border:1px solid #d8e5f2;border-radius:8px;padding:9px 12px;min-height:94px;box-sizing:border-box}.v21261-bottom-title{font-size:13px;font-weight:900;color:#086ee8;margin-bottom:7px}.v21261-stats{display:grid;grid-template-columns:repeat(4,1fr)}.v21261-stat{padding:0 9px;border-right:1px solid #dfe8f2}.v21261-stat:last-child{border-right:0}.v21261-stat .k{font-size:8px;color:#67809c;font-weight:700}.v21261-stat .v{font-size:12px;color:#10264b;font-weight:900;margin-top:2px}.v21261-scenario{font-size:9.3px;color:#29476f;line-height:1.4}.v21261-quote{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#1e5ca9;font-style:italic;font-weight:800;height:72px}[class*="st-key-v21261_nav_"]{margin-top:-27px!important;position:relative!important;z-index:3!important;border-top:1px solid #e2ebf4!important;background:#fff!important}[class*="st-key-v21261_nav_"] .stButton{display:flex!important;justify-content:flex-end!important}[class*="st-key-v21261_nav_"] .stButton>button{width:auto!important;font-size:8.5px!important;font-weight:850!important;min-height:24px!important;height:24px!important;padding:0 5px!important;border:0!important;border-radius:0!important;background:#fff!important;color:#086ee8!important;box-shadow:none!important}
+        .v21261-snapshot-heading{font-size:16px;font-weight:950;color:#10264b;margin:2px 0 5px}.v21261-title{font-size:10.5px;font-weight:900;color:#10264b;margin:0 0 5px;display:flex;align-items:center;gap:4px}.v21261-info{display:inline-flex;width:11px;height:11px;border:1px solid #9bb4cf;border-radius:50%;align-items:center;justify-content:center;font-size:7px;color:#6f8cab;font-weight:900}.v21261-card{background:#fff;border:1px solid #d8e5f2;border-radius:7px;padding:6px 8px 27px;min-height:158px;height:158px;box-sizing:border-box;overflow:hidden;position:relative}.v21261-center{text-align:center}.v21261-k{font-size:8px;color:#45688f;font-weight:700}.v21261-v{font-size:16px;line-height:1.02;color:#10264b;font-weight:900;margin:2px 0}.v21261-pos{color:#08a142;font-weight:900}.v21261-neg{color:#e32636;font-weight:900}.v21261-watch{color:#e89a00;font-weight:900}.v21261-muted{color:#7b91aa}.v21261-table{width:100%;border-collapse:collapse;font-size:8.2px;color:#29476f}.v21261-table td{border:1px solid #dfe8f2;padding:4px 5px;height:22px}.v21261-table td:nth-child(2){font-weight:850;color:#10264b}.v21261-table td:nth-child(3){font-weight:900;text-align:right}.v21261-row{display:grid;grid-template-columns:72px minmax(0,1fr) 65px;gap:5px;border-bottom:1px solid #dfe8f2;padding:4px 2px;font-size:8.7px;color:#29476f;line-height:1.2}.v21261-row:last-child{border-bottom:0}.v21261-row b{color:#10264b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-r{text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21261-risk{background:#fff0f3;border-color:#ffd5dd;min-height:76px;height:auto;padding-bottom:8px}.v21261-opp{background:#eefaf4;border-color:#d3f0df;min-height:76px;height:auto;padding-bottom:8px}.v21261-risk .v21261-title{color:#e32636}.v21261-opp .v21261-title{color:#079447}.v21261-list{font-size:8.7px;line-height:1.25;color:#29476f;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}.v21261-dot{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;margin-right:4px}.v21261-risk .v21261-dot{background:#ef3340}.v21261-opp .v21261-dot{background:#0aa04f}.v21261-val-grid{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;margin-top:1px}.v21261-val-grid>div{border-right:1px solid #e3ebf4}.v21261-val-grid>div:last-child{border-right:0}.v21261-val-lbl{font-size:8px;font-weight:900}.v21261-val-num{font-size:10px;font-weight:900;color:#10264b;margin:1px 0}.v21261-range{height:8px;background:#dce7f2;border-radius:10px;position:relative;margin:9px 8px 4px}.v21261-range i{position:absolute;top:-4px;width:6px;height:16px;border-radius:4px;background:#086ee8}.v21261-range .bear{left:0;background:#ffb000}.v21261-range .base{left:50%}.v21261-range .bull{right:0;background:#a9bfd5}.v21261-range-labels{display:flex;justify-content:space-between;font-size:7.5px;color:#527298}.v21261-spark{height:39px;margin:3px 2px}.v21261-spark svg{width:100%;height:100%}.v21281-fc{padding:6px 8px 27px}.v21281-fc-body{padding:1px 7px 0;text-align:left}.v21281-fc .v21261-k{font-size:8.5px}.v21281-fc-target{font-size:17px;line-height:1.05;color:#10264b;font-weight:950;margin:2px 0}.v21281-fc-return{font-size:12px;line-height:1.05;font-weight:950;margin:1px 0 2px}.v21281-fc .v21261-spark{height:49px;margin:2px 0 2px}.v21281-fc-prob{font-size:8.5px;color:#29476f;font-weight:750;margin-top:1px}.v21261-analyst-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:7px}.v21261-analyst-dist{font-size:7.8px;color:#29476f}.v21261-analyst-dist div{display:flex;justify-content:space-between;margin:3px 0}.v21261-adot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}.v21282-analyst{padding:6px 8px 27px}.v21282-analyst-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:10px;align-items:start}.v21282-analyst-left{display:flex;flex-direction:column;min-width:0}.v21282-analyst-status{font-size:17px;line-height:1.02;font-weight:950;margin:5px 0 2px}.v21282-analyst-count{font-size:8.5px;color:#527298;font-weight:750}.v21282-analyst-target{margin-top:20px}.v21282-analyst-target-label{font-size:8.5px;color:#45688f;font-weight:800}.v21282-analyst-target-value{font-size:17px;line-height:1.05;color:#10264b;font-weight:950;margin-top:2px}.v21282-analyst-dist{font-size:8.3px;color:#29476f;padding-top:2px}.v21282-analyst-dist div{display:grid;grid-template-columns:1fr 18px;align-items:center;gap:4px;margin:5px 0}.v21282-analyst-dist b{text-align:right;color:#10264b}.v21282-analyst-dist span{white-space:nowrap}.v21282-analyst-dist .v21261-adot{width:8px;height:8px;margin-right:6px}.v21283-metrics{padding:6px 8px 27px}.v21283-metrics .v21261-table{font-size:8.1px}.v21283-metrics .v21261-table td{height:20px;padding:3px 5px}.v21283-metrics .v21261-table td:nth-child(1){width:46%;color:#45688f}.v21283-metrics .v21261-table td:nth-child(2){width:34%;font-weight:900;color:#10264b}.v21283-metrics .v21261-table td:nth-child(3){width:20%;font-weight:950;text-align:right}.v21283-growth-pos{color:#08a142}.v21283-growth-neg{color:#e32636}.v21283-growth-na{color:#8aa0b8}
+.v21261-market-range{margin:1px 2px 7px}.v21261-market-track{height:7px;border-radius:8px;background:#dce7f2;position:relative;margin:8px 10px 4px}.v21261-market-now{position:absolute;top:-3px;width:7px;height:13px;border-radius:5px;background:#1638a7;transform:translateX(-50%)}.v21261-market-low{position:absolute;left:0;top:-2px;width:6px;height:11px;border-radius:4px;background:#ffad00}.v21261-market-high{position:absolute;right:0;top:-2px;width:6px;height:11px;border-radius:4px;background:#ff284d}.v21261-market-labels{display:flex;justify-content:space-between;font-size:7.3px;color:#7890aa}.v21261-bottom{background:#fff;border:1px solid #d8e5f2;border-radius:8px;padding:9px 12px;min-height:94px;box-sizing:border-box}.v21261-bottom-title{font-size:13px;font-weight:900;color:#086ee8;margin-bottom:7px}.v21261-stats{display:grid;grid-template-columns:repeat(4,1fr)}.v21261-stat{padding:0 9px;border-right:1px solid #dfe8f2}.v21261-stat:last-child{border-right:0}.v21261-stat .k{font-size:8px;color:#67809c;font-weight:700}.v21261-stat .v{font-size:12px;color:#10264b;font-weight:900;margin-top:2px}.v21261-scenario{font-size:9.3px;color:#29476f;line-height:1.4}.v21261-quote{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#1e5ca9;font-style:italic;font-weight:800;height:72px}[class*="st-key-v21261_nav_"]{margin-top:-27px!important;position:relative!important;z-index:3!important;border-top:1px solid #e2ebf4!important;background:#fff!important}[class*="st-key-v21261_nav_"] .stButton{display:flex!important;justify-content:flex-end!important}[class*="st-key-v21261_nav_"] .stButton>button{width:auto!important;font-size:8.5px!important;font-weight:850!important;min-height:24px!important;height:24px!important;padding:0 5px!important;border:0!important;border-radius:0!important;background:#fff!important;color:#086ee8!important;box-shadow:none!important}
         </style>""",unsafe_allow_html=True)
 
         def _ov_fmt(v,prefix=""):
@@ -6957,9 +7021,25 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card v21282-analyst" title="{html.escape(_prov, quote=True)}"><div class="v21261-title">Analyst Consensus {_info}</div><div class="v21282-analyst-grid"><div class="v21282-analyst-left"><div class="v21282-analyst-status {_ac}">{html.escape(_al)}</div><div class="v21282-analyst-count">{html.escape(_analyst_count_text)}</div><div class="v21282-analyst-target"><div class="v21282-analyst-target-label">Mean target</div><div class="v21282-analyst-target-value">{display_price(_at,ticker) if np.isfinite(_at) else "—"}</div></div></div><div class="v21282-analyst-dist">{_dh}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Analyst Forecasts  →",key=f"v21261_nav_an_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w4:
-            _metrics=[("Revenue",_ov_fmt(_rev,_cur)),("EBITDA",_ov_fmt(_ebitda,_cur)),("Net Income",_ov_fmt(_ni,_cur)),("EPS",f"{_cur}{_eps:,.2f}" if np.isfinite(_eps) else "—"),("Free Cash Flow",_ov_fmt(_fcf,_cur))]
-            _mh="".join(f'<tr><td>{html.escape(k)}</td><td>{html.escape(v)}</td></tr>' for k,v in _metrics)
-            st.markdown(f'<div class="v21261-card" title="Latest trailing/provider fundamentals available through the company-data pipeline. Missing growth comparisons are not fabricated."><div class="v21261-title">Key Metrics (TTM) {_info}</div><table class="v21261-table">{_mh}</table></div>',unsafe_allow_html=True)
+            # V21.2.83 — genuine four-quarter TTM where available; like-for-like YoY only with eight quarters.
+            _ttm=investment_snapshot_ttm_metrics(ticker)
+            _fallback={"Revenue":_rev,"EBITDA":_ebitda,"Net Income":_ni,"EPS":_eps,"Free Cash Flow":_fcf}
+            _metric_rows=[]; _basis_notes=[]
+            for _label in ["Revenue","EBITDA","Net Income","EPS","Free Cash Flow"]:
+                _m=_ttm.get(_label,{})
+                _val=_mia_num(_m.get("value")); _growth=_mia_num(_m.get("growth")); _basis=str(_m.get("basis") or "")
+                if not np.isfinite(_val):
+                    _val=_mia_num(_fallback.get(_label)); _basis="Provider trailing/latest field fallback; four-quarter TTM statement series unavailable"
+                _disp=(f"{_cur}{_val:,.2f}" if _label=="EPS" and np.isfinite(_val) else _ov_fmt(_val,_cur))
+                if np.isfinite(_growth):
+                    _gcls="v21283-growth-pos" if _growth>=0 else "v21283-growth-neg"; _gtext=f"{_growth:+.0%}"
+                else:
+                    _gcls="v21283-growth-na"; _gtext="—"
+                _metric_rows.append(f'<tr><td>{html.escape(_label)}</td><td>{html.escape(_disp)}</td><td class="{_gcls}">{html.escape(_gtext)}</td></tr>')
+                _basis_notes.append(f"{_label}: {_basis}; YoY growth {'available' if np.isfinite(_growth) else 'unavailable'}")
+            _mh="".join(_metric_rows)
+            _prov="Yahoo Finance via yfinance quarterly financial statements. TTM = latest four reported quarters when available. Growth = current four-quarter TTM versus prior four-quarter TTM only; missing comparisons remain blank. " + " | ".join(_basis_notes)
+            st.markdown(f'<div class="v21261-card v21283-metrics" title="{html.escape(_prov,quote=True)}"><div class="v21261-title">Key Metrics (TTM) {_info}</div><table class="v21261-table">{_mh}</table></div>',unsafe_allow_html=True)
             st.button("View Full Fundamentals  →",key=f"v21261_nav_fund_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
         with _w5:
             _quart="lower quartile" if np.isfinite(_range_pos) and _range_pos<.25 else "upper quartile" if np.isfinite(_range_pos) and _range_pos>=.75 else "middle range" if np.isfinite(_range_pos) else "—"
