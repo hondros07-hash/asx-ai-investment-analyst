@@ -43,6 +43,7 @@ def _parse_asx(html, code):
         hrefs=re.findall(r'href=["\']([^"\']+)["\']',tr,flags=re.I)
         pdfs=[h for h in hrefs if "asxpdf" in h.lower() or ".pdf" in h.lower() or "displayannouncement.do" in h.lower()]
         if not pdfs: continue
+        # Preserve link text but remove markup.
         text=re.sub(r"<[^>]+>"," ",tr)
         text=re.sub(r"&nbsp;|&#160;"," ",text,flags=re.I)
         text=re.sub(r"&amp;","&",text,flags=re.I)
@@ -72,9 +73,12 @@ def asx_public_archive(code, years=12, limit=250):
     This is intentionally not presented as a licensed ComNews feed.
     """
     code=code.upper().replace(".AX","")[:3]
+    # Official ASX public search. The query parameter is `asxCode` (not `asx`).
+    # Try the six-month results page first because it contains the row metadata and
+    # official document links used by the reference card.
     urls=[
-      f"https://www.asx.com.au/markets/trade-our-cash-market/announcements.{code}",
-      ASX_ARCHIVE+"?"+urllib.parse.urlencode({"asx":code,"by":"asxCode","period":"M6","timeframe":"D"})
+      ASX_ARCHIVE+"?"+urllib.parse.urlencode({"asxCode":code,"by":"asxCode","period":"M6","timeframe":"D"}),
+      f"https://www.asx.com.au/markets/trade-our-cash-market/announcements.{code}"
     ]
     rows=[]
     for url in urls:
@@ -198,6 +202,14 @@ def sec_archive(ticker, limit=250, include_regulatory=False):
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
 
+
+def announcement_provenance(ticker, coverage=""):
+    t=str(ticker or "").upper()
+    if t.endswith(".AX"):
+        if "Provider-backed" in str(coverage):
+            return {"authority":"Licensed/authorised ASX announcement provider","coverage":str(coverage),"document_policy":"Open original source document; do not silently re-host it."}
+        return {"authority":"ASX public company-announcement search","coverage":str(coverage or "ASX public archive fallback"),"document_policy":"Open the original ASX-hosted announcement document. Public-site access is best-effort; production redistribution may require an ASX data licence."}
+    return {"authority":"U.S. SEC EDGAR","coverage":str(coverage or "SEC EDGAR"),"document_policy":"Open the original SEC filing/document from sec.gov."}
 
 def announcements(ticker, provider_url="", provider_key="", limit=250):
     if ticker.upper().endswith(".AX"):

@@ -25,7 +25,7 @@ from sector_peer_engine import classification, find_peers, peer_table, normalize
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
-from announcement_engine import announcements, fetch_document, extract_text, evidence_summary
+from announcement_engine import announcements, fetch_document, extract_text, evidence_summary, announcement_provenance
 from global_dividends import upcoming_dividends
 from corporate_actions_calendar import corporate_actions_calendar
 
@@ -6410,6 +6410,13 @@ elif page=="Company Comparison":
         st.caption("V21.2.11 comparison is evidence-first. Deeper Fundamentals, Valuation, Technical, Quant and Forecast engine comparisons can be layered onto this workspace without changing those engines.")
 
 elif page=="Company Command Centre":
+    # V21.2.91 — Official Announcements & Report Document Engine reference-card polish
+    st.markdown("""<style>
+    .v21291-ann{position:relative;overflow:hidden}.v21291-ann .v21290-row{grid-template-columns:96px minmax(0,1fr) 104px 42px!important}
+    .v21291-ann .v21290-row .pdf{text-align:right}.v21291-pdf{color:#0869e8!important;font-weight:800;text-decoration:none}.v21291-pdf:hover{text-decoration:underline}
+    .v21291-na{color:#94a3b8}.v21291-source{position:absolute;left:14px;bottom:7px;font-size:9px;color:#94a3b8;white-space:nowrap;max-width:72%;overflow:hidden;text-overflow:ellipsis}
+    .v21291-viewall-link{pointer-events:none}
+    </style>""",unsafe_allow_html=True)
     # V21.2 — AI Company Command Centre Overview Intelligence Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
     v18_db_upgrade()
@@ -7164,7 +7171,15 @@ elif page=="Company Command Centre":
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
         # Each card remains evidence-first: provider/stored rows only; unsupported fields render as unavailable.
         _news=overview_news_safe(ticker,5)
-        _ann_df=_ccann.head(5).copy() if _ccann is not None and not _ccann.empty else pd.DataFrame()
+        # V21.2.91 — load the official/regulatory announcement engine directly for
+        # the reference card. `latest_announcements_safe` can be provider-thin and
+        # previously caused the Overview card to show empty even when ASX had rows.
+        try:
+            _v21291_ann_all,_v21291_coverage=announcements(ticker,_ann_url,_ann_key,25)
+        except Exception:
+            _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
+        _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
+        _v21291_prov=announcement_provenance(ticker,_v21291_coverage)
         _cat_df=_cccatalysts.head(5).copy() if _cccatalysts is not None and not _cccatalysts.empty else pd.DataFrame()
 
         def _v21290_pick(row, names, default=""):
@@ -7196,12 +7211,17 @@ elif page=="Company Command Centre":
                     _d=_v21290_date(_v21290_pick(r,["date","Date","published","datetime","release_date"]))
                     _t=_v21290_pick(r,["title","Title","headline","Headline","name","announcement"],"Announcement")
                     _ty=_v21290_ann_type(_t,_v21290_pick(r,["type","Type","category","Category"]))
-                    _url=_v21290_pick(r,["url","URL","link","Link","pdf_url","document_url"])
-                    _pdf="PDF" if _url else "—"
+                    _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","URL","url","link","Link"])
+                    _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">PDF</a>' if _url else '<span class="v21291-na">—</span>')
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
-            _body="".join(_rows) if _rows else '<div class="v21290-empty">No announcement/report evidence is available from the current provider.</div>'
-            st.markdown(f'<div class="v21290-card"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div><span class="v21290-viewall">View all →</span>{_body}</div>',unsafe_allow_html=True)
-            st.button("View all announcements",key=f"v21290_nav_ann_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
+            _empty_detail=f'No rows returned from {html.escape(str(_v21291_prov.get("authority") or "the configured announcement source"))}.'
+            _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
+            _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
+                  f'Document access: {_v21291_prov.get("document_policy","—")}')
+            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div><a class="v21290-viewall v21291-viewall-link" href="#" onclick="return false;">View all →</a>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
+            # Compact navigation control: keep the reference-card geometry; no full-width blue button.
+            if st.button("View all →",key=f"v21291_nav_ann_{ticker}",on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",),help="Open the full announcements and reports workspace"):
+                pass
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:
