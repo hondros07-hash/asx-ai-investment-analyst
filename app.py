@@ -7024,8 +7024,11 @@ elif page=="Company Command Centre":
                         unsafe_allow_html=True,
                     )
                 with _foot_link:
+                    # V21.3.16.1 — Macro Chart Technical Analysis Navigation Fix.
+                    # Uses the existing internal Command Centre router so the active
+                    # ticker/security identity is preserved without a browser reload.
                     st.button(
-                        "View Full Technical Analysis  →",
+                        "View Technical Analysis  →",
                         key=f"v21252_technical_{ticker}",
                         type="tertiary",
                         use_container_width=False,
