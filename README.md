@@ -294,3 +294,11 @@ The Company Command Centre Overview thesis widget is now company-specific. Store
 
 ## V21.2.61
 Added Company Overview Intelligence Widgets: valuation, forecasts, analyst consensus, TTM metrics, market position, announcements, news, catalysts, risks/opportunities, portfolio context and scenario framing.
+
+## V21.2.69 — Valuation Widget + Validation Confidence
+- Redesigns the Overview Valuation card to match the approved reference more closely.
+- Keeps the existing base-case valuation and current-price comparison as the valuation signal.
+- Shows explicit upside/downside wording with dynamic colour.
+- Connects the card to the forward Valuation Model Validation Engine.
+- Shows Validation pending until at least 8 matured observations exist; after that, confidence is derived from observed direction accuracy, bear–bull range hit rate, and median base-case error.
+- Does not fabricate historical accuracy or confidence before sufficient validation evidence exists.
