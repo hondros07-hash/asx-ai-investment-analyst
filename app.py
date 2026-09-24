@@ -17,6 +17,7 @@ from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.research_score_engine import calculate_research_score
+from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -1993,6 +1994,20 @@ def save_valuation_profile(ticker,p):
                  datetime.now(timezone.utc).isoformat()))
     con.commit(); con.close()
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def valuation_fx_rate(a,b):
+ a=str(a or "").upper();b=str(b or "").upper()
+ if not a or not b or a==b:return 1.0
+ for pair,inv in ((f"{a}{b}=X",False),(f"{b}{a}=X",True)):
+  try:
+   d=yf.Ticker(pair).history(period="5d",interval="1d",auto_adjust=True);v=float(pd.to_numeric(d["Close"],errors="coerce").dropna().iloc[-1])
+   if np.isfinite(v) and v>0:return 1/v if inv else v
+  except Exception:pass
+ return np.nan
+def automatic_valuation_snapshot(meta,price):
+ i=valuation_provider_inputs(meta or {});fx=1.
+ if i.get("financial_currency") and i.get("listing_currency") and str(i["financial_currency"]).upper()!=str(i["listing_currency"]).upper():fx=valuation_fx_rate(i["financial_currency"],i["listing_currency"])
+ return calculate_dcf_scenarios(i.get("fcf"),i.get("shares"),i.get("cash"),i.get("debt"),current_price=price,sector=i.get("sector",""),industry=i.get("industry",""),financial_currency=i.get("financial_currency"),listing_currency=i.get("listing_currency"),fx_rate_financial_to_listing=fx if np.isfinite(_mia_num(fx)) else None)
 def valuation_snapshot(ticker,price):
     p=valuation_profile(ticker)
     assumptions={"Bear":{"growth":p["bear_growth"],"wacc":p["bear_wacc"],"terminal_growth":p["bear_terminal"]},
@@ -6173,6 +6188,19 @@ elif page=="Fundamentals":
 
 elif page=="Valuation":
     st.header("Valuation & Expectations")
+    _vmeta=info(ticker) or {};_vh=history(ticker,"1y");_vprice=float(pd.to_numeric(_vh["Close"],errors="coerce").dropna().iloc[-1]) if _vh is not None and not _vh.empty else np.nan
+    _vauto=automatic_valuation_snapshot(_vmeta,_vprice)
+    st.subheader("Deterministic DCF — Bear / Base / Bull")
+    st.caption("Five-year FCF DCF using provider-reported FCF, cash, debt and shares. Assumptions are deterministic and visible; AI does not calculate the valuation.")
+    if _vauto.get("status")=="success":
+        _vrows=[]
+        for _vn,_vv in (_vauto.get("scenarios") or {}).items():
+            if isinstance(_vv,dict) and np.isfinite(_mia_num(_vv.get("value_per_share"))):
+                _va=_vv.get("assumptions") or {};_vrows.append({"Scenario":_vn,"Model value / share":_vv.get("value_per_share"),"Model gap":_vv.get("model_gap"),"FCF growth":_va.get("growth"),"Discount rate":_va.get("discount_rate"),"Terminal growth":_va.get("terminal_growth")})
+        st.dataframe(pd.DataFrame(_vrows),use_container_width=True,hide_index=True)
+        _vi=valuation_provider_inputs(_vmeta);st.caption(f"Inputs · FCF {compact_number(_vi.get('fcf'),prefix='$')} · Cash {compact_number(_vi.get('cash'),prefix='$')} · Debt {compact_number(_vi.get('debt'),prefix='$')} · Shares {compact_number(_vi.get('shares'))} · Financial currency {_vauto.get('financial_currency') or '—'} · Listing currency {_vauto.get('listing_currency') or '—'} · FX {_vauto.get('fx_rate',1):.4f}")
+    else:st.info(_vauto.get("reason","Deterministic DCF unavailable because required verified inputs are missing."))
+    st.divider();st.subheader("Saved / custom scenario assumptions")
     v18_db_upgrade(); vp=valuation_profile(ticker)
     a,b,c=st.columns(3)
     fcf=a.number_input("Starting annual FCF",value=float(vp["fcf"]),step=1_000_000.0,key="v18_val_fcf")
@@ -6578,7 +6606,7 @@ elif page=="Company Command Centre":
         _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
         if not np.isfinite(_cclo): _cclo=float(h["Low"].min())
         if not np.isfinite(_cchi): _cchi=float(h["High"].max())
-        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccvals=valuation_snapshot(ticker,price)
+        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=automatic_valuation_snapshot(_ccmeta,price)
         _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
         _ccf12=np.nan; _fc_target=np.nan; _fc_prob=np.nan; _fc_prob_n=0; _fc_diag={"n":0,"mae":np.nan,"direction":np.nan}; _fc_conf="Validation limited"
@@ -6591,10 +6619,8 @@ elif page=="Company Command Centre":
                 if np.isfinite(_ccf12) and np.isfinite(_fc_target):
                     try: record_forecast_validation_snapshot(ticker,price,_fc12row,_fc12bt)
                     except Exception: pass
-        _ccbase=np.nan
-        if _ccvals is not None and not _ccvals.empty and "scenario" in _ccvals.columns and "value_per_share" in _ccvals.columns:
-            _q=_ccvals[_ccvals["scenario"].astype(str).str.lower()=="base"]
-            if not _q.empty: _ccbase=pd.to_numeric(_q["value_per_share"],errors="coerce").iloc[0]
+        _ccbase=_mia_num(_ccauto_val.get("base_case")) if isinstance(_ccauto_val,dict) else np.nan
+        _ccvals=pd.DataFrame([{"scenario":k,"value_per_share":v.get("value_per_share"),"Margin of safety":v.get("model_gap")} for k,v in ((_ccauto_val.get("scenarios") or {}).items() if isinstance(_ccauto_val,dict) else []) if isinstance(v,dict) and np.isfinite(_mia_num(v.get("value_per_share")))])
         _cctarget=_mia_num(_ccanalyst.get("target")); _cctarget=_mia_num(_ccmeta.get("targetMeanPrice")) if not np.isfinite(_cctarget) else _cctarget
         _ccmcap=_mia_num(_ccmeta.get("marketCap")); _ccpe=_mia_num(_ccmeta.get("trailingPE")); _ccdy=_mia_num(_ccmeta.get("dividendYield")); _ccvol=_mia_num(_ccmeta.get("averageVolume")); _ccbeta=_mia_num(_ccmeta.get("beta"))
         # Prefer true provider averages, then derive an observed 60-session average from loaded history.
@@ -6788,7 +6814,7 @@ elif page=="Company Command Centre":
         _rs_nx=50 + 27*np.cos(_rs_angle); _rs_ny=50 - 27*np.sin(_rs_angle)
         _rs_gauge_html=f'<div class="v21267-rs-gauge" aria-label="Research score {_rs_txt}"><svg viewBox="0 0 100 58" role="img"><path class="v21267-rs-track" d="M 12 50 A 38 38 0 0 1 88 50"/><path class="v21267-rs-fill" d="M 12 50 A 38 38 0 0 1 88 50" pathLength="100" style="stroke-dasharray:{_rs_gauge:.1f} 100"/><line class="v21267-rs-needle" x1="50" y1="50" x2="{_rs_nx:.2f}" y2="{_rs_ny:.2f}"/><circle class="v21267-rs-hub" cx="50" cy="50" r="3.2"/></svg></div>'
         _val_pct=((_ccbase/price)-1) if np.isfinite(_mia_num(_ccbase)) and price else np.nan
-        _val_label=("Undervalued" if np.isfinite(_val_pct) and _val_pct>=.10 else "Above base case" if np.isfinite(_val_pct) and _val_pct<=-.10 else "Near base case" if np.isfinite(_val_pct) else "Unavailable")
+        _val_label=("Below base case" if np.isfinite(_val_pct) and _val_pct>=.10 else "Above base case" if np.isfinite(_val_pct) and _val_pct<=-.10 else "Near base case" if np.isfinite(_val_pct) else "Unavailable")
         # V21.2.69 — connect the Overview Valuation card to the forward validation engine.
         # Confidence is withheld until there is a minimally useful matured sample; no synthetic
         # accuracy score is shown while the model is still establishing its track record.
