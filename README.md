@@ -14,3 +14,7 @@
 - Overview provenance now shows market + authority.
 - Header “View all →” opens the official disclosure portal; duplicate lower button removed.
 - Missing market feeds remain explicitly unavailable rather than fabricated.
+
+
+## V21.2.94 — Global Legal Disclaimer & Data Attribution Footer
+Adds a consistent site-wide information-only disclaimer, investment-risk wording, data-source attribution and copyright footer to every Chrímata workspace. The component is rendered once after page routing so future workspaces inherit it automatically.
