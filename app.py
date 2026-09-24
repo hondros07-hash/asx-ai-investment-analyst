@@ -9,6 +9,7 @@ import html
 import html as html_lib
 from urllib.parse import urlparse
 import yfinance as yf
+from news_intelligence_engine import news_intelligence, latest_company_news
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from valuation_lab import scenarios, margin_of_safety
@@ -3279,27 +3280,13 @@ if st.session_state.get(_cc_sub_key) not in _cc_items:
     st.session_state[_cc_sub_key]="Overview"
 @st.cache_data(ttl=600, show_spinner=False)
 def overview_news_safe(ticker, limit=5):
-    """Best-effort recent provider news for the Overview. Cached to protect navigation speed."""
-    rows=[]
+    """V21.3.13 — dynamic ticker-driven company news preview."""
     try:
-        items=getattr(yf.Ticker(ticker),"news",None) or []
-        for item in items[:max(limit*2,limit)]:
-            if not isinstance(item,dict): continue
-            c=item.get("content") if isinstance(item.get("content"),dict) else item
-            title=str(c.get("title") or item.get("title") or "").strip()
-            if not title: continue
-            provider=c.get("provider") if isinstance(c.get("provider"),dict) else {}
-            source=str(provider.get("displayName") or item.get("publisher") or "Provider")
-            raw_dt=c.get("pubDate") or item.get("providerPublishTime") or ""
-            date="—"
-            try:
-                if isinstance(raw_dt,(int,float)): date=pd.to_datetime(raw_dt,unit="s",utc=True).strftime("%d %b %Y")
-                elif raw_dt: date=pd.to_datetime(raw_dt).strftime("%d %b %Y")
-            except Exception: pass
-            rows.append({"Date":date,"Headline":title,"Source":source})
-            if len(rows)>=limit: break
-    except Exception: pass
-    return pd.DataFrame(rows,columns=["Date","Headline","Source"])
+        df,_=latest_company_news(ticker,limit)
+        if df is None or df.empty: return pd.DataFrame(columns=["Date","Headline","Source","URL"])
+        return df[["Date","Headline","Source","URL"]].head(limit).copy()
+    except Exception:
+        return pd.DataFrame(columns=["Date","Headline","Source","URL"])
 
 def _chr_set_cc_sub_v2111(target):
     """Deterministic in-app Command Centre navigation (V21.3.07)."""
@@ -7250,6 +7237,16 @@ elif page=="Company Command Centre":
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
         # Each card remains evidence-first: provider/stored rows only; unsupported fields render as unavailable.
+
+        st.markdown("""<style>
+        [class*="st-key-v21313_news_card_"]{background:#fff!important;border-color:#d8e5f2!important;border-radius:8px!important;min-height:158px!important;height:158px!important;overflow:hidden!important}
+        [class*="st-key-v21313_news_card_"] [data-testid="stVerticalBlock"]{gap:0!important}
+        [class*="st-key-v21313_news_card_"] .stButton{display:flex!important;justify-content:flex-end!important}
+        [class*="st-key-v21313_news_card_"] .stButton>button{width:auto!important;min-height:22px!important;height:22px!important;padding:0 2px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important;font-size:8.5px!important;font-weight:900!important}
+        .v21313-news-title{font-size:10.5px;font-weight:950;color:#10264b;white-space:nowrap}.v21313-news-title span{color:#086ee8;margin-right:4px}
+        .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:68px minmax(0,1fr) 72px;gap:5px;align-items:center;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
+        .v21313-news-row .main{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
+        </style>""",unsafe_allow_html=True)
         _news=overview_news_safe(ticker,5)
         # V21.2.91 — load the official/regulatory announcement engine directly for
         # the reference card. `latest_announcements_safe` can be provider-thin and
@@ -7331,10 +7328,17 @@ elif page=="Company Command Centre":
             _rows=[]
             if _news is not None and not _news.empty:
                 for r in _news.itertuples():
-                    _rows.append(f'<div class="v21290-row"><span>{html.escape(str(r.Date))}</span><span class="main" title="{html.escape(str(r.Headline),quote=True)}">{html.escape(str(r.Headline))}</span><span class="meta">{html.escape(str(r.Source))}</span></div>')
-            _body="".join(_rows) if _rows else '<div class="v21290-empty">No recent provider news is available.</div>'
-            st.markdown(f'<div class="v21290-card v21290-news"><div class="v21290-title"><span class="v21290-icon">▣</span>Recent News</div><span class="v21290-viewall">View all →</span>{_body}</div>',unsafe_allow_html=True)
-            st.button("View all news",key=f"v21290_nav_news_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("News & Events",))
+                    _headline=html.escape(str(r.Headline)); _src=html.escape(str(r.Source)); _url=html.escape(str(getattr(r,"URL","") or ""),quote=True)
+                    _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
+                    _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta">{_src}</span></div>')
+            _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No recent company news is available from the configured provider.</div>'
+            with st.container(border=True,key=f"v21313_news_card_{ticker}"):
+                _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
+                with _nh1: st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
+                with _nh2:
+                    if st.button("View all →",key=f"v21313_nav_news_{ticker}",use_container_width=False):
+                        _chr_set_cc_sub_v2111("News & Events"); st.rerun()
+                st.markdown(f'<div class="v21313-news-body">{_body}</div>',unsafe_allow_html=True)
         with _m3:
             _rows=[]
             if not _cat_df.empty:
@@ -7749,9 +7753,33 @@ elif page=="Forecasts":
     render_analyst_consensus(ticker,price)
 
 elif page=="News & Events":
-    st.header("News, Announcements & Catalysts")
-    st.info("Document/event intelligence is included. Automated production use still needs an official/permitted ASX announcement and news feed.")
-    st.write("Event analysis: direction • materiality • horizon • confidence • transmission mechanism • counterargument • thesis impact.")
+    st.markdown(f"## News & Events Intelligence Centre — {ticker}")
+    st.caption("Company news, sector context and macro events connected to the currently selected listing. Relevance explains a transmission channel; it is not a prediction of share-price direction.")
+    _ni,_ni_ident=news_intelligence(ticker,30,20,20)
+    _c1,_c2,_c3,_c4=st.columns(4)
+    _c1.metric("Company news",int((_ni.Layer=="Company").sum()) if not _ni.empty else 0)
+    _c2.metric("Sector events",int((_ni.Layer=="Sector").sum()) if not _ni.empty else 0)
+    _c3.metric("Macro events",int((_ni.Layer=="Macro").sum()) if not _ni.empty else 0)
+    _c4.metric("Total relevant events",len(_ni))
+    _tabs=st.tabs(["All Relevant Events","Company News","Sector & Competitors","Macro & Market Events"])
+    for _tab,_layer in zip(_tabs,[None,"Company","Sector","Macro"]):
+        with _tab:
+            _d=_ni if _layer is None else _ni[_ni.Layer.eq(_layer)]
+            if _d.empty:
+                st.info("No events are currently available from the configured provider for this layer.")
+            else:
+                for _i,_r in _d.head(40).iterrows():
+                    with st.expander(f"{_r['Date']} · {_r['Headline']} — {_r['Source']}"):
+                        st.markdown(f"**What happened**  \n{_r['Headline']}")
+                        st.markdown(f"**Why it may matter to {_ni_ident.get('name',ticker)}**  \n{_r['Why it matters']}")
+                        _a,_b,_c=st.columns(3)
+                        _a.markdown(f"**Layer**  \n{_r['Layer']}")
+                        _b.markdown(f"**Affected KPI**  \n{_r['Affected KPI']}")
+                        _c.markdown(f"**Relevance**  \n{_r['Relevance']}")
+                        st.markdown(f"**What to watch next**  \n{_r['What to watch']}")
+                        st.caption(f"Category: {_r['Category']} · Source: {_r['Source']}")
+                        if str(_r.get('URL') or '').strip(): st.link_button("Open original source ↗",str(_r['URL']))
+    st.caption("News provider: Yahoo Finance/yfinance public interface. Sector and macro layers are contextual discovery; verify material events against primary company/exchange/regulatory sources.")
 
 elif page=="Evidence & Thesis":
     st.header("Evidence & Kill My Thesis"); st.info(thesis)

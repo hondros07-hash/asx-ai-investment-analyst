@@ -75,3 +75,11 @@ Rebuilt dynamic disclosure card: selected listing drives market adapter; ASX use
 - U.S. listings use SEC ticker mapping with an independent official SEC Company Atom CIK fallback, then data.sec.gov submissions.
 - Provider failures preserve explicit machine states instead of being flattened into a false “no rows” result.
 - Production announcement card is white, contains its provenance inside the card, and keeps View all inside the header.
+
+## V21.3.13 — Dynamic News Intelligence Engine + News & Events Intelligence Centre
+- Recent News is driven by the currently selected ticker and renders as a compact five-row white reference card.
+- Removed the oversized secondary "View all news" button; the header control navigates internally while preserving the selected ticker.
+- Added `news_intelligence_engine.py` with Company, Sector and Macro discovery layers.
+- Added News & Events Intelligence Centre with All Relevant Events, Company News, Sector & Competitors, and Macro & Market Events views.
+- Expandable event intelligence explains relevance channel, affected KPI, what to watch, source and original-source link when available.
+- Current provider is Yahoo Finance through yfinance; contextual sector/macro discovery is not presented as a prediction or as verified company impact.
