@@ -7458,12 +7458,16 @@ elif page=="Company Command Centre":
                     try:
                         import os
                         from openai import OpenAI
-                        try: _secret_key=str(st.secrets.get("OPENAI_API_KEY","") or "")
+                        # V22.3.1 — secure configuration bridge:
+                        # Streamlit Cloud secrets first, then standard server environment variables.
+                        try: _secret_key=str(st.secrets.get("OPENAI_API_KEY","") or "").strip()
                         except Exception: _secret_key=""
-                        _secret_key=_secret_key or os.environ.get("OPENAI_API_KEY","")
-                        if not _secret_key: raise RuntimeError("OPENAI_API_KEY is not configured")
-                        try: _model=str(st.secrets.get("OPENAI_MODEL","gpt-5.4") or "gpt-5.4")
-                        except Exception: _model=os.environ.get("OPENAI_MODEL","gpt-5.4")
+                        _secret_key=_secret_key or str(os.environ.get("OPENAI_API_KEY","") or "").strip()
+                        if not _secret_key:
+                            raise RuntimeError("ai_service_not_configured")
+                        try: _model=str(st.secrets.get("CHRIMATA_BRIEF_MODEL","") or "").strip()
+                        except Exception: _model=""
+                        _model=_model or str(os.environ.get("CHRIMATA_BRIEF_MODEL","") or "").strip() or "gpt-5.6-luna"
                         _prompt=("You are Chrímata's evidence-synthesis engine. Use ONLY the JSON evidence supplied below. "
                                  "Create a concise investment research brief with these exact sections: EXECUTIVE SUMMARY; WHAT CHANGED; FUNDAMENTALS; VALUATION; TECHNICAL PICTURE; THESIS SCORECARD; CATALYSTS & ANNOUNCEMENTS; FORECASTS & ANALYST EVIDENCE; RISKS / CONFLICTING EVIDENCE; EVIDENCE GAPS; INVESTIGATE NEXT. "
                                  "Clearly distinguish observed/provider facts from model outputs and interpretation. Never invent figures, events, sources, analyst views, probabilities or catalysts. Say 'unavailable' when evidence is missing. Do not issue buy, sell, hold, or investment recommendations. Keep it decision-useful and company-specific. EVIDENCE JSON: "+json.dumps(_evidence,default=str))
@@ -7475,7 +7479,16 @@ elif page=="Company Command Centre":
                     except Exception as _aie:
                         st.session_state[_ai_key]=_brief_fallback
                         st.session_state[_ai_source_key]="Evidence fallback"
-                        st.warning(f"AI synthesis unavailable ({_aie}). Chrímata generated the evidence-only fallback instead.")
+                        # Public UI stays clean; detailed configuration/provider errors belong in server logs.
+                        _ai_err=str(_aie)
+                        try:
+                            print(f"[Chrímata AI Research Brief] ticker={ticker} error={_ai_err}")
+                        except Exception:
+                            pass
+                        if _ai_err=="ai_service_not_configured":
+                            st.warning("AI Research Brief is not configured on this deployment yet. The evidence-only research brief is available below.")
+                        else:
+                            st.warning("AI Research Brief is temporarily unavailable. Chrímata generated the evidence-only research brief instead.")
                     st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST")
                 _last_ai=st.session_state.get(_ai_time_key,"Not generated in this session")
                 _source_ai=st.session_state.get(_ai_source_key,"")

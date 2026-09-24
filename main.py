@@ -1,5 +1,11 @@
 
 from __future__ import annotations
+# Local/VPS convenience only. Production platforms should inject secrets directly.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 import math,os
 from datetime import date,datetime
 from typing import Any,Dict,Optional
