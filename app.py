@@ -4210,6 +4210,9 @@ def _home_live_search_fragment():
             # Search text/suggestions are deliberately separate from the loaded company.
             st.session_state["mia_search_query"]=resolved
             st.session_state["chr_active_ticker"]=resolved
+            _parts=[x.strip() for x in str(selected).split(" · ")]
+            st.session_state["chr_active_exchange"]=_parts[-2] if len(_parts)>=3 else ""
+            st.session_state["chr_active_country"]=_parts[-1] if len(_parts)>=2 else ""
             st.session_state["chr_primary_nav"]="Company Command Centre"
             # Consume each autocomplete selection once; URL state is not used.
             st.session_state["chr_last_search_commit_v2054"]=resolved
@@ -5750,7 +5753,12 @@ def _chr_company_search_page():
                 st.markdown('<div style="height:104px;display:flex;align-items:center;justify-content:center;color:#8191a5;font-size:11px">Chart data unavailable</div>',unsafe_allow_html=True)
             st.markdown(f'<div class="v421stats"><div class="v421stat"><span>Market Cap</span><b>{capfmt(mc,cur)}</b></div><div class="v421stat"><span>52 Week Range</span><b>{rng}</b></div><div class="v421stat"><span>P/E Ratio</span><b>{pet}</b></div><div class="v421stat"><span>Dividend Yield</span><b>{dyt}</b></div><div class="v421stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v421stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div><div class="v421section-rule"></div><div class="v421cons-title"><b>Analyst Consensus</b><span class="v421pill">{html.escape(rec)}</span></div><div class="v421consbar" aria-label="Consensus indicator"><span class="buy"></span><span class="hold"></span><span class="sell"></span></div><div class="v421analyst-note"><span>{html.escape(analyst_txt)}</span><span>Provider consensus</span></div><div class="v421target"><span>12M Target</span><b>{tt}</b></div>',unsafe_allow_html=True)
             if st.button("Open Company Command Centre  →",type="primary",use_container_width=True,key="chr_search_open_cc_v207421"):
-                st.session_state["chr_active_ticker"]=resolved;st.session_state["mia_search_query"]=resolved;st.session_state["chr_primary_nav"]="Company Command Centre";st.rerun()
+                st.session_state["chr_active_ticker"]=resolved
+                st.session_state["mia_search_query"]=resolved
+                st.session_state["chr_active_exchange"]=str(selected.get("Exchange") or "")
+                st.session_state["chr_active_country"]=str(q_country or selected.get("Country") or "")
+                st.session_state["chr_primary_nav"]="Company Command Centre"
+                st.rerun()
             if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_v207421"):
                 try:watch_add(resolved);st.toast(f"{resolved} added to Watchlist.")
                 except Exception as exc:st.warning(f"Could not add {resolved} to Watchlist: {exc}")
@@ -7199,11 +7207,19 @@ elif page=="Company Command Centre":
         # the reference card. `latest_announcements_safe` can be provider-thin and
         # previously caused the Overview card to show empty even when ASX had rows.
         try:
-            _v21291_ann_all,_v21291_coverage,_v21292_identity=announcements_global(ticker,_ann_url,_ann_key,25)
+            _v21291_ann_all,_v21291_coverage,_v21292_identity=announcements_global(
+                ticker,_ann_url,_ann_key,25,
+                exchange=st.session_state.get("chr_active_exchange",""),
+                country=st.session_state.get("chr_active_country","")
+            )
         except Exception:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
         _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
-        _v21291_prov=announcement_provenance_global(ticker,_v21291_coverage)
+        _v21291_prov=announcement_provenance_global(
+            ticker,_v21291_coverage,
+            exchange=st.session_state.get("chr_active_exchange",""),
+            country=st.session_state.get("chr_active_country","")
+        )
         _cat_df=_cccatalysts.head(5).copy() if _cccatalysts is not None and not _cccatalysts.empty else pd.DataFrame()
 
         def _v21290_pick(row, names, default=""):
@@ -7241,7 +7257,9 @@ elif page=="Company Command Centre":
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
             _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
             _status_msg={"CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned."}.get(_sec_status,"")
-            _empty_detail=html.escape(_status_msg or ("No rows returned from "+str(_v21291_prov.get("authority") or "the configured announcement source")+"."))
+            _authority=str(_v21291_prov.get("authority") or "")
+            _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
+            _empty_detail=html.escape(_status_msg or _empty_fallback)
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')

@@ -399,6 +399,27 @@ def resolve_announcement_market(ticker, exchange="", country=""):
     elif co in {"CANADA"}: market="TSX"
     elif "." not in t: market="NASDAQ"  # bare Yahoo US listings; SEC resolver validates ticker->CIK
     else: market="UNKNOWN"
+
+    # V21.3.03 — last-resort listing identity enrichment. Some provider/search paths
+    # preserve the Yahoo-qualified ticker but lose exchange/country metadata before
+    # the Command Centre renders. Resolve that identity from Yahoo's public search
+    # metadata instead of silently routing a non-US listing to SEC.
+    if market=="UNKNOWN" and t:
+        try:
+            qurl="https://query1.finance.yahoo.com/v1/finance/search?"+urllib.parse.urlencode({"q":t,"quotesCount":10,"newsCount":0})
+            raw,_=_get(qurl,{"User-Agent":"Mozilla/5.0 Market-Investment-Analyst","Accept":"application/json"},12)
+            payload=json.loads(raw.decode("utf-8","ignore"))
+            exact=None
+            for q in payload.get("quotes",[]):
+                if str(q.get("symbol") or "").upper()==t:
+                    exact=q; break
+            if exact:
+                yex=str(exact.get("exchange") or exact.get("exchDisp") or "").upper()
+                # Re-enter the deterministic resolver with discovered metadata.
+                if yex and yex!=ex:
+                    return resolve_announcement_market(t,yex,country)
+        except Exception:
+            pass
     meta=GLOBAL_MARKETS.get(market,{"country":country or "Unknown","authority":"Official disclosure source unresolved","portal":""})
     return {"ticker":t,"market":market,**meta}
 
