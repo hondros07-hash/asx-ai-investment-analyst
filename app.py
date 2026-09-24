@@ -6919,11 +6919,13 @@ elif page=="Company Command Centre":
             _confidence_score=float(np.mean(_parts)) if _parts else np.nan
             _val_conf=("High confidence" if np.isfinite(_confidence_score) and _confidence_score>=.75 else "Moderate confidence" if np.isfinite(_confidence_score) and _confidence_score>=.55 else "Low confidence" if np.isfinite(_confidence_score) else "Validation pending")
         _val_conf_text=f"{_val_conf} · {_val_obs} matured obs" if _val_obs else "Validation pending · no matured observations"
+        # V21.3.19.2.1 — initialise valuation audit inputs before any diagnostic reads.
+        # This prevents the Overview card from referencing _vinputs before assignment.
+        _vaudit=_ccauto_val.get("audit",{}) if isinstance(_ccauto_val,dict) else {}
+        _vinputs=_vaudit.get("inputs",{}) if isinstance(_vaudit,dict) else {}
         if not np.isfinite(_val_pct):
             _derived_fcf=isinstance(_vinputs.get("fcf"),dict) and _vinputs.get("fcf",{}).get("status")=="derived"
             if _derived_fcf: _val_conf_text="FCF derived from cash-flow statement · validation pending"
-        _vaudit=_ccauto_val.get("audit",{}) if isinstance(_ccauto_val,dict) else {}
-        _vinputs=_vaudit.get("inputs",{}) if isinstance(_vaudit,dict) else {}
         _vmissing=[k.replace("_"," ").title() for k,v in _vinputs.items() if isinstance(v,dict) and v.get("status")=="missing"]
         _vreason=str(_ccauto_val.get("reason") or "") if isinstance(_ccauto_val,dict) else ""
         _val_move=(f"Model gap: {_val_pct:+.0%}" if np.isfinite(_val_pct) else ("Missing: "+", ".join(_vmissing[:2]) if _vmissing else (_vreason[:42] if _vreason else "Evidence required")))
