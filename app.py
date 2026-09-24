@@ -7765,35 +7765,46 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.3.00 — Global footer with native Streamlit navigation.
-# Native callbacks keep navigation inside the running app and avoid full browser reloads.
+# V21.3.01 — Professional footer alignment + responsive native navigation.
+# Brand and legal navigation share one visual baseline on desktop while retaining
+# native Streamlit callbacks (no browser-page reload / white flash).
 def render_chrimata_global_legal_footer():
     st.markdown(r"""
     <style>
-    .chr-legal-shell{width:100%;box-sizing:border-box;margin:30px 0 0;padding:15px 20px 4px;border-top:1px solid #d8e2ef;color:#6b7f98;font-size:10.5px;line-height:1.45;}
-    .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;margin-bottom:4px;}
+    .chr-legal-rule{width:100%;box-sizing:border-box;margin:30px 0 9px;border-top:1px solid #d8e2ef;height:1px;}
+    .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;line-height:1.35;padding-top:3px;white-space:nowrap;}
     [class*="st-key-chr_footer_nav_"]{margin-top:0!important;margin-bottom:0!important;}
-    [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:1px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:10.5px!important;font-weight:650!important;}
+    [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:2px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:10.5px!important;font-weight:650!important;line-height:1.35!important;white-space:nowrap!important;}
     [class*="st-key-chr_footer_nav_"] button:hover{color:#175d9c!important;text-decoration:underline!important;background:transparent!important;border:0!important;}
-    .chr-legal-copy{width:100%;box-sizing:border-box;padding:3px 20px 88px;color:#6b7f98;font-size:10.5px;line-height:1.45;}
-    .chr-legal-inner{max-width:1180px;margin:0 auto;} .chr-legal-copy p{margin:4px 0;} .chr-legal-title{font-weight:750;color:#455f7d;}
+    .chr-legal-copy{width:100%;box-sizing:border-box;padding:5px 0 88px;color:#6b7f98;font-size:10.5px;line-height:1.45;}
+    .chr-legal-copy p{margin:4px 0;}.chr-legal-title{font-weight:750;color:#455f7d;}
     .chr-legal-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf1;color:#8190a3;font-size:9.8px;}
-    @media(max-width:800px){.chr-legal-shell{padding:14px 12px 4px}.chr-legal-copy{padding:3px 12px 96px}}
+    @media(max-width:900px){
+      .chr-legal-brand{white-space:normal;font-size:11px;}
+      [class*="st-key-chr_footer_nav_"] button{font-size:10px!important;white-space:normal!important;}
+      .chr-legal-copy{padding-bottom:96px;}
+    }
     </style>
-    <div class="chr-legal-shell"><div class="chr-legal-inner"><div class="chr-legal-brand">Chrímata · Market Investment Analyst</div></div></div>
+    <div class="chr-legal-rule"></div>
     """, unsafe_allow_html=True)
+
+    # One aligned header row: brand left, navigation right.
+    head=st.columns([3.5, .72, .78, .92, .68, 1.08, .72], gap="small", vertical_alignment="center")
+    with head[0]:
+        st.markdown('<div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>', unsafe_allow_html=True)
     labels=["About","Privacy","Disclaimer","Terms","Data Sources","Contact"]
-    cols=st.columns([1,1,1.15,.85,1.35,1,5.2], gap="small")
     for i,label in enumerate(labels):
-        with cols[i]:
-            st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,))
+        with head[i+1]:
+            st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
+
     st.markdown(r"""
-    <div class="chr-legal-copy"><div class="chr-legal-inner">
+    <div class="chr-legal-copy">
       <p><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
       <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
       <div class="chr-legal-meta"><span>Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
-    </div></div>
+    </div>
     """, unsafe_allow_html=True)
 
 render_chrimata_global_legal_footer()
+
 
