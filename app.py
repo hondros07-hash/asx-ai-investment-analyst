@@ -3302,7 +3302,7 @@ def overview_news_safe(ticker, limit=5):
     return pd.DataFrame(rows,columns=["Date","Headline","Source"])
 
 def _chr_set_cc_sub_v2111(target):
-    """Deterministic in-app Command Centre navigation (V21.3.06)."""
+    """Deterministic in-app Command Centre navigation (V21.3.07)."""
     if target in _cc_items:
         _chr_clear_legal_route_v21300()
         st.session_state["chr_primary_nav"]="Company Command Centre"
@@ -7236,12 +7236,12 @@ elif page=="Company Command Centre":
 
         st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_legacy_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
         st.markdown('''<style>
-/* V21.3.05 — reference-card geometry with a real native View all control */
+/* V21.3.07 — compact reference-card header + real native View all control */
 .v21305-ann-title{font-size:16px;font-weight:800;color:#082b5c;white-space:nowrap;}
 .v21305-ann-body{min-height:205px;margin-top:2px;}
 .v21305-ann-body .v21290-row{grid-template-columns:105px minmax(0,1fr) 120px 48px!important;}
-[class*="st-key-v21305_nav_ann_"] button{border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:800!important;padding:0!important;min-height:28px!important;white-space:nowrap!important;}
-[class*="st-key-v21305_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}
+[class*="st-key-v21307_nav_ann_"] button{border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:800!important;padding:0!important;min-height:28px!important;white-space:nowrap!important;}
+[class*="st-key-v21307_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}
 </style>''',unsafe_allow_html=True)
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
@@ -7300,7 +7300,8 @@ elif page=="Company Command Centre":
                     _t=_v21290_pick(r,["title","Title","headline","Headline","name","announcement"],"Announcement")
                     _ty=_v21290_ann_type(_t,_v21290_pick(r,["type","Type","category","Category"]))
                     _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","URL","url","link","Link"])
-                    _doc_label=("FILE" if str(_v21291_prov.get("market") or "") in ("NASDAQ","NYSE") else "PDF")
+                    _has_pdf=bool(r.get("Has PDF",False)) if hasattr(r,"get") else False
+                    _doc_label=("PDF" if _has_pdf else ("FILE" if str(_v21291_prov.get("market") or "") in ("NASDAQ","NYSE") else "VIEW"))
                     _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
             _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
@@ -7319,10 +7320,8 @@ elif page=="Company Command Centre":
                 with _ah1:
                     st.markdown('<div class="v21305-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="'+html.escape(_tip,quote=True)+'">i</span></div>',unsafe_allow_html=True)
                 with _ah2:
-                    _ann_view_all=st.button("View all →",key=f"v21306_nav_ann_{ticker}",use_container_width=True)
-                    if _ann_view_all:
-                        _chr_set_cc_sub_v2111("Announcements & Reports")
-                        st.rerun()
+                    st.button("View all →",key=f"v21307_nav_ann_{ticker}",use_container_width=False,
+                              on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
                 st.markdown(f'<div class="v21305-ann-body">{_body}</div><div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
         with _m2:
             _rows=[]

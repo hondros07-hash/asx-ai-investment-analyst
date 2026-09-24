@@ -7,6 +7,53 @@ from pypdf import PdfReader
 
 UA="Market Investment Analyst/12.0 research application"
 ASX_ARCHIVE="https://www.asx.com.au/asx/v2/statistics/announcements.do"
+ASX_COMPANY_API="https://asx.api.markitdigital.com/asx-research/1.0/companies/{code}/announcements"
+
+def asx_company_announcements_api(code, limit=5):
+    """Read the JSON announcements feed used by the ASX company pages.
+
+    This is the preferred lightweight list route.  It returns the latest company
+    announcements even when the legacy ASX HTML search is blocked by anti-bot
+    middleware.  We keep the legacy search as a fallback because it can expose
+    direct asxpdf links.
+    """
+    code=re.sub(r'[^A-Z0-9]','',str(code or '').upper().replace('.AX',''))[:3]
+    cols=['Date','Time','Group','Type','Title','Price Sensitive','Source','URL','PDFURL','ReadURL','Has PDF','ID']
+    if not code: return pd.DataFrame(columns=cols)
+    url=ASX_COMPANY_API.format(code=code.lower())+'?'+urllib.parse.urlencode({'count':max(5,min(int(limit or 5),20))})
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+             'Accept':'application/json,text/plain,*/*','Origin':'https://www.asx.com.au','Referer':f'https://www.asx.com.au/markets/company/{code.lower()}'}
+    try:
+        raw,ctype=_get(url,headers,25); payload=json.loads(raw.decode('utf-8','ignore'))
+        data=payload.get('data') or {}; items=data.get('items') or data.get('announcements') or []
+        rows=[]
+        search_url=ASX_ARCHIVE+'?'+urllib.parse.urlencode({'asxCode':code,'by':'asxCode','timeframe':'Y','year':datetime.now().year})
+        for x in items:
+            if not isinstance(x,dict): continue
+            raw_date=x.get('date') or x.get('releaseDate') or x.get('publishedDate') or ''
+            dt=pd.to_datetime(raw_date,errors='coerce',utc=True)
+            date=dt.strftime('%d/%m/%Y') if pd.notna(dt) else str(raw_date)[:10]
+            tm=dt.strftime('%I:%M %p').lstrip('0').lower() if pd.notna(dt) else ''
+            title=str(x.get('headline') or x.get('title') or 'ASX announcement').strip()
+            key=str(x.get('documentKey') or x.get('documentId') or x.get('id') or '').strip()
+            direct=str(x.get('url') or x.get('documentUrl') or x.get('pdfUrl') or '').strip()
+            if direct.startswith('/'): direct='https://www.asx.com.au'+direct
+            # Never invent a document URL. If the feed omits it, link to the
+            # authoritative ASX company search where the document is exposed.
+            read_url=direct or search_url
+            rows.append({'Date':date,'Time':tm,'Group':'ASX Announcements',
+                         'Type':str(x.get('announcementType') or classify(title)).strip(),
+                         'Title':title,'Price Sensitive':bool(x.get('isPriceSensitive') or x.get('priceSensitive')),
+                         'Source':'ASX company announcements feed','URL':read_url,
+                         'PDFURL':direct if direct.lower().split('?')[0].endswith('.pdf') else '',
+                         'ReadURL':read_url,'Has PDF':bool(direct and direct.lower().split('?')[0].endswith('.pdf')),
+                         'ID':key})
+        df=pd.DataFrame(rows,columns=cols)
+        df.attrs.update({'status':'OK' if rows else 'ASX_API_NO_ROWS','ticker':code,'source':'ASX company announcements feed','endpoint':url})
+        return df.head(limit).reset_index(drop=True)
+    except Exception as e:
+        df=pd.DataFrame(columns=cols); df.attrs.update({'status':'ASX_API_FAILED','ticker':code,'error':type(e).__name__+': '+str(e)[:180],'endpoint':url}); return df
+
 
 def _get(url, headers=None, timeout=25):
     req=urllib.request.Request(url,headers=headers or {
@@ -310,7 +357,13 @@ def announcements(ticker, provider_url="", provider_key="", limit=250):
             if "Group" not in p.columns:p["Group"]="ASX Announcements"
             return p,"Provider-backed ASX announcements"
 
-        # Provider unavailable/empty: continue to the public fallback.
+        # Provider unavailable/empty: use the JSON feed backing ASX company pages.
+        # This avoids the legacy HTML endpoint's anti-bot behaviour in hosted apps.
+        p=asx_company_announcements_api(code,limit)
+        if p is not None and not p.empty:
+            return p,"ASX company announcements feed"
+
+        # JSON feed unavailable/empty: continue to the legacy public fallback.
         p=asx_public_archive(code,12,limit)
         if p is None or p.empty:
             cols=["Date","Time","Group","Type","Title","Price Sensitive",

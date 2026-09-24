@@ -34,7 +34,7 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - Latest Announcements & Reports uses a real visible Streamlit `View all →` control in the card header; navigation no longer depends on an HTML label/overlay.
 - No disclosure rows are fabricated: unavailable sources remain explicit and provenance is retained.
 
-## V21.3.06 — Verified Global Disclosure Pipeline + Deterministic View-All Navigation
+## V21.3.07 — Verified Global Disclosure Pipeline + Deterministic View-All Navigation
 - Hardened ASX public announcement parsing across current/legacy markup and multiple supported search windows.
 - Added explicit ASX request/parser diagnostics instead of silently collapsing transport/parser failures into a generic empty result.
 - Updated the SEC EDGAR default automated-client User-Agent and retained configurable `SEC_USER_AGENT` support.
