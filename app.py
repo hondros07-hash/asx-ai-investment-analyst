@@ -4824,18 +4824,29 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
     # Known canonical domains cover high-frequency names when provider metadata is thin.
     nm=str(company or "").lower()
     known={
+        "qantas airways limited":"qantas.com","qantas airways":"qantas.com","qantas":"qantas.com",
         "zip co limited":"zip.co","zip co ltd":"zip.co","ziprecruiter":"ziprecruiter.com",
         "the coca-cola company":"coca-colacompany.com","coca-cola hbc":"coca-colahellenic.com","coca-cola europacific":"cocacolaep.com",
         "qantas airways":"qantas.com","apple inc":"apple.com","microsoft":"microsoft.com","nvidia":"nvidia.com","amazon":"amazon.com","tesla":"tesla.com","pepsico":"pepsico.com","pepsi co":"pepsico.com",
         "commonwealth bank of australia":"commbank.com.au","commonwealth bank":"commbank.com.au","commbank":"commbank.com.au",
         "anz group holdings":"anz.com.au","australia and new zealand banking group":"anz.com.au","anz":"anz.com.au"
     }
-    dom=next((d for k,d in known.items() if k in nm),"")
+    # V21.2.88 — listing-aware issuer identity. Multiple securities/ADRs/OTC
+    # listings can represent the same company and should resolve to one brand domain.
+    symbol_domains={
+        "QAN.AX":"qantas.com","QUBSF":"qantas.com","QABSY":"qantas.com",
+        "CBA.AX":"commbank.com.au","ZIP.AX":"zip.co",
+    }
+    dom=symbol_domains.get(sym.upper(),"") or next((d for k,d in known.items() if k in nm),"")
     if dom:
         # V21.2.38 — official-brand-first policy. For companies with a verified canonical
         # domain, full corporate wordmarks are placed ahead of provider logoUrl/app icons.
         # This prevents a technically valid square icon from winning before the brand logo.
         official_assets={
+            # V21.2.88 — Qantas canonical domain is verified from Qantas' official site.
+            # We intentionally use validated domain icons rather than scraping/rehosting a
+            # trademark asset; the server-side resolver rejects HTML/invalid image responses.
+            "qantas.com":[],
             # V21.2.38 — prefer the full official corporate wordmark, not a provider app/icon tile.
             # Zip's official 2026 AU brand resources continue to use the full ZIP wordmark.
             "zip.co":[
@@ -4858,7 +4869,7 @@ def _chr_resolved_logo_data_uri(symbol, company, candidates):
     """V21.2.38: official-brand-first logo resolution with preserved aspect ratio."""
     import base64, io, urllib.request
     from PIL import Image, ImageOps
-    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.38)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
+    headers={"User-Agent":"Mozilla/5.0 (compatible; Chrimata/21.2.88)","Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"}
     for url in list(candidates or []):
         try:
             req=urllib.request.Request(str(url),headers=headers)
@@ -5586,11 +5597,9 @@ def _chr_company_search_page():
         logo_meta={"logo_url":str(r.get("Logo") or ""),"website":str(r.get("Website") or "")}
         candidates=_chr_identity_logo_candidates(str(r.get("_resolved") or r.get("Ticker") or ""),logo_meta,str(r.get("Company") or ""),96)
         initial=html.escape(str(r.get("Company") or "?")[:1].upper())
-        if candidates:
-            src=html.escape(candidates[0],quote=True); rest=html.escape("|".join(candidates[1:]),quote=True)
-            lh=(f'<span style="display:inline-flex;align-items:center"><img class="v421logo" src="{src}" data-fallbacks="{rest}" '
-                f'onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';}}">'
-                f'<span class="v421av" style="display:none">{initial}</span></span>')
+        resolved_logo=_chr_resolved_logo_data_uri(str(r.get("_resolved") or r.get("Ticker") or ""),str(r.get("Company") or ""),tuple(candidates)) if candidates else ""
+        if resolved_logo:
+            lh=f'<span style="display:inline-flex;align-items:center"><img class="v421logo" src="{html.escape(resolved_logo,quote=True)}" alt="{html.escape(str(r.get("Company") or "Company"),quote=True)} logo"></span>'
         else:
             lh=f'<span class="v421av">{initial}</span>'
         try:dv=float(r.get("Day %")); dt="—" if not np.isfinite(dv) else f"{dv:+.2f}%"; dc="v421up" if dv>0 else ("v421down" if dv<0 else "v421flat")
@@ -5620,10 +5629,11 @@ def _chr_company_search_page():
     # the exact selected Search Results payload. This keeps Quick View on the same
     # logo identity and adds a canonical Commonwealth Bank fallback when metadata is thin.
     qcands=_chr_identity_logo_candidates(resolved,{"logo_url":qlogo,"website":str(meta.get("website") or selected.get("Website") or "")},str(company),96)
-    if qcands:
-        qsrc=html.escape(qcands[0],quote=True); qrest=html.escape("|".join(qcands[1:]),quote=True); qinitial=html.escape(str(company)[:1].upper())
-        qlh=f'<img class="v421qlogo" src="{qsrc}" data-fallbacks="{qrest}" onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';}}"><span class="v421av" style="display:none">{qinitial}</span>'
-    else: qlh=f'<span class="v421av">{html.escape(str(company)[:1].upper())}</span>'
+    qresolved_logo=_chr_resolved_logo_data_uri(resolved,str(company),tuple(qcands)) if qcands else ""
+    if qresolved_logo:
+        qlh=f'<img class="v421qlogo" src="{html.escape(qresolved_logo,quote=True)}" alt="{html.escape(str(company),quote=True)} logo">'
+    else:
+        qlh=f'<span class="v421av">{html.escape(str(company)[:1].upper())}</span>'
     dcls="v421up" if np.isfinite(pct) and pct>0 else ("v421down" if np.isfinite(pct) and pct<0 else "v421flat"); dt="—" if not np.isfinite(pct) else f"{pct:+.2f}%"; rng="—" if not(np.isfinite(lo) and np.isfinite(hi)) else f"{price(lo,cur)} – {price(hi,cur)}"; pet="—" if not np.isfinite(pe) else f"{pe:.1f}"; dyt="—" if not np.isfinite(dy) else f"{(dy if dy>1 else dy*100):.2f}%"; tt="—" if not np.isfinite(target) else price(target,cur)+(f" ({upside:+.1f}%)" if np.isfinite(upside) else "")
     analyst_n=meta.get("numberOfAnalystOpinions"); analyst_txt=(f"{int(analyst_n)} analyst opinions" if isinstance(analyst_n,(int,float)) and analyst_n else "Consensus data where available")
     lc,rc=st.columns([1.82,1],gap="small")
@@ -5647,9 +5657,9 @@ def _chr_company_search_page():
                     with c0:
                         a,b=st.columns([.18,.82],gap="small",vertical_alignment="center")
                         with a:
-                            if candidates:
-                                src=html.escape(candidates[0],quote=True); rest=html.escape("|".join(candidates[1:]),quote=True); initial=html.escape(str(r.get("Company") or "?")[:1].upper())
-                                st.markdown(f'<img class="chr-native-logo" src="{src}" data-fallbacks="{rest}" onerror="var a=this.dataset.fallbacks?this.dataset.fallbacks.split(\'|\'):[];if(a.length){{this.src=a.shift();this.dataset.fallbacks=a.join(\'|\');}}else{{this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';}}"><span class="chr-native-avatar" style="display:none">{initial}</span>',unsafe_allow_html=True)
+                            resolved_logo=_chr_resolved_logo_data_uri(rres,str(r.get("Company") or ""),tuple(candidates)) if candidates else ""
+                            if resolved_logo:
+                                st.markdown(f'<img class="chr-native-logo" src="{html.escape(resolved_logo,quote=True)}" alt="{html.escape(str(r.get("Company") or "Company"),quote=True)} logo">',unsafe_allow_html=True)
                             else:
                                 st.markdown(f'<span class="chr-native-avatar">{html.escape(str(r.get("Company") or "?")[:1].upper())}</span>',unsafe_allow_html=True)
                         with b:
