@@ -5043,8 +5043,21 @@ def _chr_pick_company_v2074214(payload):
     """Native Streamlit selection: never navigate the browser away from Company Search."""
     item=dict(payload or {})
     st.session_state["chr_company_search_selected"]=item
-    st.session_state["chr_primary_nav"]="Company Search"
+    # V21.3.04 — persist one canonical listing identity object. This survives
+    # Company Search -> Command Centre reruns and is the authoritative input
+    # for exchange-specific disclosure routing.
     resolved=str(item.get("_resolved") or item.get("Ticker") or "")
+    st.session_state["chr_security_identity"]={
+        "ticker": resolved,
+        "symbol": str(item.get("Ticker") or resolved),
+        "company_name": str(item.get("Company") or ""),
+        "exchange": str(item.get("Exchange") or item.get("Market") or ""),
+        "market": str(item.get("Market") or item.get("Exchange") or ""),
+        "country": str(item.get("Country") or ""),
+        "mic": str(item.get("MIC") or item.get("mic") or ""),
+        "provider_symbol": resolved,
+    }
+    st.session_state["chr_primary_nav"]="Company Search"
     if resolved:
         recent=st.session_state.get("chr_recent_companies",[])
         st.session_state["chr_recent_companies"]=[resolved]+[x for x in recent if x!=resolved][:4]
@@ -5755,8 +5768,17 @@ def _chr_company_search_page():
             if st.button("Open Company Command Centre  →",type="primary",use_container_width=True,key="chr_search_open_cc_v207421"):
                 st.session_state["chr_active_ticker"]=resolved
                 st.session_state["mia_search_query"]=resolved
-                st.session_state["chr_active_exchange"]=str(selected.get("Exchange") or "")
-                st.session_state["chr_active_country"]=str(q_country or selected.get("Country") or "")
+                _active_exchange=str(selected.get("Exchange") or selected.get("Market") or "")
+                _active_country=str(q_country or selected.get("Country") or "")
+                st.session_state["chr_active_exchange"]=_active_exchange
+                st.session_state["chr_active_country"]=_active_country
+                st.session_state["chr_security_identity"]={
+                    "ticker": resolved, "symbol": str(selected.get("Ticker") or resolved),
+                    "company_name": str(selected.get("Company") or ""),
+                    "exchange": _active_exchange, "market": str(selected.get("Market") or _active_exchange),
+                    "country": _active_country, "mic": str(selected.get("MIC") or selected.get("mic") or ""),
+                    "provider_symbol": resolved,
+                }
                 st.session_state["chr_primary_nav"]="Company Command Centre"
                 st.rerun()
             if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_v207421"):
@@ -6446,6 +6468,7 @@ elif page=="Company Command Centre":
     .v21291-ann .v21290-row .pdf{text-align:right}.v21291-pdf{color:#0869e8!important;font-weight:800;text-decoration:none}.v21291-pdf:hover{text-decoration:underline}
     .v21291-na{color:#94a3b8}.v21291-source{position:absolute;left:14px;bottom:7px;font-size:9px;color:#94a3b8;white-space:nowrap;max-width:72%;overflow:hidden;text-overflow:ellipsis}
     .v21291-viewall-link{pointer-events:none}
+    .v21304-ann-viewall{position:absolute;right:14px;top:14px;color:#0869e8;font-size:11px;font-weight:800;white-space:nowrap}
     </style>""",unsafe_allow_html=True)
     # V21.2 — AI Company Command Centre Overview Intelligence Rebuild
     # Overview orchestrates the independent research engines; it is not a dependency for them.
@@ -7207,18 +7230,22 @@ elif page=="Company Command Centre":
         # the reference card. `latest_announcements_safe` can be provider-thin and
         # previously caused the Overview card to show empty even when ASX had rows.
         try:
+            _secid=dict(st.session_state.get("chr_security_identity") or {})
+            _id_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
+            _id_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
+            _id_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or _ccmeta.get("country") or "")
             _v21291_ann_all,_v21291_coverage,_v21292_identity=announcements_global(
-                ticker,_ann_url,_ann_key,25,
-                exchange=st.session_state.get("chr_active_exchange",""),
-                country=st.session_state.get("chr_active_country","")
+                _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country
             )
         except Exception:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
         _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
+        _secid=dict(st.session_state.get("chr_security_identity") or {})
+        _prov_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
+        _prov_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
+        _prov_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or _ccmeta.get("country") or "")
         _v21291_prov=announcement_provenance_global(
-            ticker,_v21291_coverage,
-            exchange=st.session_state.get("chr_active_exchange",""),
-            country=st.session_state.get("chr_active_country","")
+            _prov_ticker,_v21291_coverage, exchange=_prov_exchange, country=_prov_country
         )
         _cat_df=_cccatalysts.head(5).copy() if _cccatalysts is not None and not _cccatalysts.empty else pd.DataFrame()
 
@@ -7263,7 +7290,7 @@ elif page=="Company Command Centre":
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
-            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span><span class="v21290-viewall v21304-ann-viewall">View all →</span></div>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
             st.button("View all →",key=f"v21293_nav_ann_{ticker}",on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
         with _m2:
             _rows=[]

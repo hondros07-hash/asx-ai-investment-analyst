@@ -384,7 +384,16 @@ def resolve_announcement_market(ticker, exchange="", country=""):
     """Resolve the selected *listing*, never the issuer name alone.
     Suffix wins, then supplied exchange/country, then bare symbols default to US only.
     """
-    t=str(ticker or "").upper().strip(); ex=str(exchange or "").upper(); co=str(country or "").upper()
+    t=str(ticker or "").upper().strip(); ex=str(exchange or "").upper().strip(); co=str(country or "").upper().strip()
+    # V21.3.04 — normalize common provider exchange labels/MICs before routing.
+    ex_alias={"ASX":"ASX","AUSTRALIAN SECURITIES EXCHANGE":"ASX","XASX":"ASX",
+              "NMS":"NASDAQ","NGM":"NASDAQ","NCM":"NASDAQ","NAS":"NASDAQ","XNAS":"NASDAQ",
+              "NYQ":"NYSE","NYE":"NYSE","ASE":"NYSE","AMEX":"NYSE","XNYS":"NYSE",
+              "LSE":"LSE","LONDON STOCK EXCHANGE":"LSE","XLON":"LSE",
+              "HKG":"HKEX","HKEX":"HKEX","HONG KONG STOCK EXCHANGE":"HKEX","XHKG":"HKEX",
+              "JPX":"TSE","TSE":"TSE","TOKYO STOCK EXCHANGE":"TSE","XTKS":"TSE",
+              "TOR":"TSX","TSX":"TSX","TORONTO STOCK EXCHANGE":"TSX","XTSE":"TSX"}
+    ex=ex_alias.get(ex,ex)
     if t.endswith(".AX") or "ASX" in ex or "AUSTRAL" in ex: market="ASX"
     elif t.endswith(".L") or "LONDON" in ex or ex in {"LSE","LSEIOB"}: market="LSE"
     elif t.endswith(".HK") or "HONG KONG" in ex or ex in {"HKG","HKEX"}: market="HKEX"
