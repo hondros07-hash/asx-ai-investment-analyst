@@ -6956,7 +6956,18 @@ elif page=="Company Command Centre":
         [class*="st-key-v21243_price_card"] [data-testid="stCheckbox"]{margin:0!important}
         [class*="st-key-v21243_price_card"] [data-baseweb="select"]{min-height:34px!important}
         [class*="st-key-v21243_price_card"] [data-baseweb="select"]>div{min-height:34px!important;padding-top:0!important;padding-bottom:0!important}
-        .v213231-macro-note{font-size:9.5px;line-height:1.25;color:#6d7d92;margin:1px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+        .v213231-macro-note{font-size:9.5px;line-height:16px;height:16px;color:#6d7d92;margin:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+        /* V21.3.23.2 — fixed-height macro slot keeps the footer stationary across reruns. */
+        .v213232-macro-slot{height:16px;min-height:16px;max-height:16px;overflow:hidden;margin:0!important;padding:0!important}
+        /* Reference-style active timeframe: solid Chrímata blue with white text. */
+        [class*="st-key-v213171_timeframe_"] button[aria-pressed="true"],
+        [class*="st-key-v213171_timeframe_"] button[data-selected="true"]{
+            background:#086ee8!important;border-color:#086ee8!important;color:#fff!important;
+            box-shadow:0 1px 3px rgba(8,110,232,.24)!important;
+        }
+        [class*="st-key-v213171_timeframe_"] button[aria-pressed="true"] *,
+        [class*="st-key-v213171_timeframe_"] button[data-selected="true"] *{color:#fff!important}
+        [class*="st-key-v213171_timeframe_"] button:not([aria-pressed="true"]){background:#fff!important;color:#162a46!important}
         .v213231-macro-note b{color:#4d6480;font-weight:800}
         .v213231-macro-note span{color:#086ee8;font-weight:900;cursor:help}
         [class*="st-key-v213172_technical_"] .stButton>button{
@@ -7271,7 +7282,7 @@ elif page=="Company Command Centre":
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=214,margin=dict(l=2,r=34,t=10,b=12),xaxis_rangeslider_visible=False,
+                    height=202,margin=dict(l=2,r=34,t=8,b=10),xaxis_rangeslider_visible=False,
                     showlegend=bool(_macro_on and _macro_available),legend=dict(orientation="h",y=1.03,x=0),bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
@@ -7284,19 +7295,23 @@ elif page=="Company Command Centre":
                 else:
                     _fig.update_xaxes(rangebreaks=[])
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v213171_chart_{ticker}_{_active_tf}_{int(_macro_on)}_{int(_macro_normalized)}")
+                # V21.3.23.2 — always reserve one compact provenance line.
+                # No expander is inserted into the fixed-height card, so controls cannot push the footer down.
                 if _macro_on and _macro_choice is not None:
                     if _macro_available:
-                        st.markdown(
-                            f'<div class="v213231-macro-note"><b>{html.escape(_macro_choice.label)}</b> · '
-                            f'{html.escape(_macro_choice.channel)} · Yahoo Finance/yfinance · '
-                            '<span title="Overlay is contextual only; visual co-movement does not establish causation.">ⓘ</span></div>',
-                            unsafe_allow_html=True,
+                        _macro_note_html=(
+                            f'<b>{html.escape(_macro_choice.label)}</b> · {html.escape(_macro_choice.channel)} · '
+                            'Yahoo Finance/yfinance · '
+                            '<span title="Overlay is contextual only; visual co-movement does not establish causation.">ⓘ</span>'
                         )
-                        with st.expander("Macro overlay details",expanded=False):
-                            st.caption(f"{_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel}")
-                            st.caption("Market data via Yahoo Finance/yfinance. Visual co-movement does not establish causation.")
                     else:
-                        st.markdown(f'<div class="v213231-macro-note">Macro overlay unavailable · {html.escape(str(_macro_status))}</div>',unsafe_allow_html=True)
+                        _macro_note_html=f'Macro overlay unavailable · {html.escape(str(_macro_status))}'
+                else:
+                    _macro_note_html='&nbsp;'
+                st.markdown(
+                    f'<div class="v213232-macro-slot"><div class="v213231-macro-note">{_macro_note_html}</div></div>',
+                    unsafe_allow_html=True,
+                )
                 # V21.2.50 — x-axis is anchored to the volume band, so date labels render beneath volume.
                 # Footer remains one physical row with both sides locked to the same 26px baseline.
                 # No negative margins or overlays: both sides share the exact same baseline.
