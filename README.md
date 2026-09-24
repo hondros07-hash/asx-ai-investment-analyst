@@ -307,10 +307,22 @@ Added Company Overview Intelligence Widgets: valuation, forecasts, analyst conse
 ## V21.2.75
 Analyst Consensus icon updated from people/group imagery to a compact financial consensus bar-chart graphic. No analyst data, provenance, calculations, or other widgets changed.
 
-## V21.2.76 — 12M Forecast Reference Widget + Validation Engine
+## V21.2.77 — 12M Forecast Reference Widget + Validation Engine
 - Rebuilds the Overview 12M Forecast card to the compact reference layout with a rising-chart icon, prominent expected return, model target and empirical positive-return probability.
 - Uses the existing Chrímata walk-forward ensemble (ridge + momentum + historical median) on up to 5 years of price history rather than duplicating analyst consensus.
 - Positive-return probability is withheld unless there are at least 12 out-of-sample walk-forward observations; when available it is the realised positive frequency among the closest historical out-of-sample model scores.
 - Automatically stores one point-in-time 12M forecast snapshot per ticker/day/model version for forward validation.
 - Adds matured 12M validation results: target error, directional accuracy and probability calibration (Brier score).
 - Missing evidence remains unavailable; no forecast or probability is fabricated.
+
+## V21.2.77
+- Rebuilt the Overview 12M Forecast card to match the compact reference layout and rising-chart icon.
+- The card now uses Chrímata's walk-forward-tested 12M ensemble (ridge + momentum + historical base-rate), using five years of price history when available.
+- Adds an empirical positive-return probability only when enough out-of-sample validation observations exist; otherwise validation is explicitly withheld.
+- Automatically records one point-in-time 12M forecast snapshot per ticker/day/model version in the existing workspace database.
+- Adds forward validation fields for target error, directional accuracy and probability calibration (Brier score) once snapshots mature.
+- No analyst target is substituted for the Chrímata model forecast, and no probability is fabricated when evidence is insufficient.
+
+
+## V21.2.77 — 12M Forecast Full-Card Layout
+Visual-only refinement of the Company Command Centre 12M Forecast intelligence card. Enlarges the forecast icon and key return figure, vertically balances the content, and uses more of the available card area. Forecast calculations and validation logic are unchanged.
