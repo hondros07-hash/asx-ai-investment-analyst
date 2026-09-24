@@ -19,6 +19,7 @@ from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
+from services.valuation_evidence import recover_financial_inputs, bridge_payload
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -1999,10 +2000,64 @@ def valuation_fx_rate(a,b):
    if np.isfinite(v) and v>0:return 1/v if inv else v
   except Exception:pass
  return np.nan
-def automatic_valuation_snapshot(meta,price):
- i=valuation_provider_inputs(meta or {});fx=1.
- if i.get("financial_currency") and i.get("listing_currency") and str(i["financial_currency"]).upper()!=str(i["listing_currency"]).upper():fx=valuation_fx_rate(i["financial_currency"],i["listing_currency"])
- return calculate_dcf_scenarios(i.get("fcf"),i.get("shares"),i.get("cash"),i.get("debt"),current_price=price,sector=i.get("sector",""),industry=i.get("industry",""),financial_currency=i.get("financial_currency"),listing_currency=i.get("listing_currency"),fx_rate_financial_to_listing=fx if np.isfinite(_mia_num(fx)) else None)
+@st.cache_data(ttl=21600, show_spinner=False)
+def valuation_statement_bundle(ticker):
+    try:
+        t=yf.Ticker(ticker)
+        return t.cashflow, t.balance_sheet, t.financials
+    except Exception:
+        return pd.DataFrame(),pd.DataFrame(),pd.DataFrame()
+
+def _primary_listing_candidate(meta):
+    """Only provider-explicit primary/underlying symbols are considered. Never guess by stripping suffixes."""
+    for k in ("underlyingSymbol","primarySymbol","primaryTicker"):
+        v=(meta or {}).get(k)
+        if v and str(v).strip(): return str(v).strip().upper()
+    return None
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def _valuation_meta(ticker):
+    try:return yf.Ticker(ticker).info or {}
+    except Exception:return {}
+
+def automatic_valuation_snapshot(meta,price,ticker=None):
+    selected_ticker=str(ticker or (meta or {}).get("symbol") or "").upper()
+    cf,bs,inc=valuation_statement_bundle(selected_ticker) if selected_ticker else (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
+    recovered=recover_financial_inputs(meta or {},cf,bs,inc)
+    bridge={"status":"not_used","verified":False,"reason":"Selected listing evidence used","ai_calculated":False}
+
+    # If essential evidence is missing, consider only an explicit provider-supplied candidate and
+    # verify the issuer relationship before borrowing any fundamentals.
+    if not recovered["audit"].get("complete_for_dcf") and selected_ticker:
+        candidate=_primary_listing_candidate(meta or {})
+        if candidate and candidate!=selected_ticker:
+            cmeta=_valuation_meta(candidate)
+            bridge=bridge_payload(selected_ticker,meta or {},candidate,cmeta)
+            if bridge.get("verified"):
+                ccf,cbs,cinc=valuation_statement_bundle(candidate)
+                crecovered=recover_financial_inputs(cmeta,ccf,cbs,cinc)
+                if crecovered["audit"].get("complete_for_dcf"):
+                    # Preserve selected listing currency; fundamentals/reporting currency come from verified issuer listing.
+                    crecovered["listing_currency"]=(meta or {}).get("currency") or recovered.get("listing_currency")
+                    crecovered["audit"]["bridge"]=bridge
+                    recovered=crecovered
+
+    fx=1.0
+    if recovered.get("financial_currency") and recovered.get("listing_currency") and str(recovered["financial_currency"]).upper()!=str(recovered["listing_currency"]).upper():
+        fx=valuation_fx_rate(recovered["financial_currency"],recovered["listing_currency"])
+    result=calculate_dcf_scenarios(recovered.get("fcf"),recovered.get("shares"),recovered.get("cash"),recovered.get("debt"),
+        current_price=price,sector=recovered.get("sector",""),industry=recovered.get("industry",""),
+        financial_currency=recovered.get("financial_currency"),listing_currency=recovered.get("listing_currency"),
+        fx_rate_financial_to_listing=fx if np.isfinite(_mia_num(fx)) else None)
+    result["audit"]=recovered.get("audit",{})
+    result["audit"]["primary_listing_bridge"]=bridge
+    result["audit"]["fx"]={"status":"not_required" if recovered.get("financial_currency")==recovered.get("listing_currency") else ("verified" if np.isfinite(_mia_num(fx)) else "missing"),
+                           "from":recovered.get("financial_currency"),"to":recovered.get("listing_currency"),
+                           "rate":float(fx) if np.isfinite(_mia_num(fx)) else None,"source":"Yahoo Finance FX" if np.isfinite(_mia_num(fx)) and fx!=1 else None}
+    result["audit"]["ai_calculated"]=False
+    result["recovered_inputs"]=recovered
+    return result
+
 def valuation_snapshot(ticker,price):
     p=valuation_profile(ticker)
     assumptions={"Bear":{"growth":p["bear_growth"],"wacc":p["bear_wacc"],"terminal_growth":p["bear_terminal"]},
@@ -6184,7 +6239,7 @@ elif page=="Fundamentals":
 elif page=="Valuation":
     st.header("Valuation & Expectations")
     _vmeta=info(ticker) or {};_vh=history(ticker,"1y");_vprice=float(pd.to_numeric(_vh["Close"],errors="coerce").dropna().iloc[-1]) if _vh is not None and not _vh.empty else np.nan
-    _vauto=automatic_valuation_snapshot(_vmeta,_vprice)
+    _vauto=automatic_valuation_snapshot(_vmeta,_vprice,ticker)
     st.subheader("Deterministic DCF — Bear / Base / Bull")
     st.caption("Five-year FCF DCF using provider-reported FCF, cash, debt and shares. Assumptions are deterministic and visible; AI does not calculate the valuation.")
     if _vauto.get("status")=="success":
@@ -6195,6 +6250,18 @@ elif page=="Valuation":
         st.dataframe(pd.DataFrame(_vrows),use_container_width=True,hide_index=True)
         _vi=valuation_provider_inputs(_vmeta);st.caption(f"Inputs · FCF {compact_number(_vi.get('fcf'),prefix='$')} · Cash {compact_number(_vi.get('cash'),prefix='$')} · Debt {compact_number(_vi.get('debt'),prefix='$')} · Shares {compact_number(_vi.get('shares'))} · Financial currency {_vauto.get('financial_currency') or '—'} · Listing currency {_vauto.get('listing_currency') or '—'} · FX {_vauto.get('fx_rate',1):.4f}")
     else:st.info(_vauto.get("reason","Deterministic DCF unavailable because required verified inputs are missing."))
+    with st.expander("Valuation input audit trail",expanded=False):
+        _audit=_vauto.get("audit",{}) if isinstance(_vauto,dict) else {}
+        _arows=[]
+        for _ak,_av in (_audit.get("inputs",{}) or {}).items():
+            if isinstance(_av,dict):
+                _arows.append({"Input":_ak.replace("_"," ").title(),"Status":_av.get("status","—"),"Source":_av.get("source") or "—","Value":_av.get("value")})
+        if _arows:st.dataframe(pd.DataFrame(_arows),use_container_width=True,hide_index=True)
+        _br=_audit.get("primary_listing_bridge",{}) or {}
+        st.caption(f"Primary listing bridge: {_br.get('status','not used')} · {_br.get('reason','—')}")
+        _fxa=_audit.get("fx",{}) or {}
+        st.caption(f"Currency: {_fxa.get('from') or '—'} → {_fxa.get('to') or '—'} · FX status {_fxa.get('status','—')} · Rate {_fxa.get('rate') if _fxa.get('rate') is not None else '—'}")
+        st.caption("AI calculated: No")
     st.divider();st.subheader("Saved / custom scenario assumptions")
     v18_db_upgrade(); vp=valuation_profile(ticker)
     a,b,c=st.columns(3)
@@ -6608,7 +6675,7 @@ elif page=="Company Command Centre":
         _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
         if not np.isfinite(_cclo): _cclo=float(h["Low"].min())
         if not np.isfinite(_cchi): _cchi=float(h["High"].max())
-        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=automatic_valuation_snapshot(_ccmeta,price)
+        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=automatic_valuation_snapshot(_ccmeta,price,ticker)
         _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
         _ccf12=np.nan; _fc_target=np.nan; _fc_prob=np.nan; _fc_prob_n=0; _fc_diag={"n":0,"mae":np.nan,"direction":np.nan}; _fc_conf="Validation limited"
