@@ -16,6 +16,7 @@ from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
+from services.research_score_engine import calculate_research_score
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -6884,6 +6885,23 @@ elif page=="Company Command Centre":
         _th_sub=f"{_th_watch} / {_th_total or 6} watch items"
         _th_metric_line=f"{_th_met} key metrics meeting expectations"
         _th_provenance=f"{_th_engine_source}; {_th_evidenced}/{_th_total or 6} conditions have evaluable evidence; {_th_pending} pending."
+        # V21.3.18 — deterministic Research Score derived from the same thesis
+        # conditions shown by the Thesis Scorecard. Pending is unknown, not failure.
+        _rs_conditions={}
+        if _th_monitor is not None and not _th_monitor.empty:
+            for _ri,_row in _th_monitor.iterrows():
+                _rk=str(_row.get("metric") or f"condition_{_ri}")
+                _rs_conditions[_rk]=_row.get("status")
+        _research_payload=calculate_research_score(_rs_conditions)
+        _rs=_research_payload.get("research_score")
+        _rs_txt=f"{int(_rs)} / 100" if _rs is not None else "— / 100"
+        _rs_label=_research_payload.get("score_label","Insufficient evidence")
+        _rs_change=f"{_research_payload.get('evidence_coverage',0)}% evidence coverage"
+        _rs_delta=np.nan
+        _rs_gauge=max(0.0,min(100.0,float(_rs))) if _rs is not None else 0.0
+        _rs_angle=np.pi-(np.pi*_rs_gauge/100.0)
+        _rs_nx=50 + 27*np.cos(_rs_angle); _rs_ny=50 - 27*np.sin(_rs_angle)
+        _rs_gauge_html=f'<div class="v21267-rs-gauge" aria-label="Research score {_rs_txt}"><svg viewBox="0 0 100 58" role="img"><path class="v21267-rs-track" d="M 12 50 A 38 38 0 0 1 88 50"/><path class="v21267-rs-fill" d="M 12 50 A 38 38 0 0 1 88 50" pathLength="100" style="stroke-dasharray:{_rs_gauge:.1f} 100"/><line class="v21267-rs-needle" x1="50" y1="50" x2="{_rs_nx:.2f}" y2="{_rs_ny:.2f}"/><circle class="v21267-rs-hub" cx="50" cy="50" r="3.2"/></svg></div>'
         def _strip_card(cls,icon,title,value,line1,line2):
             return f'<div class="v21262-strip-card {cls}"><div class="v21262-strip-icon">{icon}</div><div class="v21262-strip-copy"><div class="v21262-strip-title">{html.escape(str(title))}</div><div class="v21262-strip-value">{html.escape(str(value))}</div><div class="v21262-strip-line">{html.escape(str(line1))}</div><div class="v21262-strip-sub">{html.escape(str(line2))}</div></div></div>'
         _research_card=f'<div class="v21262-strip-card good v21273-research-card"><div class="v21273-rs-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.2V5M20.8 12H19M12 19v1.8M5 12H3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="v21273-rs-title">Research Score</div><div class="v21273-rs-body"><div class="v21273-rs-visual">{_rs_gauge_html}</div><div class="v21273-rs-copy"><div class="v21273-rs-value">{html.escape(_rs_txt)}</div><div class="v21273-rs-label">{html.escape(_rs_label)}</div><div class="v21273-rs-change {'up' if np.isfinite(_rs_delta) and _rs_delta>0 else 'down' if np.isfinite(_rs_delta) and _rs_delta<0 else ''}">{html.escape(_rs_change)}</div></div></div></div>'
