@@ -16,6 +16,7 @@ from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
+from services.thesis_status_engine import calculate_thesis_status
 from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
@@ -6949,6 +6950,21 @@ elif page=="Company Command Centre":
         [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlock"]{gap:0!important;row-gap:0!important}
         [class*="st-key-v21243_price_card"] [data-testid="stElementContainer"]{margin:0!important;padding:0!important}
         [class*="st-key-v21243_price_card"] [data-testid="stPlotlyChart"]{margin:0!important;padding:0!important}
+        /* V21.3.23.1 — compact dashboard geometry, scoped to Price Chart only. */
+        [class*="st-key-v21243_price_card"]{min-width:0!important}
+        [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlockBorderWrapper"]{overflow:hidden!important}
+        [class*="st-key-v21243_price_card"] [data-testid="stCheckbox"]{margin:0!important}
+        [class*="st-key-v21243_price_card"] [data-baseweb="select"]{min-height:34px!important}
+        [class*="st-key-v21243_price_card"] [data-baseweb="select"]>div{min-height:34px!important;padding-top:0!important;padding-bottom:0!important}
+        .v213231-macro-note{font-size:9.5px;line-height:1.25;color:#6d7d92;margin:1px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+        .v213231-macro-note b{color:#4d6480;font-weight:800}
+        .v213231-macro-note span{color:#086ee8;font-weight:900;cursor:help}
+        [class*="st-key-v213172_technical_"] .stButton>button{
+            background:transparent!important;border:0!important;box-shadow:none!important;color:#086ee8!important;
+            font-size:10px!important;font-weight:850!important;padding:0 2px!important;margin:0!important;
+            min-height:22px!important;height:22px!important;width:auto!important;min-width:0!important;
+        }
+        [class*="st-key-v213172_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         .v21249-chart-legend{display:flex;align-items:center;gap:12px;height:22px;margin:0!important;padding:0!important;font-size:10px;color:#162a46;line-height:22px;white-space:nowrap;box-sizing:border-box}
         .v21249-chart-legend .lg{display:inline-flex;align-items:center;gap:7px}
         .v21249-chart-legend .line{display:inline-block;width:30px;height:4px;border-radius:0}
@@ -7079,19 +7095,17 @@ elif page=="Company Command Centre":
             _th_met=int(_th_statuses.isin({"met","on track","on_track","pass","passed","true"}).sum())
             _th_watch=int(_th_statuses.isin({"watch","warning","at risk","at_risk","attention","broken","fail","failed","false"}).sum())
             _th_pending=max(0,_th_total-_th_met-_th_watch)
-        _th_evidenced=_th_met+_th_watch
-        if _th_watch>0:
-            _th_label="Watch"
-            _th_card_cls="amber"
-        elif _th_evidenced>=4:
-            _th_label="On Track"
-            _th_card_cls="good"
-        else:
-            _th_label="Insufficient evidence"
-            _th_card_cls="good"
-        _th_sub=f"{_th_watch} / {_th_total or 6} watch items"
-        _th_metric_line=f"{_th_met} key metrics meeting expectations"
-        _th_provenance=f"{_th_engine_source}; {_th_evidenced}/{_th_total or 6} conditions have evaluable evidence; {_th_pending} pending."
+        # V21.3.23 — the compact card and Thesis Scorecard consume the same condition payload.
+        # This aggregator performs no financial calculations; Pending remains unknown, not failure.
+        _th_summary=calculate_thesis_status(_th_monitor,expected_total=(_th_total or 6),source=_th_engine_source)
+        _th_total=int(_th_summary["total_conditions"]); _th_met=int(_th_summary["on_track_count"])
+        _th_watch=int(_th_summary["watch_count"]); _th_pending=int(_th_summary["pending_count"])
+        _th_evidenced=int(_th_summary["evaluated_count"]); _th_label=str(_th_summary["status_label"])
+        _th_card_cls="amber" if _th_summary["ui_state"]=="watch" else "good"
+        _th_sub=f"{_th_met} / {_th_total} conditions on track"
+        _th_metric_line=f"{_th_evidenced} evaluated · {_th_pending} awaiting evidence"
+        _th_provenance=(f"{_th_engine_source}; {_th_evidenced}/{_th_total} conditions evaluated; "
+                        f"{_th_pending} pending; evidence coverage {_th_summary['evidence_coverage']:.0%}; AI calculated: No.")
         # V21.3.18 — deterministic Research Score derived from the same thesis
         # conditions shown by the Thesis Scorecard. Pending is unknown, not failure.
         _rs_conditions={}
@@ -7121,7 +7135,7 @@ elif page=="Company Command Centre":
             f'<div class="v21262-strip-card {_th_card_cls} v21278-thesis-card" title="{html.escape(_th_provenance,quote=True)}"><div class="v21278-thesis-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="6" y="4.5" width="12" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4.5V3.6h6v.9M8.7 8.5h6.6M8.7 11.5h6.6M8.7 14.5h6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="v21278-thesis-copy"><div class="v21262-strip-title">Thesis Status</div><div class="v21278-thesis-value">{html.escape(_th_label)}</div><div class="v21278-thesis-watch">{html.escape(_th_sub)}</div><div class="v21278-thesis-metrics">{html.escape(_th_metric_line)}</div></div></div>',
         ])
         st.markdown("""<style>
-        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21269-valuation-card{align-items:flex-start!important;padding:8px 10px!important;min-width:0!important;overflow:hidden!important}.v21269-val-icon{margin-top:1px}.v21269-val-icon svg{width:20px;height:20px;display:block}.v21269-val-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;max-width:100%;overflow:hidden}.v21269-val-value{font-size:15px;font-weight:900;color:#086ee8;line-height:1.08;margin:3px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-base{font-size:9px;font-weight:800;color:#3f5e82;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-move{font-size:10px;font-weight:900;line-height:1.15;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-move.up{color:#079b4a}.v21269-val-move.down{color:#d9363e}.v21269-val-move.neutral{color:#e89a00}.v21269-val-confidence{font-size:7.5px;font-weight:700;color:#7890aa;line-height:1.1;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21272-analyst-card{align-items:flex-start!important;padding:8px 9px!important;gap:8px!important}.v21272-analyst-icon{margin-top:0;width:28px!important;height:28px!important;flex:0 0 28px!important}.v21272-analyst-icon svg{width:18px;height:18px;display:block}.v21272-analyst-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:0}.v21272-analyst-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21272-analyst-value{font-size:14px;font-weight:900;color:#10264b;line-height:1.02;margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-count{font-size:8.8px;font-weight:800;color:#3f5e82;line-height:1.08;white-space:nowrap}.v21272-analyst-target{font-size:8.8px;font-weight:700;color:#3f5e82;line-height:1.08;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-target .up{color:#079b4a;font-weight:900}.v21272-analyst-target .down{color:#d9363e;font-weight:900}.v21274-analyst-source{font-size:7px;font-weight:700;color:#7890aa;line-height:1;margin-top:4px;white-space:nowrap}.v21276-forecast-card{align-items:center!important;padding:10px 11px!important;gap:11px!important;min-height:92px!important}.v21276-forecast-icon{width:36px!important;height:36px!important;flex:0 0 36px!important;margin-top:0}.v21276-forecast-icon svg{width:23px;height:23px;display:block}.v21276-forecast-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;align-self:stretch;padding:1px 0}.v21276-forecast-copy .v21262-strip-title{font-size:11px!important;font-weight:850!important;line-height:1.08!important}.v21276-forecast-value{font-size:20px;font-weight:900;color:#086ee8;line-height:1;margin:6px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-target{font-size:9.8px;font-weight:850;color:#3f5e82;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-prob{font-size:9px;font-weight:750;color:#5f7895;line-height:1.12;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21278-thesis-card{align-items:center!important;padding:9px 10px!important;gap:9px!important;min-height:92px!important}.v21278-thesis-icon{width:32px;height:32px;flex:0 0 32px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21278-thesis-card.amber .v21278-thesis-icon{background:#fff1d5;color:#f0a000}.v21278-thesis-icon svg{width:20px;height:20px;display:block}.v21278-thesis-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;align-self:stretch}.v21278-thesis-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21278-thesis-value{font-size:17px;font-weight:900;color:#079b4a;line-height:1.04;margin:5px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21278-thesis-card.amber .v21278-thesis-value{color:#ee9800}.v21278-thesis-watch{font-size:9px;font-weight:850;color:#3f5e82;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21278-thesis-metrics{font-size:8.5px;font-weight:700;color:#5f7895;line-height:1.1;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-research-card{position:relative!important;display:block!important;padding:8px 9px 7px!important;min-height:92px!important}.v21273-rs-icon{position:absolute;left:9px;top:8px;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21273-rs-icon svg{width:19px;height:19px;display:block}.v21273-rs-title{position:absolute;left:47px;right:7px;top:9px;font-size:10.8px;font-weight:850;color:#45688f;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-body{position:absolute;left:8px;right:7px;top:34px;bottom:5px;display:grid;grid-template-columns:72px minmax(0,1fr);gap:7px;align-items:center}.v21273-rs-visual{width:72px;display:flex;align-items:center;justify-content:center}.v21267-rs-gauge{width:70px;height:49px}.v21267-rs-gauge svg{display:block;width:100%;height:100%;overflow:visible}.v21267-rs-track,.v21267-rs-fill{fill:none;stroke-width:10;stroke-linecap:round}.v21267-rs-track{stroke:#cbd8e5}.v21267-rs-fill{stroke:#08a142}.v21267-rs-needle{stroke:#9fb2c5;stroke-width:3;stroke-linecap:round}.v21267-rs-hub{fill:#9fb2c5}.v21273-rs-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;align-self:stretch;padding-top:1px}.v21273-rs-value{font-size:17px;font-weight:900;color:#079b4a;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-label{font-size:10px;font-weight:850;color:#ee9800;line-height:1.12;margin-top:3px}.v21273-rs-change{font-size:9px;font-weight:800;color:#5f7895;line-height:1.12;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-change.up{color:#079b4a}.v21273-rs-change.down{color:#d9363e}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21269-valuation-card{align-items:flex-start!important;padding:8px 10px!important;min-width:0!important;overflow:hidden!important}.v21269-val-icon{margin-top:1px}.v21269-val-icon svg{width:20px;height:20px;display:block}.v21269-val-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;max-width:100%;overflow:hidden}.v21269-val-value{font-size:15px;font-weight:900;color:#086ee8;line-height:1.08;margin:3px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-base{font-size:9px;font-weight:800;color:#3f5e82;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-move{font-size:10px;font-weight:900;line-height:1.15;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21269-val-move.up{color:#079b4a}.v21269-val-move.down{color:#d9363e}.v21269-val-move.neutral{color:#e89a00}.v21269-val-confidence{font-size:7.5px;font-weight:700;color:#7890aa;line-height:1.1;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.v21272-analyst-card{align-items:flex-start!important;padding:8px 9px!important;gap:8px!important}.v21272-analyst-icon{margin-top:0;width:28px!important;height:28px!important;flex:0 0 28px!important}.v21272-analyst-icon svg{width:18px;height:18px;display:block}.v21272-analyst-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:0}.v21272-analyst-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21272-analyst-value{font-size:14px;font-weight:900;color:#10264b;line-height:1.02;margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-count{font-size:8.8px;font-weight:800;color:#3f5e82;line-height:1.08;white-space:nowrap}.v21272-analyst-target{font-size:8.8px;font-weight:700;color:#3f5e82;line-height:1.08;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-target .up{color:#079b4a;font-weight:900}.v21272-analyst-target .down{color:#d9363e;font-weight:900}.v21274-analyst-source{font-size:7px;font-weight:700;color:#7890aa;line-height:1;margin-top:4px;white-space:nowrap}.v21276-forecast-card{align-items:center!important;padding:10px 11px!important;gap:11px!important;min-height:92px!important}.v21276-forecast-icon{width:36px!important;height:36px!important;flex:0 0 36px!important;margin-top:0}.v21276-forecast-icon svg{width:23px;height:23px;display:block}.v21276-forecast-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;align-self:stretch;padding:1px 0}.v21276-forecast-copy .v21262-strip-title{font-size:11px!important;font-weight:850!important;line-height:1.08!important}.v21276-forecast-value{font-size:20px;font-weight:900;color:#086ee8;line-height:1;margin:6px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-target{font-size:9.8px;font-weight:850;color:#3f5e82;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-prob{font-size:9px;font-weight:750;color:#5f7895;line-height:1.12;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21278-thesis-card{align-items:center!important;padding:9px 10px!important;gap:9px!important;min-height:92px!important;min-width:0!important;overflow:hidden!important}.v21278-thesis-icon{width:32px;height:32px;flex:0 0 32px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21278-thesis-card.amber .v21278-thesis-icon{background:#fff1d5;color:#f0a000}.v21278-thesis-icon svg{width:20px;height:20px;display:block}.v21278-thesis-copy{min-width:0;max-width:100%;display:flex;flex-direction:column;justify-content:center;align-self:stretch;overflow:hidden}.v21278-thesis-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21278-thesis-value{font-size:clamp(13px,1.05vw,17px);font-weight:900;color:#079b4a;line-height:1.08;margin:5px 0 4px;white-space:normal;overflow-wrap:anywhere;word-break:normal;max-width:100%}.v21278-thesis-card.amber .v21278-thesis-value{color:#ee9800}.v21278-thesis-watch{font-size:9px;font-weight:850;color:#3f5e82;line-height:1.15;white-space:normal;overflow-wrap:anywhere;max-width:100%}.v21278-thesis-metrics{font-size:8.5px;font-weight:700;color:#5f7895;line-height:1.15;margin-top:4px;white-space:normal;overflow-wrap:anywhere;max-width:100%}.v21273-research-card{position:relative!important;display:block!important;padding:8px 9px 7px!important;min-height:92px!important}.v21273-rs-icon{position:absolute;left:9px;top:8px;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21273-rs-icon svg{width:19px;height:19px;display:block}.v21273-rs-title{position:absolute;left:47px;right:7px;top:9px;font-size:10.8px;font-weight:850;color:#45688f;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-body{position:absolute;left:8px;right:7px;top:34px;bottom:5px;display:grid;grid-template-columns:72px minmax(0,1fr);gap:7px;align-items:center}.v21273-rs-visual{width:72px;display:flex;align-items:center;justify-content:center}.v21267-rs-gauge{width:70px;height:49px}.v21267-rs-gauge svg{display:block;width:100%;height:100%;overflow:visible}.v21267-rs-track,.v21267-rs-fill{fill:none;stroke-width:10;stroke-linecap:round}.v21267-rs-track{stroke:#cbd8e5}.v21267-rs-fill{stroke:#08a142}.v21267-rs-needle{stroke:#9fb2c5;stroke-width:3;stroke-linecap:round}.v21267-rs-hub{fill:#9fb2c5}.v21273-rs-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;align-self:stretch;padding-top:1px}.v21273-rs-value{font-size:17px;font-weight:900;color:#079b4a;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-label{font-size:10px;font-weight:850;color:#ee9800;line-height:1.12;margin-top:3px}.v21273-rs-change{font-size:9px;font-weight:800;color:#5f7895;line-height:1.12;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-change.up{color:#079b4a}.v21273-rs-change.down{color:#d9363e}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
         </style>""",unsafe_allow_html=True)
         st.markdown(f'<div class="v21262-strip">{_strip_html}</div>',unsafe_allow_html=True)
 
@@ -7129,8 +7143,10 @@ elif page=="Company Command Centre":
         # V21.2.39 — compact fixed equal-height Overview widgets.
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
         _overview_widget_height=520
+        # V21.3.23.1 — Price Chart gets its own compact height; adjacent research cards retain their geometry.
+        _price_chart_widget_height=410
         with _w_chart:
-            with st.container(border=True,height=_overview_widget_height,key="v21243_price_card"):
+            with st.container(border=True,height=_price_chart_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
                 # V21.3.15 — company-profile-aware Macro-to-Micro overlay.
                 _macro_exposures=exposure_map(ticker,_ccsector,_ccindustry,str(_ccmeta.get("country") or ""))
@@ -7255,7 +7271,7 @@ elif page=="Company Command Centre":
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=244,margin=dict(l=2,r=42,t=20,b=18),xaxis_rangeslider_visible=False,
+                    height=214,margin=dict(l=2,r=34,t=10,b=12),xaxis_rangeslider_visible=False,
                     showlegend=bool(_macro_on and _macro_available),legend=dict(orientation="h",y=1.03,x=0),bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
@@ -7270,9 +7286,17 @@ elif page=="Company Command Centre":
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v213171_chart_{ticker}_{_active_tf}_{int(_macro_on)}_{int(_macro_normalized)}")
                 if _macro_on and _macro_choice is not None:
                     if _macro_available:
-                        st.caption(f"Macro overlay: {_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel} · Market data via Yahoo Finance/yfinance · Visual co-movement does not establish causation.")
+                        st.markdown(
+                            f'<div class="v213231-macro-note"><b>{html.escape(_macro_choice.label)}</b> · '
+                            f'{html.escape(_macro_choice.channel)} · Yahoo Finance/yfinance · '
+                            '<span title="Overlay is contextual only; visual co-movement does not establish causation.">ⓘ</span></div>',
+                            unsafe_allow_html=True,
+                        )
+                        with st.expander("Macro overlay details",expanded=False):
+                            st.caption(f"{_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel}")
+                            st.caption("Market data via Yahoo Finance/yfinance. Visual co-movement does not establish causation.")
                     else:
-                        st.caption(f"Macro overlay unavailable: {_macro_status} Market data via Yahoo Finance/yfinance.")
+                        st.markdown(f'<div class="v213231-macro-note">Macro overlay unavailable · {html.escape(str(_macro_status))}</div>',unsafe_allow_html=True)
                 # V21.2.50 — x-axis is anchored to the volume band, so date labels render beneath volume.
                 # Footer remains one physical row with both sides locked to the same 26px baseline.
                 # No negative margins or overlays: both sides share the exact same baseline.
@@ -7291,10 +7315,10 @@ elif page=="Company Command Centre":
                     # Uses the existing internal Command Centre router so the active
                     # ticker/security identity is preserved without a browser reload.
                     st.button(
-                        "View Technical Analysis  →",
+                        "View Technical Analysis →",
                         key=f"v213172_technical_{ticker}",
                         type="tertiary",
-                        use_container_width=True,
+                        use_container_width=False,
                         on_click=_chr_set_cc_sub_v2111,
                         args=("Technical",),
                     )
@@ -7888,6 +7912,23 @@ elif page=="Monitor My Thesis":
 elif page=="Thesis Scorecard":
     st.header(f"Investment Thesis Monitor — {ticker}")
     st.caption("Monitor measurable thesis conditions using reported evidence and deterministic Python calculations. AI does not calculate the financial metrics or pass/fail states.")
+    try:
+        _ts_existing=thesis_table(ticker)
+        _ts_source="Stored thesis conditions"
+        if _ts_existing is None or _ts_existing.empty:
+            _ts_meta=safe_info(ticker)
+            _ts_cls=safe_company_classification(ticker)
+            _ts_existing=overview_dynamic_thesis(ticker,_ts_cls.get("sector",""),_ts_cls.get("industry",""),_ts_meta,price,price)
+            _ts_source="Chrímata evidence-driven monitoring"
+        _ts_summary=calculate_thesis_status(_ts_existing,expected_total=(len(_ts_existing) if _ts_existing is not None and len(_ts_existing) else 6),source=_ts_source)
+        _tsa,_tsb,_tsc,_tsd=st.columns(4)
+        _tsa.metric("Thesis status",_ts_summary["status_label"])
+        _tsb.metric("On track",f"{_ts_summary['on_track_count']} / {_ts_summary['total_conditions']}")
+        _tsc.metric("Watch",str(_ts_summary["watch_count"]))
+        _tsd.metric("Evidence coverage",f"{_ts_summary['evidence_coverage']:.0%}")
+        st.caption(f"{_ts_summary['evaluated_count']} evaluated · {_ts_summary['pending_count']} awaiting evidence · AI calculated: No")
+    except Exception:
+        pass
     _det=deterministic_financial_thesis(ticker)
     if _det:
         _dm=_det["metrics"]; _ds=_det["scorecard"]; _dv=_det["verification"]
