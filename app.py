@@ -1461,6 +1461,32 @@ def _forecast_diagnostics(bt):
             "direction":float(np.mean((a>0)==(p>0))),
             "corr":float(a.corr(p)) if len(a)>2 else np.nan}
 
+def _forecast_positive_probability(bt, predicted_return, max_neighbours=30):
+    """Empirical probability from the closest out-of-sample model scores.
+
+    This is deliberately withheld when the walk-forward sample is too small. It is
+    not an analyst probability and it never uses future observations at forecast origin.
+    """
+    if bt is None or bt.empty or not np.isfinite(_mia_num(predicted_return)):
+        return np.nan,0
+    x=bt.copy()
+    x["Ensemble"]=pd.to_numeric(x.get("Ensemble"),errors="coerce")
+    x["Actual"]=pd.to_numeric(x.get("Actual"),errors="coerce")
+    x=x.dropna(subset=["Ensemble","Actual"])
+    if len(x)<12:return np.nan,len(x)
+    x["distance"]=(x["Ensemble"]-float(predicted_return)).abs()
+    n=min(max_neighbours,max(12,len(x)//2))
+    near=x.nsmallest(n,"distance")
+    return float((near["Actual"]>0).mean()),len(near)
+
+def _forecast_validation_confidence(diag):
+    """Conservative validation label from out-of-sample sample size and error evidence."""
+    n=int(diag.get("n",0) or 0); direction=_mia_num(diag.get("direction")); mae=_mia_num(diag.get("mae"))
+    if n<12:return "Validation limited"
+    if n>=30 and np.isfinite(direction) and np.isfinite(mae) and direction>=.60 and mae<=.25:return "Higher validation"
+    if n>=20 and np.isfinite(direction) and direction>=.55:return "Moderate validation"
+    return "Limited validation"
+
 def _calibration_table(bt,bins=5):
     """Empirical calibration diagnostic; displayed as diagnostic, never promoted to a future probability."""
     if bt is None or len(bt)<20:return pd.DataFrame()
@@ -1758,6 +1784,10 @@ def v18_db_upgrade():
         id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,snapshot_at TEXT,start_price REAL,
         bear_value REAL,base_value REAL,bull_value REAL,profile_updated_at TEXT,
         assumption_fingerprint TEXT,source TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS forecast_validation_snapshots(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,snapshot_at TEXT,start_price REAL,
+        horizon_days INTEGER,predicted_return REAL,target_price REAL,positive_probability REAL,
+        validation_n INTEGER,direction_accuracy REAL,mae REAL,model_version TEXT,source TEXT)""")
     con.commit(); con.close()
 
 def kpi_observations(ticker):
@@ -1921,6 +1951,52 @@ def valuation_validation_summary(ticker):
     return {"Observations":len(r),"Median Error":float(r["Base Error %"].median()),
             "Direction Accuracy":float(r["Direction Correct"].mean()),
             "Range Hit":float(pd.to_numeric(r["Future In Bear-Bull Range"],errors="coerce").mean())}
+
+def record_forecast_validation_snapshot(ticker,start_price,row,bt,force=False):
+    """Store one point-in-time 12M model forecast per ticker/day/model version."""
+    if row is None:return False,"Forecast unavailable."
+    pred=_mia_num(row.get("Ensemble expected return")); target=_mia_num(row.get("Estimated price"))
+    if not (np.isfinite(_mia_num(start_price)) and np.isfinite(pred) and np.isfinite(target)):
+        return False,"Forecast unavailable."
+    diag=_forecast_diagnostics(bt); prob,_pn=_forecast_positive_probability(bt,pred)
+    now=datetime.now(timezone.utc); day=now.date().isoformat(); model_version="ChrimataForecast-21.2.76"
+    v18_db_upgrade(); con=ws_db()
+    try:
+        if not force:
+            exists=con.execute("SELECT 1 FROM forecast_validation_snapshots WHERE ticker=? AND substr(snapshot_at,1,10)=? AND model_version=? LIMIT 1",(ticker,day,model_version)).fetchone()
+            if exists:return False,"Today's forecast snapshot is already stored."
+        con.execute("""INSERT INTO forecast_validation_snapshots
+            (ticker,snapshot_at,start_price,horizon_days,predicted_return,target_price,positive_probability,validation_n,direction_accuracy,mae,model_version,source)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (ticker,now.isoformat(),float(start_price),252,pred,target,prob,int(diag.get("n",0) or 0),_mia_num(diag.get("direction")),_mia_num(diag.get("mae")),model_version,"Chrímata walk-forward ensemble"))
+        con.commit();return True,"Forecast validation snapshot recorded."
+    finally:con.close()
+
+def forecast_validation_results(ticker):
+    v18_db_upgrade(); con=ws_db()
+    try:d=pd.read_sql_query("SELECT * FROM forecast_validation_snapshots WHERE ticker=? ORDER BY snapshot_at",con,params=(ticker,))
+    except Exception:d=pd.DataFrame()
+    finally:con.close()
+    if d.empty:return pd.DataFrame()
+    hist=history(ticker,"5y")
+    if hist is None or hist.empty or "Close" not in hist:return pd.DataFrame()
+    hp=pd.DataFrame({"date":pd.to_datetime(hist.index,utc=True,errors="coerce"),"close":pd.to_numeric(hist["Close"],errors="coerce")}).dropna().sort_values("date")
+    rows=[]
+    for _,r in d.iterrows():
+        dt=pd.to_datetime(r["snapshot_at"],utc=True,errors="coerce"); after=hp[hp["date"]>=dt.normalize()]
+        h=int(r.get("horizon_days") or 252)
+        if len(after)<=h:continue
+        future=float(after.iloc[h]["close"]); start=_mia_num(r["start_price"]); target=_mia_num(r["target_price"]); pred=_mia_num(r["predicted_return"]); prob=_mia_num(r["positive_probability"])
+        if not (np.isfinite(start) and start>0 and np.isfinite(future)):continue
+        realised=future/start-1
+        rows.append({"Snapshot":dt.date().isoformat(),"Start Price":start,"Target":target,"Future Price":future,"Predicted Return":pred,"Realised Return":realised,"Target Error %":abs(target/future-1)*100 if np.isfinite(target) else np.nan,"Direction Correct":bool((pred>0)==(realised>0)) if np.isfinite(pred) else np.nan,"Predicted Positive Probability":prob,"Realised Positive":bool(realised>0),"Model Version":r.get("model_version")})
+    return pd.DataFrame(rows)
+
+def forecast_validation_summary(ticker):
+    r=forecast_validation_results(ticker)
+    if r.empty:return {"Observations":0,"Median Target Error":np.nan,"Direction Accuracy":np.nan,"Brier Score":np.nan}
+    p=pd.to_numeric(r["Predicted Positive Probability"],errors="coerce"); y=pd.to_numeric(r["Realised Positive"],errors="coerce"); ok=p.notna()&y.notna()
+    return {"Observations":len(r),"Median Target Error":float(pd.to_numeric(r["Target Error %"],errors="coerce").median()),"Direction Accuracy":float(pd.to_numeric(r["Direction Correct"],errors="coerce").mean()),"Brier Score":float(np.mean((p[ok]-y[ok])**2)) if ok.any() else np.nan}
 
 def reverse_targets(ticker,targets=(3,4,5,6)):
     p=valuation_profile(ticker); rows=[]
@@ -6278,13 +6354,19 @@ elif page=="Company Command Centre":
         _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
         if not np.isfinite(_cclo): _cclo=float(h["Low"].min())
         if not np.isfinite(_cchi): _cchi=float(h["High"].max())
-        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccvals=valuation_snapshot(ticker,price)
+        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccvals=valuation_snapshot(ticker,price)
         _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
-        _ccf12=np.nan
-        if _ccfc is not None and not _ccfc.empty:
-            _z=_ccfc.loc[_ccfc["Horizon"]=="12 Months","Median return"]
-            if len(_z) and pd.notna(_z.iloc[0]): _ccf12=float(_z.iloc[0])
+        _ccf12=np.nan; _fc_target=np.nan; _fc_prob=np.nan; _fc_prob_n=0; _fc_diag={"n":0,"mae":np.nan,"direction":np.nan}; _fc_conf="Validation limited"
+        _fc12row=None; _fc12bt=_ccadvbt.get("12 Months",pd.DataFrame()) if isinstance(_ccadvbt,dict) else pd.DataFrame()
+        if _ccadvfc is not None and not _ccadvfc.empty:
+            _z=_ccadvfc.loc[_ccadvfc["Horizon"]=="12 Months"]
+            if not _z.empty:
+                _fc12row=_z.iloc[0]; _ccf12=_mia_num(_fc12row.get("Ensemble expected return")); _fc_target=_mia_num(_fc12row.get("Estimated price"))
+                _fc_diag=_forecast_diagnostics(_fc12bt); _fc_prob,_fc_prob_n=_forecast_positive_probability(_fc12bt,_ccf12); _fc_conf=_forecast_validation_confidence(_fc_diag)
+                if np.isfinite(_ccf12) and np.isfinite(_fc_target):
+                    try: record_forecast_validation_snapshot(ticker,price,_fc12row,_fc12bt)
+                    except Exception: pass
         _ccbase=np.nan
         if _ccvals is not None and not _ccvals.empty and "scenario" in _ccvals.columns and "value_per_share" in _ccvals.columns:
             _q=_ccvals[_ccvals["scenario"].astype(str).str.lower()=="base"]
@@ -6554,11 +6636,11 @@ elif page=="Company Command Centre":
             f'<div class="v21262-strip-card blue v21269-valuation-card"><div class="v21262-strip-icon v21269-val-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="6.5" y="5.5" width="11" height="14" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 5.5V4.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4v1.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.3 9.2h5.4M9.3 12h5.4M9.3 14.8h2.1" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/><circle cx="14.6" cy="15.2" r="1.65" fill="none" stroke="currentColor" stroke-width="1.45"/><path d="M14.6 13.9v2.6M13.7 14.5h1.25c.55 0 .9.28.9.7 0 .44-.35.7-.9.7h-.7" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/></svg></div><div class="v21262-strip-copy v21269-val-copy"><div class="v21262-strip-title">Valuation</div><div class="v21269-val-value">{html.escape(_val_label)}</div><div class="v21269-val-base">{html.escape(f"Base case: {display_price(_ccbase,ticker)}" if np.isfinite(_mia_num(_ccbase)) else "Base case unavailable")}</div><div class="v21269-val-move {_val_move_cls}">{html.escape(_val_move)}</div><div class="v21269-val-confidence">{html.escape(_val_conf_text)}</div></div></div>',
             _strip_card('amber','○','Technicals',_tech_label,_tech_sub,_tech_context),
             f'<div class="v21262-strip-card good v21272-analyst-card" title="{html.escape(_an_provenance, quote=True)}"><div class="v21262-strip-icon v21272-analyst-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-label="Analyst consensus"><path d="M4.5 19V8.5h5V19m-2.5 0V5h5v14m-2.5 0V10.5h5V19m-2.5 0V7h5v12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 19.5h15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="v21262-strip-copy v21272-analyst-copy"><div class="v21262-strip-title">Analyst Consensus</div><div class="v21272-analyst-value">{html.escape(_an_label)}</div><div class="v21272-analyst-count">{html.escape(f"{_an_n} analysts" if _an_n else "Analyst count unavailable")}</div><div class="v21272-analyst-target">{(f"Target: {html.escape(display_price(_an_target,ticker))} <span class=\"{'up' if _an_up >= 0 else 'down'}\">({html.escape(f'{_an_up:+.0%}')})</span>" if np.isfinite(_an_target) and np.isfinite(_an_up) else "Target unavailable")}</div><div class="v21274-analyst-source">Provider evidence ⓘ</div></div></div>',
-            _strip_card('blue','↗','12M Forecast',(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable"),(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable"),(f"Historical model scenario" if np.isfinite(_ccf12) else "Insufficient model evidence")),
+            f'<div class="v21262-strip-card blue v21276-forecast-card" title="{html.escape((f"Chrímata 12M ensemble · {_fc_diag.get('n',0)} walk-forward tests · Direction accuracy: {_fc_diag.get('direction'):.1%} · MAE: {_fc_diag.get('mae'):.1%}" if _fc_diag.get('n',0) and np.isfinite(_mia_num(_fc_diag.get('direction'))) and np.isfinite(_mia_num(_fc_diag.get('mae'))) else "Chrímata 12M ensemble · validation evidence currently limited"), quote=True)}"><div class="v21262-strip-icon v21276-forecast-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 17l5-5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8h4v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="v21276-forecast-copy"><div class="v21262-strip-title">12M Forecast</div><div class="v21276-forecast-value">{html.escape(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable")}</div><div class="v21276-forecast-target">{html.escape(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable")}</div><div class="v21276-forecast-prob">{html.escape(f"Prob. positive return: {_fc_prob:.0%}" if np.isfinite(_fc_prob) else (_fc_conf if np.isfinite(_ccf12) else "Insufficient model evidence"))}</div></div></div>',
             _strip_card('good','▤','Thesis Status',_th_label,_th_sub,(f"{_ccth_met} / {_ccth_total} conditions on track" if _ccth_total else "Open Thesis Scorecard to configure")),
         ])
         st.markdown("""<style>
-        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21269-valuation-card{align-items:flex-start!important;padding:8px 10px!important}.v21269-val-icon{margin-top:1px}.v21269-val-icon svg{width:20px;height:20px;display:block}.v21269-val-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}.v21269-val-value{font-size:15px;font-weight:900;color:#086ee8;line-height:1.08;margin:3px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21269-val-base{font-size:9px;font-weight:800;color:#3f5e82;line-height:1.15;white-space:nowrap}.v21269-val-move{font-size:10px;font-weight:900;line-height:1.15;margin-top:3px;white-space:nowrap}.v21269-val-move.up{color:#079b4a}.v21269-val-move.down{color:#d9363e}.v21269-val-move.neutral{color:#e89a00}.v21269-val-confidence{font-size:7.5px;font-weight:700;color:#7890aa;line-height:1.1;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-card{align-items:flex-start!important;padding:8px 9px!important;gap:8px!important}.v21272-analyst-icon{margin-top:0;width:28px!important;height:28px!important;flex:0 0 28px!important}.v21272-analyst-icon svg{width:18px;height:18px;display:block}.v21272-analyst-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:0}.v21272-analyst-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21272-analyst-value{font-size:14px;font-weight:900;color:#10264b;line-height:1.02;margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-count{font-size:8.8px;font-weight:800;color:#3f5e82;line-height:1.08;white-space:nowrap}.v21272-analyst-target{font-size:8.8px;font-weight:700;color:#3f5e82;line-height:1.08;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-target .up{color:#079b4a;font-weight:900}.v21272-analyst-target .down{color:#d9363e;font-weight:900}.v21274-analyst-source{font-size:7px;font-weight:700;color:#7890aa;line-height:1;margin-top:4px;white-space:nowrap}.v21273-research-card{position:relative!important;display:block!important;padding:8px 9px 7px!important;min-height:92px!important}.v21273-rs-icon{position:absolute;left:9px;top:8px;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21273-rs-icon svg{width:19px;height:19px;display:block}.v21273-rs-title{position:absolute;left:47px;right:7px;top:9px;font-size:10.8px;font-weight:850;color:#45688f;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-body{position:absolute;left:8px;right:7px;top:34px;bottom:5px;display:grid;grid-template-columns:72px minmax(0,1fr);gap:7px;align-items:center}.v21273-rs-visual{width:72px;display:flex;align-items:center;justify-content:center}.v21267-rs-gauge{width:70px;height:49px}.v21267-rs-gauge svg{display:block;width:100%;height:100%;overflow:visible}.v21267-rs-track,.v21267-rs-fill{fill:none;stroke-width:10;stroke-linecap:round}.v21267-rs-track{stroke:#cbd8e5}.v21267-rs-fill{stroke:#08a142}.v21267-rs-needle{stroke:#9fb2c5;stroke-width:3;stroke-linecap:round}.v21267-rs-hub{fill:#9fb2c5}.v21273-rs-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;align-self:stretch;padding-top:1px}.v21273-rs-value{font-size:17px;font-weight:900;color:#079b4a;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-label{font-size:10px;font-weight:850;color:#ee9800;line-height:1.12;margin-top:3px}.v21273-rs-change{font-size:9px;font-weight:800;color:#5f7895;line-height:1.12;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-change.up{color:#079b4a}.v21273-rs-change.down{color:#d9363e}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21269-valuation-card{align-items:flex-start!important;padding:8px 10px!important}.v21269-val-icon{margin-top:1px}.v21269-val-icon svg{width:20px;height:20px;display:block}.v21269-val-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}.v21269-val-value{font-size:15px;font-weight:900;color:#086ee8;line-height:1.08;margin:3px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21269-val-base{font-size:9px;font-weight:800;color:#3f5e82;line-height:1.15;white-space:nowrap}.v21269-val-move{font-size:10px;font-weight:900;line-height:1.15;margin-top:3px;white-space:nowrap}.v21269-val-move.up{color:#079b4a}.v21269-val-move.down{color:#d9363e}.v21269-val-move.neutral{color:#e89a00}.v21269-val-confidence{font-size:7.5px;font-weight:700;color:#7890aa;line-height:1.1;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-card{align-items:flex-start!important;padding:8px 9px!important;gap:8px!important}.v21272-analyst-icon{margin-top:0;width:28px!important;height:28px!important;flex:0 0 28px!important}.v21272-analyst-icon svg{width:18px;height:18px;display:block}.v21272-analyst-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:0}.v21272-analyst-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21272-analyst-value{font-size:14px;font-weight:900;color:#10264b;line-height:1.02;margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-count{font-size:8.8px;font-weight:800;color:#3f5e82;line-height:1.08;white-space:nowrap}.v21272-analyst-target{font-size:8.8px;font-weight:700;color:#3f5e82;line-height:1.08;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21272-analyst-target .up{color:#079b4a;font-weight:900}.v21272-analyst-target .down{color:#d9363e;font-weight:900}.v21274-analyst-source{font-size:7px;font-weight:700;color:#7890aa;line-height:1;margin-top:4px;white-space:nowrap}.v21276-forecast-card{align-items:flex-start!important;padding:8px 9px!important;gap:8px!important}.v21276-forecast-icon{width:30px!important;height:30px!important;flex:0 0 30px!important;margin-top:0}.v21276-forecast-icon svg{width:19px;height:19px;display:block}.v21276-forecast-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:0}.v21276-forecast-copy .v21262-strip-title{font-size:10.5px!important;font-weight:800!important;line-height:1.05!important}.v21276-forecast-value{font-size:17px;font-weight:900;color:#086ee8;line-height:1.02;margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-target{font-size:9px;font-weight:800;color:#3f5e82;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21276-forecast-prob{font-size:8.4px;font-weight:700;color:#5f7895;line-height:1.08;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-research-card{position:relative!important;display:block!important;padding:8px 9px 7px!important;min-height:92px!important}.v21273-rs-icon{position:absolute;left:9px;top:8px;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e5f7ef;color:#079b4a}.v21273-rs-icon svg{width:19px;height:19px;display:block}.v21273-rs-title{position:absolute;left:47px;right:7px;top:9px;font-size:10.8px;font-weight:850;color:#45688f;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-body{position:absolute;left:8px;right:7px;top:34px;bottom:5px;display:grid;grid-template-columns:72px minmax(0,1fr);gap:7px;align-items:center}.v21273-rs-visual{width:72px;display:flex;align-items:center;justify-content:center}.v21267-rs-gauge{width:70px;height:49px}.v21267-rs-gauge svg{display:block;width:100%;height:100%;overflow:visible}.v21267-rs-track,.v21267-rs-fill{fill:none;stroke-width:10;stroke-linecap:round}.v21267-rs-track{stroke:#cbd8e5}.v21267-rs-fill{stroke:#08a142}.v21267-rs-needle{stroke:#9fb2c5;stroke-width:3;stroke-linecap:round}.v21267-rs-hub{fill:#9fb2c5}.v21273-rs-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;align-self:stretch;padding-top:1px}.v21273-rs-value{font-size:17px;font-weight:900;color:#079b4a;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-label{font-size:10px;font-weight:850;color:#ee9800;line-height:1.12;margin-top:3px}.v21273-rs-change{font-size:9px;font-weight:800;color:#5f7895;line-height:1.12;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21273-rs-change.up{color:#079b4a}.v21273-rs-change.down{color:#d9363e}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
         </style>""",unsafe_allow_html=True)
         st.markdown(f'<div class="v21262-strip">{_strip_html}</div>',unsafe_allow_html=True)
 

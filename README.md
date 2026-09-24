@@ -306,3 +306,11 @@ Added Company Overview Intelligence Widgets: valuation, forecasts, analyst conse
 
 ## V21.2.75
 Analyst Consensus icon updated from people/group imagery to a compact financial consensus bar-chart graphic. No analyst data, provenance, calculations, or other widgets changed.
+
+## V21.2.76 — 12M Forecast Reference Widget + Validation Engine
+- Rebuilds the Overview 12M Forecast card to the compact reference layout with a rising-chart icon, prominent expected return, model target and empirical positive-return probability.
+- Uses the existing Chrímata walk-forward ensemble (ridge + momentum + historical median) on up to 5 years of price history rather than duplicating analyst consensus.
+- Positive-return probability is withheld unless there are at least 12 out-of-sample walk-forward observations; when available it is the realised positive frequency among the closest historical out-of-sample model scores.
+- Automatically stores one point-in-time 12M forecast snapshot per ticker/day/model version for forward validation.
+- Adds matured 12M validation results: target error, directional accuracy and probability calibration (Brier score).
+- Missing evidence remains unavailable; no forecast or probability is fabricated.
