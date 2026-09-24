@@ -3,8 +3,9 @@ import re
 from datetime import datetime, timezone
 import pandas as pd
 import yfinance as yf
+from services.macro_mapper import get_exposure_matrix, primary_exposure_for_text
 
-NEWS_COLUMNS=["Date","Published","Headline","Source","URL","Layer","Category","Relevance","Why it matters","Affected KPI","What to watch","Ticker"]
+NEWS_COLUMNS=["Date","Published","Headline","Source","URL","Layer","Category","Relevance","Why it matters","Affected KPI","What to watch","Ticker","Macro Factor","Tracker","Transmission","Mapping"]
 
 def _content(item):
     if not isinstance(item,dict): return {}
@@ -19,7 +20,7 @@ def _url(c,item):
             if isinstance(obj,dict) and obj.get(k): return str(obj[k])
     return ''
 
-def _row(item,ticker,layer='Company'):
+def _row(item,ticker,layer='Company',ident=None):
     c=_content(item); title=str(c.get('title') or item.get('title') or '').strip()
     if not title:return None
     provider=c.get('provider') if isinstance(c.get('provider'),dict) else {}
@@ -44,9 +45,19 @@ def _row(item,ticker,layer='Company'):
     ]
     for keys,cat,k,w in rules:
         if any(x in text for x in keys): category,kpi,watch=cat,k,w; break
-    why=(f"Potentially relevant to {ticker} through {kpi.lower()}. Confirm the magnitude against company disclosures and financial results.")
-    relevance='High' if layer=='Company' else ('Medium' if layer=='Sector' else 'Context')
-    return {'Date':('—' if pd.isna(dt) else dt.strftime('%d %b %Y')),'Published':dt,'Headline':title,'Source':source,'URL':_url(c,item),'Layer':layer,'Category':category,'Relevance':relevance,'Why it matters':why,'Affected KPI':kpi,'What to watch':watch,'Ticker':ticker}
+    ident=ident or {}
+    exp=primary_exposure_for_text(title,ticker,ident.get('sector',''),ident.get('industry',''),ident.get('country',''))
+    macro_factor=tracker=transmission=mapping='—'
+    if exp:
+        macro_factor=exp['factor']; tracker=exp['tracker']; transmission=exp['transmission']; mapping='Deterministic macro mapper'
+        kpi=' / '.join(exp['affected_kpis'][:3])
+        why=f"Structural exposure match: {macro_factor}. {transmission} Confirm magnitude against company disclosures, hedging and reported KPIs."
+        watch=f"Watch {', '.join(exp['affected_kpis'][:3])}, company guidance and any mitigating hedges/pricing actions."
+        relevance='High' if layer in ('Company','Macro') else 'Medium'
+    else:
+        why=(f"Potentially relevant to {ticker} through {kpi.lower()}. Confirm the magnitude against company disclosures and financial results.")
+        relevance='High' if layer=='Company' else ('Medium' if layer=='Sector' else 'Context')
+    return {'Date':('—' if pd.isna(dt) else dt.strftime('%d %b %Y')),'Published':dt,'Headline':title,'Source':source,'URL':_url(c,item),'Layer':layer,'Category':category,'Relevance':relevance,'Why it matters':why,'Affected KPI':kpi,'What to watch':watch,'Ticker':ticker,'Macro Factor':macro_factor,'Tracker':tracker,'Transmission':transmission,'Mapping':mapping}
 
 def _search_news(query,count=12):
     try:
@@ -68,21 +79,20 @@ def news_intelligence(ticker, company_limit=30, sector_limit=15, macro_limit=15)
     except Exception: items=[]
     if not items: items=_search_news(f"{ident['name']} {ticker}",company_limit)
     for x in items[:company_limit]:
-        r=_row(x,ticker,'Company')
+        r=_row(x,ticker,'Company',ident)
         if r:rows.append(r)
     sq=' '.join(x for x in (ident['industry'],ident['sector']) if x).strip()
     if sq:
         for x in _search_news(sq,sector_limit):
-            r=_row(x,ticker,'Sector')
+            r=_row(x,ticker,'Sector',ident)
             if r:rows.append(r)
-    macro_q='interest rates inflation currency oil economy markets'
-    # Sector-sensitive macro context without pretending every headline is company-specific.
-    sec=(ident['sector']+' '+ident['industry']).lower()
-    if any(x in sec for x in ('airline','transport','energy','materials','mining')): macro_q='oil fuel commodity prices inflation interest rates currency economy'
-    elif any(x in sec for x in ('financial','bank','real estate')): macro_q='interest rates inflation bond yields economy credit markets'
-    elif any(x in sec for x in ('technology','communication')): macro_q='interest rates bond yields technology regulation economy markets'
+    matrix=get_exposure_matrix(ticker,ident.get('sector',''),ident.get('industry',''))
+    _terms=[]
+    for _exp in matrix['exposures']:
+        _terms.extend(_exp.get('keywords',[])[:3])
+    macro_q=' '.join(dict.fromkeys(_terms)) or 'interest rates inflation currency economy markets'
     for x in _search_news(macro_q,macro_limit):
-        r=_row(x,ticker,'Macro')
+        r=_row(x,ticker,'Macro',ident)
         if r:rows.append(r)
     df=pd.DataFrame(rows,columns=NEWS_COLUMNS)
     if df.empty:return df,ident
