@@ -7172,7 +7172,10 @@ elif page=="Company Command Centre":
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
         # V22.2.1 — lock the complete Overview intelligence row to one shared card height.
         # All three containers use the same Streamlit height so their top and bottom borders align.
-        _overview_widget_height=520
+        # V22.2.2 — compact equal-height Overview row.
+        # 430px removes the large unused lower area while retaining the full chart footer,
+        # six-row thesis scorecard and AI brief controls.
+        _overview_widget_height=430
         _price_chart_widget_height=_overview_widget_height
         with _w_chart:
             with st.container(border=True,height=_price_chart_widget_height,key="v21243_price_card"):
