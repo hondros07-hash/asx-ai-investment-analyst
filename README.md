@@ -26,3 +26,10 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - Adds explicit SEC retrieval diagnostics (CIK resolution, request failure, no investor filings).
 - Restores the native View all navigation control to the announcement card header.
 - Uses FILE for SEC/EDGAR documents because EDGAR primary documents are commonly HTML rather than PDF.
+
+## V21.3.05 — Global Disclosure Retrieval Engine + Universal View-All Navigation
+- ASX public parser now inspects document-link neighbourhoods even when unrelated table rows exist, with current-year fallback search.
+- US NASDAQ/NYSE listings continue through SEC EDGAR submissions.
+- LSE/HKEX/TSE/TSX retain configurable official-feed adapters and now have an issuer-owned investor-relations fallback when no feed is configured.
+- Latest Announcements & Reports uses a real visible Streamlit `View all →` control in the card header; navigation no longer depends on an HTML label/overlay.
+- No disclosure rows are fabricated: unavailable sources remain explicit and provenance is retained.

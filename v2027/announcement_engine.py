@@ -54,10 +54,11 @@ def _parse_asx(html, code):
     rows=[]
     # First pass: table rows (current/legacy ASX pages).
     blocks=re.findall(r'<tr\b[^>]*>(.*?)</tr>',html,flags=re.I|re.S)
-    # Second pass: if ASX changes away from <tr>, use bounded blocks around links.
-    if not blocks:
-        for m in re.finditer(r'href=["\']([^"\']*(?:asxpdf|displayAnnouncement\.do)[^"\']*)["\']',html,flags=re.I):
-            a=max(0,m.start()-1200); b=min(len(html),m.end()+1200); blocks.append(html[a:b])
+    # Second pass: ALWAYS add bounded blocks around document links. ASX pages can
+    # contain unrelated table rows, so only doing this when no <tr> exists can
+    # suppress the actual announcement markup.
+    for m in re.finditer(r'href=["\']([^"\']*(?:asxpdf|displayAnnouncement\.do)[^"\']*)["\']',html,flags=re.I):
+        a=max(0,m.start()-900); b=min(len(html),m.end()+900); blocks.append(html[a:b])
     seen=set()
     for block in blocks:
         hrefs=re.findall(r'href=["\']([^"\']+)["\']',block,flags=re.I)
@@ -99,19 +100,27 @@ def asx_public_archive(code, years=12, limit=250):
     """Live public ASX announcement search for the selected three-character code."""
     code=re.sub(r'[^A-Z0-9]','',str(code or '').upper().replace('.AX',''))[:3]
     if not code: return pd.DataFrame()
-    params={'asxCode':code,'by':'asxCode','period':'M6','timeframe':'D'}
-    url=ASX_ARCHIVE+'?'+urllib.parse.urlencode(params)
     headers={
       'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
       'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language':'en-AU,en;q=0.9','Referer':'https://www.asx.com.au/markets/trade-our-cash-market/announcements'
     }
-    try:
-        raw,_=_get(url,headers,30)
-        page=raw.decode('utf-8',errors='ignore')
-        rows=_parse_asx(page,code)
-    except Exception:
-        rows=[]
+    rows=[]
+    # ASX currently supports these public search shapes. Try the six-month view
+    # first, then the current calendar year so a quiet issuer still returns rows.
+    queries=[
+      {'asxCode':code,'by':'asxCode','period':'M6','timeframe':'D'},
+      {'asxCode':code,'by':'asxCode','timeframe':'Y','year':datetime.now().year},
+    ]
+    for params in queries:
+        try:
+            url=ASX_ARCHIVE+'?'+urllib.parse.urlencode(params)
+            raw,_=_get(url,headers,30)
+            page=raw.decode('utf-8',errors='ignore')
+            rows=_parse_asx(page,code)
+            if rows: break
+        except Exception:
+            continue
     if not rows:return pd.DataFrame()
     df=pd.DataFrame(rows).drop_duplicates('URL')
     df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')
@@ -384,7 +393,16 @@ def resolve_announcement_market(ticker, exchange="", country=""):
     """Resolve the selected *listing*, never the issuer name alone.
     Suffix wins, then supplied exchange/country, then bare symbols default to US only.
     """
-    t=str(ticker or "").upper().strip(); ex=str(exchange or "").upper(); co=str(country or "").upper()
+    t=str(ticker or "").upper().strip(); ex=str(exchange or "").upper().strip(); co=str(country or "").upper().strip()
+    # V21.3.04 — normalize common provider exchange labels/MICs before routing.
+    ex_alias={"ASX":"ASX","AUSTRALIAN SECURITIES EXCHANGE":"ASX","XASX":"ASX",
+              "NMS":"NASDAQ","NGM":"NASDAQ","NCM":"NASDAQ","NAS":"NASDAQ","XNAS":"NASDAQ",
+              "NYQ":"NYSE","NYE":"NYSE","ASE":"NYSE","AMEX":"NYSE","XNYS":"NYSE",
+              "LSE":"LSE","LONDON STOCK EXCHANGE":"LSE","XLON":"LSE",
+              "HKG":"HKEX","HKEX":"HKEX","HONG KONG STOCK EXCHANGE":"HKEX","XHKG":"HKEX",
+              "JPX":"TSE","TSE":"TSE","TOKYO STOCK EXCHANGE":"TSE","XTKS":"TSE",
+              "TOR":"TSX","TSX":"TSX","TORONTO STOCK EXCHANGE":"TSX","XTSE":"TSX"}
+    ex=ex_alias.get(ex,ex)
     if t.endswith(".AX") or "ASX" in ex or "AUSTRAL" in ex: market="ASX"
     elif t.endswith(".L") or "LONDON" in ex or ex in {"LSE","LSEIOB"}: market="LSE"
     elif t.endswith(".HK") or "HONG KONG" in ex or ex in {"HKG","HKEX"}: market="HKEX"
@@ -451,19 +469,77 @@ def _generic_official_provider(ticker, market, limit=250):
         return pd.DataFrame(rows)
     except Exception:return pd.DataFrame()
 
+
+def _issuer_ir_fallback(ticker, market, limit=250):
+    """Best-effort issuer-owned disclosure fallback.
+
+    Uses the issuer website reported by the market-data provider, then follows a
+    small set of investor/news/report links. Only issuer-owned pages/documents are
+    returned. This is a fallback when a jurisdiction does not expose a stable
+    machine-readable public feed; it never fabricates filings.
+    """
+    try:
+        import yfinance as yf
+        info=yf.Ticker(str(ticker)).get_info() or {}
+        root=str(info.get('website') or '').strip()
+    except Exception:
+        root=''
+    if not root.startswith('http'): return pd.DataFrame()
+    host=urllib.parse.urlparse(root).netloc.lower().removeprefix('www.')
+    headers={'User-Agent':'Mozilla/5.0 (compatible; ChrimataResearch/21.3.05)','Accept':'text/html,*/*'}
+    pages=[root]
+    seen_pages=set(); rows=[]; seen_docs=set()
+    keywords=('investor','announcement','news','report','results','financial','filing','regulatory','disclosure')
+    for page_url in list(pages):
+        if page_url in seen_pages: continue
+        seen_pages.add(page_url)
+        try:
+            raw,ct=_get(page_url,headers,18); txt=raw.decode('utf-8','ignore')
+        except Exception:
+            continue
+        # discover a few issuer-owned investor/report pages
+        for href,label in re.findall(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',txt,flags=re.I|re.S):
+            label=re.sub(r'<[^>]+>',' ',label); label=re.sub(r'\s+',' ',label).strip()
+            u=urllib.parse.urljoin(page_url,href)
+            ph=urllib.parse.urlparse(u).netloc.lower().removeprefix('www.')
+            if ph!=host: continue
+            low=(u+' '+label).lower()
+            if any(k in low for k in keywords) and u not in pages and len(pages)<8:
+                pages.append(u)
+            if (u.lower().split('?')[0].endswith('.pdf') or any(k in low for k in ('annual report','half year','quarterly','results','presentation','announcement'))) and u not in seen_docs:
+                dm=re.search(r'\b(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})\b',label)
+                rows.append({'Date':dm.group(1) if dm else '', 'Time':'','Group':f'{market} Issuer Disclosures',
+                    'Type':classify(label),'Title':label or 'Issuer disclosure','Price Sensitive':False,
+                    'Source':'Issuer investor relations','URL':u,'PDFURL':u if u.lower().split('?')[0].endswith('.pdf') else '',
+                    'ReadURL':u,'Has PDF':u.lower().split('?')[0].endswith('.pdf'),'ID':u})
+                seen_docs.add(u)
+        if len(rows)>=limit: break
+    if not rows:return pd.DataFrame()
+    df=pd.DataFrame(rows).drop_duplicates('URL')
+    df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')
+    return df.sort_values('_d',ascending=False,na_position='last').drop(columns='_d').head(limit).reset_index(drop=True)
+
 def announcements_global(ticker, provider_url="", provider_key="", limit=250, exchange="", country=""):
     ident=resolve_announcement_market(ticker,exchange,country); market=ident["market"]
     if market=="ASX":
         df,cov=announcements(ticker,provider_url,provider_key,limit)
+        if df is not None and not df.empty:
+            return df,cov,ident
+        ir=_issuer_ir_fallback(ticker,market,limit)
+        if ir is not None and not ir.empty:
+            return ir,"Issuer investor-relations fallback after ASX public search returned no parsed rows",ident
         return df,cov,ident
     if market in {"NASDAQ","NYSE"}:
         df=sec_archive(str(ticker).upper(),limit)
         return df,"SEC EDGAR submissions API",ident
     if market in {"LSE","HKEX","TSE","TSX"}:
         df=_generic_official_provider(ticker,market,limit)
-        cov=(f"{ident['authority']} configured feed" if df is not None and not df.empty
-             else f"{ident['authority']} — official portal available; automated feed not configured")
-        return df,cov,ident
+        if df is not None and not df.empty:
+            return df,f"{ident['authority']} configured feed",ident
+        ir=_issuer_ir_fallback(ticker,market,limit)
+        if ir is not None and not ir.empty:
+            return ir,f"Issuer investor-relations fallback for {ident['authority']}",ident
+        return pd.DataFrame(),f"{ident['authority']} — official portal available; no machine-readable feed or issuer fallback rows returned",ident
     return pd.DataFrame(),"Listing market could not be resolved",ident
 
 def announcement_provenance_global(ticker, coverage="", exchange="", country=""):

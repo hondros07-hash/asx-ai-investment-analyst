@@ -7221,7 +7221,15 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card v21286-market" title="{html.escape(_mp_tip,quote=True)}"><div class="v21261-title">Market Position {_info}</div><div class="v21261-market-range"><div class="v21286-range-row"><div class="v21286-range-badge">▼</div><div class="v21286-range-main" style="--mp-pos:{_rpct:.1f}%"><div class="v21261-k">52 Week Range</div><div class="v21261-market-track"><i class="v21261-market-now" style="left:{_rpct:.1f}%"></i><i class="v21261-market-high"></i></div><div class="v21261-market-labels"><span>{display_price(_cclo,ticker) if np.isfinite(_cclo) else "—"}</span><span>{display_price(price,ticker) if np.isfinite(price) else "—"}</span><span>{display_price(_cchi,ticker) if np.isfinite(_cchi) else "—"}</span></div></div></div><div class="v21286-range-position">{f"{_range_pos:.0%} of range ({_quart})" if np.isfinite(_range_pos) else "Range position unavailable"}</div></div><table class="v21261-table">{_mk}</table></div>',unsafe_allow_html=True)
             st.button("View Company Details  →",key=f"v21261_nav_det_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
 
-        st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
+        st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_legacy_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
+        st.markdown('''<style>
+/* V21.3.05 — reference-card geometry with a real native View all control */
+.v21305-ann-title{font-size:16px;font-weight:800;color:#082b5c;white-space:nowrap;}
+.v21305-ann-body{min-height:205px;margin-top:2px;}
+.v21305-ann-body .v21290-row{grid-template-columns:105px minmax(0,1fr) 120px 48px!important;}
+[class*="st-key-v21305_nav_ann_"] button{border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:800!important;padding:0!important;min-height:28px!important;white-space:nowrap!important;}
+[class*="st-key-v21305_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}
+</style>''',unsafe_allow_html=True)
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
         # Each card remains evidence-first: provider/stored rows only; unsupported fields render as unavailable.
@@ -7290,8 +7298,16 @@ elif page=="Company Command Centre":
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
-            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span><span class="v21290-viewall v21304-ann-viewall">View all →</span></div>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
-            st.button("View all →",key=f"v21293_nav_ann_{ticker}",on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
+            # V21.3.05 — native, universal announcement-card navigation. The visible
+            # top-right control is the actual Streamlit button; no decorative HTML
+            # label or fragile invisible/overlaid button is used.
+            with st.container(border=True):
+                _ah1,_ah2=st.columns([5.4,1.25],vertical_alignment="center")
+                with _ah1:
+                    st.markdown('<div class="v21305-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="'+html.escape(_tip,quote=True)+'">i</span></div>',unsafe_allow_html=True)
+                with _ah2:
+                    st.button("View all →",key=f"v21305_nav_ann_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
+                st.markdown(f'<div class="v21305-ann-body">{_body}</div><div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:
