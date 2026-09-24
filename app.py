@@ -3302,10 +3302,19 @@ def overview_news_safe(ticker, limit=5):
     return pd.DataFrame(rows,columns=["Date","Headline","Source"])
 
 def _chr_set_cc_sub_v2111(target):
+    """Deterministic in-app Command Centre navigation (V21.3.06)."""
     if target in _cc_items:
         _chr_clear_legal_route_v21300()
-        st.session_state[_cc_sub_key]=target
         st.session_state["chr_primary_nav"]="Company Command Centre"
+        st.session_state[_cc_sub_key]=target
+        # Deep-link query params are entry routes only. Remove them so they can
+        # never overwrite a deliberate in-app subpage transition on rerun.
+        try:
+            for _qp in ("chr_cc","chr_cc_page","chr_compare","chr_pick"):
+                if _qp in st.query_params:
+                    del st.query_params[_qp]
+        except Exception:
+            pass
 
 st.sidebar.markdown(r'''<style>
 /* V21.1.5 — unified icon + text Command Centre child rows.
@@ -5968,7 +5977,11 @@ elif page=="Announcements & Reports":
     query_filter=c3.text_input("Search announcements","",placeholder="results, annual report, buy-back, substantial holder…")
 
     with st.spinner("Loading exchange announcements..."):
-        ann,coverage=announcements(ticker,_ann_url,_ann_key,int(ann_limit))
+        _secid=dict(st.session_state.get("chr_security_identity") or {})
+        _ann_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
+        _ann_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or "")
+        _ann_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or "")
+        ann,coverage,_ann_identity=announcements_global(_ann_ticker,_ann_url,_ann_key,int(ann_limit),exchange=_ann_exchange,country=_ann_country)
 
     st.caption(f"Data route: {coverage}")
     if ticker.endswith(".AX") and not _ann_url:
@@ -7306,7 +7319,10 @@ elif page=="Company Command Centre":
                 with _ah1:
                     st.markdown('<div class="v21305-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="'+html.escape(_tip,quote=True)+'">i</span></div>',unsafe_allow_html=True)
                 with _ah2:
-                    st.button("View all →",key=f"v21305_nav_ann_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
+                    _ann_view_all=st.button("View all →",key=f"v21306_nav_ann_{ticker}",use_container_width=True)
+                    if _ann_view_all:
+                        _chr_set_cc_sub_v2111("Announcements & Reports")
+                        st.rerun()
                 st.markdown(f'<div class="v21305-ann-body">{_body}</div><div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
         with _m2:
             _rows=[]

@@ -33,3 +33,11 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - LSE/HKEX/TSE/TSX retain configurable official-feed adapters and now have an issuer-owned investor-relations fallback when no feed is configured.
 - Latest Announcements & Reports uses a real visible Streamlit `View all →` control in the card header; navigation no longer depends on an HTML label/overlay.
 - No disclosure rows are fabricated: unavailable sources remain explicit and provenance is retained.
+
+## V21.3.06 — Verified Global Disclosure Pipeline + Deterministic View-All Navigation
+- Hardened ASX public announcement parsing across current/legacy markup and multiple supported search windows.
+- Added explicit ASX request/parser diagnostics instead of silently collapsing transport/parser failures into a generic empty result.
+- Updated the SEC EDGAR default automated-client User-Agent and retained configurable `SEC_USER_AGENT` support.
+- Full Announcements & Reports workspace now uses the same listing-aware global disclosure router as the Overview card.
+- Rebuilt the Overview `View all →` action as a deterministic state transition that clears stale deep-link parameters and explicitly reruns into Announcements & Reports.
+- Added regression tests for ASX normalization/document links, META/SEC normalization, six-market routing, and View-All navigation wiring.

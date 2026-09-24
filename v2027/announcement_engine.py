@@ -43,89 +43,88 @@ def _asx_abs_url(href):
     return urllib.parse.urljoin('https://www.asx.com.au/',href)
 
 def _parse_asx(html, code):
-    """Parse the current public ASX announcement-search HTML.
+    """Parse ASX public announcement-search HTML defensively.
 
-    ASX has changed the markup around the results table over time, so this parser
-    deliberately supports both row-based markup and announcement anchors embedded
-    in other containers. It only accepts links that resolve to ASX announcement
-    documents/display pages and therefore does not manufacture rows from page text.
+    Supports legacy/current table markup and link/container variants. A row is
+    accepted only when it has a release date and an ASX document/display link;
+    this prevents navigation links from becoming fake announcements.
     """
     from html import unescape
-    rows=[]
-    # First pass: table rows (current/legacy ASX pages).
+    rows=[]; seen=set()
     blocks=re.findall(r'<tr\b[^>]*>(.*?)</tr>',html,flags=re.I|re.S)
-    # Second pass: ALWAYS add bounded blocks around document links. ASX pages can
-    # contain unrelated table rows, so only doing this when no <tr> exists can
-    # suppress the actual announcement markup.
-    for m in re.finditer(r'href=["\']([^"\']*(?:asxpdf|displayAnnouncement\.do)[^"\']*)["\']',html,flags=re.I):
-        a=max(0,m.start()-900); b=min(len(html),m.end()+900); blocks.append(html[a:b])
-    seen=set()
+    # Also inspect bounded regions around likely document anchors. Current ASX
+    # markup has varied between asxpdf, announcement/display routes and generic
+    # anchors whose surrounding row contains page-count/file-size metadata.
+    for m in re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>.*?</a>',html,flags=re.I|re.S):
+        href=m.group(1); low=href.lower()
+        a=max(0,m.start()-1200); b=min(len(html),m.end()+1200); block=html[a:b]
+        nearby=unescape(re.sub(r'<[^>]+>',' ',block)); nearby=re.sub(r'\s+',' ',nearby)
+        likely=('asxpdf' in low or 'displayannouncement' in low or low.endswith('.pdf') or
+                (re.search(r'\b\d{1,2}/\d{1,2}/\d{4}\b',nearby) and re.search(r'\b\d+\s+pages?\b',nearby,re.I)))
+        if likely: blocks.append(block)
     for block in blocks:
-        hrefs=re.findall(r'href=["\']([^"\']+)["\']',block,flags=re.I)
-        docs=[h for h in hrefs if ('asxpdf' in h.lower() or '.pdf' in h.lower() or 'displayannouncement.do' in h.lower())]
-        if not docs: continue
-        href=_asx_abs_url(docs[0])
-        if href in seen: continue
-        text=unescape(re.sub(r'<[^>]+>',' ',block))
-        text=re.sub(r'\s+',' ',text).strip()
+        text=unescape(re.sub(r'<[^>]+>',' ',block)); text=re.sub(r'\s+',' ',text).strip()
         dm=re.search(r'(\d{1,2}/\d{1,2}/\d{4})',text)
         if not dm: continue
-        date=dm.group(1)
-        tm=re.search(r'\b(\d{1,2}:\d{2}\s*(?:am|pm))\b',text,flags=re.I)
-        time=tm.group(1) if tm else ''
-        # Prefer the announcement anchor's visible text as the headline.
-        title=''
+        anchors=[]
         for am in re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',block,flags=re.I|re.S):
-            ah,at=am.group(1),unescape(re.sub(r'<[^>]+>',' ',am.group(2)))
-            at=re.sub(r'\s+',' ',at).strip()
-            if ('asxpdf' in ah.lower() or 'displayannouncement.do' in ah.lower() or '.pdf' in ah.lower()) and at:
-                title=at; break
+            href=am.group(1); label=unescape(re.sub(r'<[^>]+>',' ',am.group(2))); label=re.sub(r'\s+',' ',label).strip()
+            low=href.lower()
+            score=0
+            if 'asxpdf' in low: score+=5
+            if 'displayannouncement' in low: score+=5
+            if low.split('?')[0].endswith('.pdf'): score+=4
+            if label and not any(x in label.lower() for x in ('search again','adobe','how and when')): score+=1
+            anchors.append((score,href,label))
+        anchors.sort(reverse=True,key=lambda x:x[0])
+        if not anchors or anchors[0][0] < 2: continue
+        _,raw_href,title=anchors[0]; href=_asx_abs_url(raw_href)
+        if href in seen: continue
+        date=dm.group(1); tm=re.search(r'\b(\d{1,2}:\d{2}\s*(?:am|pm))\b',text,flags=re.I); time=tm.group(1) if tm else ''
         if not title:
+            # Remove mechanical fields, retaining the announcement headline.
             title=text
-            title=re.sub(r'\d{1,2}/\d{1,2}/\d{4}',' ',title)
-            title=re.sub(r'\b\d{1,2}:\d{2}\s*(?:am|pm)?\b',' ',title,flags=re.I)
-            title=re.sub(r'\b\d+\s+pages?\b',' ',title,flags=re.I)
-            title=re.sub(r'\b[\d.]+\s*(?:KB|MB)\b',' ',title,flags=re.I)
+            for pat in (r'\d{1,2}/\d{1,2}/\d{4}',r'\b\d{1,2}:\d{2}\s*(?:am|pm)?\b',r'\b\d+\s+pages?\b',r'\b[\d.]+\s*(?:KB|MB)\b'):
+                title=re.sub(pat,' ',title,flags=re.I)
             title=re.sub(r'\s+',' ',title).strip(' |-')
-        sensitive=bool(re.search(r'price sensitive',block,flags=re.I))
         rows.append({'Date':date,'Time':time,'Group':'ASX Announcements','Type':classify(title),
-                     'Title':title or 'ASX announcement','Price Sensitive':sensitive,
-                     'Source':'ASX Market Announcements','URL':href,'PDFURL':href,
-                     'ReadURL':href,'Has PDF':('.pdf' in href.lower() or 'asxpdf' in href.lower()),
+                     'Title':title or 'ASX announcement','Price Sensitive':bool(re.search(r'price sensitive',block,re.I)),
+                     'Source':'ASX Market Announcements','URL':href,'PDFURL':href,'ReadURL':href,
+                     'Has PDF':('asxpdf' in href.lower() or href.lower().split('?')[0].endswith('.pdf')),
                      'ID':href.rsplit('/',1)[-1]})
         seen.add(href)
     return rows
 
 def asx_public_archive(code, years=12, limit=250):
-    """Live public ASX announcement search for the selected three-character code."""
+    """Live public ASX search with explicit diagnostics and several supported windows."""
     code=re.sub(r'[^A-Z0-9]','',str(code or '').upper().replace('.AX',''))[:3]
-    if not code: return pd.DataFrame()
-    headers={
-      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
-      'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language':'en-AU,en;q=0.9','Referer':'https://www.asx.com.au/markets/trade-our-cash-market/announcements'
-    }
-    rows=[]
-    # ASX currently supports these public search shapes. Try the six-month view
-    # first, then the current calendar year so a quiet issuer still returns rows.
+    cols=['Date','Time','Group','Type','Title','Price Sensitive','Source','URL','PDFURL','ReadURL','Has PDF','ID']
+    if not code: return pd.DataFrame(columns=cols)
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+             'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','Accept-Language':'en-AU,en;q=0.9',
+             'Referer':'https://www.asx.com.au/markets/trade-our-cash-market/announcements'}
+    diagnostics=[]; rows=[]
     queries=[
       {'asxCode':code,'by':'asxCode','period':'M6','timeframe':'D'},
+      {'asxCode':code,'by':'asxCode','period':'M3','timeframe':'D'},
+      {'asxCode':code,'by':'asxCode','period':'M1','timeframe':'D'},
+      {'asxCode':code,'by':'asxCode','period':'W','timeframe':'D'},
       {'asxCode':code,'by':'asxCode','timeframe':'Y','year':datetime.now().year},
     ]
     for params in queries:
         try:
-            url=ASX_ARCHIVE+'?'+urllib.parse.urlencode(params)
-            raw,_=_get(url,headers,30)
-            page=raw.decode('utf-8',errors='ignore')
-            rows=_parse_asx(page,code)
-            if rows: break
-        except Exception:
-            continue
-    if not rows:return pd.DataFrame()
-    df=pd.DataFrame(rows).drop_duplicates('URL')
-    df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')
-    return df.sort_values('_d',ascending=False).drop(columns='_d').head(limit).reset_index(drop=True)
-
+            url=ASX_ARCHIVE+'?'+urllib.parse.urlencode(params); raw,ctype=_get(url,headers,30)
+            page=raw.decode('utf-8',errors='ignore'); parsed=_parse_asx(page,code)
+            diagnostics.append({'query':params,'bytes':len(raw),'rows':len(parsed),'content_type':ctype})
+            if parsed: rows=parsed; break
+        except Exception as e:
+            diagnostics.append({'query':params,'error':type(e).__name__+': '+str(e)[:160]})
+    if not rows:
+        df=pd.DataFrame(columns=cols); df.attrs.update({'status':'ASX_NO_PARSED_ROWS','ticker':code,'diagnostics':diagnostics}); return df
+    df=pd.DataFrame(rows).drop_duplicates('URL'); df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')
+    df=df.sort_values('_d',ascending=False).drop(columns='_d').head(limit).reset_index(drop=True)
+    df.attrs.update({'status':'OK','ticker':code,'diagnostics':diagnostics,'source':'ASX public company-announcement search'})
+    return df
 
 def asx_provider_api(code, api_url, api_key="", limit=250):
     """Generic adapter for a licensed/authorised ASX announcement vendor.
@@ -210,7 +209,7 @@ def _sec_primary_url(cik, accession, primary):
 def _sec_headers():
     # SEC asks automated clients to declare a User-Agent. Operators can set a
     # real contact string in Streamlit/host secrets via SEC_USER_AGENT.
-    ua=os.getenv("SEC_USER_AGENT", "Chrimata Market Investment Analyst research application")
+    ua=os.getenv("SEC_USER_AGENT", "Chrimata/21.3.06 (+https://github.com/hondros07-hash/asx-ai-investment-analyst; market-research application)")
     return {"User-Agent":ua,"Accept":"application/json,text/html,*/*"}
 
 
