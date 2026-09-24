@@ -68,3 +68,10 @@ Rebuilt dynamic disclosure card: selected listing drives market adapter; ASX use
 - Keeps retrieval dynamic to the currently selected listing; no company announcements are hard-coded.
 - Keeps direct PDF links when recoverable; otherwise VIEW opens the official ASX ticker announcement search.
 - Forces the Latest Announcements & Reports reference card interior to white and contains View all navigation inside the card header.
+
+## V21.3.12 — Official Disclosure Provider Gateway + Production Reference Card
+- One listing-aware disclosure gateway now powers both the Overview card and full Announcements & Reports page.
+- ASX listings are canonicalised from the active security identity and routed only to ASX adapters.
+- U.S. listings use SEC ticker mapping with an independent official SEC Company Atom CIK fallback, then data.sec.gov submissions.
+- Provider failures preserve explicit machine states instead of being flattened into a false “no rows” result.
+- Production announcement card is white, contains its provenance inside the card, and keeps View all inside the header.

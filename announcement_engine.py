@@ -690,3 +690,109 @@ def announcement_provenance_global(ticker, coverage="", exchange="", country="")
     return {"market":ident["market"],"country":ident["country"],"authority":ident["authority"],
             "coverage":coverage or ident["authority"],"portal":ident["portal"],
             "document_policy":"Open the original authoritative filing/disclosure document when a document URL is available. Chrímata does not fabricate missing filings."}
+
+# ---------------------------------------------------------------------------
+# V21.3.12 — Official Disclosure Provider Gateway
+# One exchange-aware entry point for the production card/full disclosure page.
+# ---------------------------------------------------------------------------
+
+def _empty_disclosures(status, provider, ticker, diagnostics=None):
+    cols=["Date","Time","Group","Type","Title","Price Sensitive","Source","PDFURL","ReadURL","IndexURL","URL","Has PDF","ID"]
+    df=pd.DataFrame(columns=cols)
+    df.attrs.update({"status":status,"provider":provider,"ticker":str(ticker or ""),"diagnostics":diagnostics or []})
+    return df
+
+
+def _sec_cik_from_company_atom(ticker, headers):
+    """Official SEC fallback when ticker mapping JSON is unavailable/blocked."""
+    symbol=str(ticker or "").upper().strip().split(".",1)[0]
+    url="https://www.sec.gov/cgi-bin/browse-edgar?"+urllib.parse.urlencode({
+        "action":"getcompany","CIK":symbol,"owner":"exclude","output":"atom","count":"10"
+    })
+    try:
+        raw,_=_get(url,headers,30)
+        txt=raw.decode("utf-8","ignore")
+        # Atom company-info normally exposes CIK as a zero-padded integer.
+        for pat in (r'<cik>(\d+)</cik>', r'CIK=(\d{6,10})', r'CIK\s*:?\s*(\d{6,10})'):
+            m=re.search(pat,txt,re.I)
+            if m: return int(m.group(1)), {"ticker":symbol,"source":"SEC company Atom"}, []
+        return None,{},["atom:no_cik"]
+    except Exception as e:
+        return None,{},["atom:"+type(e).__name__+":"+str(e)[:120]]
+
+
+def sec_archive_gateway(ticker, limit=250, include_regulatory=False):
+    """SEC adapter with two independent official CIK-resolution routes."""
+    headers=_sec_headers(); diagnostics=[]
+    cik,match,errs=_sec_ticker_to_cik(ticker,headers); diagnostics.extend(errs)
+    if not cik:
+        cik,match2,errs2=_sec_cik_from_company_atom(ticker,headers); diagnostics.extend(errs2)
+        if match2: match=match2
+    if not cik:
+        return _empty_disclosures("IDENTITY_FAILED","U.S. SEC EDGAR",ticker,diagnostics)
+    try:
+        endpoint=f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json"
+        raw,ctype=_get(endpoint,headers,30)
+        diagnostics.append({"endpoint":endpoint,"bytes":len(raw),"content_type":ctype})
+        payload=json.loads(raw.decode("utf-8")); recent=((payload.get("filings") or {}).get("recent") or {})
+    except Exception as e:
+        diagnostics.append("submissions:"+type(e).__name__+":"+str(e)[:160])
+        return _empty_disclosures("UPSTREAM_ERROR","U.S. SEC EDGAR",ticker,diagnostics)
+    rows=[]; forms=recent.get("form") or []
+    for i,form in enumerate(forms):
+        if not include_regulatory and form not in INVESTOR_FORMS: continue
+        try:
+            accession=(recent.get("accessionNumber") or [])[i]
+            primary=(recent.get("primaryDocument") or [])[i]
+            filed=(recent.get("filingDate") or [])[i]
+        except Exception: continue
+        primary_url,index_url=_sec_primary_url(cik,accession,primary)
+        rows.append({"Date":filed,"Time":"","Group":_sec_group(form),"Type":form,
+                     "Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
+                     "PDFURL":"","ReadURL":primary_url,"IndexURL":index_url,"URL":primary_url,
+                     "Has PDF":False,"ID":accession})
+        if len(rows)>=limit: break
+    if not rows:
+        return _empty_disclosures("NO_DISCLOSURES","U.S. SEC EDGAR",ticker,diagnostics)
+    df=pd.DataFrame(rows)
+    df.attrs.update({"status":"SUCCESS","provider":"U.S. SEC EDGAR","ticker":str(ticker),"cik":int(cik),
+                     "company":payload.get("name") or match.get("name") or match.get("title") or "",
+                     "diagnostics":diagnostics,"source":"SEC submissions API"})
+    return df
+
+
+def official_disclosure_gateway(ticker, provider_url="", provider_key="", limit=250, exchange="", country=""):
+    """Production disclosure gateway driven only by the currently selected listing.
+
+    Returns (dataframe, coverage, identity).  Empty results retain a machine-readable
+    status so the UI never confuses transport/identity failures with genuine no filings.
+    """
+    ident=resolve_announcement_market(ticker,exchange,country); market=ident.get("market","UNKNOWN")
+    if market=="ASX":
+        code=re.sub(r"[^A-Z0-9]","",str(ticker or "").upper().replace(".AX",""))[:3]
+        if not code:
+            return _empty_disclosures("IDENTITY_FAILED","ASX Market Announcements",ticker),"ASX Market Announcements",ident
+        canonical=code+".AX"
+        df,cov=announcements(canonical,provider_url,provider_key,limit)
+        if df is not None and not df.empty:
+            df.attrs["status"]="SUCCESS"; df.attrs["provider"]="ASX Market Announcements"; df.attrs["canonical_ticker"]=canonical
+            return df,cov,ident
+        # Preserve the deepest ASX diagnostics/status rather than flattening to "no rows".
+        if df is None: df=_empty_disclosures("UPSTREAM_ERROR","ASX Market Announcements",canonical)
+        elif not getattr(df,"attrs",{}).get("status"): df.attrs["status"]="UPSTREAM_ERROR"
+        df.attrs["provider"]="ASX Market Announcements"; df.attrs["canonical_ticker"]=canonical
+        return df,cov,ident
+    if market in {"NASDAQ","NYSE"}:
+        df=sec_archive_gateway(ticker,limit)
+        return df,"SEC EDGAR submissions API",ident
+    if market in {"LSE","HKEX","TSE","TSX"}:
+        df=_generic_official_provider(ticker,market,limit)
+        if df is not None and not df.empty:
+            df.attrs.update({"status":"SUCCESS","provider":ident.get("authority",market)})
+            return df,f"{ident['authority']} configured feed",ident
+        ir=_issuer_ir_fallback(ticker,market,limit)
+        if ir is not None and not ir.empty:
+            ir.attrs.update({"status":"SUCCESS","provider":"Issuer investor relations"})
+            return ir,f"Issuer investor-relations fallback for {ident['authority']}",ident
+        return _empty_disclosures("UPSTREAM_ERROR",ident.get("authority",market),ticker),f"{ident['authority']} — no rows returned",ident
+    return _empty_disclosures("IDENTITY_FAILED","Unresolved disclosure source",ticker),"Listing market could not be resolved",ident

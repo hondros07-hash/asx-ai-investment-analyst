@@ -26,7 +26,7 @@ from research_system import snapshot as research_snapshot, kpi_framework, techni
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
 from announcement_engine import (announcements, fetch_document, extract_text, evidence_summary, announcement_provenance,
-    announcements_global, announcement_provenance_global, resolve_announcement_market)
+    announcements_global, official_disclosure_gateway, announcement_provenance_global, resolve_announcement_market)
 from global_dividends import upcoming_dividends
 from corporate_actions_calendar import corporate_actions_calendar
 
@@ -5981,7 +5981,7 @@ elif page=="Announcements & Reports":
         _ann_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
         _ann_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or "")
         _ann_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or "")
-        ann,coverage,_ann_identity=announcements_global(_ann_ticker,_ann_url,_ann_key,int(ann_limit),exchange=_ann_exchange,country=_ann_country)
+        ann,coverage,_ann_identity=official_disclosure_gateway(_ann_ticker,_ann_url,_ann_key,int(ann_limit),exchange=_ann_exchange,country=_ann_country)
 
     st.caption(f"Data route: {coverage}")
     if ticker.endswith(".AX") and not _ann_url:
@@ -7242,8 +7242,8 @@ elif page=="Company Command Centre":
 .v21310-ann-row{display:grid;grid-template-columns:92px minmax(0,1fr) 102px 44px;height:21px;align-items:center;border-bottom:1px solid #e5edf7;color:#355b89;font-size:10.5px;}
 .v21310-ann-row>span{height:21px;line-height:21px;padding:0 8px;border-right:1px solid #e5edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .v21310-ann-row>span:last-child{border-right:0;text-align:center;padding:0}.v21310-ann-row .main{color:#244f82}.v21310-ann-row .meta{color:#6c82a1}.v21310-ann-row a{color:#0067e8!important;font-weight:800;text-decoration:none!important;}
-.v21310-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px;background:#fff}.v21310-ann-source{height:25px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px;background:#fff}
-[class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 0!important;overflow:hidden!important;background:#fff!important;}
+.v21310-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px;background:#fff}.v21310-ann-source{min-height:22px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px;background:#fff;padding:3px 0 1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+[class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 8px!important;overflow:visible!important;background:#fff!important;}
 [class*="st-key-v21310_ann_card_"]>div,[class*="st-key-v21310_ann_card_"] [data-testid="stVerticalBlock"]{background:#fff!important;}
 [class*="st-key-v21310_ann_card_"] [class*="st-key-v21310_nav_ann_"] button{width:auto!important;min-height:25px!important;height:25px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
 </style>''',unsafe_allow_html=True)
@@ -7259,7 +7259,7 @@ elif page=="Company Command Centre":
             _id_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
             _id_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
             _id_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or _ccmeta.get("country") or "")
-            _v21291_ann_all,_v21291_coverage,_v21292_identity=announcements_global(
+            _v21291_ann_all,_v21291_coverage,_v21292_identity=official_disclosure_gateway(
                 _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country
             )
         except Exception:
@@ -7309,7 +7309,7 @@ elif page=="Company Command Centre":
                     _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
             _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-            _status_msg={"CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned."}.get(_sec_status,"")
+            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned."}.get(_sec_status,"")
             _authority=str(_v21291_prov.get("authority") or "")
             _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
             _empty_detail=html.escape(_status_msg or _empty_fallback)
