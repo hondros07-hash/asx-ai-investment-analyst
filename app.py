@@ -21,6 +21,7 @@ from services.valuation_engine import calculate_dcf_scenarios, provider_inputs a
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
 from services.valuation_evidence import recover_financial_inputs, bridge_payload
 from services.analyst_engine import build_analyst_payload
+from services.forecast_engine import build_12m_forecast
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -6799,16 +6800,14 @@ elif page=="Company Command Centre":
         _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker,price); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=valuation_pipeline(ticker,price)
         _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
-        _ccf12=np.nan; _fc_target=np.nan; _fc_prob=np.nan; _fc_prob_n=0; _fc_diag={"n":0,"mae":np.nan,"direction":np.nan}; _fc_conf="Validation limited"
-        _fc12row=None; _fc12bt=_ccadvbt.get("12 Months",pd.DataFrame()) if isinstance(_ccadvbt,dict) else pd.DataFrame()
-        if _ccadvfc is not None and not _ccadvfc.empty:
-            _z=_ccadvfc.loc[_ccadvfc["Horizon"]=="12 Months"]
-            if not _z.empty:
-                _fc12row=_z.iloc[0]; _ccf12=_mia_num(_fc12row.get("Ensemble expected return")); _fc_target=_mia_num(_fc12row.get("Estimated price"))
-                _fc_diag=_forecast_diagnostics(_fc12bt); _fc_prob,_fc_prob_n=_forecast_positive_probability(_fc12bt,_ccf12); _fc_conf=_forecast_validation_confidence(_fc_diag)
-                if np.isfinite(_ccf12) and np.isfinite(_fc_target):
-                    try: record_forecast_validation_snapshot(ticker,price,_fc12row,_fc12bt)
-                    except Exception: pass
+        # V21.3.22 — deterministic 12M forecast is a dedicated, single-source service.
+        _fc12=build_12m_forecast(_ccforecast_hist,current_price=price,security=ticker)
+        _ccf12=_mia_num(_fc12.get("forecast_return")); _fc_target=_mia_num(_fc12.get("target_price"))
+        _fc_prob=_mia_num(_fc12.get("probability_positive")); _fcaudit=_fc12.get("audit",{}) or {}
+        _fc_prob_n=int(_fcaudit.get("probability_calibration_observations",0) or 0)
+        _fcd=_fcaudit.get("diagnostics",{}) or {}
+        _fc_diag={"n":int(_fcd.get("n",0) or 0),"mae":_mia_num(_fcd.get("mae")),"direction":_mia_num(_fcd.get("direction_accuracy"))}
+        _fc_conf=str(_fc12.get("validation_label") or _fcaudit.get("validation_label") or "Validation limited")
         _ccbase=_mia_num(_ccauto_val.get("base_case")) if isinstance(_ccauto_val,dict) else np.nan
         _ccvals=pd.DataFrame([{"scenario":k,"value_per_share":v.get("value_per_share"),"Margin of safety":v.get("model_gap")} for k,v in ((_ccauto_val.get("scenarios") or {}).items() if isinstance(_ccauto_val,dict) else []) if isinstance(v,dict) and np.isfinite(_mia_num(v.get("value_per_share")))])
         _cctarget=_mia_num(_ccanalyst.get("target")); _cctarget=_mia_num(_ccmeta.get("targetMeanPrice")) if not np.isfinite(_cctarget) else _cctarget
@@ -7482,7 +7481,7 @@ elif page=="Company Command Centre":
             st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
         with _w2:
             _sparkpts="10,36 35,31 60,32 85,26 110,21 135,15 160,20 185,22 210,16 235,12 260,2"
-            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata unified 12M ensemble forecast. The target, expected return and positive-return probability use the same validated forecast object as the 12M Forecast intelligence card; they are not analyst targets or price promises."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div><div class="v21261-spark"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polygon points="10,42 {_sparkpts.split(" ",1)[1]} 260,48 10,48" fill="#d9ebfb" opacity=".85"/><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div><div class="v21261-spark"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polygon points="10,42 {_sparkpts.split(" ",1)[1]} 260,48 10,48" fill="#d9ebfb" opacity=".85"/><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Forecasts  →",key=f"v21261_nav_fc_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w3:
             _al=str(_ccanalyst.get("label") or "Unavailable"); _ac="v21261-pos" if "buy" in _al.lower() else "v21261-neg" if "sell" in _al.lower() else "v21261-muted"
@@ -8094,6 +8093,31 @@ elif page=="Quant":
     st.info("V6–V9 backtest, factor, ML ensemble and point-in-time modules remain packaged.")
 
 elif page=="Forecasts":
+    st.header(f"12M Forecast — {ticker}")
+    _fc_hist=history(ticker,"5y")
+    _fc_live=build_12m_forecast(_fc_hist,current_price=price,security=ticker)
+    _fca=_fc_live.get("audit",{}) or {}
+    _fr=_mia_num(_fc_live.get("forecast_return")); _ft=_mia_num(_fc_live.get("target_price")); _fp=_mia_num(_fc_live.get("probability_positive"))
+    _f1,_f2,_f3,_f4=st.columns(4)
+    metric_box(_f1,"12M forecast","—" if not np.isfinite(_fr) else f"{_fr:+.1%}")
+    metric_box(_f2,"Model target","—" if not np.isfinite(_ft) else display_price(_ft,ticker))
+    metric_box(_f3,"Prob. positive return","—" if not np.isfinite(_fp) else f"{_fp:.0%}")
+    metric_box(_f4,"Validation",str(_fc_live.get("validation_label") or "Unavailable"))
+    st.caption("Chrímata deterministic model output. It is separate from analyst consensus and is not a price promise or investment recommendation.")
+    with st.expander("Forecast evidence ⓘ",expanded=False):
+        _fd=_fca.get("diagnostics",{}) or {}
+        st.write(f"Model version: {_fca.get('model_version','—')}")
+        st.write(f"Price-history observations: {_fca.get('history_observations','—')}")
+        st.write(f"Completed 12M training outcomes: {_fca.get('training_outcomes','—')}")
+        st.write(f"Walk-forward observations: {_fca.get('walk_forward_observations','—')}")
+        st.write(f"Probability calibration observations: {_fca.get('probability_calibration_observations','—')}")
+        st.write(f"Direction accuracy: {'—' if _mia_num(_fd.get('direction_accuracy')) is None or not np.isfinite(_mia_num(_fd.get('direction_accuracy'))) else f'{_mia_num(_fd.get('direction_accuracy')):.1%}'}")
+        st.write(f"MAE: {'—' if _mia_num(_fd.get('mae')) is None or not np.isfinite(_mia_num(_fd.get('mae'))) else f'{_mia_num(_fd.get('mae')):.1%}'}")
+        st.write(f"Forecast origin: {_fca.get('forecast_origin','—')}")
+        st.write(f"Method: {_fca.get('method','—')}")
+        st.write(f"Status: {_fca.get('status','unavailable')} · {_fca.get('reason','')}")
+        st.write("AI calculated: No")
+    st.divider()
     render_forecast_tool(ticker,h)
     st.divider()
     render_advanced_forecasting(ticker,h)
