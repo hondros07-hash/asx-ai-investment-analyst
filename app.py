@@ -6340,6 +6340,28 @@ elif page=="Company Command Centre":
         _rs=_mia_num(_ccscore.get("Overall"))
         _rs_txt=f"{_rs:.0f} / 100" if np.isfinite(_rs) else "— / 100"
         _rs_label=("High" if np.isfinite(_rs) and _rs>=65 else "Modest" if np.isfinite(_rs) and _rs>=45 else "Low" if np.isfinite(_rs) else "Evidence gap")
+        # V21.2.67 — retain the prior distinct Research Score in-session so ordinary
+        # Streamlit reruns do not erase the last-review comparison.
+        _rs_state_key=f"v21267_research_score_{ticker}"
+        _rs_prev_key=f"v21267_research_score_prev_{ticker}"
+        if np.isfinite(_rs):
+            _rs_seen=st.session_state.get(_rs_state_key)
+            if _rs_seen is None:
+                st.session_state[_rs_state_key]=float(_rs)
+            elif np.isfinite(_mia_num(_rs_seen)) and abs(float(_rs)-float(_rs_seen))>=0.5:
+                st.session_state[_rs_prev_key]=float(_rs_seen)
+                st.session_state[_rs_state_key]=float(_rs)
+        _rs_prev=_mia_num(st.session_state.get(_rs_prev_key))
+        _rs_delta=(float(_rs)-float(_rs_prev)) if np.isfinite(_rs) and np.isfinite(_rs_prev) else np.nan
+        if np.isfinite(_rs_delta):
+            _rs_change=(f"↑ +{_rs_delta:.0f} vs last review" if _rs_delta>0 else f"↓ {_rs_delta:.0f} vs last review" if _rs_delta<0 else "No change vs last review")
+        else:
+            _rs_change="Baseline established"
+        _rs_gauge=max(0.0,min(100.0,float(_rs))) if np.isfinite(_rs) else 0.0
+        _rs_dash=round(119.38*(_rs_gauge/100.0),2)
+        _rs_angle=np.pi-(np.pi*_rs_gauge/100.0)
+        _rs_nx=50 + 27*np.cos(_rs_angle); _rs_ny=50 - 27*np.sin(_rs_angle)
+        _rs_gauge_html=f'<div class="v21267-rs-gauge" aria-label="Research score {_rs_txt}"><svg viewBox="0 0 100 58" role="img"><path class="v21267-rs-track" d="M 12 50 A 38 38 0 0 1 88 50"/><path class="v21267-rs-fill" d="M 12 50 A 38 38 0 0 1 88 50" pathLength="100" style="stroke-dasharray:{_rs_gauge:.1f} 100"/><line class="v21267-rs-needle" x1="50" y1="50" x2="{_rs_nx:.2f}" y2="{_rs_ny:.2f}"/><circle class="v21267-rs-hub" cx="50" cy="50" r="3.2"/></svg></div>'
         _val_pct=((_ccbase/price)-1) if np.isfinite(_mia_num(_ccbase)) and price else np.nan
         _val_label=("Undervalued" if np.isfinite(_val_pct) and _val_pct>=.10 else "Above base case" if np.isfinite(_val_pct) and _val_pct<=-.10 else "Near base case" if np.isfinite(_val_pct) else "Unavailable")
         try:
@@ -6360,8 +6382,9 @@ elif page=="Company Command Centre":
         _th_sub=(f"{_th_watch} / {_ccth_total} watch items" if _ccth_total else "No stored thesis conditions")
         def _strip_card(cls,icon,title,value,line1,line2):
             return f'<div class="v21262-strip-card {cls}"><div class="v21262-strip-icon">{icon}</div><div class="v21262-strip-copy"><div class="v21262-strip-title">{html.escape(str(title))}</div><div class="v21262-strip-value">{html.escape(str(value))}</div><div class="v21262-strip-line">{html.escape(str(line1))}</div><div class="v21262-strip-sub">{html.escape(str(line2))}</div></div></div>'
+        _research_card=f'<div class="v21262-strip-card good v21267-research-card"><div class="v21267-rs-visual">{_rs_gauge_html}</div><div class="v21262-strip-copy v21267-rs-copy"><div class="v21262-strip-title">Research Score</div><div class="v21262-strip-value">{html.escape(_rs_txt)}</div><div class="v21267-rs-label">{html.escape(_rs_label)}</div><div class="v21267-rs-change {'up' if np.isfinite(_rs_delta) and _rs_delta>0 else 'down' if np.isfinite(_rs_delta) and _rs_delta<0 else ''}">{html.escape(_rs_change)}</div></div></div>'
         _strip_html=''.join([
-            _strip_card('good','◉','Research Score',_rs_txt,_rs_label,f"{_ccscore.get('Available',0)} / {_ccscore.get('Total',6)} evidence categories"),
+            _research_card,
             _strip_card('blue','▣','Valuation',_val_label,(f"Base case: {display_price(_ccbase,ticker)}" if np.isfinite(_mia_num(_ccbase)) else "Base case unavailable"),(f"{_val_pct:+.0%} vs current price" if np.isfinite(_val_pct) else "Evidence required")),
             _strip_card('amber','○','Technicals',_tech_label,_tech_sub,str(tr.get('Trend','—'))),
             _strip_card('good','▥','Analyst Consensus',_an_label,(f"{_an_n} analysts" if _an_n else "Analyst count unavailable"),(f"Target: {display_price(_an_target,ticker)} ({_an_up:+.0%})" if np.isfinite(_an_target) and np.isfinite(_an_up) else "Target unavailable")),
@@ -6369,7 +6392,7 @@ elif page=="Company Command Centre":
             _strip_card('good','▤','Thesis Status',_th_label,_th_sub,(f"{_ccth_met} / {_ccth_total} conditions on track" if _ccth_total else "Open Thesis Scorecard to configure")),
         ])
         st.markdown("""<style>
-        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 24px}.v21267-research-card{align-items:center!important;padding:8px 10px!important}.v21267-rs-visual{width:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center}.v21267-rs-gauge{width:58px;height:42px}.v21267-rs-gauge svg{display:block;width:100%;height:100%;overflow:visible}.v21267-rs-track,.v21267-rs-fill{fill:none;stroke-width:10;stroke-linecap:round}.v21267-rs-track{stroke:#cbd8e5}.v21267-rs-fill{stroke:#08a142}.v21267-rs-needle{stroke:#9fb2c5;stroke-width:3;stroke-linecap:round}.v21267-rs-hub{fill:#9fb2c5}.v21267-rs-copy{display:flex;flex-direction:column;justify-content:center}.v21267-rs-label{font-size:9px;font-weight:800;color:#ee9800;line-height:1.2;margin-top:1px}.v21267-rs-change{font-size:8.5px;font-weight:800;color:#5f7895;line-height:1.2;margin-top:3px;white-space:nowrap}.v21267-rs-change.up{color:#079b4a}.v21267-rs-change.down{color:#d9363e}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
         </style>""",unsafe_allow_html=True)
         st.markdown(f'<div class="v21262-strip">{_strip_html}</div>',unsafe_allow_html=True)
 
