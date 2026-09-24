@@ -7765,7 +7765,7 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.3.01 — Professional footer alignment + responsive native navigation.
+# V21.3.02 — Unified footer typography + compact navigation spacing.
 # Brand and legal navigation share one visual baseline on desktop while retaining
 # native Streamlit callbacks (no browser-page reload / white flash).
 def render_chrimata_global_legal_footer():
@@ -7774,28 +7774,30 @@ def render_chrimata_global_legal_footer():
     .chr-legal-rule{width:100%;box-sizing:border-box;margin:30px 0 9px;border-top:1px solid #d8e2ef;height:1px;}
     .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;line-height:1.35;padding-top:3px;white-space:nowrap;}
     [class*="st-key-chr_footer_nav_"]{margin-top:0!important;margin-bottom:0!important;}
-    [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:2px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:10.5px!important;font-weight:650!important;line-height:1.35!important;white-space:nowrap!important;}
+    [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:2px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:11.5px!important;font-weight:800!important;line-height:1.35!important;white-space:nowrap!important;}
     [class*="st-key-chr_footer_nav_"] button:hover{color:#175d9c!important;text-decoration:underline!important;background:transparent!important;border:0!important;}
     .chr-legal-copy{width:100%;box-sizing:border-box;padding:5px 0 88px;color:#6b7f98;font-size:10.5px;line-height:1.45;}
     .chr-legal-copy p{margin:4px 0;}.chr-legal-title{font-weight:750;color:#455f7d;}
     .chr-legal-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf1;color:#8190a3;font-size:9.8px;}
     @media(max-width:900px){
       .chr-legal-brand{white-space:normal;font-size:11px;}
-      [class*="st-key-chr_footer_nav_"] button{font-size:10px!important;white-space:normal!important;}
+      [class*="st-key-chr_footer_nav_"] button{font-size:11px!important;white-space:normal!important;}
       .chr-legal-copy{padding-bottom:96px;}
     }
     </style>
     <div class="chr-legal-rule"></div>
     """, unsafe_allow_html=True)
 
-    # One aligned header row: brand left, navigation right.
-    head=st.columns([3.5, .72, .78, .92, .68, 1.08, .72], gap="small", vertical_alignment="center")
+    # One aligned header row: brand left, compact navigation group right.
+    head=st.columns([5.6, 4.4], gap="small", vertical_alignment="center")
     with head[0]:
         st.markdown('<div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>', unsafe_allow_html=True)
     labels=["About","Privacy","Disclaimer","Terms","Data Sources","Contact"]
-    for i,label in enumerate(labels):
-        with head[i+1]:
-            st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
+    with head[1]:
+        nav=st.columns([.68,.76,.96,.66,1.08,.72], gap="small", vertical_alignment="center")
+        for i,label in enumerate(labels):
+            with nav[i]:
+                st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
 
     st.markdown(r"""
     <div class="chr-legal-copy">
