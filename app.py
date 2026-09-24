@@ -1754,6 +1754,10 @@ def v18_db_upgrade():
         base_terminal REAL,bull_terminal REAL,updated_at TEXT)""")
     con.execute("""CREATE TABLE IF NOT EXISTS report_reviews(
         id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,reviewed_at TEXT,title TEXT,source TEXT,notes TEXT)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS valuation_validation_snapshots(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT,snapshot_at TEXT,start_price REAL,
+        bear_value REAL,base_value REAL,bull_value REAL,profile_updated_at TEXT,
+        assumption_fingerprint TEXT,source TEXT)""")
     con.commit(); con.close()
 
 def kpi_observations(ticker):
@@ -1830,6 +1834,93 @@ def valuation_snapshot(ticker,price):
         return v
     except Exception:
         return pd.DataFrame()
+
+def valuation_profile_saved(ticker):
+    """True only when this ticker has an explicitly saved valuation profile."""
+    v18_db_upgrade(); con=ws_db()
+    try:
+        row=con.execute("SELECT updated_at FROM valuation_profiles WHERE ticker=?",(ticker,)).fetchone()
+        return bool(row and row[0]), (row[0] if row else None)
+    finally:
+        con.close()
+
+def _valuation_fingerprint(profile):
+    import hashlib
+    keys=["fcf","shares","net_debt","bear_growth","base_growth","bull_growth","bear_wacc","base_wacc","bull_wacc","bear_terminal","base_terminal","bull_terminal"]
+    raw="|".join(f"{k}={float(profile.get(k,0)):.10g}" for k in keys)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+def record_valuation_validation_snapshot(ticker,price,vals,force=False):
+    """Persist a point-in-time valuation without backfilling history or using future information."""
+    saved,updated_at=valuation_profile_saved(ticker)
+    if not saved or not np.isfinite(_mia_num(price)) or vals is None or vals.empty:
+        return False,"Save company-specific valuation assumptions before validation begins."
+    profile=valuation_profile(ticker); fp=_valuation_fingerprint(profile)
+    def scen(name):
+        try:
+            q=vals[vals["Scenario"].astype(str).str.lower()==name.lower()]
+            return _mia_num(q["value_per_share"].iloc[0]) if not q.empty else np.nan
+        except Exception:return np.nan
+    bear,base,bull=scen("Bear"),scen("Base"),scen("Bull")
+    if not np.isfinite(base): return False,"Base valuation is unavailable."
+    now=datetime.now(timezone.utc); day=now.date().isoformat()
+    v18_db_upgrade(); con=ws_db()
+    try:
+        if not force:
+            exists=con.execute("""SELECT 1 FROM valuation_validation_snapshots
+                                  WHERE ticker=? AND substr(snapshot_at,1,10)=? AND assumption_fingerprint=? LIMIT 1""",
+                               (ticker,day,fp)).fetchone()
+            if exists:return False,"Today's snapshot for these assumptions is already stored."
+        con.execute("""INSERT INTO valuation_validation_snapshots
+            (ticker,snapshot_at,start_price,bear_value,base_value,bull_value,profile_updated_at,assumption_fingerprint,source)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (ticker,now.isoformat(),float(price),bear,base,bull,updated_at,fp,"Chrímata valuation profile"))
+        con.commit(); return True,"Point-in-time valuation snapshot recorded."
+    finally:con.close()
+
+def valuation_validation_snapshots(ticker=None):
+    v18_db_upgrade(); con=ws_db()
+    try:
+        if ticker:
+            return pd.read_sql_query("SELECT * FROM valuation_validation_snapshots WHERE ticker=? ORDER BY snapshot_at",con,params=(ticker,))
+        return pd.read_sql_query("SELECT * FROM valuation_validation_snapshots ORDER BY snapshot_at",con)
+    except Exception:
+        return pd.DataFrame()
+    finally:con.close()
+
+def valuation_validation_results(ticker):
+    """Evaluate only snapshots whose future market observations now exist. No look-ahead backfill."""
+    snaps=valuation_validation_snapshots(ticker)
+    if snaps.empty:return pd.DataFrame()
+    hist=history(ticker,"5y")
+    if hist is None or hist.empty or "Close" not in hist:return pd.DataFrame()
+    hp=pd.DataFrame({"date":pd.to_datetime(hist.index,utc=True,errors="coerce"),"close":pd.to_numeric(hist["Close"],errors="coerce")}).dropna().sort_values("date")
+    horizons=[(21,"1M"),(63,"3M"),(126,"6M"),(252,"12M")]; rows=[]
+    for _,r in snaps.iterrows():
+        dt=pd.to_datetime(r["snapshot_at"],utc=True,errors="coerce")
+        after=hp[hp["date"]>=dt.normalize()]
+        if after.empty:continue
+        # first session on/after snapshot anchors the evaluation; stored start_price remains the decision-time quote.
+        for sessions,label in horizons:
+            if len(after)<=sessions:continue
+            future=float(after.iloc[sessions]["close"]); start=_mia_num(r["start_price"]); base=_mia_num(r["base_value"])
+            bear=_mia_num(r["bear_value"]); bull=_mia_num(r["bull_value"])
+            if not (np.isfinite(start) and np.isfinite(base) and start>0 and future>0):continue
+            predicted=np.sign(base-start); realised=np.sign(future-start)
+            direction=(predicted==realised) if predicted!=0 else (abs(future/start-1)<.02)
+            lo=min(bear,bull) if np.isfinite(bear) and np.isfinite(bull) else np.nan
+            hi=max(bear,bull) if np.isfinite(bear) and np.isfinite(bull) else np.nan
+            rows.append({"Snapshot":dt.date().isoformat(),"Horizon":label,"Start Price":start,"Base":base,"Future Price":future,
+                         "Base Error %":abs(base/future-1)*100,"Direction Correct":bool(direction),
+                         "Future In Bear-Bull Range":bool(lo<=future<=hi) if np.isfinite(lo) else np.nan})
+    return pd.DataFrame(rows)
+
+def valuation_validation_summary(ticker):
+    r=valuation_validation_results(ticker)
+    if r.empty:return {"Observations":0,"Median Error":np.nan,"Direction Accuracy":np.nan,"Range Hit":np.nan}
+    return {"Observations":len(r),"Median Error":float(r["Base Error %"].median()),
+            "Direction Accuracy":float(r["Direction Correct"].mean()),
+            "Range Hit":float(pd.to_numeric(r["Future In Bear-Bull Range"],errors="coerce").mean())}
 
 def reverse_targets(ticker,targets=(3,4,5,6)):
     p=valuation_profile(ticker); rows=[]
@@ -5825,6 +5916,34 @@ elif page=="Valuation":
                  "Bull":{"growth":vals["bull_growth"],"wacc":vals["bull_wacc"],"terminal_growth":vals["bull_terminal"]}}
     v=scenarios(fcf,shares,debt,assumptions); v["margin_of_safety"]=v.value_per_share.map(lambda x:margin_of_safety(price,x))
     st.dataframe(v,use_container_width=True,hide_index=True)
+
+    st.subheader("Valuation Model Validation")
+    st.caption("Forward-only validation: Chrímata stores today's valuation and later compares it with observed market prices. It does not backfill historical 'predictions' using today's assumptions.")
+    _saved_profile,_profile_updated=valuation_profile_saved(ticker)
+    _vv1,_vv2=st.columns([1,2])
+    with _vv1:
+        if st.button("Record validation snapshot",use_container_width=True,disabled=not _saved_profile,key=f"v21268_val_snapshot_{ticker}"):
+            _ok,_msg=record_valuation_validation_snapshot(ticker,price,v)
+            (st.success if _ok else st.info)(_msg)
+        if not _saved_profile:
+            st.info("Save company-specific valuation assumptions first. Generic defaults are not treated as validated model evidence.")
+    _vsum=valuation_validation_summary(ticker)
+    with _vv2:
+        _m1,_m2,_m3,_m4=st.columns(4)
+        _m1.metric("Matured observations",str(_vsum["Observations"]))
+        _m2.metric("Median base error","—" if not np.isfinite(_vsum["Median Error"]) else f'{_vsum["Median Error"]:.1f}%')
+        _m3.metric("Direction accuracy","—" if not np.isfinite(_vsum["Direction Accuracy"]) else f'{_vsum["Direction Accuracy"]:.0%}')
+        _m4.metric("Bear–bull range hit","—" if not np.isfinite(_vsum["Range Hit"]) else f'{_vsum["Range Hit"]:.0%}')
+    _vres=valuation_validation_results(ticker)
+    if not _vres.empty:
+        st.dataframe(_vres.sort_values(["Snapshot","Horizon"],ascending=[False,True]),use_container_width=True,hide_index=True)
+    else:
+        _snap_count=len(valuation_validation_snapshots(ticker))
+        if _snap_count:
+            st.info(f"{_snap_count} point-in-time snapshot(s) stored. Results will appear as 1M, 3M, 6M and 12M horizons mature.")
+        else:
+            st.info("No validation history yet. Record the first point-in-time snapshot to establish the model's track record from this date forward.")
+
     st.subheader("Reverse valuation")
     rt=reverse_targets(ticker)
     rt["Implied 5Y FCF growth"]=rt["Implied 5Y FCF growth"].map(lambda x:"—" if pd.isna(x) else f"{x:.1%}")
@@ -6340,7 +6459,7 @@ elif page=="Company Command Centre":
         _rs=_mia_num(_ccscore.get("Overall"))
         _rs_txt=f"{_rs:.0f} / 100" if np.isfinite(_rs) else "— / 100"
         _rs_label=("High" if np.isfinite(_rs) and _rs>=65 else "Modest" if np.isfinite(_rs) and _rs>=45 else "Low" if np.isfinite(_rs) else "Evidence gap")
-        # V21.2.67 — retain the prior distinct Research Score in-session so ordinary
+        # V21.2.68 — retain the prior distinct Research Score in-session so ordinary
         # Streamlit reruns do not erase the last-review comparison.
         _rs_state_key=f"v21267_research_score_{ticker}"
         _rs_prev_key=f"v21267_research_score_prev_{ticker}"
