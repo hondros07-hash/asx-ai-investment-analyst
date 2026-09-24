@@ -18,6 +18,7 @@ from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
+from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -694,23 +695,17 @@ TECH_PANELS={"RSI","MACD","Stochastic","ADX / DMI","ATR","CCI","Williams %R","RO
 def technical_indicators(df):
     x=df.copy()
     c=x["Close"].astype(float); h=x["High"].astype(float); l=x["Low"].astype(float); v=x["Volume"].astype(float)
-    t=pd.DataFrame(index=x.index); t["Price"]=c; t["Volume"]=v
-    for n in (20,50,200): t[f"SMA {n}"]=c.rolling(n).mean()
+    # V21.3.20 — core RSI/SMA/MACD/ATR/volume calculations come from one deterministic engine.
+    t=core_indicator_frame(x)
     t["EMA 20"]=c.ewm(span=20,adjust=False).mean()
     mid=c.rolling(20).mean(); sd=c.rolling(20).std()
     t["BB Upper"]=mid+2*sd; t["BB Middle"]=mid; t["BB Lower"]=mid-2*sd
-    d=c.diff(); gain=d.clip(lower=0); loss=-d.clip(upper=0)
-    ag=gain.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
-    al=loss.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
-    t["RSI"]=100-(100/(1+ag/al.replace(0,np.nan)))
-    e12=c.ewm(span=12,adjust=False).mean(); e26=c.ewm(span=26,adjust=False).mean()
-    t["MACD"]=e12-e26; t["MACD Signal"]=t["MACD"].ewm(span=9,adjust=False).mean(); t["MACD Hist"]=t["MACD"]-t["MACD Signal"]
     lo14=l.rolling(14).min(); hi14=h.rolling(14).max()
     t["Stoch %K"]=100*(c-lo14)/(hi14-lo14).replace(0,np.nan); t["Stoch %D"]=t["Stoch %K"].rolling(3).mean()
     t["Williams %R"]=-100*(hi14-c)/(hi14-lo14).replace(0,np.nan)
     t["ROC"]=c.pct_change(12)*100; t["Momentum"]=c-c.shift(10)
     tr=pd.concat([h-l,(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1)
-    t["ATR"]=tr.ewm(alpha=1/14,adjust=False,min_periods=14).mean()
+    # ATR is supplied by services.technical_engine.core_indicator_frame.
     up=h.diff(); down=-l.diff()
     plusdm=up.where((up>down)&(up>0),0.0); minusdm=down.where((down>up)&(down>0),0.0)
     atr=t["ATR"].replace(0,np.nan)
@@ -6267,6 +6262,13 @@ elif page=="Technical":
         help="Select multiple indicators. For broader confirmation, combine indicators from different families rather than several that measure the same thing.")
 
     th=history(ticker,period)
+    _tech_live=calculate_technical_snapshot(h)
+    _tm1,_tm2,_tm3,_tm4=st.columns(4)
+    _tm1.metric("Composite",_tech_live.get("technical_status","Pending"))
+    _tm2.metric("RSI 14","—" if _tech_live.get("rsi_value") is None else f"{_tech_live.get('rsi_value'):.1f}")
+    _tm3.metric("Evidence coverage",f"{_tech_live.get('evidence_coverage',0)}%")
+    _tm4.metric("Calculation","Deterministic")
+    st.caption(f"{_tech_live.get('description','Insufficient technical evidence')} · AI calculated: No")
     if th.empty:
         st.warning("No price history returned for technical analysis.")
     else:
@@ -6836,34 +6838,16 @@ elif page=="Company Command Centre":
         _val_conf_text=f"{_val_conf} · {_val_obs} matured obs" if _val_obs else "Validation pending · no matured observations"
         _val_move=(f"+{_val_pct:.0%} upside" if np.isfinite(_val_pct) and _val_pct>0 else f"{_val_pct:.0%} downside" if np.isfinite(_val_pct) and _val_pct<0 else "At model base case" if np.isfinite(_val_pct) else "Evidence required")
         _val_move_cls=("up" if np.isfinite(_val_pct) and _val_pct>=.10 else "down" if np.isfinite(_val_pct) and _val_pct<=-.10 else "neutral")
+        # V21.3.20 — compact Technicals card uses the deterministic composite engine,
+        # not an RSI-only label. Missing indicators remain Pending and reduce evidence coverage.
         try:
-            _ti_strip=technical_indicators(h)
-            _rsi_strip=_mia_num(_ti_strip["RSI"].iloc[-1]) if _ti_strip is not None and not _ti_strip.empty and "RSI" in _ti_strip else np.nan
-            _sma200_strip=_mia_num(_ti_strip["SMA200"].iloc[-1]) if _ti_strip is not None and not _ti_strip.empty and "SMA200" in _ti_strip else np.nan
+            _tech_payload=calculate_technical_snapshot(h)
         except Exception:
-            _rsi_strip=_sma200_strip=np.nan
-        # V21.2.72 — use technical-analysis terminology rather than the investment-style label "Defensive".
-        # RSI remains the primary compact-strip signal; the full Technical page retains the richer multi-indicator view.
-        if np.isfinite(_rsi_strip):
-            if _rsi_strip < 30:
-                _tech_label="Oversold"
-                _tech_context="Oversold momentum"
-            elif _rsi_strip <= 40:
-                _tech_label="Weak"
-                _tech_context="Near oversold"
-            elif _rsi_strip >= 70:
-                _tech_label="Overbought"
-                _tech_context="Overbought momentum"
-            elif _rsi_strip >= 60:
-                _tech_label="Strong"
-                _tech_context="Positive momentum"
-            else:
-                _tech_label="Neutral"
-                _tech_context="Neutral momentum"
-        else:
-            _tech_label="Neutral" if str(tr.get("Trend","Mixed"))=="Mixed" else ("Constructive" if "Improving" in str(tr.get("Trend","")) else "Weak")
-            _tech_context=str(tr.get("Trend","—"))
-        _tech_sub=f"RSI {_rsi_strip:.0f}" if np.isfinite(_rsi_strip) else "RSI —"
+            _tech_payload={"technical_status":"Pending","rsi_value":None,"context":"Insufficient technical evidence","evidence_coverage":0}
+        _rsi_strip=_mia_num(_tech_payload.get("rsi_value"))
+        _tech_label=str(_tech_payload.get("technical_status") or "Pending")
+        _tech_context=str(_tech_payload.get("context") or _tech_payload.get("description") or "Insufficient technical evidence")
+        _tech_sub=f"RSI {_rsi_strip:.0f} · {_tech_payload.get('evidence_coverage',0)}% evidence" if np.isfinite(_rsi_strip) else f"RSI — · {_tech_payload.get('evidence_coverage',0)}% evidence"
         _an_label=str(_ccanalyst.get("label") or "Unavailable")
         _an_n=int(_mia_num(_ccanalyst.get("analysts"))) if np.isfinite(_mia_num(_ccanalyst.get("analysts"))) else 0
         _an_target=_mia_num(_ccanalyst.get("target_mean")); _an_target=_cctarget if not np.isfinite(_an_target) else _an_target
