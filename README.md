@@ -58,3 +58,7 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - Rebuilt `View all →` as a native Streamlit button inside the card's header columns. No absolute/fixed positioning is used, preventing the control from escaping beneath the sidebar.
 - `View all →` deterministically selects `Announcements & Reports` and reruns while preserving the selected security identity.
 - Acceptance tests cover ASX no-PDF markup, ASX PDF markup, non-overlapping View-All layout, and diagnostics wiring.
+
+
+## V21.3.10
+Rebuilt dynamic disclosure card: selected listing drives market adapter; ASX uses multiple official routes; production card no longer exposes diagnostic UI; View all remains contained in the card header.

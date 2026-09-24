@@ -7236,15 +7236,15 @@ elif page=="Company Command Centre":
 
         st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_legacy_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
         st.markdown('''<style>
-/* V21.3.09 — no absolute/fixed positioning for disclosure navigation. */
-.v21309-ann-title{font-size:13px;font-weight:800;color:#082b5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.v21309-ann-body{height:105px;overflow:hidden;border-top:1px solid #e5edf7;}
-.v21309-ann-row{display:grid;grid-template-columns:92px minmax(0,1fr) 102px 44px;height:21px;align-items:center;border-bottom:1px solid #e5edf7;color:#355b89;font-size:10.5px;}
-.v21309-ann-row>span{height:21px;line-height:21px;padding:0 8px;border-right:1px solid #e5edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.v21309-ann-row>span:last-child{border-right:0;text-align:center;padding:0}.v21309-ann-row .main{color:#244f82}.v21309-ann-row .meta{color:#6c82a1}.v21309-ann-row a{color:#0067e8!important;font-weight:800;text-decoration:none!important;}
-.v21309-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px}.v21309-ann-source{height:25px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px}
-[class*="st-key-v21309_ann_card_"]{min-height:168px!important;padding:7px 10px 0!important;overflow:visible!important;}
-[class*="st-key-v21309_ann_card_"] [class*="st-key-v21309_nav_ann_"] button{width:auto!important;min-height:25px!important;height:25px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
+/* V21.3.10 — no absolute/fixed positioning for disclosure navigation. */
+.v21310-ann-title{font-size:13px;font-weight:800;color:#082b5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v21310-ann-body{height:105px;overflow:hidden;border-top:1px solid #e5edf7;}
+.v21310-ann-row{display:grid;grid-template-columns:92px minmax(0,1fr) 102px 44px;height:21px;align-items:center;border-bottom:1px solid #e5edf7;color:#355b89;font-size:10.5px;}
+.v21310-ann-row>span{height:21px;line-height:21px;padding:0 8px;border-right:1px solid #e5edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v21310-ann-row>span:last-child{border-right:0;text-align:center;padding:0}.v21310-ann-row .main{color:#244f82}.v21310-ann-row .meta{color:#6c82a1}.v21310-ann-row a{color:#0067e8!important;font-weight:800;text-decoration:none!important;}
+.v21310-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px}.v21310-ann-source{height:25px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px}
+[class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 0!important;overflow:visible!important;}
+[class*="st-key-v21310_ann_card_"] [class*="st-key-v21310_nav_ann_"] button{width:auto!important;min-height:25px!important;height:25px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
 </style>''',unsafe_allow_html=True)
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
@@ -7315,23 +7315,17 @@ elif page=="Company Command Centre":
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
-            # V21.3.09 — native header layout inside the bordered card.
-            _body09=_body.replace('v21290-row','v21309-ann-row').replace('v21290-empty','v21309-ann-empty')
-            with st.container(border=True,key=f"v21309_ann_card_{ticker}"):
+            # V21.3.10 — self-contained reference header; no page-level/absolute positioning.
+            _body09=_body.replace('v21290-row','v21310-ann-row').replace('v21290-empty','v21310-ann-empty')
+            with st.container(border=True,key=f"v21310_ann_card_{ticker}"):
                 _ann_h1,_ann_h2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
                 with _ann_h1:
-                    st.markdown(f'<div class="v21309-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
+                    st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
                 with _ann_h2:
-                    if st.button("View all →",key=f"v21309_nav_ann_{ticker}",use_container_width=False):
+                    if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
                         _chr_set_cc_sub_v2111("Announcements & Reports")
                         st.rerun()
-                st.markdown(f'<div class="v21309-ann-body">{_body09}</div><div class="v21309-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
-                if _ann_df.empty:
-                    _diag=list(getattr(_v21291_ann_all,"attrs",{}).get("diagnostics",[]) or []) if _v21291_ann_all is not None else []
-                    with st.expander("Disclosure diagnostics",expanded=False):
-                        st.caption(f"Ticker: {_id_ticker} · Exchange: {_id_exchange or '—'} · Market: {_v21291_prov.get('market','—')} · Status: {_sec_status or 'NO_ROWS'}")
-                        if _diag: st.json(_diag,expanded=False)
-                        else: st.caption("No lower-level adapter diagnostics were returned.")
+                st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:

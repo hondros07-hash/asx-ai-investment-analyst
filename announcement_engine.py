@@ -153,6 +153,38 @@ def _parse_asx(html, code):
         seen.add(dedupe)
     return rows
 
+
+def asx_modern_company_page(code, limit=250):
+    """Best-effort parser for ASX's current public company announcement page.
+
+    This route is intentionally independent of the legacy statistics endpoint so
+    hosted deployments have a second official-ASX path. No rows are fabricated.
+    """
+    code=re.sub(r'[^A-Z0-9]','',str(code or '').upper().replace('.AX',''))[:3]
+    cols=['Date','Time','Group','Type','Title','Price Sensitive','Source','URL','PDFURL','ReadURL','Has PDF','ID']
+    if not code: return pd.DataFrame(columns=cols)
+    urls=[
+      f'https://www.asx.com.au/markets/trade-our-cash-market/announcements.{code.lower()}',
+      ASX_ARCHIVE+'?'+urllib.parse.urlencode({'asxCode':code,'by':'asxCode','timeframe':'Y','year':datetime.now().year}),
+    ]
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+             'Accept':'text/html,application/xhtml+xml,*/*','Accept-Language':'en-AU,en;q=0.9'}
+    diagnostics=[]
+    for url in urls:
+        try:
+            raw,ctype=_get(url,headers,30); page=raw.decode('utf-8','ignore')
+            rows=_parse_asx(page,code)
+            diagnostics.append({'endpoint':url,'bytes':len(raw),'content_type':ctype,'rows':len(rows)})
+            if rows:
+                df=pd.DataFrame(rows).drop_duplicates(subset=['Date','Time','Title'])
+                df['_d']=pd.to_datetime(df['Date'],dayfirst=True,errors='coerce')
+                df=df.sort_values('_d',ascending=False,na_position='last').drop(columns='_d').head(limit).reset_index(drop=True)
+                df.attrs.update({'status':'OK','ticker':code,'source':'ASX Market Announcements','diagnostics':diagnostics})
+                return df
+        except Exception as e:
+            diagnostics.append({'endpoint':url,'error':type(e).__name__+': '+str(e)[:240]})
+    df=pd.DataFrame(columns=cols); df.attrs.update({'status':'ASX_OFFICIAL_ROUTES_FAILED','ticker':code,'diagnostics':diagnostics}); return df
+
 def asx_public_archive(code, years=12, limit=250):
     """Live public ASX search with explicit diagnostics and several supported windows."""
     code=re.sub(r'[^A-Z0-9]','',str(code or '').upper().replace('.AX',''))[:3]
@@ -368,13 +400,18 @@ def announcements(ticker, provider_url="", provider_key="", limit=250):
             if "Group" not in p.columns:p["Group"]="ASX Announcements"
             return p,"Provider-backed ASX announcements"
 
-        # Provider unavailable/empty: use the JSON feed backing ASX company pages.
-        # This avoids the legacy HTML endpoint's anti-bot behaviour in hosted apps.
+        # Provider unavailable/empty: try ASX's current public company/announcement
+        # routes first. This is exchange-driven and works for any selected ASX code.
+        p=asx_modern_company_page(code,limit)
+        if p is not None and not p.empty:
+            return p,"ASX Market Announcements"
+
+        # Secondary ASX JSON route (availability varies by deployment/ASX changes).
         p=asx_company_announcements_api(code,limit)
         if p is not None and not p.empty:
             return p,"ASX company announcements feed"
 
-        # JSON feed unavailable/empty: continue to the legacy public fallback.
+        # Final official-ASX legacy fallback.
         p=asx_public_archive(code,12,limit)
         if p is None or p.empty:
             cols=["Date","Time","Group","Type","Title","Price Sensitive",
