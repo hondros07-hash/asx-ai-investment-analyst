@@ -1058,20 +1058,26 @@ def investment_snapshot_ttm_metrics(ticker):
     def _metric(qser,aser,derive_note=""):
         cur=_sum4(qser,0)
         prior=_sum4(qser,4)
-        growth=np.nan; growth_basis=""
-        if np.isfinite(cur) and np.isfinite(prior) and prior!=0:
-            growth=cur/abs(prior)-1
+        growth=np.nan; growth_basis=""; cmp_cur=np.nan; cmp_prior=np.nan
+        if np.isfinite(cur) and np.isfinite(prior):
+            cmp_cur,cmp_prior=cur,prior
+            if prior!=0:
+                growth=cur/abs(prior)-1
             growth_basis="TTM vs prior TTM (8 quarterly periods)"
-        else:
+        elif aser is not None and len(aser)>=2:
+            try:
+                cmp_cur=float(aser.iloc[0]); cmp_prior=float(aser.iloc[1])
+            except Exception:
+                cmp_cur=cmp_prior=np.nan
             ag=_annual_growth(aser)
-            if np.isfinite(ag):
-                growth=ag
+            if np.isfinite(ag): growth=ag
+            if np.isfinite(cmp_cur) and np.isfinite(cmp_prior):
                 growth_basis="Latest FY vs prior FY fallback"
         value_basis="4-quarter TTM" if np.isfinite(cur) else "TTM unavailable from quarterly statements"
         if derive_note:
             value_basis += derive_note
             if growth_basis: growth_basis += derive_note
-        return {"value":cur,"growth":growth,"value_basis":value_basis,"growth_basis":growth_basis or "Comparable growth unavailable"}
+        return {"value":cur,"growth":growth,"compare_current":cmp_cur,"compare_prior":cmp_prior,"value_basis":value_basis,"growth_basis":growth_basis or "Comparable growth unavailable"}
     try:
         t=yf.Ticker(ticker)
         qinc=_frame(t,"quarterly_income_stmt"); qcf=_frame(t,"quarterly_cashflow")
@@ -7056,7 +7062,27 @@ elif page=="Company Command Centre":
                 if not np.isfinite(_val):
                     _val=_mia_num(_fallback.get(_label)); _value_basis="Provider trailing/latest field fallback; four-quarter TTM statement series unavailable"
                 _disp=(f"{_cur}{_val:,.2f}" if _label=="EPS" and np.isfinite(_val) and _val>=0 else f"-{_cur}{abs(_val):,.2f}" if _label=="EPS" and np.isfinite(_val) else _ov_fmt(_val,_cur)); _disp=_disp.replace(f"{_cur}-",f"-{_cur}")
-                if np.isfinite(_growth):
+                if _label=="Free Cash Flow":
+                    _cmp_cur=_mia_num(_m.get("compare_current")); _cmp_prev=_mia_num(_m.get("compare_prior"))
+                    if np.isfinite(_cmp_cur) and np.isfinite(_cmp_prev):
+                        if _cmp_prev>=0 and _cmp_cur<0:
+                            _gcls="v21283-growth-neg"; _gtext="Turned negative"
+                        elif _cmp_prev<0 and _cmp_cur>=0:
+                            _gcls="v21283-growth-pos"; _gtext="Turned positive"
+                        elif _cmp_prev<0 and _cmp_cur<0:
+                            _delta=_cmp_cur-_cmp_prev
+                            _gcls="v21283-growth-pos" if _delta>0 else "v21283-growth-neg" if _delta<0 else "v21283-growth-na"
+                            _gtext="Improving" if _delta>0 else "Deteriorating" if _delta<0 else "Flat"
+                            _growth_basis=(_growth_basis+f"; FCF remained negative; absolute change {_delta:+,.0f}").strip("; ")
+                        elif np.isfinite(_growth):
+                            _gcls="v21283-growth-pos" if _growth>=0 else "v21283-growth-neg"; _gtext=f"{_growth:+.0%}"
+                        else:
+                            _gcls="v21283-growth-na"; _gtext="—"
+                    elif np.isfinite(_growth):
+                        _gcls="v21283-growth-pos" if _growth>=0 else "v21283-growth-neg"; _gtext=f"{_growth:+.0%}"
+                    else:
+                        _gcls="v21283-growth-na"; _gtext="—"
+                elif np.isfinite(_growth):
                     _gcls="v21283-growth-pos" if _growth>=0 else "v21283-growth-neg"; _gtext=f"{_growth:+.0%}"
                 else:
                     _gcls="v21283-growth-na"; _gtext="—"
