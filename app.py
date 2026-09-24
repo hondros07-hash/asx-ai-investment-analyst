@@ -6903,7 +6903,7 @@ elif page=="Company Command Centre":
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
         # V21.2.39 — compact fixed equal-height Overview widgets.
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
-        _overview_widget_height=430
+        _overview_widget_height=520
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
@@ -6993,25 +6993,50 @@ elif page=="Company Command Centre":
                         _tickfmt=".3f" if _span<0.20 else (".2f" if _span<1.0 else ".1f")
                     else:
                         _tickfmt=".2f"
-                    if _macro_on and _macro_choice is not None and _opt in _macro_sets and not _macro_sets[_opt].empty and _hh is not None and not _hh.empty:
-                        _stock_close=pd.to_numeric(_hh["Close"],errors="coerce").dropna()
-                        _aligned=macro_align_series(_stock_close,_macro_sets[_opt])
-                        if not _aligned.empty:
-                            if _macro_normalized: _aligned=macro_normalize_100(_aligned)
-                            _idx.append(len(_fig.data))
-                            _fig.add_trace(go.Scatter(x=_aligned.index,y=_aligned["macro"],mode="lines",name=_macro_choice.label,yaxis="y3",line=dict(width=2,dash="dot"),hovertemplate=f"%{{x}}<br>{_macro_choice.label}: %{{y:.3f}}<extra></extra>",visible=(_opt==_active_tf)))
                     _trace_groups.append(_idx)
                     _axis_updates.append(_tickfmt)
+                # V21.3.17.2 — build one macro overlay from the active window only.
+                _macro_available=False
+                _macro_status=""
+                if _macro_on and _macro_choice is not None:
+                    _active_stock=_chart_sets.get(_active_tf)
+                    _active_macro=_macro_sets.get(_active_tf)
+                    if _active_stock is not None and not _active_stock.empty and _active_macro is not None and not _active_macro.empty:
+                        _active_close=pd.to_numeric(_active_stock["Close"],errors="coerce").dropna()
+                        _active_aligned=macro_align_series(_active_close,_active_macro)
+                        if not _active_aligned.empty:
+                            _macro_available=True
+                            if _macro_normalized:
+                                _active_aligned=macro_normalize_100(_active_aligned)
+                                _common_start=_active_aligned.index.min()
+                                _stock_common=_active_close.copy()
+                                _stock_idx=pd.to_datetime(_stock_common.index)
+                                if getattr(_stock_idx,"tz",None) is not None: _stock_idx=_stock_idx.tz_localize(None)
+                                _stock_common.index=_stock_idx
+                                _stock_common=_stock_common[_stock_common.index>=_common_start]
+                                if not _stock_common.empty and float(_stock_common.iloc[0])!=0:
+                                    _stock_rebased=_stock_common/float(_stock_common.iloc[0])*100.0
+                                    for _trace_i in _trace_groups[_tf_options.index(_active_tf)]:
+                                        if getattr(_fig.data[_trace_i],"type","")=="scatter":
+                                            _fig.data[_trace_i].x=_stock_rebased.index
+                                            _fig.data[_trace_i].y=_stock_rebased.values
+                                            _fig.data[_trace_i].name=f"{ticker} (Rebased 100)"
+                                            break
+                            _fig.add_trace(go.Scatter(x=_active_aligned.index,y=_active_aligned["macro"],mode="lines",name=f"{_macro_choice.label}" + (" (Rebased 100)" if _macro_normalized else ""),yaxis=("y" if _macro_normalized else "y3"),line=dict(width=2,dash="dot"),hovertemplate=f"%{{x}}<br>{_macro_choice.label}: %{{y:.3f}}<extra></extra>",visible=True))
+                        else:
+                            _macro_status=f"No common {_active_tf} observations were available for {ticker} and {_macro_choice.label}."
+                    else:
+                        _macro_status=f"{_macro_choice.label} data is unavailable for the selected {_active_tf} window."
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=190,margin=dict(l=2,r=42,t=16,b=12),xaxis_rangeslider_visible=False,
-                    showlegend=False,bargap=0.12,
+                    height=244,margin=dict(l=2,r=42,t=20,b=18),xaxis_rangeslider_visible=False,
+                    showlegend=bool(_macro_on and _macro_available),legend=dict(orientation="h",y=1.03,x=0),bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
-                    yaxis=dict(side="left",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[_tf_options.index(_active_tf)],ticksuffix="",automargin=True,domain=[0.22,1.0],title=("Rebased performance" if (_macro_on and _macro_normalized) else "Stock price")),
+                    yaxis=dict(side="left",gridcolor="#e8eef6",autorange=True,tickformat=(".1f" if (_macro_on and _macro_normalized) else _axis_updates[_tf_options.index(_active_tf)]),ticksuffix="",automargin=True,domain=[0.22,1.0],title=("Rebased performance" if (_macro_on and _macro_normalized) else "Stock price")),
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.04,0.18]),
-                    yaxis3=dict(side="right",overlaying="y",showgrid=False,zeroline=False,autorange=True,automargin=True,title=(_macro_choice.label if (_macro_on and _macro_choice is not None and not _macro_normalized) else ("Rebased performance" if _macro_on else "")),visible=bool(_macro_on)),
+                    yaxis3=dict(side="right",overlaying="y",showgrid=False,zeroline=False,autorange=True,automargin=True,title=(_macro_choice.label if (_macro_on and _macro_choice is not None and not _macro_normalized) else ""),visible=bool(_macro_on and not _macro_normalized and _macro_available)),
                 )
                 if _active_tf in ("1D","1W"):
                     _fig.update_xaxes(rangebreaks=[dict(bounds=["sat","mon"]),dict(bounds=[16,10],pattern="hour")])
@@ -7019,7 +7044,10 @@ elif page=="Company Command Centre":
                     _fig.update_xaxes(rangebreaks=[])
                 st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v213171_chart_{ticker}_{_active_tf}_{int(_macro_on)}_{int(_macro_normalized)}")
                 if _macro_on and _macro_choice is not None:
-                    st.caption(f"Macro overlay: {_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel} · Market data via Yahoo Finance/yfinance · Visual co-movement does not establish causation.")
+                    if _macro_available:
+                        st.caption(f"Macro overlay: {_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel} · Market data via Yahoo Finance/yfinance · Visual co-movement does not establish causation.")
+                    else:
+                        st.caption(f"Macro overlay unavailable: {_macro_status} Market data via Yahoo Finance/yfinance.")
                 # V21.2.50 — x-axis is anchored to the volume band, so date labels render beneath volume.
                 # Footer remains one physical row with both sides locked to the same 26px baseline.
                 # No negative margins or overlays: both sides share the exact same baseline.
@@ -7039,9 +7067,9 @@ elif page=="Company Command Centre":
                     # ticker/security identity is preserved without a browser reload.
                     st.button(
                         "View Technical Analysis  →",
-                        key=f"v21252_technical_{ticker}",
+                        key=f"v213172_technical_{ticker}",
                         type="tertiary",
-                        use_container_width=False,
+                        use_container_width=True,
                         on_click=_chr_set_cc_sub_v2111,
                         args=("Technical",),
                     )
