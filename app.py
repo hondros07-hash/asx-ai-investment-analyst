@@ -6334,6 +6334,45 @@ elif page=="Company Command Centre":
         .v21218-chart-tabs a:hover{color:#086ee8!important;background:#f1f7ff}
         .v21218-chart-tabs a.active{background:#086ee8;color:#fff!important;box-shadow:0 1px 3px rgba(8,110,232,.25)}
                 </style>""",unsafe_allow_html=True)
+        # V21.2.62 — compact Company Intelligence Strip.
+        # This is a read-only summary of the evidence already loaded above; it does not
+        # trigger additional provider calls, so it preserves the faster Overview navigation.
+        _rs=_mia_num(_ccscore.get("Overall"))
+        _rs_txt=f"{_rs:.0f} / 100" if np.isfinite(_rs) else "— / 100"
+        _rs_label=("High" if np.isfinite(_rs) and _rs>=65 else "Modest" if np.isfinite(_rs) and _rs>=45 else "Low" if np.isfinite(_rs) else "Evidence gap")
+        _val_pct=((_ccbase/price)-1) if np.isfinite(_mia_num(_ccbase)) and price else np.nan
+        _val_label=("Undervalued" if np.isfinite(_val_pct) and _val_pct>=.10 else "Above base case" if np.isfinite(_val_pct) and _val_pct<=-.10 else "Near base case" if np.isfinite(_val_pct) else "Unavailable")
+        try:
+            _ti_strip=technical_indicators(h)
+            _rsi_strip=_mia_num(_ti_strip["RSI"].iloc[-1]) if _ti_strip is not None and not _ti_strip.empty and "RSI" in _ti_strip else np.nan
+            _sma200_strip=_mia_num(_ti_strip["SMA200"].iloc[-1]) if _ti_strip is not None and not _ti_strip.empty and "SMA200" in _ti_strip else np.nan
+        except Exception:
+            _rsi_strip=_sma200_strip=np.nan
+        _tech_label="Neutral" if str(tr.get("Trend","Mixed"))=="Mixed" else ("Constructive" if "Improving" in str(tr.get("Trend","")) else "Defensive")
+        _tech_sub=(f"RSI {_rsi_strip:.0f}" if np.isfinite(_rsi_strip) else "RSI —")+(" | Above 200 MA" if np.isfinite(_sma200_strip) and price>=_sma200_strip else " | Below 200 MA" if np.isfinite(_sma200_strip) else "")
+        _an_label=str(_ccanalyst.get("label") or "Unavailable")
+        _an_n=int(_mia_num(_ccanalyst.get("analysts"))) if np.isfinite(_mia_num(_ccanalyst.get("analysts"))) else 0
+        _an_target=_mia_num(_ccanalyst.get("target_mean")); _an_target=_cctarget if not np.isfinite(_an_target) else _an_target
+        _an_up=(_an_target/price-1) if np.isfinite(_an_target) and price else np.nan
+        _fc_target=price*(1+_ccf12) if np.isfinite(_ccf12) and price else np.nan
+        _th_watch=max(0,_ccth_total-_ccth_met) if _ccth_total else 0
+        _th_label="On Track" if _ccth_total and _ccth_met/max(_ccth_total,1)>=.67 else "Mixed" if _ccth_total else "Not configured"
+        _th_sub=(f"{_th_watch} / {_ccth_total} watch items" if _ccth_total else "No stored thesis conditions")
+        def _strip_card(cls,icon,title,value,line1,line2):
+            return f'<div class="v21262-strip-card {cls}"><div class="v21262-strip-icon">{icon}</div><div class="v21262-strip-copy"><div class="v21262-strip-title">{html.escape(str(title))}</div><div class="v21262-strip-value">{html.escape(str(value))}</div><div class="v21262-strip-line">{html.escape(str(line1))}</div><div class="v21262-strip-sub">{html.escape(str(line2))}</div></div></div>'
+        _strip_html=''.join([
+            _strip_card('good','◉','Research Score',_rs_txt,_rs_label,f"{_ccscore.get('Available',0)} / {_ccscore.get('Total',6)} evidence categories"),
+            _strip_card('blue','▣','Valuation',_val_label,(f"Base case: {display_price(_ccbase,ticker)}" if np.isfinite(_mia_num(_ccbase)) else "Base case unavailable"),(f"{_val_pct:+.0%} vs current price" if np.isfinite(_val_pct) else "Evidence required")),
+            _strip_card('amber','○','Technicals',_tech_label,_tech_sub,str(tr.get('Trend','—'))),
+            _strip_card('good','▥','Analyst Consensus',_an_label,(f"{_an_n} analysts" if _an_n else "Analyst count unavailable"),(f"Target: {display_price(_an_target,ticker)} ({_an_up:+.0%})" if np.isfinite(_an_target) and np.isfinite(_an_up) else "Target unavailable")),
+            _strip_card('blue','↗','12M Forecast',(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable"),(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable"),(f"Historical model scenario" if np.isfinite(_ccf12) else "Insufficient model evidence")),
+            _strip_card('good','▤','Thesis Status',_th_label,_th_sub,(f"{_ccth_met} / {_ccth_total} conditions on track" if _ccth_total else "Open Thesis Scorecard to configure")),
+        ])
+        st.markdown("""<style>
+        .v21262-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:7px 0 9px}.v21262-strip-card{min-width:0;min-height:92px;border:1px solid #d7e6f4;border-radius:9px;background:#f8fbff;padding:9px 10px;display:flex;gap:9px;box-sizing:border-box}.v21262-strip-card.good{background:#f4fbf8;border-color:#cfeade}.v21262-strip-card.blue{background:#f3f8ff;border-color:#cfe1f8}.v21262-strip-card.amber{background:#fffaf1;border-color:#f1dfba}.v21262-strip-icon{width:30px;height:30px;flex:0 0 30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#e7f0fb;color:#086ee8}.v21262-strip-card.good .v21262-strip-icon{background:#e5f7ef;color:#079b4a}.v21262-strip-card.amber .v21262-strip-icon{background:#fff1d5;color:#f0a000}.v21262-strip-copy{min-width:0}.v21262-strip-title{font-size:10px;font-weight:750;color:#45688f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-value{font-size:16px;font-weight:900;color:#10264b;line-height:1.12;margin:3px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-card.good .v21262-strip-value{color:#079b4a}.v21262-strip-card.amber .v21262-strip-value{color:#ee9800}.v21262-strip-line{font-size:9px;font-weight:750;color:#3f5e82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21262-strip-sub{font-size:8.5px;color:#5f7895;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:1200px){.v21262-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.v21262-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        </style>""",unsafe_allow_html=True)
+        st.markdown(f'<div class="v21262-strip">{_strip_html}</div>',unsafe_allow_html=True)
+
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
         # V21.2.39 — compact fixed equal-height Overview widgets.
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
@@ -6652,7 +6691,7 @@ elif page=="Company Command Centre":
         with _b3:
             st.markdown('<div class="v21261-bottom"><div class="v21261-quote">“Better information. Better questions. Better decisions.”<br>— Chrímata</div></div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="v21-foot">V21.2.61 · Company Overview Intelligence Widgets. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.62 · Company Intelligence Strip + Overview Intelligence Widgets. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
