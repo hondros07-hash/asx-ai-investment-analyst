@@ -25,7 +25,8 @@ from sector_peer_engine import classification, find_peers, peer_table, normalize
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
-from announcement_engine import announcements, fetch_document, extract_text, evidence_summary, announcement_provenance
+from announcement_engine import (announcements, fetch_document, extract_text, evidence_summary, announcement_provenance,
+    announcements_global, announcement_provenance_global, resolve_announcement_market)
 from global_dividends import upcoming_dividends
 from corporate_actions_calendar import corporate_actions_calendar
 
@@ -7175,11 +7176,11 @@ elif page=="Company Command Centre":
         # the reference card. `latest_announcements_safe` can be provider-thin and
         # previously caused the Overview card to show empty even when ASX had rows.
         try:
-            _v21291_ann_all,_v21291_coverage=announcements(ticker,_ann_url,_ann_key,25)
+            _v21291_ann_all,_v21291_coverage,_v21292_identity=announcements_global(ticker,_ann_url,_ann_key,25)
         except Exception:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
         _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
-        _v21291_prov=announcement_provenance(ticker,_v21291_coverage)
+        _v21291_prov=announcement_provenance_global(ticker,_v21291_coverage)
         _cat_df=_cccatalysts.head(5).copy() if _cccatalysts is not None and not _cccatalysts.empty else pd.DataFrame()
 
         def _v21290_pick(row, names, default=""):
@@ -7218,10 +7219,9 @@ elif page=="Company Command Centre":
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
-            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div><a class="v21290-viewall v21291-viewall-link" href="#" onclick="return false;">View all →</a>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
-            # Compact navigation control: keep the reference-card geometry; no full-width blue button.
-            if st.button("View all →",key=f"v21291_nav_ann_{ticker}",on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",),help="Open the full announcements and reports workspace"):
-                pass
+            _portal=str(_v21291_prov.get("portal") or "")
+            _viewall=(f'<a class="v21290-viewall v21291-viewall-link" href="{html.escape(_portal,quote=True)}" target="_blank" rel="noopener" title="Open the official {_v21291_prov.get("authority","disclosure")} source">View all →</a>' if _portal else '<span class="v21290-viewall">View all →</span>')
+            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div>{_viewall}{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:

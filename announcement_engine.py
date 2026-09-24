@@ -293,3 +293,85 @@ def evidence_summary(text, max_chars=3500):
             chosen.append(s); used.add(key)
         if sum(len(x) for x in chosen)>=max_chars:break
     return " ".join(chosen)[:max_chars]
+
+# --- V21.2.92 Global Exchange Announcement & Filing Resolution Engine ---
+GLOBAL_MARKETS = {
+    "ASX": {"country":"Australia", "authority":"ASX Market Announcements", "portal":"https://www.asx.com.au/asx/v2/statistics/announcements.do"},
+    "NASDAQ": {"country":"United States", "authority":"U.S. SEC EDGAR", "portal":"https://www.sec.gov/edgar/search/"},
+    "NYSE": {"country":"United States", "authority":"U.S. SEC EDGAR", "portal":"https://www.sec.gov/edgar/search/"},
+    "LSE": {"country":"United Kingdom", "authority":"London Stock Exchange / issuer regulatory disclosures", "portal":"https://www.londonstockexchange.com/news"},
+    "HKEX": {"country":"Hong Kong", "authority":"HKEXnews", "portal":"https://www.hkexnews.hk/"},
+    "TSE": {"country":"Japan", "authority":"JPX TDnet", "portal":"https://www.jpx.co.jp/english/listing/disclosure/"},
+    "TSX": {"country":"Canada", "authority":"SEDAR+ / issuer regulatory disclosures", "portal":"https://www.sedarplus.ca/"},
+}
+
+def resolve_announcement_market(ticker, exchange="", country=""):
+    """Resolve the selected *listing*, never the issuer name alone.
+    Suffix wins, then supplied exchange/country, then bare symbols default to US only.
+    """
+    t=str(ticker or "").upper().strip(); ex=str(exchange or "").upper(); co=str(country or "").upper()
+    if t.endswith(".AX") or "ASX" in ex or "AUSTRAL" in ex: market="ASX"
+    elif t.endswith(".L") or "LONDON" in ex or ex in {"LSE","LSEIOB"}: market="LSE"
+    elif t.endswith(".HK") or "HONG KONG" in ex or ex in {"HKG","HKEX"}: market="HKEX"
+    elif t.endswith(".T") or "TOKYO" in ex or ex in {"JPX","TSE"}: market="TSE"
+    elif t.endswith(".TO") or t.endswith(".V") or "TORONTO" in ex or ex in {"TSX","TSXV"}: market="TSX"
+    elif "NASDAQ" in ex or ex in {"NMS","NGM","NCM"}: market="NASDAQ"
+    elif "NYSE" in ex or ex in {"NYQ","ASE","AMEX"}: market="NYSE"
+    elif co in {"AUSTRALIA"}: market="ASX"
+    elif co in {"UNITED KINGDOM","UK"}: market="LSE"
+    elif co in {"HONG KONG"}: market="HKEX"
+    elif co in {"JAPAN"}: market="TSE"
+    elif co in {"CANADA"}: market="TSX"
+    elif "." not in t: market="NASDAQ"  # bare Yahoo US listings; SEC resolver validates ticker->CIK
+    else: market="UNKNOWN"
+    meta=GLOBAL_MARKETS.get(market,{"country":country or "Unknown","authority":"Official disclosure source unresolved","portal":""})
+    return {"ticker":t,"market":market,**meta}
+
+def _generic_official_provider(ticker, market, limit=250):
+    """Optional authorised adapters for markets whose public sites do not expose a stable redistribution API.
+    Configure e.g. LSE_ANNOUNCEMENTS_API_URL / HKEX_ANNOUNCEMENTS_API_URL / TSE_ANNOUNCEMENTS_API_URL / TSX_ANNOUNCEMENTS_API_URL.
+    The adapter expects normalized JSON and never substitutes SEC data for a non-US listing.
+    """
+    api_url=os.getenv(f"{market}_ANNOUNCEMENTS_API_URL","").strip()
+    api_key=os.getenv(f"{market}_ANNOUNCEMENTS_API_KEY","").strip()
+    if not api_url:return pd.DataFrame()
+    sep="&" if "?" in api_url else "?"
+    url=api_url+sep+urllib.parse.urlencode({"ticker":ticker,"limit":limit})
+    headers={"User-Agent":UA,"Accept":"application/json"}
+    if api_key:headers["Authorization"]="Bearer "+api_key
+    try:
+        raw,_=_get(url,headers); j=json.loads(raw.decode())
+        data=j.get("results") or j.get("data") or (j if isinstance(j,list) else [])
+        rows=[]
+        for x in data:
+            doc=x.get("pdf_url") or x.get("document_url") or x.get("url") or ""
+            rows.append({"Date":x.get("date") or x.get("filing_date") or x.get("release_date") or "",
+                         "Time":x.get("time") or "","Group":x.get("group") or f"{market} Announcements",
+                         "Type":x.get("type") or x.get("document_type") or "Announcement",
+                         "Title":x.get("title") or x.get("headline") or "Announcement","Price Sensitive":bool(x.get("price_sensitive")),
+                         "Source":x.get("source") or GLOBAL_MARKETS[market]["authority"],"URL":doc,
+                         "PDFURL":x.get("pdf_url") or "","ReadURL":doc,"Has PDF":str(doc).lower().split("?")[0].endswith(".pdf"),
+                         "ID":str(x.get("id") or x.get("announcement_number") or "")})
+        return pd.DataFrame(rows)
+    except Exception:return pd.DataFrame()
+
+def announcements_global(ticker, provider_url="", provider_key="", limit=250, exchange="", country=""):
+    ident=resolve_announcement_market(ticker,exchange,country); market=ident["market"]
+    if market=="ASX":
+        df,cov=announcements(ticker,provider_url,provider_key,limit)
+        return df,cov,ident
+    if market in {"NASDAQ","NYSE"}:
+        df=sec_archive(str(ticker).upper(),limit)
+        return df,"SEC EDGAR submissions API",ident
+    if market in {"LSE","HKEX","TSE","TSX"}:
+        df=_generic_official_provider(ticker,market,limit)
+        cov=(f"{ident['authority']} configured feed" if df is not None and not df.empty
+             else f"{ident['authority']} — official portal available; automated feed not configured")
+        return df,cov,ident
+    return pd.DataFrame(),"Listing market could not be resolved",ident
+
+def announcement_provenance_global(ticker, coverage="", exchange="", country=""):
+    ident=resolve_announcement_market(ticker,exchange,country)
+    return {"market":ident["market"],"country":ident["country"],"authority":ident["authority"],
+            "coverage":coverage or ident["authority"],"portal":ident["portal"],
+            "document_policy":"Open the original authoritative filing/disclosure document when a document URL is available. Chrímata does not fabricate missing filings."}
