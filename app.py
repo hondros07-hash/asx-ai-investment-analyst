@@ -16,6 +16,7 @@ from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
+from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
 from portfolio_engine import portfolio_analytics, concentration
 from model_monitor import registry
@@ -6891,6 +6892,17 @@ elif page=="Company Command Centre":
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
+                # V21.3.15 — company-profile-aware Macro-to-Micro overlay.
+                _macro_exposures=exposure_map(ticker,_ccsector,_ccindustry,str(_ccmeta.get("country") or ""))
+                _macro_c1,_macro_c2,_macro_c3=st.columns([0.72,1.45,0.95],gap="small",vertical_alignment="center")
+                with _macro_c1:
+                    _macro_on=st.checkbox("Macro overlay",value=False,key=f"v21315_macro_on_{ticker}")
+                with _macro_c2:
+                    _macro_labels=[m.label for m in _macro_exposures]
+                    _macro_label=st.selectbox("Macro series",_macro_labels,key=f"v21315_macro_sel_{ticker}",label_visibility="collapsed",disabled=not _macro_on)
+                with _macro_c3:
+                    _macro_normalized=st.checkbox("Rebase 100",value=False,key=f"v21315_macro_norm_{ticker}",disabled=not _macro_on)
+                _macro_choice=macro_by_label(_macro_exposures,_macro_label) if _macro_exposures else None
                 # V21.2.20 — client-side timeframe switching. All chart ranges are loaded once,
                 # then Plotly switches traces in-browser so the Streamlit page does not reload/flash.
                 _tf_options=["1D","1W","1M","3M","6M","1Y","3Y","5Y"]
@@ -6907,6 +6919,7 @@ elif page=="Company Command Centre":
                     "3Y":("5y","1wk"), "5Y":("10y","1wk"),
                 }
                 _chart_sets={}
+                _macro_sets={}
                 for _opt in _tf_options:
                     _per,_int=_tf_calc[_opt]
                     _calc=history_interval(ticker,_per,_int)
@@ -6925,13 +6938,24 @@ elif page=="Company Command Centre":
                     else:
                         _hh=pd.DataFrame()
                     _chart_sets[_opt]=_hh
+                    if _macro_on and _macro_choice is not None:
+                        _mp={"1D":"5d","1W":"1mo","1M":"1mo","3M":"3mo","6M":"6mo","1Y":"1y","3Y":"3y","5Y":"5y"}[_opt]
+                        _mi="1d" if _opt not in ("3Y","5Y") else "1wk"
+                        _macro_sets[_opt]=macro_fetch_close(_macro_choice.ticker,_mp,_mi)
                 _fig=go.Figure()
                 _trace_groups=[]
                 _axis_updates=[]
                 for _opt in _tf_options:
                     _hh=_chart_sets[_opt]
                     _idx=[]
-                    if _hh is not None and not _hh.empty and all(c in _hh.columns for c in ["Open","High","Low","Close"]):
+                    if _macro_on and _macro_normalized and _hh is not None and not _hh.empty and "Close" in _hh.columns:
+                        _stock_norm=pd.to_numeric(_hh["Close"],errors="coerce").dropna()
+                        if not _stock_norm.empty and float(_stock_norm.iloc[0]) != 0:
+                            _stock_norm=_stock_norm/float(_stock_norm.iloc[0])*100.0
+                            _idx.append(len(_fig.data))
+                            _fig.add_trace(go.Scatter(x=_stock_norm.index,y=_stock_norm,mode="lines",name=ticker,line=dict(width=2.2),hovertemplate=f"%{{x}}<br>{ticker}: %{{y:.2f}}<extra></extra>",visible=(_opt=="1Y")))
+                        _tickfmt=".1f"
+                    elif _hh is not None and not _hh.empty and all(c in _hh.columns for c in ["Open","High","Low","Close"]):
                         _idx.append(len(_fig.data))
                         _fig.add_trace(go.Candlestick(x=_hh.index,open=_hh["Open"],high=_hh["High"],low=_hh["Low"],close=_hh["Close"],name=ticker,showlegend=False,increasing_line_color="#00a66a",decreasing_line_color="#f04444",visible=(_opt=="1Y")))
                         if "SMA20" in _hh and _hh["SMA20"].notna().any():
@@ -6948,6 +6972,13 @@ elif page=="Company Command Centre":
                         _tickfmt=".3f" if _span<0.20 else (".2f" if _span<1.0 else ".1f")
                     else:
                         _tickfmt=".2f"
+                    if _macro_on and _macro_choice is not None and _opt in _macro_sets and not _macro_sets[_opt].empty and _hh is not None and not _hh.empty:
+                        _stock_close=pd.to_numeric(_hh["Close"],errors="coerce").dropna()
+                        _aligned=macro_align_series(_stock_close,_macro_sets[_opt])
+                        if not _aligned.empty:
+                            if _macro_normalized: _aligned=macro_normalize_100(_aligned)
+                            _idx.append(len(_fig.data))
+                            _fig.add_trace(go.Scatter(x=_aligned.index,y=_aligned["macro"],mode="lines",name=_macro_choice.label,yaxis="y3",line=dict(width=2,dash="dot"),hovertemplate=f"%{{x}}<br>{_macro_choice.label}: %{{y:.3f}}<extra></extra>",visible=(_opt=="1Y")))
                     _trace_groups.append(_idx)
                     _axis_updates.append(_tickfmt)
                 _buttons=[]
@@ -6966,16 +6997,19 @@ elif page=="Company Command Centre":
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=244,margin=dict(l=2,r=40,t=24,b=18),xaxis_rangeslider_visible=False,
+                    height=190,margin=dict(l=2,r=42,t=16,b=12),xaxis_rangeslider_visible=False,
                     updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
                         buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     showlegend=False,bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
-                    yaxis=dict(side="right",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.22,1.0]),
+                    yaxis=dict(side="left",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.22,1.0],title=("Rebased performance" if (_macro_on and _macro_normalized) else "Stock price")),
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.04,0.18]),
+                    yaxis3=dict(side="right",overlaying="y",showgrid=False,zeroline=False,autorange=True,automargin=True,title=(_macro_choice.label if (_macro_on and _macro_choice is not None and not _macro_normalized) else ("Rebased performance" if _macro_on else "")),visible=bool(_macro_on)),
                 )
-                st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21220_chart_{ticker}")
+                st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21315_chart_{ticker}_{int(_macro_on)}_{int(_macro_normalized)}")
+                if _macro_on and _macro_choice is not None:
+                    st.caption(f"Macro overlay: {_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel} · Market data via Yahoo Finance/yfinance · Visual co-movement does not establish causation.")
                 # V21.2.50 — x-axis is anchored to the volume band, so date labels render beneath volume.
                 # Footer remains one physical row with both sides locked to the same 26px baseline.
                 # No negative margins or overlays: both sides share the exact same baseline.
