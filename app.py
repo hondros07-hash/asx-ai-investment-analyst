@@ -6903,7 +6903,7 @@ elif page=="Company Command Centre":
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
         # V21.2.39 — compact fixed equal-height Overview widgets.
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
-        _overview_widget_height=350
+        _overview_widget_height=430
         with _w_chart:
             with st.container(border=True,height=_overview_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
@@ -6921,6 +6921,12 @@ elif page=="Company Command Centre":
                 # V21.2.20 — client-side timeframe switching. All chart ranges are loaded once,
                 # then Plotly switches traces in-browser so the Streamlit page does not reload/flash.
                 _tf_options=["1D","1W","1M","3M","6M","1Y","3Y","5Y"]
+                # V21.3.17.1 — Streamlit owns the active timeframe so each click
+                # rebuilds the chart from the correct historical dataset.
+                _tf_key=f"v213171_timeframe_{ticker}"
+                if _tf_key not in st.session_state:
+                    st.session_state[_tf_key]="1Y"
+                _active_tf=st.segmented_control("Chart timeframe",_tf_options,key=_tf_key,label_visibility="collapsed") or "1Y"
                 _tf_spec={
                     "1D":("1d","5m"), "1W":("5d","30m"), "1M":("1mo","1d"),
                     "3M":("3mo","1d"), "6M":("6mo","1d"), "1Y":("1y","1d"),
@@ -6968,20 +6974,20 @@ elif page=="Company Command Centre":
                         if not _stock_norm.empty and float(_stock_norm.iloc[0]) != 0:
                             _stock_norm=_stock_norm/float(_stock_norm.iloc[0])*100.0
                             _idx.append(len(_fig.data))
-                            _fig.add_trace(go.Scatter(x=_stock_norm.index,y=_stock_norm,mode="lines",name=ticker,line=dict(width=2.2),hovertemplate=f"%{{x}}<br>{ticker}: %{{y:.2f}}<extra></extra>",visible=(_opt=="1Y")))
+                            _fig.add_trace(go.Scatter(x=_stock_norm.index,y=_stock_norm,mode="lines",name=ticker,line=dict(width=2.2),hovertemplate=f"%{{x}}<br>{ticker}: %{{y:.2f}}<extra></extra>",visible=(_opt==_active_tf)))
                         _tickfmt=".1f"
                     elif _hh is not None and not _hh.empty and all(c in _hh.columns for c in ["Open","High","Low","Close"]):
                         _idx.append(len(_fig.data))
-                        _fig.add_trace(go.Candlestick(x=_hh.index,open=_hh["Open"],high=_hh["High"],low=_hh["Low"],close=_hh["Close"],name=ticker,showlegend=False,increasing_line_color="#00a66a",decreasing_line_color="#f04444",visible=(_opt=="1Y")))
+                        _fig.add_trace(go.Candlestick(x=_hh.index,open=_hh["Open"],high=_hh["High"],low=_hh["Low"],close=_hh["Close"],name=ticker,showlegend=False,increasing_line_color="#00a66a",decreasing_line_color="#f04444",visible=(_opt==_active_tf)))
                         if "SMA20" in _hh and _hh["SMA20"].notna().any():
-                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA20"],name="SMA 20",line=dict(width=1.5,color="#24aee8"),connectgaps=False,visible=(_opt=="1Y")))
+                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA20"],name="SMA 20",line=dict(width=1.5,color="#24aee8"),connectgaps=False,visible=(_opt==_active_tf)))
                         if "SMA50" in _hh and _hh["SMA50"].notna().any():
-                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA50"],name="SMA 50",line=dict(width=1.5,color="#ff334f"),connectgaps=False,visible=(_opt=="1Y")))
+                            _idx.append(len(_fig.data)); _fig.add_trace(go.Scatter(x=_hh.index,y=_hh["SMA50"],name="SMA 50",line=dict(width=1.5,color="#ff334f"),connectgaps=False,visible=(_opt==_active_tf)))
                         if "Volume" in _hh.columns:
                             _vv=pd.to_numeric(_hh["Volume"],errors="coerce")
                             if _vv.notna().any():
                                 _vc=np.where(pd.to_numeric(_hh["Close"],errors="coerce")>=pd.to_numeric(_hh["Open"],errors="coerce"),"rgba(0,166,106,.42)","rgba(240,68,68,.42)")
-                                _idx.append(len(_fig.data)); _fig.add_trace(go.Bar(x=_hh.index,y=_vv,name="Volume",yaxis="y2",marker_color=_vc,visible=(_opt=="1Y")))
+                                _idx.append(len(_fig.data)); _fig.add_trace(go.Bar(x=_hh.index,y=_vv,name="Volume",yaxis="y2",marker_color=_vc,visible=(_opt==_active_tf)))
                         _lo=float(pd.to_numeric(_hh["Low"],errors="coerce").min()); _hi=float(pd.to_numeric(_hh["High"],errors="coerce").max())
                         _span=max(_hi-_lo,0.0001)
                         _tickfmt=".3f" if _span<0.20 else (".2f" if _span<1.0 else ".1f")
@@ -6993,36 +6999,25 @@ elif page=="Company Command Centre":
                         if not _aligned.empty:
                             if _macro_normalized: _aligned=macro_normalize_100(_aligned)
                             _idx.append(len(_fig.data))
-                            _fig.add_trace(go.Scatter(x=_aligned.index,y=_aligned["macro"],mode="lines",name=_macro_choice.label,yaxis="y3",line=dict(width=2,dash="dot"),hovertemplate=f"%{{x}}<br>{_macro_choice.label}: %{{y:.3f}}<extra></extra>",visible=(_opt=="1Y")))
+                            _fig.add_trace(go.Scatter(x=_aligned.index,y=_aligned["macro"],mode="lines",name=_macro_choice.label,yaxis="y3",line=dict(width=2,dash="dot"),hovertemplate=f"%{{x}}<br>{_macro_choice.label}: %{{y:.3f}}<extra></extra>",visible=(_opt==_active_tf)))
                     _trace_groups.append(_idx)
                     _axis_updates.append(_tickfmt)
-                _buttons=[]
-                _ntr=len(_fig.data)
-                for _i,_opt in enumerate(_tf_options):
-                    _vis=[False]*_ntr
-                    for _j in _trace_groups[_i]: _vis[_j]=True
-                    _layout_update={"xaxis.autorange":True,"yaxis.autorange":True,"yaxis.tickformat":_axis_updates[_i],"yaxis2.autorange":True}
-                    # Remove non-trading gaps on intraday views so overnight/weekend whitespace
-                    # does not create misleading long horizontal indicator segments.
-                    if _opt in ("1D","1W"):
-                        _layout_update["xaxis.rangebreaks"]=[dict(bounds=["sat","mon"]),dict(bounds=[16,10],pattern="hour")]
-                    else:
-                        _layout_update["xaxis.rangebreaks"]=[]
-                    _buttons.append(dict(label=_opt,method="update",args=[{"visible":_vis},_layout_update]))
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
                     height=190,margin=dict(l=2,r=42,t=16,b=12),xaxis_rangeslider_visible=False,
-                    updatemenus=[dict(type="buttons",direction="right",active=5,x=0,y=1.24,xanchor="left",yanchor="top",
-                        buttons=_buttons,pad=dict(r=1,t=0),showactive=True,bgcolor="#ffffff",bordercolor="#ffffff",borderwidth=0,font=dict(size=10,color="#557398"))],
                     showlegend=False,bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
-                    yaxis=dict(side="left",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[5],ticksuffix="",automargin=True,domain=[0.22,1.0],title=("Rebased performance" if (_macro_on and _macro_normalized) else "Stock price")),
+                    yaxis=dict(side="left",gridcolor="#e8eef6",autorange=True,tickformat=_axis_updates[_tf_options.index(_active_tf)],ticksuffix="",automargin=True,domain=[0.22,1.0],title=("Rebased performance" if (_macro_on and _macro_normalized) else "Stock price")),
                     yaxis2=dict(side="left",showgrid=False,showticklabels=False,zeroline=False,autorange=True,anchor="x",domain=[0.04,0.18]),
                     yaxis3=dict(side="right",overlaying="y",showgrid=False,zeroline=False,autorange=True,automargin=True,title=(_macro_choice.label if (_macro_on and _macro_choice is not None and not _macro_normalized) else ("Rebased performance" if _macro_on else "")),visible=bool(_macro_on)),
                 )
-                st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v21315_chart_{ticker}_{int(_macro_on)}_{int(_macro_normalized)}")
+                if _active_tf in ("1D","1W"):
+                    _fig.update_xaxes(rangebreaks=[dict(bounds=["sat","mon"]),dict(bounds=[16,10],pattern="hour")])
+                else:
+                    _fig.update_xaxes(rangebreaks=[])
+                st.plotly_chart(_fig,use_container_width=True,config={"displayModeBar":False,"responsive":True},key=f"v213171_chart_{ticker}_{_active_tf}_{int(_macro_on)}_{int(_macro_normalized)}")
                 if _macro_on and _macro_choice is not None:
                     st.caption(f"Macro overlay: {_macro_choice.label} ({_macro_choice.ticker}) · {_macro_choice.channel} · Market data via Yahoo Finance/yfinance · Visual co-movement does not establish causation.")
                 # V21.2.50 — x-axis is anchored to the volume band, so date labels render beneath volume.
