@@ -7281,7 +7281,6 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Chrímata valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
             st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
 
-        st.markdown('<div class="v21-foot">V21.2.90 · Company Intelligence & Decision Monitoring Reference Cards. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
@@ -7739,39 +7738,34 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.2.95 — Persistent Global Legal Footer + Sidebar Cleanup
-# Rendered once at the end of the application so every workspace receives the
-# same information-only, data-provenance and risk disclosure treatment.
+# V21.2.97 — Compact Professional Legal Footer + Production UI Cleanup
+# A restrained production footer rendered once after the active workspace.
 def render_chrimata_global_legal_footer():
     st.markdown(r"""
     <style>
-    .chr-legal-footer{display:block!important;visibility:visible!important;width:100%!important;box-sizing:border-box!important;margin:38px 0 0!important;padding:22px 26px 24px!important;border:1px solid #d8e2ef!important;border-radius:10px 10px 0 0!important;background:#f7f9fc!important;color:#52657d!important;font-size:11px!important;line-height:1.55!important;}
-    .chr-legal-inner{max-width:1480px;margin:0 auto;}
-    .chr-legal-links{display:flex;flex-wrap:wrap;gap:7px 18px;margin-bottom:13px;font-size:12px;font-weight:700;}
-    .chr-legal-links a{color:#0868e8;text-decoration:none;}
+    .chr-legal-footer{width:100%;box-sizing:border-box;margin:30px 0 0;padding:15px 20px 88px;border-top:1px solid #d8e2ef;background:transparent;color:#6b7f98;font-size:10.5px;line-height:1.45;}
+    .chr-legal-inner{max-width:1180px;margin:0 auto;}
+    .chr-legal-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:9px;}
+    .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;white-space:nowrap;}
+    .chr-legal-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px 14px;font-size:10.5px;font-weight:650;}
+    .chr-legal-links a{color:#3f6f9f;text-decoration:none;}
     .chr-legal-links a:hover{text-decoration:underline;}
-    .chr-legal-title{font-weight:800;color:#243b59;}
-    .chr-legal-footer p{margin:7px 0;}
-    .chr-legal-data{margin-top:11px;padding-top:10px;border-top:1px solid #e2e8f0;color:#64748b;}
-    .chr-legal-copy{margin-top:10px;font-weight:650;color:#53657b;}
-    @media(max-width:800px){.chr-legal-footer{padding:18px 16px 22px}.chr-legal-links{gap:6px 13px}}
+    .chr-legal-footer p{margin:4px 0;max-width:1180px;}
+    .chr-legal-title{font-weight:750;color:#455f7d;}
+    .chr-legal-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf1;color:#8190a3;font-size:9.8px;}
+    @media(max-width:800px){.chr-legal-footer{padding:14px 12px 96px}.chr-legal-top{align-items:flex-start}.chr-legal-links{justify-content:flex-start;gap:5px 11px}}
     </style>
     <footer class="chr-legal-footer" role="contentinfo" aria-label="Chrímata legal and data information">
       <div class="chr-legal-inner">
-        <div style="font-weight:800;color:#243b59;font-size:12px;margin-bottom:8px">Chrímata · Legal, Risk & Data Information</div>
-        <div class="chr-legal-links">
-          <a href="#chr-about">About Chrímata</a>
-          <a href="#chr-privacy">Privacy</a>
-          <a href="#chr-financial-disclaimer">Financial Services Disclaimer</a>
-          <a href="#chr-terms">Terms of Use</a>
-          <a href="#chr-data-sources">Data Sources</a>
-          <a href="#chr-contact">Contact</a>
+        <div class="chr-legal-top">
+          <div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>
+          <nav class="chr-legal-links" aria-label="Legal information">
+            <a href="#chr-about">About</a><a href="#chr-privacy">Privacy</a><a href="#chr-financial-disclaimer">Disclaimer</a><a href="#chr-terms">Terms</a><a href="#chr-data-sources">Data Sources</a><a href="#chr-contact">Contact</a>
+          </nav>
         </div>
-        <p id="chr-financial-disclaimer"><span class="chr-legal-title">Information and research only:</span> Chrímata – Market Investment Analyst provides market data, financial information, analytical tools, estimates and research outputs for informational and educational purposes only. Nothing presented by Chrímata constitutes personal financial advice, investment advice, a recommendation, an offer, or a solicitation to buy or sell any financial product.</p>
-        <p>Market information may be delayed, incomplete or inaccurate and may be obtained from third-party data providers, exchanges, regulators and company disclosures, or calculated by Chrímata. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance.</p>
-        <p>Before making an investment decision, users should conduct their own research and consider obtaining advice from an appropriately licensed financial adviser. Past performance is not a reliable indicator of future performance.</p>
-        <p id="chr-data-sources" class="chr-legal-data"><span class="chr-legal-title">Data attribution:</span> Data sources may include official exchange and regulatory disclosures, company filings, Yahoo Finance/yfinance, Twelve Data and other configured market-data providers. Source, timing and calculation provenance is displayed where available. Third-party names and data remain subject to their respective owners' terms and licences.</p>
-        <p class="chr-legal-copy">© 2026 Chrímata – Market Investment Analyst. All rights reserved.</p>
+        <p id="chr-financial-disclaimer"><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
+        <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
+        <div class="chr-legal-meta"><span id="chr-data-sources">Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
         <span id="chr-about"></span><span id="chr-privacy"></span><span id="chr-terms"></span><span id="chr-contact"></span>
       </div>
     </footer>
