@@ -7,6 +7,7 @@ ALIASES={
  "coca cola":[("KO","The Coca-Cola Company","NYSE")],
  "coca-cola":[("KO","The Coca-Cola Company","NYSE")],
  "apple":[("AAPL","Apple Inc.","NASDAQ")],
+ "nike":[("NKE","NIKE, Inc.","NYSE")],
  "qantas":[("QAN.AX","Qantas Airways Limited","ASX")],
  "zip":[("ZIP.AX","Zip Co Limited","ASX"),("ZIP","ZipRecruiter, Inc.","NYSE")],
  "bhp":[("BHP.AX","BHP Group Limited","ASX"),("BHP","BHP Group Limited","NYSE")],
@@ -44,37 +45,67 @@ def yahoo_search(q, limit=30):
         return rows
     except Exception:return []
 
+def _country_from_exchange(exchange, symbol=""):
+    ex=str(exchange or "").upper(); sym=str(symbol or "").upper()
+    if sym.endswith('.AX') or 'ASX' in ex or 'AUSTRAL' in ex: return 'Australia'
+    if sym.endswith('.L') or 'LONDON' in ex or ex in {'LSE','LSEIOB'}: return 'United Kingdom'
+    if sym.endswith('.T') or 'TOKYO' in ex or ex in {'JPX','TSE'}: return 'Japan'
+    if sym.endswith('.HK') or 'HONG KONG' in ex or ex in {'HKG','HKEX'}: return 'Hong Kong'
+    if sym.endswith('.TO') or sym.endswith('.V') or 'TORONTO' in ex or ex in {'TSX','TSXV'}: return 'Canada'
+    if ex in {'NASDAQ','NYSE','NYSEARCA','AMEX','NMS','NYQ','NGM','NCM'} or 'NASDAQ' in ex or 'NYSE' in ex: return 'United States'
+    return ''
+
+def _ticker_root(symbol):
+    return str(symbol or '').upper().split('.')[0].split(':')[-1]
+
 def search_securities(q,key=""):
-    q=q.strip()
+    """Global security resolver.
+
+    Exact ticker roots are intentionally NOT restricted to the selected dashboard
+    country. Results from Yahoo, Twelve Data and local aliases are merged, then
+    ranked exact ticker -> ticker prefix -> company-name match.
+    """
+    q=str(q or '').strip()
     if not q:return pd.DataFrame()
-    rows=[]
-    rows.extend(yahoo_search(q,30))
+    uq=q.upper(); rows=[]
+    rows.extend(yahoo_search(q,50))
     if key:
         try:
             j=_json("/symbol_search",{"symbol":q,"apikey":key,"outputsize":100})
             for x in j.get("data",[]):
                 rows.append({"Symbol":x.get("symbol",""),"Company":x.get("instrument_name") or x.get("name") or "",
-                  "Exchange":x.get("exchange",""),"Country":x.get("country",""),"Currency":x.get("currency",""),"Source":"Twelve Data"})
-        except:pass
-    # Reliable local aliases also ensure common company-name searches work if provider search is unavailable.
+                  "Exchange":x.get("exchange",""),"Country":x.get("country","") or "","Currency":x.get("currency","") or "",
+                  "Type":x.get("instrument_type") or "Stock","Source":"Twelve Data"})
+        except Exception:pass
     for sym,name,ex in ALIASES.get(q.lower(),[]):
-        rows.append({"Symbol":sym,"Company":name,"Exchange":ex,"Country":"","Currency":"","Source":"Verified alias"})
-    # Direct ticker candidate.
-    uq=q.upper()
-    candidates=[uq]
-    if "." not in uq:candidates.append(uq+".AX")
-    for t in candidates:
+        rows.append({"Symbol":sym,"Company":name,"Exchange":ex,"Country":_country_from_exchange(ex,sym),"Currency":"","Type":"Stock","Source":"Verified alias"})
+    # Validate common exchange-qualified forms as a final discovery fallback.
+    suffixes=['','.AX','.L','.T','.HK','.TO','.V']
+    if '.' in uq: suffixes=['']
+    for suffix in suffixes:
+        t=uq+suffix
         if _valid(t):
             try:m=yf.Ticker(t).info or {}
-            except:m={}
+            except Exception:m={}
             rows.append({"Symbol":t,"Company":m.get("longName") or m.get("shortName") or t,
               "Exchange":m.get("fullExchangeName") or m.get("exchange") or "",
-              "Country":m.get("country") or "","Currency":m.get("currency") or "","Source":"Yahoo"})
+              "Country":m.get("country") or "","Currency":m.get("currency") or "","Type":m.get("quoteType") or "Stock","Source":"Yahoo"})
     df=pd.DataFrame(rows)
     if df.empty:return df
-    if "Type" not in df.columns: df["Type"]="Stock"
-    else: df["Type"]=df["Type"].fillna("Stock")
-    return df.drop_duplicates(["Symbol","Exchange"]).reset_index(drop=True)
+    for c in ['Symbol','Company','Exchange','Country','Currency','Type','Source']:
+        if c not in df.columns: df[c]=''
+        df[c]=df[c].fillna('').astype(str)
+    df.loc[df['Country'].eq(''),'Country']=[_country_from_exchange(ex,sym) for ex,sym in zip(df.loc[df['Country'].eq(''),'Exchange'],df.loc[df['Country'].eq(''),'Symbol'])]
+    roots=df['Symbol'].map(_ticker_root)
+    names=df['Company'].str.upper()
+    df['_rank']=3
+    df.loc[roots.eq(uq),'_rank']=0
+    df.loc[(df['_rank']>0)&roots.str.startswith(uq),'_rank']=1
+    df.loc[(df['_rank']>1)&names.str.contains(uq,regex=False),'_rank']=2
+    df['_source_rank']=df['Source'].map({'Twelve Data':0,'Yahoo Search':1,'Yahoo':2,'Verified alias':3}).fillna(9)
+    df=df.sort_values(['_rank','_source_rank','Country','Exchange','Symbol'])
+    df=df.drop_duplicates(['Symbol','Exchange'],keep='first').reset_index(drop=True)
+    return df.drop(columns=['_rank','_source_rank'])
 
 def resolve_listing(symbol,exchange="",country=""):
     raw=str(symbol).upper().strip(); ex=str(exchange).upper()
