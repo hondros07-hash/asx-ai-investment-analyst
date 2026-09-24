@@ -34,10 +34,18 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 - Latest Announcements & Reports uses a real visible Streamlit `View all →` control in the card header; navigation no longer depends on an HTML label/overlay.
 - No disclosure rows are fabricated: unavailable sources remain explicit and provenance is retained.
 
-## V21.3.07 — Verified Global Disclosure Pipeline + Deterministic View-All Navigation
+## V21.3.08 — Dynamic Ticker Disclosure Engine + Reference Card Rebuild
 - Hardened ASX public announcement parsing across current/legacy markup and multiple supported search windows.
 - Added explicit ASX request/parser diagnostics instead of silently collapsing transport/parser failures into a generic empty result.
 - Updated the SEC EDGAR default automated-client User-Agent and retained configurable `SEC_USER_AGENT` support.
 - Full Announcements & Reports workspace now uses the same listing-aware global disclosure router as the Overview card.
 - Rebuilt the Overview `View all →` action as a deterministic state transition that clears stale deep-link parameters and explicitly reruns into Announcements & Reports.
 - Added regression tests for ASX normalization/document links, META/SEC normalization, six-market routing, and View-All navigation wiring.
+
+
+### V21.3.08 fixes
+- Disclosure retrieval now follows the active listing identity even when an ASX search result stores a bare code such as `QAN` rather than `QAN.AX`.
+- ASX identities are canonicalised before the disclosure adapter is called, preventing accidental SEC fallback.
+- The Overview disclosure card is rebuilt to the compact five-row reference layout.
+- `View all →` remains a real Streamlit control and targets the selected ticker's Announcements & Reports workspace.
+- No ticker-specific announcement data is hard-coded.

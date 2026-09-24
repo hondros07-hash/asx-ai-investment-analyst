@@ -574,7 +574,13 @@ def _issuer_ir_fallback(ticker, market, limit=250):
 def announcements_global(ticker, provider_url="", provider_key="", limit=250, exchange="", country=""):
     ident=resolve_announcement_market(ticker,exchange,country); market=ident["market"]
     if market=="ASX":
-        df,cov=announcements(ticker,provider_url,provider_key,limit)
+        # V21.3.08: routing is exchange-driven, not suffix-driven. Company Search
+        # can legitimately persist an ASX identity whose provider symbol is QAN or
+        # QAN.AX. Always canonicalise to the Yahoo/Chrímata ASX form before calling
+        # the legacy adapter, otherwise `announcements()` falls through to SEC.
+        asx_code=re.sub(r"[^A-Z0-9]", "", str(ticker or "").upper().replace(".AX", ""))[:3]
+        asx_ticker=(asx_code+".AX") if asx_code else str(ticker or "")
+        df,cov=announcements(asx_ticker,provider_url,provider_key,limit)
         if df is not None and not df.empty:
             return df,cov,ident
         ir=_issuer_ir_fallback(ticker,market,limit)

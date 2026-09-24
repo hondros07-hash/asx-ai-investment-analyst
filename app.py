@@ -7236,12 +7236,24 @@ elif page=="Company Command Centre":
 
         st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_legacy_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
         st.markdown('''<style>
-/* V21.3.07 — compact reference-card header + real native View all control */
-.v21305-ann-title{font-size:16px;font-weight:800;color:#082b5c;white-space:nowrap;}
-.v21305-ann-body{min-height:205px;margin-top:2px;}
-.v21305-ann-body .v21290-row{grid-template-columns:105px minmax(0,1fr) 120px 48px!important;}
-[class*="st-key-v21307_nav_ann_"] button{border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:800!important;padding:0!important;min-height:28px!important;white-space:nowrap!important;}
-[class*="st-key-v21307_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}
+/* V21.3.08 — reference-card rebuild. The entire card, including the clickable
+   View all control, uses one compact visual system matching the other snapshot cards. */
+.v21308-ann-card{position:relative;height:168px;border:1px solid #d7e3f2;border-radius:10px;background:#fff;overflow:hidden;padding:0;margin:0;}
+.v21308-ann-head{height:37px;display:flex;align-items:center;padding:0 92px 0 12px;border-bottom:1px solid #e5edf7;}
+.v21308-ann-title{font-size:13px;font-weight:800;color:#082b5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v21308-ann-body{height:105px;overflow:hidden;}
+.v21308-ann-row{display:grid;grid-template-columns:92px minmax(0,1fr) 102px 44px;height:21px;align-items:center;border-bottom:1px solid #e5edf7;color:#355b89;font-size:10.5px;}
+.v21308-ann-row>span{height:21px;line-height:21px;padding:0 8px;border-right:1px solid #e5edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v21308-ann-row>span:last-child{border-right:0;text-align:center;padding:0;}
+.v21308-ann-row .main{color:#244f82;} .v21308-ann-row .meta{color:#6c82a1;}
+.v21308-ann-row a{color:#0067e8!important;font-weight:800;text-decoration:none!important;}
+.v21308-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px;}
+.v21308-ann-source{height:25px;display:flex;align-items:center;padding:0 12px;color:#8a9bb4;font-size:9.5px;}
+/* Native Streamlit button is positioned over the card's top-right link area. */
+[class*="st-key-v21308_nav_ann_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:20!important;overflow:visible!important;}
+[class*="st-key-v21308_nav_ann_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}
+[class*="st-key-v21308_nav_ann_"] button{position:absolute!important;right:10px!important;bottom:140px!important;width:auto!important;min-height:24px!important;height:24px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
+[class*="st-key-v21308_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}
 </style>''',unsafe_allow_html=True)
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
@@ -7315,14 +7327,15 @@ elif page=="Company Command Centre":
             # V21.3.05 — native, universal announcement-card navigation. The visible
             # top-right control is the actual Streamlit button; no decorative HTML
             # label or fragile invisible/overlaid button is used.
-            with st.container(border=True):
-                _ah1,_ah2=st.columns([5.4,1.25],vertical_alignment="center")
-                with _ah1:
-                    st.markdown('<div class="v21305-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="'+html.escape(_tip,quote=True)+'">i</span></div>',unsafe_allow_html=True)
-                with _ah2:
-                    st.button("View all →",key=f"v21307_nav_ann_{ticker}",use_container_width=False,
-                              on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
-                st.markdown(f'<div class="v21305-ann-body">{_body}</div><div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
+            # V21.3.08: one compact reference card. The native Streamlit button is
+            # visually positioned into the header, but remains the actual clickable control.
+            _body08=_body.replace('v21290-row','v21308-ann-row').replace('v21290-empty','v21308-ann-empty')
+            st.markdown(
+                f'<div class="v21308-ann-card"><div class="v21308-ann-head"><div class="v21308-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div></div>'
+                f'<div class="v21308-ann-body">{_body08}</div><div class="v21308-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',
+                unsafe_allow_html=True)
+            st.button("View all →",key=f"v21308_nav_ann_{ticker}",use_container_width=False,
+                      on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:
