@@ -12,7 +12,7 @@ def test_missing_is_explicit():
     assert r["audit"]["inputs"]["fcf"]["status"]=="missing"
 def test_app_card_uses_audit_reason():
     s=open("app.py",encoding="utf-8").read()
-    assert '"Missing: "+", ".join(_vmissing[:2])' in s
+    assert '_compact_valuation_blocker(_vaudit' in s
     assert '_ccauto_val=valuation_pipeline(ticker,price)' in s
 def test_shares_history_fallback_wired():
     s=open("app.py",encoding="utf-8").read()
