@@ -3242,8 +3242,23 @@ def _chr_nav_svg(name):
 # Streamlit button callbacks run before the script body on the interaction rerun.
 # Updating the single authoritative route in the callback means the sidebar
 # highlight and page router read the SAME state during the SAME render.
+_CHR_LEGAL_PAGES={"About","Privacy","Disclaimer","Terms","Data Sources","Contact"}
+
+def _chr_clear_legal_route_v21300():
+    st.session_state.pop("chr_legal_page", None)
+    try:
+        if "chr_legal" in st.query_params:
+            del st.query_params["chr_legal"]
+    except Exception:
+        pass
+
+def _chr_set_legal_route_v21300(target):
+    if target in _CHR_LEGAL_PAGES:
+        st.session_state["chr_legal_page"]=target
+
 def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
+        _chr_clear_legal_route_v21300()
         st.session_state["chr_primary_nav"]=target
         # V21.2.22 — a Command Centre deep-link query is only an entry route.
         # Once the user deliberately chooses another sidebar page, remove the
@@ -3288,6 +3303,7 @@ def overview_news_safe(ticker, limit=5):
 
 def _chr_set_cc_sub_v2111(target):
     if target in _cc_items:
+        _chr_clear_legal_route_v21300()
         st.session_state[_cc_sub_key]=target
         st.session_state["chr_primary_nav"]="Company Command Centre"
 
@@ -3552,22 +3568,10 @@ elif primary in SUBPAGES:
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-# V21.2.99 — dedicated legal/information pages reached from the global footer.
-# Relative query-parameter links keep navigation deployment-agnostic (Streamlit Cloud or future custom domain).
-_LEGAL_PAGE_MAP={
-    "about":"About",
-    "privacy":"Privacy",
-    "disclaimer":"Disclaimer",
-    "terms":"Terms",
-    "data-sources":"Data Sources",
-    "contact":"Contact",
-}
-try:
-    _chr_legal_key=str(st.query_params.get("chr_legal") or "").strip().lower()
-except Exception:
-    _chr_legal_key=""
-if _chr_legal_key in _LEGAL_PAGE_MAP:
-    page=_LEGAL_PAGE_MAP[_chr_legal_key]
+# V21.3.00 — unified legal navigation: session state is authoritative.
+_chr_legal_page=st.session_state.get("chr_legal_page")
+if _chr_legal_page in _CHR_LEGAL_PAGES:
+    page=_chr_legal_page
 
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
 try:
@@ -7761,37 +7765,34 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.2.98 — Global Footer Render Repair
-# Keep Streamlit bottom chrome hidden without globally hiding semantic HTML <footer> elements.
-# The Chrímata legal footer is rendered once after the active workspace.
+# V21.3.00 — Global footer with native Streamlit navigation.
+# Native callbacks keep navigation inside the running app and avoid full browser reloads.
 def render_chrimata_global_legal_footer():
     st.markdown(r"""
     <style>
-    .chr-legal-footer{width:100%;box-sizing:border-box;margin:30px 0 0;padding:15px 20px 88px;border-top:1px solid #d8e2ef;background:transparent;color:#6b7f98;font-size:10.5px;line-height:1.45;}
-    .chr-legal-inner{max-width:1180px;margin:0 auto;}
-    .chr-legal-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:9px;}
-    .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;white-space:nowrap;}
-    .chr-legal-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px 14px;font-size:10.5px;font-weight:650;}
-    .chr-legal-links a{color:#3f6f9f;text-decoration:none;}
-    .chr-legal-links a:hover{text-decoration:underline;}
-    .chr-legal-footer p{margin:4px 0;max-width:1180px;}
-    .chr-legal-title{font-weight:750;color:#455f7d;}
+    .chr-legal-shell{width:100%;box-sizing:border-box;margin:30px 0 0;padding:15px 20px 4px;border-top:1px solid #d8e2ef;color:#6b7f98;font-size:10.5px;line-height:1.45;}
+    .chr-legal-brand{font-size:11.5px;font-weight:800;color:#263f5f;margin-bottom:4px;}
+    [class*="st-key-chr_footer_nav_"]{margin-top:0!important;margin-bottom:0!important;}
+    [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:1px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:10.5px!important;font-weight:650!important;}
+    [class*="st-key-chr_footer_nav_"] button:hover{color:#175d9c!important;text-decoration:underline!important;background:transparent!important;border:0!important;}
+    .chr-legal-copy{width:100%;box-sizing:border-box;padding:3px 20px 88px;color:#6b7f98;font-size:10.5px;line-height:1.45;}
+    .chr-legal-inner{max-width:1180px;margin:0 auto;} .chr-legal-copy p{margin:4px 0;} .chr-legal-title{font-weight:750;color:#455f7d;}
     .chr-legal-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf1;color:#8190a3;font-size:9.8px;}
-    @media(max-width:800px){.chr-legal-footer{padding:14px 12px 96px}.chr-legal-top{align-items:flex-start}.chr-legal-links{justify-content:flex-start;gap:5px 11px}}
+    @media(max-width:800px){.chr-legal-shell{padding:14px 12px 4px}.chr-legal-copy{padding:3px 12px 96px}}
     </style>
-    <footer class="chr-legal-footer" role="contentinfo" aria-label="Chrímata legal and data information">
-      <div class="chr-legal-inner">
-        <div class="chr-legal-top">
-          <div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>
-          <nav class="chr-legal-links" aria-label="Legal information">
-            <a href="?chr_legal=about" target="_self">About</a><a href="?chr_legal=privacy" target="_self">Privacy</a><a href="?chr_legal=disclaimer" target="_self">Disclaimer</a><a href="?chr_legal=terms" target="_self">Terms</a><a href="?chr_legal=data-sources" target="_self">Data Sources</a><a href="?chr_legal=contact" target="_self">Contact</a>
-          </nav>
-        </div>
-        <p id="chr-financial-disclaimer"><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
-        <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
-        <div class="chr-legal-meta"><span id="chr-data-sources">Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
-      </div>
-    </footer>
+    <div class="chr-legal-shell"><div class="chr-legal-inner"><div class="chr-legal-brand">Chrímata · Market Investment Analyst</div></div></div>
+    """, unsafe_allow_html=True)
+    labels=["About","Privacy","Disclaimer","Terms","Data Sources","Contact"]
+    cols=st.columns([1,1,1.15,.85,1.35,1,5.2], gap="small")
+    for i,label in enumerate(labels):
+        with cols[i]:
+            st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,))
+    st.markdown(r"""
+    <div class="chr-legal-copy"><div class="chr-legal-inner">
+      <p><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
+      <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
+      <div class="chr-legal-meta"><span>Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
+    </div></div>
     """, unsafe_allow_html=True)
 
 render_chrimata_global_legal_footer()
