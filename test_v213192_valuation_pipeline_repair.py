@@ -13,7 +13,7 @@ def test_missing_is_explicit():
 def test_app_card_uses_audit_reason():
     s=open("app.py",encoding="utf-8").read()
     assert '"Missing: "+", ".join(_vmissing[:2])' in s
-    assert 'automatic_valuation_snapshot(_ccmeta,price,ticker)' in s
+    assert '_ccauto_val=valuation_pipeline(ticker,price)' in s
 def test_shares_history_fallback_wired():
     s=open("app.py",encoding="utf-8").read()
     assert 'shares_history(selected_ticker)' in s and 'provider_shares_history' in s
