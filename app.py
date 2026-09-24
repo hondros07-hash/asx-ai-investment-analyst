@@ -2945,7 +2945,7 @@ st.markdown(r"""
 .chr-side-version{font-size:8px;color:#d7e8f7;text-align:right;margin:5px 7px 0}
 .chr-side-copyright{font:7px Arial,sans-serif;color:#91abc0;text-align:center;margin:5px 4px 0;letter-spacing:.02em}
 /* Remove Streamlit footer/bottom chrome that can appear as a white strip. */
-footer,[data-testid="stBottom"],[data-testid="stBottomBlockContainer"]{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;}
+[data-testid="stBottom"],[data-testid="stBottomBlockContainer"]{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;}
 /* V20.0.8: compact reference spacing and remove Streamlit sidebar chrome. */
 
 [data-testid="stSidebarHeader"],
@@ -7738,8 +7738,9 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.2.97 — Compact Professional Legal Footer + Production UI Cleanup
-# A restrained production footer rendered once after the active workspace.
+# V21.2.98 — Global Footer Render Repair
+# Keep Streamlit bottom chrome hidden without globally hiding semantic HTML <footer> elements.
+# The Chrímata legal footer is rendered once after the active workspace.
 def render_chrimata_global_legal_footer():
     st.markdown(r"""
     <style>
