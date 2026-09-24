@@ -1,7 +1,7 @@
 from pathlib import Path
 def src(): return Path("app.py").read_text(encoding="utf-8")
 def test_price_card_has_independent_compact_height():
- s=src(); assert "_price_chart_widget_height=410" in s
+ s=src(); assert "_price_chart_widget_height=432" in s
  assert 'height=_price_chart_widget_height,key="v21243_price_card"' in s
 def test_plotly_height_compacted_without_engine_rewrite():
  s=src(); assert "height=202,margin=dict(l=2,r=34,t=8,b=10)" in s

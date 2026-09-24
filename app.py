@@ -17,6 +17,7 @@ from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.thesis_status_engine import calculate_thesis_status
+from services.thesis_template_engine import get_thesis_template, classify_thesis_template
 from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
@@ -1229,6 +1230,8 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
     try: name=(company_name(ticker) if 'company_name' in globals() else ticker)
     except Exception: name=ticker
     ident=f"{ticker} {name} {sector} {industry}".lower()
+    _adaptive_template=get_thesis_template(ticker,name,sector,industry)
+    _template_name=_adaptive_template["template"]
     def num(*keys):
         for k in keys:
             try:
@@ -1290,20 +1293,24 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
               margin_row("Operating margin improvement"),
               pending("Credit losses / bad debts","ZIP-specific credit-loss evidence not loaded"),
               pending("NASDAQ listing catalyst","Catalyst evidence not loaded"),valuation_row()]
-    elif any(x in ident for x in ["airline","airlines","air transportation","qantas"]):
+    elif _template_name=="airline":
         rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),margin_row(),fcf_row(),
               pending("Capacity / demand trend","Airline operating KPI evidence not loaded"),
               pending("Fleet / fuel cost discipline","Airline cost KPI evidence not loaded")]
         de=num("debtToEquity")
         rows.append(("Balance-sheet leverage","On track" if de<150 else "Watch",f"Debt/equity {de:.0f}%","Market-data provider snapshot") if np.isfinite(de) else pending("Balance-sheet leverage"))
-    elif any(x in ident for x in ["beverage","consumer defensive","soft drink","coca-cola","coca cola"]):
-        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),fcf_row(),roe_row(),valuation_row()]
-    elif any(x in ident for x in ["bank","banks"]):
+    elif _template_name=="consumer_brand":
+        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),pending("Inventory health","Inventory trend evidence not loaded"),fcf_row(),roe_row()]
+    elif _template_name=="bank":
         rows=[pending("Net interest margin","Bank KPI evidence not loaded"),pending("CET1 / capital strength","Bank capital evidence not loaded"),growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth"),pending("Credit losses / bad debts","Bank credit-loss evidence not loaded"),roe_row()]
-    elif any(x in ident for x in ["mining","miner","materials","gold","copper","lithium"]):
+    elif _template_name=="mining":
         rows=[pending("Production trend","Production KPI evidence not loaded"),pending("Unit costs / AISC","Unit-cost evidence not loaded"),growth_row("Revenue growth","revenue_growth","revenueGrowth"),margin_row(),fcf_row(),pending("Reserves / resource quality","Resource evidence not loaded")]
-    elif any(x in ident for x in ["reit","real estate"]):
+    elif _template_name=="reit":
         rows=[pending("FFO / AFFO growth","REIT KPI evidence not loaded"),pending("Occupancy","Occupancy evidence not loaded"),pending("WALE / lease quality","Lease evidence not loaded"),fcf_row(),pending("Gearing","REIT gearing evidence not loaded"),pending("Distribution sustainability","Distribution evidence not loaded")]
+    elif _template_name=="payments":
+        rows=[growth_row("Revenue / transaction growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),pending("Credit losses / bad debts","Issuer credit-loss KPI evidence not loaded"),fcf_row(),pending("Guidance / catalyst execution","Guidance/catalyst evidence not loaded")]
+    elif _template_name=="technology":
+        rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),fcf_row(),roe_row(),pending("Guidance / product execution","Guidance/product evidence not loaded")]
     else:
         rows=[growth_row("Revenue growth","revenue_growth","revenueGrowth"),growth_row("Earnings growth","earnings_growth","earningsGrowth","earningsQuarterlyGrowth"),margin_row(),fcf_row(),roe_row(),pending("Guidance / catalyst execution","Guidance/catalyst evidence not loaded")]
     return pd.DataFrame(rows[:6],columns=["metric","status","evidence","source"])
@@ -6934,7 +6941,7 @@ elif page=="Company Command Centre":
         /* V21.2.55 — functional reference Thesis Scorecard: six-row starter template + stored-rule live status. */
         .v21216-thesis-score{font-size:27px;font-weight:900;color:#08a142;line-height:1.05;margin:2px 0 7px}.v21216-thesis-score span{font-size:12px;color:#29476f;font-weight:700;margin-left:3px}
         .v21245-thesis-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;margin:1px 0 8px}.v21245-thesis-track{height:11px;background:#dfe9f4;border-radius:99px;overflow:hidden}.v21245-thesis-fill{height:100%;background:#08a142;border-radius:99px}.v21245-thesis-pct{font-size:11px;font-weight:900;color:#29476f}
-        .v21254-thesis-list{margin:0;padding:0}
+        .v21324-thesis-template{font-size:8.5px;font-weight:800;color:#6a819b;margin:-2px 0 4px}.v21254-thesis-list{margin:0;padding:0}
         .v21216-thesis-row{display:grid;grid-template-columns:20px minmax(0,1fr) 62px;align-items:center;gap:7px;border-bottom:1px solid #e5edf6;padding:5px 0;font-size:11px;font-weight:650;color:#26466e;line-height:1.15;min-height:27px;box-sizing:border-box}.v21216-thesis-row:last-child{border-bottom:0}
         .v21216-thesis-icon{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:900;background:#91a4ba}.v21216-thesis-icon.met{background:#0aa64a}.v21216-thesis-icon.watch{background:#f5a300}.v21216-thesis-status{font-size:10px;font-weight:800;white-space:nowrap;text-align:right}.v21216-thesis-status.met{color:#0aa64a}.v21216-thesis-status.watch{color:#f5a300}.v21216-thesis-status.pending{color:#7890aa}
         .v21245-thesis-empty{font-size:10px;color:#7890aa;padding:12px 0 0;min-height:146px}.st-key-v21255_thesis_card,[class*="st-key-v21255_thesis_card"]{background:#fff!important}.st-key-v21255_thesis_card [data-testid="stVerticalBlockBorderWrapper"],.st-key-v21255_thesis_card [data-testid="stVerticalBlock"],.st-key-v21255_thesis_card [data-testid="stElementContainer"]{background:#fff!important;background-color:#fff!important}.st-key-v21255_thesis_card [data-testid="stVerticalBlockBorderWrapper"]{border-color:#d9e5f2!important;box-shadow:none!important}.st-key-v21255_thesis_card{border-radius:9px!important;overflow:hidden!important}
@@ -6976,6 +6983,16 @@ elif page=="Company Command Centre":
             min-height:22px!important;height:22px!important;width:auto!important;min-width:0!important;
         }
         [class*="st-key-v213172_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
+        /* V21.3.23.3 — fixed footer geometry and visible white breathing room. */
+        [class*="st-key-v213172_technical_"]{min-height:24px!important;margin:0!important;padding:0!important}
+        .v213233-price-bottom-space{height:18px;min-height:18px;width:100%;display:block}
+        [class*="st-key-v21243_price_card"] [data-testid="stHorizontalBlock"]{flex-shrink:0!important}
+        [class*="st-key-v213171_timeframe_"] [aria-checked="true"],
+        [class*="st-key-v213171_timeframe_"] [data-state="on"],
+        [class*="st-key-v213171_timeframe_"] [data-state="checked"]{background:#086ee8!important;border-color:#086ee8!important;color:#fff!important}
+        [class*="st-key-v213171_timeframe_"] [aria-checked="true"] *,
+        [class*="st-key-v213171_timeframe_"] [data-state="on"] *,
+        [class*="st-key-v213171_timeframe_"] [data-state="checked"] *{color:#fff!important}
         .v21249-chart-legend{display:flex;align-items:center;gap:12px;height:22px;margin:0!important;padding:0!important;font-size:10px;color:#162a46;line-height:22px;white-space:nowrap;box-sizing:border-box}
         .v21249-chart-legend .lg{display:inline-flex;align-items:center;gap:7px}
         .v21249-chart-legend .line{display:inline-block;width:30px;height:4px;border-radius:0}
@@ -7155,7 +7172,7 @@ elif page=="Company Command Centre":
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
         _overview_widget_height=520
         # V21.3.23.1 — Price Chart gets its own compact height; adjacent research cards retain their geometry.
-        _price_chart_widget_height=410
+        _price_chart_widget_height=432
         with _w_chart:
             with st.container(border=True,height=_price_chart_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
@@ -7179,6 +7196,21 @@ elif page=="Company Command Centre":
                 if _tf_key not in st.session_state:
                     st.session_state[_tf_key]="1Y"
                 _active_tf=st.segmented_control("Chart timeframe",_tf_options,key=_tf_key,label_visibility="collapsed") or "1Y"
+                # V21.3.23.3 — force the selected segment to the reference solid-blue state.
+                # Streamlit's selected-state attributes vary by release, so target the known segment index too.
+                _tf_active_index=_tf_options.index(_active_tf)+1
+                st.markdown(
+                    f"""<style>
+                    [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > label:nth-child({_tf_active_index}),
+                    [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > button:nth-child({_tf_active_index}),
+                    [class*=\"st-key-v213171_timeframe_\"] button:nth-of-type({_tf_active_index}) {{
+                        background:#086ee8!important;border-color:#086ee8!important;color:#fff!important;
+                    }}
+                    [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > label:nth-child({_tf_active_index}) *,
+                    [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > button:nth-child({_tf_active_index}) *,
+                    [class*=\"st-key-v213171_timeframe_\"] button:nth-of-type({_tf_active_index}) * {{color:#fff!important;}}
+                    </style>""",unsafe_allow_html=True,
+                )
                 _tf_spec={
                     "1D":("1d","5m"), "1W":("5d","30m"), "1M":("1mo","1d"),
                     "3M":("3mo","1d"), "6M":("6mo","1d"), "1Y":("1y","1d"),
@@ -7337,8 +7369,10 @@ elif page=="Company Command Centre":
                         on_click=_chr_set_cc_sub_v2111,
                         args=("Technical",),
                     )
+                # V21.3.23.3 — intentional white breathing room below the fixed footer.
+                st.markdown('<div class="v213233-price-bottom-space"></div>',unsafe_allow_html=True)
         with _w_thesis:
-            with st.container(border=True,height=_overview_widget_height,key="v21255_thesis_card"):
+            with st.container(border=True,key="v21255_thesis_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
                 # V21.2.55 — stored rules drive the score. If none exist, render a real
                 # six-row starter monitoring template as Pending instead of an empty card.
@@ -7359,6 +7393,9 @@ elif page=="Company Command Centre":
                     _display_total=len(_thesis_rows)
                     _display_met=int(sum(str(v).strip().lower() in {"met","on track","pass","passed","true"} for v in _thesis_rows.get("status",pd.Series(dtype=str)).tolist()))
                 _ratio=(_display_met/max(_display_total,1)) if _display_total else 0.0
+                _thesis_template_payload=get_thesis_template(ticker,company_name(ticker),_ccsector,_ccindustry)
+                _thesis_template_label=str(_thesis_template_payload.get("template","corporate")).replace("_"," ").title()
+                st.markdown(f'<div class="v21324-thesis-template" title="Deterministic business-model classification · AI calculated: No">{html.escape(_thesis_template_label)} thesis · {html.escape(str(ticker))}</div>',unsafe_allow_html=True)
                 st.markdown(f'<div class="v21216-thesis-score">{_display_met} / {_display_total} <span>conditions on track</span></div>',unsafe_allow_html=True)
                 _pct=int(round(_ratio*100)) if _display_total else 0
                 st.markdown(f'<div class="v21245-thesis-progress"><div class="v21245-thesis-track"><div class="v21245-thesis-fill" style="width:{_pct}%"></div></div><div class="v21245-thesis-pct">{_pct}%</div></div>',unsafe_allow_html=True)
