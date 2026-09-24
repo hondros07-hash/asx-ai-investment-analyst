@@ -1015,11 +1015,12 @@ def overview_thesis_template(ticker, sector="", industry=""):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def investment_snapshot_ttm_metrics(ticker):
-    """Return defensible TTM metrics plus like-for-like TTM YoY growth where available.
+    """Return TTM metrics with a conservative growth fallback hierarchy.
 
-    Flow metrics are summed from the latest four provider quarters. YoY growth is only
-    published when eight comparable quarters are available. Missing comparisons remain
-    unavailable rather than mixing annual and TTM periods.
+    Value hierarchy: four-quarter TTM -> provider trailing/latest fallback in caller.
+    Growth hierarchy: prior four-quarter TTM -> latest FY vs prior FY -> unavailable.
+    The fallback never labels an annual comparison as TTM growth; provenance records
+    the exact comparison basis used for every metric.
     """
     out={}
     def _frame(obj, attr):
@@ -1036,42 +1037,66 @@ def investment_snapshot_ttm_metrics(ticker):
             if key in idx:
                 try:
                     ser=pd.to_numeric(df.loc[idx[key]],errors="coerce").dropna()
+                    # yfinance normally returns newest first; enforce it when dates are parseable.
+                    try:
+                        dts=pd.to_datetime(ser.index,errors="coerce")
+                        if dts.notna().sum()>=2:
+                            ser=ser.iloc[list(np.argsort(dts.view("i8"))[::-1])]
+                    except Exception:
+                        pass
                     return ser
                 except Exception: return None
         return None
-    def _ttm(ser):
-        if ser is None or len(ser)<4: return (np.nan,np.nan,None)
-        vals=[float(x) for x in ser.iloc[:4]]
-        cur=float(np.sum(vals)) if all(np.isfinite(vals)) else np.nan
-        prior=np.nan
-        if len(ser)>=8:
-            p=[float(x) for x in ser.iloc[4:8]]
-            if all(np.isfinite(p)): prior=float(np.sum(p))
-        growth=np.nan if not np.isfinite(cur) or not np.isfinite(prior) or prior==0 else cur/abs(prior)-1
-        return cur,growth,"4-quarter TTM; YoY uses prior four quarters" if np.isfinite(growth) else "4-quarter TTM; prior four-quarter comparison unavailable"
+    def _sum4(ser,offset=0):
+        if ser is None or len(ser)<offset+4: return np.nan
+        vals=[float(x) for x in ser.iloc[offset:offset+4]]
+        return float(np.sum(vals)) if all(np.isfinite(vals)) else np.nan
+    def _annual_growth(ser):
+        if ser is None or len(ser)<2: return np.nan
+        cur=float(ser.iloc[0]); prev=float(ser.iloc[1])
+        return np.nan if not np.isfinite(cur) or not np.isfinite(prev) or prev==0 else cur/abs(prev)-1
+    def _metric(qser,aser,derive_note=""):
+        cur=_sum4(qser,0)
+        prior=_sum4(qser,4)
+        growth=np.nan; growth_basis=""
+        if np.isfinite(cur) and np.isfinite(prior) and prior!=0:
+            growth=cur/abs(prior)-1
+            growth_basis="TTM vs prior TTM (8 quarterly periods)"
+        else:
+            ag=_annual_growth(aser)
+            if np.isfinite(ag):
+                growth=ag
+                growth_basis="Latest FY vs prior FY fallback"
+        value_basis="4-quarter TTM" if np.isfinite(cur) else "TTM unavailable from quarterly statements"
+        if derive_note:
+            value_basis += derive_note
+            if growth_basis: growth_basis += derive_note
+        return {"value":cur,"growth":growth,"value_basis":value_basis,"growth_basis":growth_basis or "Comparable growth unavailable"}
     try:
         t=yf.Ticker(ticker)
-        inc=_frame(t,"quarterly_income_stmt")
-        cf=_frame(t,"quarterly_cashflow")
+        qinc=_frame(t,"quarterly_income_stmt"); qcf=_frame(t,"quarterly_cashflow")
+        ainc=_frame(t,"income_stmt"); acf=_frame(t,"cashflow")
         mapping={
-            "Revenue": (inc,["Total Revenue","Operating Revenue"]),
-            "EBITDA": (inc,["EBITDA","Normalized EBITDA"]),
-            "Net Income": (inc,["Net Income","Net Income Common Stockholders","Net Income Including Noncontrolling Interests"]),
-            "EPS": (inc,["Diluted EPS","Basic EPS"]),
-            "Free Cash Flow": (cf,["Free Cash Flow"]),
+            "Revenue": (qinc,ainc,["Total Revenue","Operating Revenue"]),
+            "EBITDA": (qinc,ainc,["EBITDA","Normalized EBITDA"]),
+            "Net Income": (qinc,ainc,["Net Income","Net Income Common Stockholders","Net Income Including Noncontrolling Interests"]),
+            "EPS": (qinc,ainc,["Diluted EPS","Basic EPS"]),
+            "Free Cash Flow": (qcf,acf,["Free Cash Flow"]),
         }
-        for label,(df,names) in mapping.items():
-            cur,growth,basis=_ttm(_row(df,names))
-            out[label]={"value":cur,"growth":growth,"basis":basis or "TTM unavailable from quarterly statements"}
-        # If provider does not expose an FCF row, derive each quarter as OCF + capex.
+        for label,(qdf,adf,names) in mapping.items():
+            out[label]=_metric(_row(qdf,names),_row(adf,names))
+        # If provider omits FCF, derive it consistently as OCF + capex (capex is normally negative).
         if not np.isfinite(out["Free Cash Flow"]["value"]):
-            ocf=_row(cf,["Operating Cash Flow","Total Cash From Operating Activities"])
-            cap=_row(cf,["Capital Expenditure","Capital Expenditures"])
-            if ocf is not None and cap is not None:
-                n=min(len(ocf),len(cap))
-                derived=pd.Series([float(ocf.iloc[i])+float(cap.iloc[i]) for i in range(n)])
-                cur,growth,basis=_ttm(derived)
-                out["Free Cash Flow"]={"value":cur,"growth":growth,"basis":((basis or "")+"; derived as operating cash flow + capex").strip("; ")}
+            qocf=_row(qcf,["Operating Cash Flow","Total Cash From Operating Activities"])
+            qcap=_row(qcf,["Capital Expenditure","Capital Expenditures"])
+            aocf=_row(acf,["Operating Cash Flow","Total Cash From Operating Activities"])
+            acap=_row(acf,["Capital Expenditure","Capital Expenditures"])
+            def _combine(a,b):
+                if a is None or b is None: return None
+                n=min(len(a),len(b))
+                if n<=0: return None
+                return pd.Series([float(a.iloc[i])+float(b.iloc[i]) for i in range(n)])
+            out["Free Cash Flow"]=_metric(_combine(qocf,qcap),_combine(aocf,acap),"; derived as operating cash flow + capex")
     except Exception:
         pass
     return out
@@ -7027,18 +7052,18 @@ elif page=="Company Command Centre":
             _metric_rows=[]; _basis_notes=[]
             for _label in ["Revenue","EBITDA","Net Income","EPS","Free Cash Flow"]:
                 _m=_ttm.get(_label,{})
-                _val=_mia_num(_m.get("value")); _growth=_mia_num(_m.get("growth")); _basis=str(_m.get("basis") or "")
+                _val=_mia_num(_m.get("value")); _growth=_mia_num(_m.get("growth")); _value_basis=str(_m.get("value_basis") or ""); _growth_basis=str(_m.get("growth_basis") or "")
                 if not np.isfinite(_val):
-                    _val=_mia_num(_fallback.get(_label)); _basis="Provider trailing/latest field fallback; four-quarter TTM statement series unavailable"
-                _disp=(f"{_cur}{_val:,.2f}" if _label=="EPS" and np.isfinite(_val) else _ov_fmt(_val,_cur))
+                    _val=_mia_num(_fallback.get(_label)); _value_basis="Provider trailing/latest field fallback; four-quarter TTM statement series unavailable"
+                _disp=(f"{_cur}{_val:,.2f}" if _label=="EPS" and np.isfinite(_val) and _val>=0 else f"-{_cur}{abs(_val):,.2f}" if _label=="EPS" and np.isfinite(_val) else _ov_fmt(_val,_cur)); _disp=_disp.replace(f"{_cur}-",f"-{_cur}")
                 if np.isfinite(_growth):
                     _gcls="v21283-growth-pos" if _growth>=0 else "v21283-growth-neg"; _gtext=f"{_growth:+.0%}"
                 else:
                     _gcls="v21283-growth-na"; _gtext="—"
                 _metric_rows.append(f'<tr><td>{html.escape(_label)}</td><td>{html.escape(_disp)}</td><td class="{_gcls}">{html.escape(_gtext)}</td></tr>')
-                _basis_notes.append(f"{_label}: {_basis}; YoY growth {'available' if np.isfinite(_growth) else 'unavailable'}")
+                _basis_notes.append(f"{_label}: value={_value_basis}; growth={_growth_basis}")
             _mh="".join(_metric_rows)
-            _prov="Yahoo Finance via yfinance quarterly financial statements. TTM = latest four reported quarters when available. Growth = current four-quarter TTM versus prior four-quarter TTM only; missing comparisons remain blank. " + " | ".join(_basis_notes)
+            _prov="Yahoo Finance via yfinance financial statements. Value basis prefers the latest four reported quarters. Growth hierarchy: TTM vs prior TTM when 8 quarters exist; otherwise latest FY vs prior FY; otherwise unavailable. Annual fallback growth is not represented as TTM growth. " + " | ".join(_basis_notes)
             st.markdown(f'<div class="v21261-card v21283-metrics" title="{html.escape(_prov,quote=True)}"><div class="v21261-title">Key Metrics (TTM) {_info}</div><table class="v21261-table">{_mh}</table></div>',unsafe_allow_html=True)
             st.button("View Full Fundamentals  →",key=f"v21261_nav_fund_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
         with _w5:

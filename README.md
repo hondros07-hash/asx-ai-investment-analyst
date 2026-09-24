@@ -1,8 +1,8 @@
-# Chrímata V21.2.83 — Key Metrics TTM Reference Card + Growth Engine
+# Chrímata V21.2.84 — Key Metrics Growth Fallback Engine
 
-- Rebuilds Investment Snapshot → Key Metrics (TTM) to the three-column reference layout.
-- Uses latest four quarterly statement periods for TTM flow metrics where available.
-- Publishes YoY growth only when eight comparable quarterly periods support current-vs-prior TTM comparison.
-- Falls back to provider trailing/latest values when a four-quarter statement series is unavailable, without fabricating growth.
-- Adds metric-level provenance/basis detail to the information tooltip.
-- Leaves all other Investment Snapshot and intelligence widgets unchanged.
+- Preserves genuine four-quarter TTM values where available.
+- Growth hierarchy: TTM vs prior TTM (8 quarters) → latest FY vs prior FY → unavailable.
+- Annual fallback growth is explicitly identified in provenance and is never presented as a TTM comparison.
+- Missing comparisons remain `—`; no growth figures are fabricated.
+- Corrects negative currency formatting such as `-A$36.70M`.
+- Investment Snapshot layout and unrelated engines are unchanged.
