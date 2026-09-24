@@ -6510,8 +6510,28 @@ elif page=="Company Command Centre":
             _sma200_strip=_mia_num(_ti_strip["SMA200"].iloc[-1]) if _ti_strip is not None and not _ti_strip.empty and "SMA200" in _ti_strip else np.nan
         except Exception:
             _rsi_strip=_sma200_strip=np.nan
-        _tech_label="Neutral" if str(tr.get("Trend","Mixed"))=="Mixed" else ("Constructive" if "Improving" in str(tr.get("Trend","")) else "Defensive")
-        _tech_sub=(f"RSI {_rsi_strip:.0f}" if np.isfinite(_rsi_strip) else "RSI —")+(" | Above 200 MA" if np.isfinite(_sma200_strip) and price>=_sma200_strip else " | Below 200 MA" if np.isfinite(_sma200_strip) else "")
+        # V21.2.71 — use technical-analysis terminology rather than the investment-style label "Defensive".
+        # RSI remains the primary compact-strip signal; the full Technical page retains the richer multi-indicator view.
+        if np.isfinite(_rsi_strip):
+            if _rsi_strip < 30:
+                _tech_label="Oversold"
+                _tech_context="Oversold momentum"
+            elif _rsi_strip <= 40:
+                _tech_label="Weak"
+                _tech_context="Near oversold"
+            elif _rsi_strip >= 70:
+                _tech_label="Overbought"
+                _tech_context="Overbought momentum"
+            elif _rsi_strip >= 60:
+                _tech_label="Strong"
+                _tech_context="Positive momentum"
+            else:
+                _tech_label="Neutral"
+                _tech_context="Neutral momentum"
+        else:
+            _tech_label="Neutral" if str(tr.get("Trend","Mixed"))=="Mixed" else ("Constructive" if "Improving" in str(tr.get("Trend","")) else "Weak")
+            _tech_context=str(tr.get("Trend","—"))
+        _tech_sub=f"RSI {_rsi_strip:.0f}" if np.isfinite(_rsi_strip) else "RSI —"
         _an_label=str(_ccanalyst.get("label") or "Unavailable")
         _an_n=int(_mia_num(_ccanalyst.get("analysts"))) if np.isfinite(_mia_num(_ccanalyst.get("analysts"))) else 0
         _an_target=_mia_num(_ccanalyst.get("target_mean")); _an_target=_cctarget if not np.isfinite(_an_target) else _an_target
@@ -6526,7 +6546,7 @@ elif page=="Company Command Centre":
         _strip_html=''.join([
             _research_card,
             f'<div class="v21262-strip-card blue v21269-valuation-card"><div class="v21262-strip-icon v21269-val-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="6.5" y="5.5" width="11" height="14" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 5.5V4.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4v1.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.3 9.2h5.4M9.3 12h5.4M9.3 14.8h2.1" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/><circle cx="14.6" cy="15.2" r="1.65" fill="none" stroke="currentColor" stroke-width="1.45"/><path d="M14.6 13.9v2.6M13.7 14.5h1.25c.55 0 .9.28.9.7 0 .44-.35.7-.9.7h-.7" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/></svg></div><div class="v21262-strip-copy v21269-val-copy"><div class="v21262-strip-title">Valuation</div><div class="v21269-val-value">{html.escape(_val_label)}</div><div class="v21269-val-base">{html.escape(f"Base case: {display_price(_ccbase,ticker)}" if np.isfinite(_mia_num(_ccbase)) else "Base case unavailable")}</div><div class="v21269-val-move {_val_move_cls}">{html.escape(_val_move)}</div><div class="v21269-val-confidence">{html.escape(_val_conf_text)}</div></div></div>',
-            _strip_card('amber','○','Technicals',_tech_label,_tech_sub,str(tr.get('Trend','—'))),
+            _strip_card('amber','○','Technicals',_tech_label,_tech_sub,_tech_context),
             _strip_card('good','▥','Analyst Consensus',_an_label,(f"{_an_n} analysts" if _an_n else "Analyst count unavailable"),(f"Target: {display_price(_an_target,ticker)} ({_an_up:+.0%})" if np.isfinite(_an_target) and np.isfinite(_an_up) else "Target unavailable")),
             _strip_card('blue','↗','12M Forecast',(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable"),(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable"),(f"Historical model scenario" if np.isfinite(_ccf12) else "Insufficient model evidence")),
             _strip_card('good','▤','Thesis Status',_th_label,_th_sub,(f"{_ccth_met} / {_ccth_total} conditions on track" if _ccth_total else "Open Thesis Scorecard to configure")),
@@ -6854,7 +6874,7 @@ elif page=="Company Command Centre":
         with _b3:
             st.markdown('<div class="v21261-bottom"><div class="v21261-quote">“Better information. Better questions. Better decisions.”<br>— Chrímata</div></div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="v21-foot">V21.2.70 · Valuation Reference Icon Update. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="v21-foot">V21.2.71 · Technical Terminology Correction. Values are drawn from the selected company’s loaded provider, model and stored evidence; unsupported fields remain unavailable rather than being fabricated.</div>',unsafe_allow_html=True)
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
     st.markdown("### What do I need to know before committing more capital?")
