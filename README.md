@@ -302,3 +302,7 @@ Added Company Overview Intelligence Widgets: valuation, forecasts, analyst conse
 - Connects the card to the forward Valuation Model Validation Engine.
 - Shows Validation pending until at least 8 matured observations exist; after that, confidence is derived from observed direction accuracy, bear–bull range hit rate, and median base-case error.
 - Does not fabricate historical accuracy or confidence before sufficient validation evidence exists.
+
+
+## V21.2.75
+Analyst Consensus icon updated from people/group imagery to a compact financial consensus bar-chart graphic. No analyst data, provenance, calculations, or other widgets changed.
