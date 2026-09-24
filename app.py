@@ -15,6 +15,7 @@ from plotly.subplots import make_subplots
 from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
+from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
 from portfolio_engine import portfolio_analytics, concentration
 from model_monitor import registry
@@ -1194,13 +1195,34 @@ def thesis_financial_evidence(ticker):
         pass
     return out
 
+def deterministic_financial_thesis(ticker):
+    """Adapt provider statement evidence into the pure-Python thesis service.
+
+    The service, not AI, performs all growth/margin arithmetic. Missing inputs remain None.
+    """
+    e=thesis_financial_evidence(ticker) or {}
+    rg=e.get("revenue_growth",{}); om=e.get("operating_margin",{}); f=e.get("free_cash_flow",{})
+    rc=_mia_num(rg.get("current")); rp=_mia_num(rg.get("prior"))
+    mc=_mia_num(om.get("value")); mp=_mia_num(om.get("prior"))
+    fc=_mia_num(f.get("value")); fp=_mia_num(f.get("prior"))
+    # Recover operating income from reported revenue × reported margin only when both exist.
+    oc=rc*mc if np.isfinite(rc) and np.isfinite(mc) else np.nan
+    op=rp*mp if np.isfinite(rp) and np.isfinite(mp) else np.nan
+    if not (np.isfinite(rc) and np.isfinite(rp)): return None
+    raw={"financials":[
+        {"year":1,"Revenue":rp,"Operating Income":op if np.isfinite(op) else None,"Free Cash Flow":fp if np.isfinite(fp) else None},
+        {"year":2,"Revenue":rc,"Operating Income":oc if np.isfinite(oc) else None,"Free Cash Flow":fc if np.isfinite(fc) else None},
+    ]}
+    try: return build_thesis_scorecard(raw,ThesisThresholds())
+    except Exception: return None
+
 def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_value=np.nan, current_price=np.nan):
     """Evaluate a company-specific six-condition thesis from traceable evidence.
 
     Reported statement comparisons take priority over snapshot metadata. A status is
     only assigned where the evidence supports an explicit rule; otherwise Pending.
     """
-    meta=meta or {}; stmt=thesis_financial_evidence(ticker)
+    meta=meta or {}; stmt=thesis_financial_evidence(ticker); det=deterministic_financial_thesis(ticker)
     try: name=(company_name(ticker) if 'company_name' in globals() else ticker)
     except Exception: name=ticker
     ident=f"{ticker} {name} {sector} {industry}".lower()
@@ -1223,6 +1245,10 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
         if not np.isfinite(v): return pending(label)
         return (label,"On track" if v>0 else "Watch",f"Growth {v:+.1%}",src)
     def margin_row(label="Operating margin"):
+        if det:
+            curpct=det.get("metrics",{}).get("Operating_Margin_Pct"); state=det.get("scorecard",{}).get("Operating_Margin_On_Track")
+            if curpct is not None:
+                return (label,"On track" if state is True else ("Watch" if state is False else "Pending"),f"Current margin {curpct:.2f}% · deterministic Python","Chrímata deterministic thesis engine")
         e=stmt.get("operating_margin",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior"))
         if np.isfinite(cur) and np.isfinite(prior):
             delta=cur-prior
@@ -1231,6 +1257,10 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
         if np.isfinite(cur): return (label,"Pending",f"Current margin {cur:.1%}; prior comparison unavailable","Market-data provider snapshot")
         return pending(label)
     def fcf_row():
+        if det:
+            gpct=det.get("metrics",{}).get("Free_Cash_Flow_YoY_Pct"); state=det.get("scorecard",{}).get("Free_Cash_Flow_Growth_On_Track")
+            if gpct is not None:
+                return ("Free cash flow","On track" if state is True else ("Watch" if state is False else "Pending"),f"YoY {gpct:+.2f}% · deterministic Python","Chrímata deterministic thesis engine")
         e=stmt.get("free_cash_flow",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior")); g=_mia_num(e.get("growth"))
         if np.isfinite(cur) and np.isfinite(prior):
             return ("Free cash flow","On track" if cur>0 and (not np.isfinite(g) or g>=0) else "Watch",f"{compact_number(cur)} vs {compact_number(prior)} prior"+(f" ({g:+.1%})" if np.isfinite(g) else ""),str(e.get("source") or "Provider cash-flow statement"))
@@ -7004,7 +7034,7 @@ elif page=="Company Command Centre":
                     _tip=" · ".join([x for x in [_evidence,_source] if x]) or "No supporting evidence loaded yet"
                     _rows.append(f'<div class="v21216-thesis-row" title="{html.escape(_tip,quote=True)}"><span class="v21216-thesis-icon {_cls}">{_icon}</span><span>{html.escape(_label)}</span><span class="v21216-thesis-status {_cls}">{html.escape(_display)}</span></div>')
                 st.markdown('<div class="v21254-thesis-list">'+"".join(_rows)+'</div>',unsafe_allow_html=True)
-                st.button("View Thesis Scorecard  →",key=f"v21255_thesis_link_{ticker}",type="tertiary",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Thesis Scorecard",))
+                st.button("View Thesis Monitor  →",key=f"v21255_thesis_link_{ticker}",type="tertiary",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Thesis Scorecard",))
         # Prepare the evidence packet here so the compact AI widget is functional in the same row.
         _attention_text="No stored thesis/monitoring item currently requires attention."
         if _ccattention is not None and not _ccattention.empty:
@@ -7554,8 +7584,23 @@ elif page=="Monitor My Thesis":
 
 
 elif page=="Thesis Scorecard":
-    st.header(f"Investment Thesis Scorecard — {ticker}")
-    st.caption("Convert the investment thesis into measurable conditions. Status is descriptive; it is not an investment recommendation.")
+    st.header(f"Investment Thesis Monitor — {ticker}")
+    st.caption("Monitor measurable thesis conditions using reported evidence and deterministic Python calculations. AI does not calculate the financial metrics or pass/fail states.")
+    _det=deterministic_financial_thesis(ticker)
+    if _det:
+        _dm=_det["metrics"]; _ds=_det["scorecard"]; _dv=_det["verification"]
+        st.subheader("Deterministic financial evidence")
+        _dc1,_dc2,_dc3=st.columns(3)
+        _dc1.metric("Revenue YoY", "—" if _dm.get("Revenue_YoY_Pct") is None else f"{_dm['Revenue_YoY_Pct']:.2f}%")
+        _dc2.metric("Operating margin", "—" if _dm.get("Operating_Margin_Pct") is None else f"{_dm['Operating_Margin_Pct']:.2f}%")
+        _dc3.metric("Free cash flow YoY", "—" if _dm.get("Free_Cash_Flow_YoY_Pct") is None else f"{_dm['Free_Cash_Flow_YoY_Pct']:.2f}%")
+        _vr=[]
+        for _k,_v in _ds.items():
+            _vr.append({"Condition":_k.replace("_"," "),"Status":"On track" if _v is True else ("Watch" if _v is False else "Pending"),"Calculated by":"Deterministic Python"})
+        st.dataframe(pd.DataFrame(_vr),use_container_width=True,hide_index=True)
+        st.caption("Verification: deterministic_python · AI calculated metrics: No · Missing evidence remains Pending.")
+    else:
+        st.info("Deterministic financial scorecard is pending because two comparable financial periods are not currently available from the data layer.")
     # Migrate the retained Streamlit Cloud DB before this page reads it.
     v18_db_upgrade()
     con=ws_db()
