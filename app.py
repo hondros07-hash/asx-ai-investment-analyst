@@ -7236,14 +7236,15 @@ elif page=="Company Command Centre":
 
         st.markdown('<style>\n/* V21.2.96 — restored native View-all control in the announcement card header */\n[class*="st-key-v21293_nav_ann_legacy_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:999!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] .stButton{height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button{position:absolute!important;right:7px!important;bottom:296px!important;width:auto!important;min-height:25px!important;height:25px!important;padding:0 4px!important;border:0!important;background:#fff!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_legacy_"] button:hover{background:#fff!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
         st.markdown('''<style>
-/* V21.3.10 — no absolute/fixed positioning for disclosure navigation. */
+/* V21.3.11 — white reference card + contained disclosure navigation. */
 .v21310-ann-title{font-size:13px;font-weight:800;color:#082b5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.v21310-ann-body{height:105px;overflow:hidden;border-top:1px solid #e5edf7;}
+.v21310-ann-body{height:105px;overflow:hidden;border-top:1px solid #e5edf7;background:#fff;}
 .v21310-ann-row{display:grid;grid-template-columns:92px minmax(0,1fr) 102px 44px;height:21px;align-items:center;border-bottom:1px solid #e5edf7;color:#355b89;font-size:10.5px;}
 .v21310-ann-row>span{height:21px;line-height:21px;padding:0 8px;border-right:1px solid #e5edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .v21310-ann-row>span:last-child{border-right:0;text-align:center;padding:0}.v21310-ann-row .main{color:#244f82}.v21310-ann-row .meta{color:#6c82a1}.v21310-ann-row a{color:#0067e8!important;font-weight:800;text-decoration:none!important;}
-.v21310-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px}.v21310-ann-source{height:25px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px}
-[class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 0!important;overflow:visible!important;}
+.v21310-ann-empty{height:105px;display:flex;align-items:flex-start;padding:16px 12px;color:#7187a6;font-size:10.5px;background:#fff}.v21310-ann-source{height:25px;display:flex;align-items:center;color:#8a9bb4;font-size:9.5px;background:#fff}
+[class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 0!important;overflow:hidden!important;background:#fff!important;}
+[class*="st-key-v21310_ann_card_"]>div,[class*="st-key-v21310_ann_card_"] [data-testid="stVerticalBlock"]{background:#fff!important;}
 [class*="st-key-v21310_ann_card_"] [class*="st-key-v21310_nav_ann_"] button{width:auto!important;min-height:25px!important;height:25px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
 </style>''',unsafe_allow_html=True)
 

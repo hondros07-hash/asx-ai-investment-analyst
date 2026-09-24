@@ -62,3 +62,9 @@ Adds a consistent site-wide information-only disclaimer, investment-risk wording
 
 ## V21.3.10
 Rebuilt dynamic disclosure card: selected listing drives market adapter; ASX uses multiple official routes; production card no longer exposes diagnostic UI; View all remains contained in the card header.
+
+## V21.3.11 — Disclosure Pipeline Root-Cause Repair + White Reference Card
+- Adds a table-data fallback parser for the official ASX announcement results page, so disclosure metadata can still render when ASX changes anchor/PDF markup.
+- Keeps retrieval dynamic to the currently selected listing; no company announcements are hard-coded.
+- Keeps direct PDF links when recoverable; otherwise VIEW opens the official ASX ticker announcement search.
+- Forces the Latest Announcements & Reports reference card interior to white and contains View all navigation inside the card header.

@@ -154,6 +154,41 @@ def _parse_asx(html, code):
     return rows
 
 
+
+def _parse_asx_tables(html, code):
+    """V21.3.11 fallback: parse the actual ASX results table as data, independent of anchor markup.
+    This deliberately prefers truthful disclosure metadata over returning an empty card
+    when ASX changes document-link HTML. Document access falls back to the official
+    ticker search page when a direct PDF cannot be recovered.
+    """
+    from io import StringIO
+    rows=[]; seen=set()
+    try:
+        tables=pd.read_html(StringIO(html))
+    except Exception:
+        return rows
+    search_url=ASX_ARCHIVE+'?'+urllib.parse.urlencode({'asxCode':code,'by':'asxCode','period':'M6','timeframe':'D'})
+    for table in tables:
+        if table is None or table.empty: continue
+        cols=[str(c).strip().lower() for c in table.columns]
+        date_i=next((i for i,c in enumerate(cols) if 'date' in c),None)
+        head_i=next((i for i,c in enumerate(cols) if 'headline' in c or 'announcement' in c),None)
+        if date_i is None or head_i is None: continue
+        for _,r in table.iterrows():
+            dv=str(r.iloc[date_i] if date_i < len(r) else '').strip()
+            title=str(r.iloc[head_i] if head_i < len(r) else '').strip()
+            dm=re.search(r'(\d{1,2}/\d{1,2}/\d{4})',dv)
+            if not dm or not title or title.lower() in ('nan','headline'): continue
+            tm=re.search(r'(\d{1,2}:\d{2}\s*(?:am|pm))',dv,re.I)
+            date=dm.group(1); time=tm.group(1) if tm else ''
+            key=(date+'|'+time+'|'+title).lower()
+            if key in seen: continue
+            rows.append({'Date':date,'Time':time,'Group':'ASX Announcements','Type':classify(title),
+                         'Title':title,'Price Sensitive':False,'Source':'ASX Market Announcements',
+                         'URL':search_url,'PDFURL':'','ReadURL':search_url,'Has PDF':False,'ID':key})
+            seen.add(key)
+    return rows
+
 def asx_modern_company_page(code, limit=250):
     """Best-effort parser for ASX's current public company announcement page.
 
@@ -174,6 +209,7 @@ def asx_modern_company_page(code, limit=250):
         try:
             raw,ctype=_get(url,headers,30); page=raw.decode('utf-8','ignore')
             rows=_parse_asx(page,code)
+            if not rows: rows=_parse_asx_tables(page,code)
             diagnostics.append({'endpoint':url,'bytes':len(raw),'content_type':ctype,'rows':len(rows)})
             if rows:
                 df=pd.DataFrame(rows).drop_duplicates(subset=['Date','Time','Title'])
@@ -205,6 +241,7 @@ def asx_public_archive(code, years=12, limit=250):
         try:
             url=ASX_ARCHIVE+'?'+urllib.parse.urlencode(params); raw,ctype=_get(url,headers,30)
             page=raw.decode('utf-8',errors='ignore'); parsed=_parse_asx(page,code)
+            if not parsed: parsed=_parse_asx_tables(page,code)
             diagnostics.append({'query':params,'bytes':len(raw),'rows':len(parsed),'content_type':ctype})
             if parsed: rows=parsed; break
         except Exception as e:
