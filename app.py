@@ -3559,7 +3559,7 @@ try:
 except Exception:
     pass
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-version">v21.2.59</div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -7736,13 +7736,13 @@ st.markdown(r"""<style>
 .chr-metric-link{cursor:pointer!important;}
 </style>""",unsafe_allow_html=True)
 
-# V21.2.94 — Global Legal Disclaimer & Data Attribution Footer
+# V21.2.95 — Persistent Global Legal Footer + Sidebar Cleanup
 # Rendered once at the end of the application so every workspace receives the
 # same information-only, data-provenance and risk disclosure treatment.
 def render_chrimata_global_legal_footer():
     st.markdown(r"""
     <style>
-    .chr-legal-footer{margin:34px -1rem -1rem;padding:22px 26px 24px;border-top:1px solid #d8e2ef;background:#f7f9fc;color:#52657d;font-size:11px;line-height:1.55;}
+    .chr-legal-footer{display:block!important;visibility:visible!important;width:100%!important;box-sizing:border-box!important;margin:38px 0 0!important;padding:22px 26px 24px!important;border:1px solid #d8e2ef!important;border-radius:10px 10px 0 0!important;background:#f7f9fc!important;color:#52657d!important;font-size:11px!important;line-height:1.55!important;}
     .chr-legal-inner{max-width:1480px;margin:0 auto;}
     .chr-legal-links{display:flex;flex-wrap:wrap;gap:7px 18px;margin-bottom:13px;font-size:12px;font-weight:700;}
     .chr-legal-links a{color:#0868e8;text-decoration:none;}
@@ -7755,6 +7755,7 @@ def render_chrimata_global_legal_footer():
     </style>
     <footer class="chr-legal-footer" role="contentinfo" aria-label="Chrímata legal and data information">
       <div class="chr-legal-inner">
+        <div style="font-weight:800;color:#243b59;font-size:12px;margin-bottom:8px">Chrímata · Legal, Risk & Data Information</div>
         <div class="chr-legal-links">
           <a href="#chr-about">About Chrímata</a>
           <a href="#chr-privacy">Privacy</a>
