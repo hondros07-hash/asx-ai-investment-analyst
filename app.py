@@ -7393,7 +7393,15 @@ elif page=="Company Command Centre":
                     _display_total=len(_thesis_rows)
                     _display_met=int(sum(str(v).strip().lower() in {"met","on track","pass","passed","true"} for v in _thesis_rows.get("status",pd.Series(dtype=str)).tolist()))
                 _ratio=(_display_met/max(_display_total,1)) if _display_total else 0.0
-                _thesis_template_payload=get_thesis_template(ticker,company_name(ticker),_ccsector,_ccindustry)
+                # V21.3.24.1 — do not call a non-existent company_name() helper.
+                # Reuse the already-loaded provider/security metadata and fall back safely to ticker.
+                _thesis_company_name=str(
+                    (_ccmeta or {}).get("longName")
+                    or (_ccmeta or {}).get("shortName")
+                    or (_ccmeta or {}).get("displayName")
+                    or ticker
+                )
+                _thesis_template_payload=get_thesis_template(ticker,_thesis_company_name,_ccsector,_ccindustry)
                 _thesis_template_label=str(_thesis_template_payload.get("template","corporate")).replace("_"," ").title()
                 st.markdown(f'<div class="v21324-thesis-template" title="Deterministic business-model classification · AI calculated: No">{html.escape(_thesis_template_label)} thesis · {html.escape(str(ticker))}</div>',unsafe_allow_html=True)
                 st.markdown(f'<div class="v21216-thesis-score">{_display_met} / {_display_total} <span>conditions on track</span></div>',unsafe_allow_html=True)
