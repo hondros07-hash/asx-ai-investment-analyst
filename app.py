@@ -7169,6 +7169,8 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card v21286-market" title="{html.escape(_mp_tip,quote=True)}"><div class="v21261-title">Market Position {_info}</div><div class="v21261-market-range"><div class="v21286-range-row"><div class="v21286-range-badge">▼</div><div class="v21286-range-main" style="--mp-pos:{_rpct:.1f}%"><div class="v21261-k">52 Week Range</div><div class="v21261-market-track"><i class="v21261-market-now" style="left:{_rpct:.1f}%"></i><i class="v21261-market-high"></i></div><div class="v21261-market-labels"><span>{display_price(_cclo,ticker) if np.isfinite(_cclo) else "—"}</span><span>{display_price(price,ticker) if np.isfinite(price) else "—"}</span><span>{display_price(_cchi,ticker) if np.isfinite(_cchi) else "—"}</span></div></div></div><div class="v21286-range-position">{f"{_range_pos:.0%} of range ({_quart})" if np.isfinite(_range_pos) else "Range position unavailable"}</div></div><table class="v21261-table">{_mk}</table></div>',unsafe_allow_html=True)
             st.button("View Company Details  →",key=f"v21261_nav_det_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Fundamentals",))
 
+        st.markdown('<style>\n/* V21.2.93 — working native View-all control, visually docked to announcement card header */\n[class*="st-key-v21293_nav_ann_"]{position:relative!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;z-index:20!important;}\n[class*="st-key-v21293_nav_ann_"] button{position:absolute!important;right:8px!important;bottom:278px!important;width:auto!important;min-height:24px!important;height:24px!important;padding:0 5px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:13px!important;font-weight:700!important;text-decoration:underline!important;}\n[class*="st-key-v21293_nav_ann_"] button:hover{background:transparent!important;color:#004fb3!important;border:0!important;}\n</style>',unsafe_allow_html=True)
+
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
         # Each card remains evidence-first: provider/stored rows only; unsupported fields render as unavailable.
         _news=overview_news_safe(ticker,5)
@@ -7219,9 +7221,8 @@ elif page=="Company Command Centre":
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
-            _portal=str(_v21291_prov.get("portal") or "")
-            _viewall=(f'<a class="v21290-viewall v21291-viewall-link" href="{html.escape(_portal,quote=True)}" target="_blank" rel="noopener" title="Open the official {_v21291_prov.get("authority","disclosure")} source">View all →</a>' if _portal else '<span class="v21290-viewall">View all →</span>')
-            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div>{_viewall}{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="v21290-card v21291-ann" title="{html.escape(_tip,quote=True)}"><div class="v21290-title"><span class="v21290-icon">♟</span>Latest Announcements &amp; Reports <span class="v21261-info">i</span></div>{_body}<div class="v21291-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div></div>',unsafe_allow_html=True)
+            st.button("View all →",key=f"v21293_nav_ann_{ticker}",on_click=_chr_set_cc_sub_v2111,args=("Announcements & Reports",))
         with _m2:
             _rows=[]
             if _news is not None and not _news.empty:
