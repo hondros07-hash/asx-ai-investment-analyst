@@ -20,6 +20,7 @@ from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
 from services.valuation_evidence import recover_financial_inputs, bridge_payload
+from services.analyst_engine import build_analyst_payload
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -1759,65 +1760,99 @@ def research_forecast(df):
         return pd.DataFrame(columns=cols)
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def analyst_consensus_snapshot(ticker):
-    """Best-effort Yahoo/yfinance analyst consensus. This reports analysts' views, not the app's rating."""
+@st.cache_data(ttl=21600, show_spinner=False)
+def analyst_consensus_snapshot(ticker,current_price=np.nan):
+    """Provider evidence → verified identity/normalization → deterministic target-return payload."""
     out={"label":"Unavailable","strongBuy":0,"buy":0,"hold":0,"sell":0,"strongSell":0,
-         "analysts":0,"target_low":np.nan,"target_mean":np.nan,"target_median":np.nan,
-         "target_high":np.nan,"source":"Yahoo Finance via yfinance","provider_date":"Unavailable"}
+         "analysts":0,"target":np.nan,"target_low":np.nan,"target_mean":np.nan,"target_median":np.nan,
+         "target_high":np.nan,"source":"Yahoo Finance via yfinance","provider_date":"Unavailable","evidence":{}}
     try:
-        t=yf.Ticker(ticker)
-        rec=t.get_recommendations()
-        if rec is None or len(rec)==0:
-            rec=getattr(t,"recommendations_summary",None)
-        if rec is not None and len(rec):
-            r=rec.iloc[0]
-            for k in ["strongBuy","buy","hold","sell","strongSell"]:
-                try: out[k]=int(float(r.get(k,0) or 0))
-                except Exception: out[k]=0
-            total=sum(out[k] for k in ["strongBuy","buy","hold","sell","strongSell"])
-            out["analysts"]=total
-            if total:
-                # Consensus is the plurality of published analyst categories; ties are Hold.
-                counts={k:out[k] for k in ["strongBuy","buy","hold","sell","strongSell"]}
-                mx=max(counts.values()); winners=[k for k,v in counts.items() if v==mx]
-                labels={"strongBuy":"Strong Buy","buy":"Buy","hold":"Hold","sell":"Sell","strongSell":"Strong Sell"}
-                out["label"]=labels[winners[0]] if len(winners)==1 else "Hold"
+        t=yf.Ticker(ticker); meta=t.info or {}
+        counts={}
         try:
-            pt=t.get_analyst_price_targets()
-            if isinstance(pt,dict):
-                for src_key,dst in [("low","target_low"),("mean","target_mean"),("median","target_median"),("high","target_high")]:
-                    v=pt.get(src_key)
-                    out[dst]=float(v) if v is not None else np.nan
-        except Exception:
-            pass
-    except Exception:
-        pass
+            rec=getattr(t,"recommendations_summary",None)
+            if rec is None or len(rec)==0: rec=t.get_recommendations()
+            if rec is not None and len(rec):
+                r=rec.iloc[0]
+                counts={k:r.get(k,0) for k in ["strongBuy","buy","hold","sell","strongSell"]}
+                for dk in ("period","date","Date"):
+                    if dk in r and pd.notna(r.get(dk)): out["provider_date"]=str(r.get(dk)); break
+        except Exception: pass
+        pt={}
+        try:
+            raw=t.get_analyst_price_targets()
+            if isinstance(raw,dict): pt=raw
+        except Exception: pass
+
+        # Selected listing first. No bridge is attempted unless provider explicitly supplies a candidate
+        # and the existing conservative issuer verifier approves it.
+        bridge={"status":"not_used","verified":False,"reason":"Selected listing analyst evidence used"}
+        payload=build_analyst_payload(meta,counts,pt,current_price,ticker,bridge)
+        if payload["status"]=="unavailable":
+            candidate=_primary_listing_candidate(meta)
+            if candidate and candidate!=str(ticker).upper():
+                cmeta=_valuation_meta(candidate)
+                bridge=bridge_payload(str(ticker).upper(),meta,candidate,cmeta)
+                if bridge.get("verified"):
+                    ct=yf.Ticker(candidate); ccounts={}; cpt={}
+                    try:
+                        cr=getattr(ct,"recommendations_summary",None)
+                        if cr is None or len(cr)==0: cr=ct.get_recommendations()
+                        if cr is not None and len(cr):
+                            rr=cr.iloc[0]; ccounts={k:rr.get(k,0) for k in ["strongBuy","buy","hold","sell","strongSell"]}
+                    except Exception: pass
+                    try:
+                        cp=ct.get_analyst_price_targets()
+                        if isinstance(cp,dict): cpt=cp
+                    except Exception: pass
+                    # Do NOT guess ADR/depositary/share equivalence. Only explicit provider ratio fields qualify.
+                    ratio=_mia_num(meta.get("shareRatio") or meta.get("depositaryReceiptRatio") or meta.get("adrRatio"))
+                    fx=1.0
+                    fc=cmeta.get("currency") or cmeta.get("financialCurrency"); lc=meta.get("currency")
+                    if fc and lc and str(fc).upper()!=str(lc).upper(): fx=valuation_fx_rate(fc,lc)
+                    bridged_meta=dict(cmeta); bridged_meta["currency"]=lc or cmeta.get("currency")
+                    payload=build_analyst_payload(bridged_meta,ccounts,cpt,current_price,ticker,bridge,
+                                                  fx_rate=fx if np.isfinite(_mia_num(fx)) else None,
+                                                  security_ratio=ratio if np.isfinite(ratio) else None)
+        out.update({"label":payload["consensus_label"],"analysts":payload["analyst_count"] or 0,
+                    "target":payload["target_price"] if payload["target_price"] is not None else np.nan,
+                    "target_low":payload["target_low"] if payload["target_low"] is not None else np.nan,
+                    "target_mean":payload["target_price"] if payload["target_price"] is not None else np.nan,
+                    "target_median":payload["target_median"] if payload["target_median"] is not None else np.nan,
+                    "target_high":payload["target_high"] if payload["target_high"] is not None else np.nan,
+                    "source":payload["source"],"evidence":payload["evidence"],
+                    "percentage_return":payload["percentage_return"] if payload["percentage_return"] is not None else np.nan})
+        out.update(payload["recommendation_counts"])
+    except Exception as e:
+        out["evidence"]={"ai_calculated":False,"error":str(e),"security":ticker}
     return out
 
 def render_analyst_consensus(ticker,price):
-    a=analyst_consensus_snapshot(ticker)
+    a=analyst_consensus_snapshot(ticker,price)
     st.subheader("Analyst consensus")
-    st.caption("External analyst consensus reported by Yahoo Finance via yfinance. This is not Chrímata's recommendation.")
+    st.caption("Provider-reported analyst evidence. Chrímata calculates only the target-versus-current-price percentage.")
     c=st.columns(4)
     metric_box(c[0],"Consensus",a["label"])
     metric_box(c[1],"Analysts",str(a["analysts"]) if a["analysts"] else "—")
     metric_box(c[2],"Mean target","—" if pd.isna(a["target_mean"]) else display_price(a["target_mean"],ticker))
-    upside=(a["target_mean"]/price-1) if price and not pd.isna(a["target_mean"]) else np.nan
-    metric_box(c[3],"Mean target vs price","—" if pd.isna(upside) else f"{upside*100:+.1f}%")
-    dist=pd.DataFrame({
-        "Rating":["Strong Buy","Buy","Hold","Sell","Strong Sell"],
-        "Analysts":[a["strongBuy"],a["buy"],a["hold"],a["sell"],a["strongSell"]]
-    })
+    upside=_mia_num(a.get("percentage_return"))
+    metric_box(c[3],"Mean target vs price","—" if not np.isfinite(upside) else f"{upside*100:+.1f}%")
+    dist=pd.DataFrame({"Rating":["Strong Buy","Buy","Hold","Sell","Strong Sell"],
+                       "Analysts":[a["strongBuy"],a["buy"],a["hold"],a["sell"],a["strongSell"]]})
     st.dataframe(dist,use_container_width=True,hide_index=True)
-    if not all(pd.isna(a[k]) for k in ["target_low","target_mean","target_median","target_high"]):
-        st.dataframe(pd.DataFrame([{
-            "Low target":"—" if pd.isna(a["target_low"]) else display_price(a["target_low"],ticker),
-            "Mean target":"—" if pd.isna(a["target_mean"]) else display_price(a["target_mean"],ticker),
-            "Median target":"—" if pd.isna(a["target_median"]) else display_price(a["target_median"],ticker),
-            "High target":"—" if pd.isna(a["target_high"]) else display_price(a["target_high"],ticker),
-        }]),use_container_width=True,hide_index=True)
+    ev=a.get("evidence",{}) or {}
+    with st.expander("Provider evidence ⓘ",expanded=False):
+        st.write(f"Security: {ev.get('security',ticker)}")
+        st.write(f"Consensus: {a.get('label','Unavailable')} · Source: {ev.get('consensus_source','unavailable')}")
+        st.write(f"Analyst count: {a.get('analysts') or '—'} · Source: {ev.get('analyst_count_source','unavailable')}")
+        st.write(f"Recommendation bucket total: {ev.get('recommendation_bucket_total',0)} (shown separately from target analyst count)")
+        st.write(f"Mean target: {'—' if pd.isna(a['target_mean']) else display_price(a['target_mean'],ticker)} · Source: {ev.get('target_source','unavailable')}")
+        st.write(f"Target return: {'—' if not np.isfinite(upside) else f'{upside*100:+.1f}%'} · Source: {ev.get('target_return_source','unavailable')}")
+        st.write(f"Target/listing currency: {ev.get('target_currency') or '—'} / {ev.get('listing_currency') or '—'}")
+        br=ev.get("bridge",{}) or {}; st.write(f"Verified target bridge: {br.get('status','not_used')} · {br.get('target_bridge_status',br.get('reason','—'))}")
+        st.write("AI calculated: No")
     if a["analysts"]==0 and all(pd.isna(a[k]) for k in ["target_low","target_mean","target_median","target_high"]):
-        st.info("No analyst consensus or price-target data is available from the current provider for this security.")
+        st.info("No verified analyst consensus or price-target evidence is available from the current provider for this security.")
 
 def render_forecast_tool(ticker,h):
     st.header("Forecast Research")
@@ -6761,7 +6796,7 @@ elif page=="Company Command Centre":
         _cclo=_mia_num(_ccmeta.get("fiftyTwoWeekLow")); _cchi=_mia_num(_ccmeta.get("fiftyTwoWeekHigh"))
         if not np.isfinite(_cclo): _cclo=float(h["Low"].min())
         if not np.isfinite(_cchi): _cchi=float(h["High"].max())
-        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=valuation_pipeline(ticker,price)
+        _ccscore=mia_research_score(ticker,h,_ccmeta); _ccanalyst=analyst_consensus_snapshot(ticker,price); _ccfc=research_forecast(h); _ccforecast_hist=history(ticker,"5y"); _ccadvfc,_ccadvbt=advanced_forecast_snapshot(_ccforecast_hist); _ccauto_val=valuation_pipeline(ticker,price)
         _ccthesis=thesis_table(ticker); _ccann=latest_announcements_safe(ticker,5); _cccatalysts=catalysts_safe(ticker,6); _ccattention=v18_attention(ticker,0,price)
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
         _ccf12=np.nan; _fc_target=np.nan; _fc_prob=np.nan; _fc_prob_n=0; _fc_diag={"n":0,"mae":np.nan,"direction":np.nan}; _fc_conf="Validation limited"
@@ -7397,7 +7432,7 @@ elif page=="Company Command Centre":
         _f_target=_fc_target if np.isfinite(_mia_num(_fc_target)) else np.nan
         _f_prob=_fc_prob if np.isfinite(_mia_num(_fc_prob)) else np.nan
         _at=_mia_num(_ccanalyst.get("target_mean")); _at=_cctarget if not np.isfinite(_at) else _at
-        _aup=(_at/price-1) if np.isfinite(_at) and price else np.nan
+        _aup=_mia_num(_ccanalyst.get("percentage_return"))
         _rev=_mia_num(_ccmeta.get("totalRevenue")); _ebitda=_mia_num(_ccmeta.get("ebitda")); _ni=_mia_num(_ccmeta.get("netIncomeToCommon")); _eps=_mia_num(_ccmeta.get("trailingEps")); _fcf=_mia_num(_ccmeta.get("freeCashflow"))
         # V21.2.89 — provenance-first market-position fields. Short interest is preferably % of shares outstanding;
         # short % of float is only a labelled fallback because the denominators are not interchangeable.
@@ -7457,10 +7492,12 @@ elif page=="Company Command Centre":
             _bucket_total=sum(int(_ccanalyst.get(k,0) or 0) for _,k,_ in _dist)
             _analyst_n=int(_ccanalyst.get("analysts") or 0)
             _analyst_count_text=f"{_analyst_n} analysts" if _analyst_n else (f"{_bucket_total} analysts" if _bucket_total else "Analyst count unavailable")
-            _prov=("External analyst consensus supplied by Yahoo Finance via yfinance. "
-                   f"Displayed recommendation buckets total {_bucket_total}. "
+            _ae=_ccanalyst.get("evidence",{}) or {}
+            _prov=("Analyst evidence supplied by Yahoo Finance via yfinance. "
+                   f"Consensus: {_ae.get('consensus_source','unavailable')}. "
                    f"Provider analyst count: {_analyst_n if _analyst_n else 'unavailable'}. "
-                   "Mean target is provider analyst target evidence; Chrímata does not generate this target.")
+                   f"Recommendation bucket total: {_bucket_total}; this is not substituted for target coverage count. "
+                   "Mean target is provider evidence. Target return is calculated deterministically by Chrímata. AI calculated: No.")
             st.markdown(f'<div class="v21261-card v21282-analyst" title="{html.escape(_prov, quote=True)}"><div class="v21261-title">Analyst Consensus {_info}</div><div class="v21282-analyst-grid"><div class="v21282-analyst-left"><div class="v21282-analyst-status {_ac}">{html.escape(_al)}</div><div class="v21282-analyst-count">{html.escape(_analyst_count_text)}</div><div class="v21282-analyst-target"><div class="v21282-analyst-target-label">Mean target</div><div class="v21282-analyst-target-value">{display_price(_at,ticker) if np.isfinite(_at) else "—"}</div></div></div><div class="v21282-analyst-dist">{_dh}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Analyst Forecasts  →",key=f"v21261_nav_an_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w4:
