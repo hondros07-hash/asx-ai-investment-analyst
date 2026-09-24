@@ -18,3 +18,11 @@
 
 ## V21.2.94 — Global Legal Disclaimer & Data Attribution Footer
 Adds a consistent site-wide information-only disclaimer, investment-risk wording, data-source attribution and copyright footer to every Chrímata workspace. The component is rendered once after page routing so future workspaces inherit it automatically.
+
+## V21.2.96 — SEC Filing Retrieval Repair + View-All Restoration
+- Rebuilt SEC ticker-to-CIK resolution around the SEC exchange-aware ticker map with legacy-map fallback.
+- Uses the official SEC submissions endpoint and links directly to authoritative primary filing documents.
+- Removes per-filing PDF probing from the Overview path to reduce SEC requests and throttling risk.
+- Adds explicit SEC retrieval diagnostics (CIK resolution, request failure, no investor filings).
+- Restores the native View all navigation control to the announcement card header.
+- Uses FILE for SEC/EDGAR documents because EDGAR primary documents are commonly HTML rather than PDF.

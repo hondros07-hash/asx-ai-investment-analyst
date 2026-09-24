@@ -198,32 +198,84 @@ def _sec_primary_url(cik, accession, primary):
         raw=raw.rsplit("/",1)[-1]
     return base+raw, base+accession+"-index.html"
 
-def sec_archive(ticker, limit=250, include_regulatory=False):
-    headers={"User-Agent":"Market Investment Analyst research contact@example.com",
-             "Accept":"application/json,text/html,application/pdf,*/*"}
+def _sec_headers():
+    # SEC asks automated clients to declare a User-Agent. Operators can set a
+    # real contact string in Streamlit/host secrets via SEC_USER_AGENT.
+    ua=os.getenv("SEC_USER_AGENT", "Chrimata Market Investment Analyst research application")
+    return {"User-Agent":ua,"Accept":"application/json,text/html,*/*"}
+
+
+def _sec_ticker_to_cik(ticker, headers):
+    """Resolve a US ticker using SEC's exchange-aware mapping first, then legacy mapping."""
+    symbol=str(ticker or "").upper().strip().split(".",1)[0]
+    errors=[]
+    # Current SEC exchange-aware file. Schema is {fields:[...], data:[[...], ...]}.
     try:
-        raw,_=_get("https://www.sec.gov/files/company_tickers.json",headers)
-        tickers=json.loads(raw.decode())
-        hit=[v for v in tickers.values() if str(v.get("ticker","")).upper()==ticker.upper()]
-        if not hit:return pd.DataFrame()
-        cik=int(hit[0]["cik_str"])
-        raw,_=_get(f"https://data.sec.gov/submissions/CIK{cik:010d}.json",headers)
-        j=json.loads(raw.decode()); r=j["filings"]["recent"]; rows=[]
-        for i,form in enumerate(r.get("form",[])):
-            if not include_regulatory and form not in INVESTOR_FORMS:
-                continue
-            accession=r["accessionNumber"][i]; primary=r["primaryDocument"][i]
-            base=_sec_filing_base(cik,accession)
-            primary_url=base+primary
-            pdf_url,index_url=_sec_pdf_from_index(cik,accession,headers)
-            rows.append({
-              "Date":r["filingDate"][i],"Time":"","Group":_sec_group(form),"Type":form,
-              "Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
-              "PDFURL":pdf_url,"ReadURL":primary_url,"IndexURL":index_url,
-              "URL":pdf_url or primary_url,"Has PDF":bool(pdf_url),"ID":accession})
-            if len(rows)>=limit:break
-        return pd.DataFrame(rows)
-    except Exception:return pd.DataFrame()
+        raw,_=_get("https://www.sec.gov/files/company_tickers_exchange.json",headers,30)
+        j=json.loads(raw.decode("utf-8"))
+        fields=j.get("fields") or []
+        for vals in j.get("data") or []:
+            row=dict(zip(fields,vals))
+            if str(row.get("ticker") or "").upper()==symbol:
+                return int(row.get("cik")), row, errors
+    except Exception as e:
+        errors.append("exchange_map:"+type(e).__name__)
+    # SEC legacy ticker map fallback.
+    try:
+        raw,_=_get("https://www.sec.gov/files/company_tickers.json",headers,30)
+        j=json.loads(raw.decode("utf-8"))
+        for row in j.values():
+            if str(row.get("ticker") or "").upper()==symbol:
+                return int(row.get("cik_str")), row, errors
+    except Exception as e:
+        errors.append("ticker_map:"+type(e).__name__)
+    return None,{},errors
+
+
+def sec_archive(ticker, limit=250, include_regulatory=False):
+    """Retrieve investor-relevant filings from the official SEC submissions API.
+
+    V21.2.96 deliberately avoids an extra SEC request per filing. The previous
+    implementation probed every filing index looking for a PDF, which made the
+    overview card fragile and could trigger throttling. EDGAR's primary document
+    is authoritative and is normally HTML, so the card links directly to it.
+    """
+    headers=_sec_headers(); diagnostics=[]
+    cik,match,map_errors=_sec_ticker_to_cik(ticker,headers)
+    diagnostics.extend(map_errors)
+    if not cik:
+        df=pd.DataFrame(columns=["Date","Time","Group","Type","Title","Price Sensitive","Source","PDFURL","ReadURL","IndexURL","URL","Has PDF","ID"])
+        df.attrs.update({"status":"CIK_RESOLUTION_FAILED","ticker":str(ticker),"diagnostics":diagnostics})
+        return df
+    try:
+        url=f"https://data.sec.gov/submissions/CIK{cik:010d}.json"
+        raw,_=_get(url,headers,30)
+        j=json.loads(raw.decode("utf-8")); recent=(j.get("filings") or {}).get("recent") or {}
+    except Exception as e:
+        df=pd.DataFrame(columns=["Date","Time","Group","Type","Title","Price Sensitive","Source","PDFURL","ReadURL","IndexURL","URL","Has PDF","ID"])
+        df.attrs.update({"status":"SEC_REQUEST_FAILED","ticker":str(ticker),"cik":cik,"diagnostics":diagnostics+[type(e).__name__]})
+        return df
+    rows=[]
+    forms=recent.get("form") or []
+    for i,form in enumerate(forms):
+        if not include_regulatory and form not in INVESTOR_FORMS: continue
+        try:
+            accession=(recent.get("accessionNumber") or [])[i]
+            primary=(recent.get("primaryDocument") or [])[i]
+            filed=(recent.get("filingDate") or [])[i]
+        except Exception:
+            continue
+        primary_url,index_url=_sec_primary_url(cik,accession,primary)
+        rows.append({"Date":filed,"Time":"","Group":_sec_group(form),"Type":form,
+                     "Title":_sec_label(form,primary),"Price Sensitive":False,"Source":"SEC EDGAR",
+                     "PDFURL":"","ReadURL":primary_url,"IndexURL":index_url,"URL":primary_url,
+                     "Has PDF":False,"ID":accession})
+        if len(rows)>=limit: break
+    df=pd.DataFrame(rows)
+    df.attrs.update({"status":"OK" if rows else "NO_INVESTOR_FILINGS","ticker":str(ticker),"cik":cik,
+                     "company":j.get("name") or match.get("name") or match.get("title") or "",
+                     "diagnostics":diagnostics,"source":"SEC submissions API"})
+    return df
 
 
 def announcement_provenance(ticker, coverage=""):
