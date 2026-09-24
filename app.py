@@ -3552,6 +3552,23 @@ elif primary in SUBPAGES:
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
+# V21.2.99 — dedicated legal/information pages reached from the global footer.
+# Relative query-parameter links keep navigation deployment-agnostic (Streamlit Cloud or future custom domain).
+_LEGAL_PAGE_MAP={
+    "about":"About",
+    "privacy":"Privacy",
+    "disclaimer":"Disclaimer",
+    "terms":"Terms",
+    "data-sources":"Data Sources",
+    "contact":"Contact",
+}
+try:
+    _chr_legal_key=str(st.query_params.get("chr_legal") or "").strip().lower()
+except Exception:
+    _chr_legal_key=""
+if _chr_legal_key in _LEGAL_PAGE_MAP:
+    page=_LEGAL_PAGE_MAP[_chr_legal_key]
+
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
 try:
     if str(st.query_params.get("chr_compare") or "").strip():
@@ -7677,6 +7694,12 @@ elif page=="Portfolio":
             metric_box(cs[0], "Annualised return",f"{a['annualised_return']*100:.1f}%"); metric_box(cs[1], "Volatility",f"{a['annualised_volatility']*100:.1f}%"); metric_box(cs[2], "Max drawdown",f"{a['max_drawdown']*100:.1f}%"); metric_box(cs[3], "HHI",f"{concentration(w):.3f}")
             st.dataframe(a["correlation"],use_container_width=True)
 
+elif page in {"About","Privacy","Disclaimer","Terms","Data Sources","Contact"}:
+    # V21.2.99 — intentionally minimal placeholders. Full legal/information copy will be added later.
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+    st.header(page)
+    st.caption("Content coming soon.")
+
 elif page=="Watchlist":
     st.header("Watchlist"); note=st.text_input("Thesis / monitoring note"); a,b=st.columns(2)
     if a.button("Add/update"): watch_add(ticker,note); st.success("Saved.")
@@ -7761,13 +7784,12 @@ def render_chrimata_global_legal_footer():
         <div class="chr-legal-top">
           <div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>
           <nav class="chr-legal-links" aria-label="Legal information">
-            <a href="#chr-about">About</a><a href="#chr-privacy">Privacy</a><a href="#chr-financial-disclaimer">Disclaimer</a><a href="#chr-terms">Terms</a><a href="#chr-data-sources">Data Sources</a><a href="#chr-contact">Contact</a>
+            <a href="?chr_legal=about" target="_self">About</a><a href="?chr_legal=privacy" target="_self">Privacy</a><a href="?chr_legal=disclaimer" target="_self">Disclaimer</a><a href="?chr_legal=terms" target="_self">Terms</a><a href="?chr_legal=data-sources" target="_self">Data Sources</a><a href="?chr_legal=contact" target="_self">Contact</a>
           </nav>
         </div>
         <p id="chr-financial-disclaimer"><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
         <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
         <div class="chr-legal-meta"><span id="chr-data-sources">Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
-        <span id="chr-about"></span><span id="chr-privacy"></span><span id="chr-terms"></span><span id="chr-contact"></span>
       </div>
     </footer>
     """, unsafe_allow_html=True)
