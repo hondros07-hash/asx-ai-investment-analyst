@@ -7170,9 +7170,10 @@ elif page=="Company Command Centre":
         _w_chart,_w_thesis,_w_ai=st.columns([1.75,.82,1.05],gap="small")
         # V21.2.39 — compact fixed equal-height Overview widgets.
         # 350px matches the intended Thesis Scorecard reference height while keeping all three cards locked.
+        # V22.2.1 — lock the complete Overview intelligence row to one shared card height.
+        # All three containers use the same Streamlit height so their top and bottom borders align.
         _overview_widget_height=520
-        # V21.3.23.1 — Price Chart gets its own compact height; adjacent research cards retain their geometry.
-        _price_chart_widget_height=432
+        _price_chart_widget_height=_overview_widget_height
         with _w_chart:
             with st.container(border=True,height=_price_chart_widget_height,key="v21243_price_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Price Chart</div>',unsafe_allow_html=True)
@@ -7372,7 +7373,7 @@ elif page=="Company Command Centre":
                 # V21.3.23.3 — intentional white breathing room below the fixed footer.
                 st.markdown('<div class="v213233-price-bottom-space"></div>',unsafe_allow_html=True)
         with _w_thesis:
-            with st.container(border=True,key="v21255_thesis_card"):
+            with st.container(border=True,height=_overview_widget_height,key="v21255_thesis_card"):
                 st.markdown('<div class="v21241-overview-card"></div><div class="v21216-widget-title">Thesis Scorecard</div>',unsafe_allow_html=True)
                 # V21.2.55 — stored rules drive the score. If none exist, render a real
                 # six-row starter monitoring template as Pending instead of an empty card.
