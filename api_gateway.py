@@ -10,6 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
+from services.forecast_widget_engine import summarize_forecast
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -89,6 +90,16 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
     if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
         s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
+
+def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
+    # Reuse the canonical model result; no independent competing forecast.
+    model=forecast_for_ticker(ticker)
+    target=_finite(model.get("target_price"))
+    projected_return=_finite(model.get("forecast_return"))
+    reference=target/(1+projected_return) if target is not None and projected_return is not None and 1+projected_return>0 else None
+    currency="AUD" if ticker.upper().endswith(".AX") else None
+    return summarize_forecast(model,reference,ticker=ticker,currency=currency)
+
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
