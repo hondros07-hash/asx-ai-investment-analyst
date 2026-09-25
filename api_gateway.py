@@ -10,7 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
-from services.forecast_widget_engine import summarize_forecast
+from services.forecast_widget_engine import forecast_summary_from_history
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -85,29 +85,19 @@ def consensus_for_ticker(ticker:str)->Dict[str,Any]:
     x=build_analyst_payload(meta,counts,targets,_finite(meta.get("currentPrice") or meta.get("regularMarketPrice")),ticker,bridge=None)
     x["ai_calculated"]=False; return x
 
-def _forecast_snapshot_for_ticker(ticker: str):
-    """One provider history fetch, one canonical model run, one reference price."""
-    t=yf.Ticker(ticker)
-    h=t.history(period="5y",interval="1d",auto_adjust=True)
-    spot=None
-    if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
-        prices=pd.to_numeric(h["Close"],errors="coerce").dropna()
-        if len(prices): spot=_finite(prices.iloc[-1])
-    full=build_12m_forecast(h,current_price=spot,security=ticker)
-    full["ai_calculated"]=False
-    return full,spot,t
-
-
 def forecast_for_ticker(ticker:str)->Dict[str,Any]:
-    full,_,_=_forecast_snapshot_for_ticker(ticker)
-    return full
+    h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True); price=None
+    if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
+        s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
+    x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
 
 
 def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    full,reference,t=_forecast_snapshot_for_ticker(ticker)
-    try: meta=t.info or {}
-    except Exception: meta={}
-    return summarize_forecast(full,ticker,reference_price=reference,currency=meta.get("currency"))
+    # Reuse the exact historical series, spot-price basis and model used by Full Forecasts.
+    h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True)
+    s=pd.to_numeric(h["Close"],errors="coerce").dropna() if isinstance(h,pd.DataFrame) and "Close" in h else pd.Series(dtype=float)
+    price=_finite(s.iloc[-1]) if len(s) else None
+    return forecast_summary_from_history(h,ticker,reference_price=price)
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
