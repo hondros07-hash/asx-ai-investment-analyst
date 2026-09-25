@@ -542,6 +542,56 @@ def history_interval(t, period="1y", interval="1d"):
     except Exception:
         return pd.DataFrame()
 
+# V23.0.1 — Exchange-Aware Live Intraday Price Chart Engine.
+# Intraday 1D data intentionally bypasses the long-lived chart cache while a venue is open.
+# "Live" is never inferred from the clock alone: provider metadata must explicitly identify
+# the feed as realtime; otherwise the UI labels it delayed/provider intraday.
+def live_intraday_history(t, period="1d", interval="1m"):
+    try:
+        return yf.Ticker(t).history(period=period, interval=interval, auto_adjust=True, prepost=False)
+    except Exception:
+        return pd.DataFrame()
+
+def exchange_session_state(t, quote_meta=None):
+    meta=dict(quote_meta or {})
+    try:
+        hm=history_metadata(t) or {}
+    except Exception:
+        hm={}
+    state=str(meta.get("marketState") or hm.get("marketState") or hm.get("market_state") or "").strip().lower()
+    delay=_mia_num(meta.get("exchangeDataDelayedBy"))
+    source=str(meta.get("quoteSourceName") or "").strip()
+    explicit_live=bool(
+        meta.get("isRealtime") is True or meta.get("realtime") is True
+        or str(meta.get("dataStatus") or "").strip().lower() in {"live","real-time","realtime"}
+        or "real time" in source.lower() or "realtime" in source.lower()
+    )
+    is_open=state in {"regular","open","continuous","trading"}
+    regular=((hm.get("currentTradingPeriod") or hm.get("current_trading_period") or {}).get("regular") or {})
+    rs=_mia_num(regular.get("start")); re_=_mia_num(regular.get("end"))
+    try:
+        now_epoch=float(pd.Timestamp.now(tz="UTC").timestamp())
+        if np.isfinite(rs) and np.isfinite(re_):
+            is_open=bool(rs <= now_epoch < re_)
+    except Exception:
+        pass
+    exchange=str(meta.get("fullExchangeName") or meta.get("exchange") or hm.get("exchangeName") or hm.get("exchange") or "").strip()
+    tz=str(hm.get("exchangeTimezoneName") or meta.get("exchangeTimezoneName") or "").strip()
+    if explicit_live and is_open:
+        label="LIVE"
+        quality="live"
+    elif np.isfinite(delay) and delay > 0:
+        label=f"DELAYED {int(round(delay))}m"
+        quality="delayed"
+    elif is_open:
+        label="INTRADAY · PROVIDER"
+        quality="provider"
+    else:
+        label="MARKET CLOSED"
+        quality="closed"
+    return {"is_open":bool(is_open),"explicit_live":explicit_live,"delay_minutes":delay,
+            "label":label,"quality":quality,"exchange":exchange,"timezone":tz,"source":source}
+
 @st.cache_data(ttl=900, show_spinner=False)
 def history_metadata(t):
     try:
@@ -3466,9 +3516,18 @@ def _chr_set_legal_route_v21300(target):
     if target in _CHR_LEGAL_PAGES:
         st.session_state["chr_legal_page"]=target
 
+_CHR_AUTH_PAGES={"Sign In","Register"}
+def _chr_set_auth_route_v23000(target):
+    if target in _CHR_AUTH_PAGES:
+        _chr_clear_legal_route_v21300()
+        st.session_state["chr_auth_route_v23000"]=target
+def _chr_clear_auth_route_v23000():
+    st.session_state.pop("chr_auth_route_v23000",None)
+
 def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
         _chr_clear_legal_route_v21300()
+        _chr_clear_auth_route_v23000()
         st.session_state["chr_primary_nav"]=target
         # V21.2.22 — a Command Centre deep-link query is only an entry route.
         # Once the user deliberately chooses another sidebar page, remove the
@@ -3777,6 +3836,9 @@ else: page=primary
 _chr_legal_page=st.session_state.get("chr_legal_page")
 if _chr_legal_page in _CHR_LEGAL_PAGES:
     page=_chr_legal_page
+_chr_auth_page=st.session_state.get("chr_auth_route_v23000")
+if _chr_auth_page in _CHR_AUTH_PAGES:
+    page=_chr_auth_page
 
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
 try:
@@ -3795,7 +3857,7 @@ def render_chrimata_persistent_header():
         banner_b64=base64.b64encode(banner_path.read_bytes()).decode("ascii")
         st.markdown(f"""<style>
         [data-testid="stAppViewContainer"]::before{{
-          content:"";position:fixed;left:0;right:0;top:0;height:108px;z-index:1000000;
+          content:"";position:fixed;left:0;right:0;top:0;height:108px;z-index:999990;
           background-image:url(data:image/jpeg;base64,{banner_b64});background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
           pointer-events:none;
         }}
@@ -3804,6 +3866,34 @@ def render_chrimata_persistent_header():
         pass
 
 render_chrimata_persistent_header()
+
+# V23.0.0 — compact authentication entry controls integrated into the existing banner.
+st.markdown(r"""<style>
+/* V23.0.2 — Render repair: the banner pseudo-element previously painted above the
+   Streamlit button container. Target both Streamlit key renderings and establish a
+   fixed, isolated layer above the banner without changing banner geometry. */
+.st-key-v23000_banner_auth,
+[data-testid="stElementContainer"]:has(.st-key-v23000_banner_auth),
+[data-testid="stVerticalBlock"]:has(> .st-key-v23000_banner_auth){
+ position:fixed!important;right:24px!important;top:70px!important;z-index:1000010!important;
+ width:190px!important;height:34px!important;margin:0!important;padding:0!important;
+ background:transparent!important;isolation:isolate!important;pointer-events:auto!important;
+}
+.st-key-v23000_banner_auth [data-testid="stHorizontalBlock"]{gap:7px!important;align-items:center!important;position:relative!important;z-index:1000011!important}
+.st-key-v23000_banner_auth [data-testid="stColumn"]{min-width:0!important}
+.st-key-v23000_banner_auth{display:block!important;visibility:visible!important;opacity:1!important}
+.st-key-v23000_banner_auth .stButton>button{display:flex!important;visibility:visible!important;opacity:1!important;height:30px!important;min-height:30px!important;padding:0 10px!important;border-radius:7px!important;font-size:11px!important;font-weight:800!important;box-shadow:none!important;white-space:nowrap!important}
+.st-key-v23000_banner_auth [data-testid="stColumn"]:first-child .stButton>button{background:rgba(4,30,63,.34)!important;color:#fff!important;border:1px solid rgba(255,255,255,.48)!important}
+.st-key-v23000_banner_auth [data-testid="stColumn"]:last-child .stButton>button{background:#fff!important;color:#0a3d70!important;border:1px solid #fff!important}
+.st-key-v23000_banner_auth .stButton>button:hover{transform:translateY(-1px)!important;filter:brightness(1.04)!important}
+@media(max-width:760px){.st-key-v23000_banner_auth{right:8px!important;top:70px!important;width:146px!important}.st-key-v23000_banner_auth .stButton>button{height:27px!important;min-height:27px!important;padding:0 7px!important;font-size:9px!important}}
+</style>""",unsafe_allow_html=True)
+with st.container(key="v23000_banner_auth"):
+    _auth_signin,_auth_register=st.columns(2,gap="small")
+    with _auth_signin:
+        st.button("Sign in",key="v23000_signin",use_container_width=True,on_click=_chr_set_auth_route_v23000,args=("Sign In",))
+    with _auth_register:
+        st.button("Register",key="v23000_register",use_container_width=True,on_click=_chr_set_auth_route_v23000,args=("Register",))
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
@@ -6014,7 +6104,21 @@ def _chr_company_search_page():
     st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.6.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
-if page=="Markets":
+if page in {"Sign In","Register"}:
+    _is_register=(page=="Register")
+    _auth_title="Create your Chrímata account" if _is_register else "Welcome back"
+    _auth_sub="Create an account to save research, portfolios and future alerts." if _is_register else "Sign in to access your saved Chrímata research workspace."
+    st.markdown(f"<div style='max-width:470px;margin:34px auto 12px'><div style='font-size:25px;font-weight:900;color:#10264b'>{_auth_title}</div><div style='margin-top:5px;color:#6b7f99;font-size:13px'>{_auth_sub}</div></div>",unsafe_allow_html=True)
+    with st.container(border=True,key="v23000_auth_form"):
+        st.text_input("Email",key=f"v23000_email_{page}",placeholder="name@example.com")
+        st.text_input("Password",type="password",key=f"v23000_password_{page}")
+        if _is_register:
+            st.text_input("Confirm password",type="password",key="v23000_confirm")
+        st.button("Create account" if _is_register else "Sign in",type="primary",use_container_width=True,key=f"v23000_submit_{page}",disabled=True)
+        st.caption("Authentication service is not connected yet. This build adds the banner entry points and account screens without pretending to authenticate users.")
+        st.button("← Back to Chrímata",key=f"v23000_back_{page}",on_click=_chr_clear_auth_route_v23000)
+
+elif page=="Markets":
     st.header("Global Market Opportunity Dashboard")
     with st.expander("🔎 Universal symbol search",expanded=False):
         _uq=st.text_input("Find any company or ticker",placeholder="Pepsi, PEP, Qantas, QAN, Zip, ZIP…",key="market_universal_query")
@@ -7175,6 +7279,14 @@ elif page=="Company Command Centre":
         # V22.2.2 — compact equal-height Overview row.
         # 430px removes the large unused lower area while retaining the full chart footer,
         # six-row thesis scorecard and AI brief controls.
+        st.markdown("""<style>
+        .v2301-feed{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:900;letter-spacing:.02em;margin:-1px 0 3px;color:#68809d}
+        .v2301-feed span{width:7px;height:7px;border-radius:50%;background:#8da5bd;display:inline-block}
+        .v2301-live{color:#079447}.v2301-live span{background:#08a94f;box-shadow:0 0 0 3px rgba(8,169,79,.10)}
+        .v2301-delayed{color:#c27b00}.v2301-delayed span{background:#f2a000}
+        .v2301-provider{color:#52708f}.v2301-provider span{background:#6f8eaa}
+        .v2301-closed{color:#7d8da1}.v2301-closed span{background:#9aabba}
+        </style>""",unsafe_allow_html=True)
         _overview_widget_height=430
         _price_chart_widget_height=_overview_widget_height
         with _w_chart:
@@ -7203,6 +7315,15 @@ elif page=="Company Command Centre":
                 # V21.3.23.3 — force the selected segment to the reference solid-blue state.
                 # Streamlit's selected-state attributes vary by release, so target the known segment index too.
                 _tf_active_index=_tf_options.index(_active_tf)+1
+                if _active_tf=="1D":
+                    _intraday_preview=exchange_session_state(ticker,_ccmeta)
+                    _badge_cls={"live":"live","delayed":"delayed","provider":"provider","closed":"closed"}.get(_intraday_preview["quality"],"provider")
+                    _venue=_intraday_preview.get("exchange") or "Exchange"
+                    st.markdown(
+                        f'<div class="v2301-feed v2301-{_badge_cls}"><span></span>{html.escape(_intraday_preview["label"])} · {html.escape(_venue)}'
+                        + (f' · {html.escape(_intraday_preview["source"])}' if _intraday_preview.get("source") else '')
+                        + '</div>', unsafe_allow_html=True
+                    )
                 st.markdown(
                     f"""<style>
                     [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > label:nth-child({_tf_active_index}),
@@ -7216,22 +7337,29 @@ elif page=="Company Command Centre":
                     </style>""",unsafe_allow_html=True,
                 )
                 _tf_spec={
-                    "1D":("1d","5m"), "1W":("5d","30m"), "1M":("1mo","1d"),
+                    "1D":("1d","1m"), "1W":("5d","30m"), "1M":("1mo","1d"),
                     "3M":("3mo","1d"), "6M":("6mo","1d"), "1Y":("1y","1d"),
                     "3Y":("3y","1wk"), "5Y":("5y","1wk"),
                 }
                 # Fetch a longer calculation window than the visible window. This prevents
                 # SMA 20/50 from disappearing on 1M/3M and avoids starting each average from zero history.
                 _tf_calc={
-                    "1D":("5d","5m"), "1W":("1mo","30m"), "1M":("6mo","1d"),
+                    "1D":("1d","1m"), "1W":("1mo","30m"), "1M":("6mo","1d"),
                     "3M":("1y","1d"), "6M":("1y","1d"), "1Y":("2y","1d"),
                     "3Y":("5y","1wk"), "5Y":("10y","1wk"),
                 }
                 _chart_sets={}
                 _macro_sets={}
+                _intraday_state=exchange_session_state(ticker,_ccmeta)
+                # Only the active 1D/open-market view bypasses the historical cache.
+                # This gives the newest provider bars without hammering the upstream source
+                # for every hidden timeframe on every Streamlit rerun.
                 for _opt in _tf_options:
                     _per,_int=_tf_calc[_opt]
-                    _calc=history_interval(ticker,_per,_int)
+                    if _opt=="1D" and _active_tf=="1D" and _intraday_state["is_open"]:
+                        _calc=live_intraday_history(ticker,_per,_int)
+                    else:
+                        _calc=history_interval(ticker,_per,_int)
                     if _calc is None or _calc.empty:
                         _calc=h.copy() if _opt=="1Y" else pd.DataFrame()
                     if _calc is not None and not _calc.empty:
