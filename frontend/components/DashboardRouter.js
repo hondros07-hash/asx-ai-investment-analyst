@@ -4,8 +4,9 @@ import {prefetchTicker,warmTicker} from "../lib/api";
 import CompanySearch from "./views/CompanySearch";
 import CompanyCommandCentre from "./views/CompanyCommandCentre";
 import NewsIntelligenceCentre from "./views/NewsIntelligenceCentre";
+import DividendIntelligence from "./views/DividendIntelligence";
 
-const VALID=new Set(["search","command_centre","news"]);
+const VALID=new Set(["search","command_centre","news","dividends"]);
 export default function DashboardRouter(){
  const [page,setPage]=useState("search");
  const [ticker,setTicker]=useState("CBA.AX");
@@ -40,6 +41,7 @@ export default function DashboardRouter(){
  const view=useMemo(()=>{
    if(page==="search")return <CompanySearch activeTicker={ticker} onSelectTicker={chooseTicker}/>;
    if(page==="news")return <NewsIntelligenceCentre ticker={ticker} data={data} loading={loading}/>;
+   if(page==="dividends")return <DividendIntelligence/>;
    return <CompanyCommandCentre ticker={ticker} data={data} loading={loading} error={error} navigate={navigate}/>;
  },[page,ticker,data,loading,error,navigate,chooseTicker]);
 
@@ -51,6 +53,7 @@ export default function DashboardRouter(){
      <button onClick={()=>navigate("search")} className="rounded-lg px-3 py-2 hover:bg-slate-100">Search</button>
      <button onMouseEnter={()=>warmTicker(ticker)} onClick={()=>navigate("command_centre")} className="rounded-lg px-3 py-2 hover:bg-slate-100">Command Centre</button>
      <button onClick={()=>navigate("news")} className="rounded-lg px-3 py-2 hover:bg-slate-100">News</button>
+     <button onClick={()=>navigate("dividends")} className="rounded-lg px-3 py-2 hover:bg-slate-100">Dividends</button>
     </nav>
     <div className="text-sm text-slate-500">Researching: <b className="text-[#082b55]">{ticker}</b></div>
    </div>

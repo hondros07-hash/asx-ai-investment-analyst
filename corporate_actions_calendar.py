@@ -168,7 +168,7 @@ def _fmp_calendar(market,start,end,key,universe):
         except Exception:pass
     out=[]
     for x in items:
-        if not _belongs(x.get("symbol"),market,universe,x.get("mic_code"),x.get("exchange")):continue
+        if not (_venue_belongs(market,x.get("mic_code"),x.get("exchange")) or _belongs(x.get("symbol"),market,universe,x.get("mic_code"),x.get("exchange"))):continue
         r=_row(x,"FMP calendar")
         if r:out.append(r)
     return out

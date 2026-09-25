@@ -26,3 +26,9 @@ export async function prefetchTicker(ticker,{signal}={}){
   return Object.fromEntries(pairs.map((x,i)=>x.status==="fulfilled"?x.value:[Object.keys(endpoints)[i],{status:"error",data:null}]));
 }
 export function warmTicker(ticker){prefetchTicker(ticker).catch(()=>{});}
+
+
+export async function fetchDividendCalendar(marketRegion,{signal,force=false}={}){
+  const market=encodeURIComponent((marketRegion||"AU").toUpperCase());
+  return request(`/api/v1/corporate-actions/dividends?market=${market}&horizon_days=120`,{signal,force});
+}

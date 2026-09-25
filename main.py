@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,ConfigDict
 from api_gateway import scorecard_for_ticker,valuation_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker
 from services.brief_engine import generate_research_brief
+from services.dividend_api import dividend_calendar_payload
 
 class APIResponse(BaseModel):
     model_config=ConfigDict(extra="forbid")
@@ -86,3 +87,12 @@ async def research_brief(ticker:str=Query(...,description="Target ticker")):
 
 @app.get("/health",response_model=HealthResponse)
 async def health():return HealthResponse(status="operational",engine_layer="active",version="22.2.0")
+
+
+# V23.4.4 — Responsive Global Dividend Intelligence Grid API
+@app.get("/api/v1/corporate-actions/dividends")
+async def dividend_calendar(market:str=Query("AU",min_length=2,max_length=2),horizon_days:int=Query(120,ge=1,le=365)):
+    try:
+        return _native(await run_in_threadpool(dividend_calendar_payload,market,horizon_days))
+    except Exception as exc:
+        raise HTTPException(status_code=503,detail="Dividend calendar unavailable") from exc
