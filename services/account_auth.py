@@ -16,7 +16,10 @@ def _client():
     from supabase import create_client
     return create_client(url,key)
 
-def register_user(email:str,password:str)->Dict[str,Any]:
+def register_user(email:str,password:str,device_signal:str|None=None)->Dict[str,Any]:
+    from services.trial_eligibility import register_attempt
+    from config.supabase_client import get_supabase_admin_client
+    register_attempt(get_supabase_admin_client(),email,device_signal)
     r=_client().auth.sign_up({"email":email.strip(),"password":password})
     user=getattr(r,"user",None); session=getattr(r,"session",None)
     return {"user_id":str(getattr(user,"id","") or ""), "email":getattr(user,"email",email),
@@ -29,3 +32,18 @@ def sign_in_user(email:str,password:str)->Dict[str,Any]:
     if not user or not session: raise AccountAuthError("Sign in was not completed")
     return {"user_id":str(user.id),"email":getattr(user,"email",email),
             "access_token":session.access_token,"refresh_token":getattr(session,"refresh_token",None)}
+
+
+def activate_verified_trial(user_id:str,email:str)->str:
+    """Backend-only idempotent activation; SQL verifies email confirmation and eligibility."""
+    from config.supabase_client import get_supabase_admin_client
+    from services.trial_eligibility import keyed_digest
+    admin=get_supabase_admin_client()
+    key=keyed_digest(email.strip().lower(),'email')
+    existing=admin.table('trial_eligibility').select('decision').eq('user_id',user_id).limit(1).execute()
+    if getattr(existing,'data',None):return existing.data[0]['decision']
+    r=admin.table('trial_registration_attempts').select('device_key').eq('email_key',key).eq('status','pending').order('created_at',desc=True).limit(1).execute()
+    pending=getattr(r,'data',None) or []
+    if not pending:raise AccountAuthError('Trial eligibility record unavailable')
+    result=admin.rpc('finalize_chrimata_trial',{'p_user_id':user_id,'p_email_key':key,'p_device_key':pending[0].get('device_key')}).execute()
+    return result.data

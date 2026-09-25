@@ -152,6 +152,7 @@ from services.profile_service import check_user_feature
 class ChrimataRegisterRequestV2330(BaseModel):
     email: EmailStr
     password: str
+    device_signal: str | None = None
 
 @app.post("/api/v1/auth/register")
 def chrimata_register_v2330(body: ChrimataRegisterRequestV2330):
@@ -159,10 +160,15 @@ def chrimata_register_v2330(body: ChrimataRegisterRequestV2330):
         from fastapi import HTTPException
         raise HTTPException(status_code=400,detail="Password must contain at least 10 characters")
     try:
-        result=register_user(str(body.email),body.password)
+        from services.trial_eligibility import validate_registration_email
+        validate_registration_email(str(body.email))
+        result=register_user(str(body.email),body.password,body.device_signal)
         return {"status":"verification_required" if result["email_confirmation_required"] else "registered",
                 "email":result["email"],
                 "message":"Check your email to verify your Chrímata account." if result["email_confirmation_required"] else "Account created."}
+    except EligibilityError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400,detail=str(exc))
     except Exception:
         import logging
         logging.getLogger(__name__).exception("Chrímata registration failed")
@@ -247,3 +253,20 @@ def chrimata_evidence_to_thesis_v2341(body: ChrimataEvidenceThesisRequestV2341):
         company=body.company,event=event,exposures=exposures,evidence=ev,
         thesis_state=body.thesis_state,valuation_state=body.valuation_state,
         fundamentals_state=body.fundamentals_state)
+
+# --- V23.4.5 Trial Eligibility & Abuse Prevention ----------------------------
+from services.trial_eligibility import validate_registration_email, EligibilityError, keyed_digest
+
+@app.post('/api/v1/me/activate-trial')
+def chrimata_activate_trial_v2345(user=Depends(get_current_active_user)):
+    """Verified-user, server-authorized trial activation; never trusts a client plan."""
+    from fastapi import HTTPException
+    from config.supabase_client import get_supabase_admin_client
+    try:
+        from services.account_auth import activate_verified_trial
+        return {'status':'ok','trial_eligibility':activate_verified_trial(user['id'],str(user.get('email') or ''))}
+    except HTTPException:raise
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Trial activation failed')
+        raise HTTPException(status_code=503,detail='Trial activation is temporarily unavailable')

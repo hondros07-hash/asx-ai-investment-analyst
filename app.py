@@ -6312,7 +6312,7 @@ if page in {"Sign In","Register"}:
         _confirm=""
         if _is_register:
             _confirm=st.text_input("Confirm password",type="password",key="v2330_confirm")
-            st.caption("30-day full-access trial begins after email verification. No payment details required.")
+            st.caption("Eligible new customers receive a 30-day full-access trial after email verification. No payment details required.")
         if st.button("Create account" if _is_register else "Sign in",type="primary",use_container_width=True,key=f"v2330_submit_{page}"):
             if not _email.strip() or not _password:
                 st.error("Enter your email and password.")
@@ -6327,12 +6327,19 @@ if page in {"Sign In","Register"}:
                         if _result.get("email_confirmation_required"):
                             st.success("Account created. Check your email to verify your address and start your 30-day full-access trial.")
                         else:
-                            st.success("Account created. Your 30-day full-access trial is ready.")
+                            from services.account_auth import activate_verified_trial as _chr_activate_trial_v2345
+                            _decision=_chr_activate_trial_v2345(_result["user_id"],_result["email"])
+                            st.success("Account created. Trial eligibility: " + str(_decision) + ".")
                     else:
                         _result=_chr_sign_in_user_v2330(_email,_password)
                         st.session_state["chr_access_token_v2330"]=_result.get("access_token")
                         st.session_state["chr_signed_in_email_v2330"]=_result.get("email")
-                        st.success("Signed in successfully.")
+                        try:
+                            from services.account_auth import activate_verified_trial as _chr_activate_trial_v2345
+                            _chr_trial_decision=_chr_activate_trial_v2345(_result["user_id"],_result["email"])
+                            st.success("Signed in successfully. Trial eligibility: " + str(_chr_trial_decision) + ".")
+                        except Exception:
+                            st.success("Signed in successfully. Trial activation is pending; your Free access remains available.")
                 except Exception:
                     st.error("We couldn't complete that account request. Check your details and account configuration, then try again.")
         st.caption("By continuing, you agree to Chrímata's Terms and Privacy Policy.")
