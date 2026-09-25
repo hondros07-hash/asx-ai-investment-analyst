@@ -7307,14 +7307,23 @@ elif page=="Company Command Centre":
             min-height:22px!important;height:22px!important;width:auto!important;min-width:0!important;
         }
         [class*="st-key-v213172_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
-        /* V23.4.4.2 — Price Chart Footer Visibility Fix.
-           Keep the plot geometry unchanged; reserve a safe footer zone inside the card. */
-        [class*="st-key-v213172_technical_"]{min-height:28px!important;height:28px!important;margin:0!important;padding:0 4px 0 0!important;overflow:visible!important}
-        [class*="st-key-v213172_technical_"] .stButton{min-height:28px!important;height:28px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;overflow:visible!important}
+        /* V23.4.4.3 — Price Chart Fixed Timeframe Geometry Engine.
+           1D and longer windows consume identical vertical slots. */
+        .v23443-market-status-slot{height:18px!important;min-height:18px!important;max-height:18px!important;
+            margin:0!important;padding:0!important;overflow:hidden!important;box-sizing:border-box!important}
+        .v23443-market-status-slot .v2301-feed{height:18px!important;min-height:18px!important;max-height:18px!important;
+            margin:0!important;padding:0!important;line-height:18px!important;box-sizing:border-box!important}
+        .v23443-market-status-slot .v2301-feed-empty{visibility:hidden!important}
+        [class*="st-key-v21243_price_card"] [data-testid="stPlotlyChart"]{height:184px!important;min-height:184px!important;max-height:184px!important;overflow:hidden!important}
+        [class*="st-key-v213172_technical_"]{min-height:22px!important;height:22px!important;max-height:22px!important;
+            margin:0!important;padding:0 4px 0 0!important;overflow:visible!important}
+        [class*="st-key-v213172_technical_"] .stButton{min-height:22px!important;height:22px!important;max-height:22px!important;
+            display:flex!important;align-items:center!important;justify-content:flex-end!important;overflow:visible!important}
         [class*="st-key-v213172_technical_"] .stButton>button{line-height:22px!important;overflow:visible!important}
-        .v213233-price-bottom-space{height:10px;min-height:10px;width:100%;display:block;flex-shrink:0!important}
+        .v213233-price-bottom-space{height:4px!important;min-height:4px!important;max-height:4px!important;width:100%;
+            display:block;flex-shrink:0!important}
         [class*="st-key-v21243_price_card"] [data-testid="stHorizontalBlock"]{flex-shrink:0!important}
-        [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlockBorderWrapper"]{padding-bottom:8px!important}
+        [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlockBorderWrapper"]{padding-bottom:5px!important}
         [class*="st-key-v213171_timeframe_"] [aria-checked="true"],
         [class*="st-key-v213171_timeframe_"] [data-state="on"],
         [class*="st-key-v213171_timeframe_"] [data-state="checked"]{background:#086ee8!important;border-color:#086ee8!important;color:#fff!important}
@@ -7504,7 +7513,7 @@ elif page=="Company Command Centre":
         # 430px removes the large unused lower area while retaining the full chart footer,
         # six-row thesis scorecard and AI brief controls.
         st.markdown("""<style>
-        .v2301-feed{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:900;letter-spacing:.02em;margin:-1px 0 3px;color:#68809d}
+        .v2301-feed{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:900;letter-spacing:.02em;margin:0;color:#68809d}
         .v2301-feed span{width:7px;height:7px;border-radius:50%;background:#8da5bd;display:inline-block}
         .v2301-live{color:#079447}.v2301-live span{background:#08a94f;box-shadow:0 0 0 3px rgba(8,169,79,.10)}
         .v2301-delayed{color:#c27b00}.v2301-delayed span{background:#f2a000}
@@ -7539,15 +7548,21 @@ elif page=="Company Command Centre":
                 # V21.3.23.3 — force the selected segment to the reference solid-blue state.
                 # Streamlit's selected-state attributes vary by release, so target the known segment index too.
                 _tf_active_index=_tf_options.index(_active_tf)+1
+                # V23.4.4.3 — reserve the exact same market-status row for every timeframe.
+                # 1D receives the live/delayed provider label; longer windows retain a
+                # blank slot so switching timeframe cannot move the chart/footer vertically.
                 if _active_tf=="1D":
                     _intraday_preview=exchange_session_state(ticker,_ccmeta)
                     _badge_cls={"live":"live","delayed":"delayed","provider":"provider","closed":"closed"}.get(_intraday_preview["quality"],"provider")
                     _venue=_intraday_preview.get("exchange") or "Exchange"
-                    st.markdown(
+                    _feed_html=(
                         f'<div class="v2301-feed v2301-{_badge_cls}"><span></span>{html.escape(_intraday_preview["label"])} · {html.escape(_venue)}'
                         + (f' · {html.escape(_intraday_preview["source"])}' if _intraday_preview.get("source") else '')
-                        + '</div>', unsafe_allow_html=True
+                        + '</div>'
                     )
+                else:
+                    _feed_html='<div class="v2301-feed v2301-feed-empty" aria-hidden="true">&nbsp;</div>'
+                st.markdown(f'<div class="v23443-market-status-slot">{_feed_html}</div>',unsafe_allow_html=True)
                 st.markdown(
                     f"""<style>
                     [class*=\"st-key-v213171_timeframe_\"] div[role=\"radiogroup\"] > label:nth-child({_tf_active_index}),
@@ -7670,7 +7685,7 @@ elif page=="Company Command Centre":
                 # V21.2.44 — Technical navigation is handled by Streamlit state rather than
                 # an href inside Plotly. This avoids the browser-level white flash/reload.
                 _fig.update_layout(
-                    height=202,margin=dict(l=2,r=34,t=8,b=10),xaxis_rangeslider_visible=False,
+                    height=184,margin=dict(l=2,r=34,t=6,b=8),xaxis_rangeslider_visible=False,
                     showlegend=bool(_macro_on and _macro_available),legend=dict(orientation="h",y=1.03,x=0),bargap=0.12,
                     paper_bgcolor="white",plot_bgcolor="white",
                     xaxis=dict(gridcolor="#e8eef6",showgrid=True,autorange=True,domain=[0,1],anchor="y2",ticks="outside",ticklabelposition="outside",automargin=True),
@@ -7725,7 +7740,7 @@ elif page=="Company Command Centre":
                         on_click=_chr_set_cc_sub_v2111,
                         args=("Technical",),
                     )
-                # V21.3.23.3 — intentional white breathing room below the fixed footer.
+                # V23.4.4.3 — fixed 4px breathing room below the internal footer.
                 st.markdown('<div class="v213233-price-bottom-space"></div>',unsafe_allow_html=True)
         with _w_thesis:
             with st.container(border=True,height=_overview_widget_height,key="v21255_thesis_card"):
