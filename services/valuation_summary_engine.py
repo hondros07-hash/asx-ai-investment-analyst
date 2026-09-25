@@ -36,12 +36,21 @@ def summarize_valuation(result, reference_price=None, ticker=None):
     positions = {k: (max(0., min(100., (v['price']-lo)/(hi-lo)*100))
                      if v['price'] is not None and lo is not None and hi > lo else None)
                  for k,v in values.items()}
-    missing = []
+    audit = result.get('audit') if isinstance(result.get('audit'),dict) else {}
+    inputs = audit.get('inputs') if isinstance(audit.get('inputs'),dict) else {}
+    missing = [key for key, detail in inputs.items() if isinstance(detail,dict) and detail.get('status')=='missing']
     if len(available) != 3: missing.append('complete_bear_base_bull_model_results')
     if price is None: missing.append('verified_positive_reference_price')
     if not result.get('listing_currency'): missing.append('verified_listing_currency')
     state = ('unsupported' if result.get('status') == 'unsupported' else
              'available' if len(available) == 3 else 'partial' if available else 'insufficient_evidence')
+    blockers = audit.get('blocking_reasons') or []
+    reason = result.get('reason') or (str(blockers[0]) if blockers else None)
+    if not reason and not available:
+        reason = 'Valuation unavailable — verified financial inputs or model assumptions are incomplete.'
+    # A valuation may be calculated without a reference quote, but deltas cannot.
+    if available and price is None:
+        reason = 'Reference market price unavailable; valuation deltas cannot be calculated.' 
     return {
         'status': state, 'ticker': ticker or result.get('security'),
         'bear_price': values['bear']['price'], 'bear_delta_pct': values['bear']['delta_pct'],
@@ -52,7 +61,7 @@ def summarize_valuation(result, reference_price=None, ticker=None):
         'financial_currency': result.get('financial_currency'),
         'methodology': result.get('methodology'), 'assumption_template': result.get('assumption_template'),
         'assumptions_are_model_templates': True,
-        'provenance': result.get('audit') or {}, 'reason': result.get('reason'),
+        'provenance': audit, 'reason': reason,
         'missing_inputs': missing, 'calculated_at': datetime.now(timezone.utc).isoformat(),
         'ai_calculated_math': False,
     }

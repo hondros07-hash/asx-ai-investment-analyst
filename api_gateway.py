@@ -45,7 +45,15 @@ def valuation_for_ticker(ticker:str)->Dict[str,Any]:
     t=yf.Ticker(ticker)
     try:meta=t.info or {}
     except Exception:meta={}
-    rec=recover_financial_inputs(meta,_frame(t,"cashflow"),_frame(t,"balance_sheet"),_frame(t,"income_stmt"))
+    def _merged(q,a):
+        if q.empty:return a
+        if a.empty:return q
+        both=pd.concat([q,a],axis=1)
+        return both.loc[:,~both.columns.duplicated()]
+    rec=recover_financial_inputs(meta,
+        _merged(_frame(t,"quarterly_cashflow"),_frame(t,"cashflow")),
+        _merged(_frame(t,"quarterly_balance_sheet"),_frame(t,"balance_sheet")),
+        _merged(_frame(t,"quarterly_financials"),_frame(t,"income_stmt")))
     price=_finite(meta.get("currentPrice") or meta.get("regularMarketPrice"))
     fc,lc=rec.get("financial_currency"),rec.get("listing_currency")
     x=calculate_dcf_scenarios(rec.get("fcf"),rec.get("shares"),rec.get("cash"),rec.get("debt"),
