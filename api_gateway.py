@@ -211,3 +211,39 @@ def chrimata_synthesize_v2340(body: ChrimataSynthesisRequestV2340):
     evidence=[Evidence(**x.model_dump()) for x in body.evidence]
     return _chr_synthesis_v2340.synthesize(company=body.company,event=body.event,
         company_exposure_keys=body.company_exposure_keys,evidence=evidence)
+
+
+# --- V23.4.1 Evidence-to-Thesis Intelligence Integration Engine ---------------
+from services.evidence_thesis_integration import EvidenceToThesisEngine, CompanyExposure
+from services.intelligence_event_gateway import normalize_event
+
+_chr_evidence_thesis_v2341=EvidenceToThesisEngine()
+
+class ChrimataExposureV2341(BaseModel):
+    exposure_key: str
+    verified: bool
+    source_name: str
+    evidence_id: str
+    observed_at: str
+    note: str=""
+
+class ChrimataEvidenceThesisRequestV2341(BaseModel):
+    company: _DictV2340[str,_AnyV2340]
+    event: _DictV2340[str,_AnyV2340]
+    exposures: _ListV2340[ChrimataExposureV2341]=[]
+    evidence: _ListV2340[ChrimataEvidenceV2340]=[]
+    thesis_state: _DictV2340[str,_AnyV2340]={}
+    valuation_state: _DictV2340[str,_AnyV2340]={}
+    fundamentals_state: _DictV2340[str,_AnyV2340]={}
+
+@app.post("/api/v1/intelligence/evidence-to-thesis")
+def chrimata_evidence_to_thesis_v2341(body: ChrimataEvidenceThesisRequestV2341):
+    event=normalize_event(body.event)
+    if event.get("status")!="accepted":
+        return {"status":"rejected_event","event_validation":event,"ai_calculated_math":False}
+    ev=[Evidence(**x.model_dump()) for x in body.evidence]
+    exposures=[CompanyExposure(**x.model_dump()) for x in body.exposures]
+    return _chr_evidence_thesis_v2341.integrate(
+        company=body.company,event=event,exposures=exposures,evidence=ev,
+        thesis_state=body.thesis_state,valuation_state=body.valuation_state,
+        fundamentals_state=body.fundamentals_state)
