@@ -104,3 +104,25 @@ def chrimata_market_layout_v2310(country: str | None = None, tier: str = "free")
     # Geo header resolution belongs at the trusted deployment edge; this endpoint accepts
     # the already-resolved country code and never trusts arbitrary X-Forwarded-For itself.
     return {"status":"ok",**resolve_market_layout(country,{"subscription_tier":tier})}
+
+
+# --- V23.2.0 Supabase Identity, Profiles & Entitlement Foundation -------------
+from fastapi import Depends
+from utils.auth_gate import get_current_active_user
+from services.profile_service import get_user_state
+from services.geo_router import resolve_market_layout as _resolve_market_layout_v2320
+
+@app.get("/api/v1/me")
+def chrimata_me_v2320(user=Depends(get_current_active_user)):
+    state=get_user_state(user)
+    return {"status":"ok",**state}
+
+@app.get("/api/v1/me/market-layout")
+def chrimata_my_market_layout_v2320(user=Depends(get_current_active_user)):
+    state=get_user_state(user)
+    profile=state["profile"]; ent=state["entitlement"]
+    layout=_resolve_market_layout_v2320(
+        None,{"subscription_tier":ent["effective_plan"],
+              "home_market":profile.get("home_market_override"),
+              "custom_market_slots":profile.get("custom_market_slots") or []})
+    return {"status":"ok",**layout}
