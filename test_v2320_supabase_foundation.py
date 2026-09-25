@@ -1,6 +1,6 @@
 from pathlib import Path
 from services.geo_router import resolve_market_layout
-from services.profile_service import FREE_ENTITLEMENTS, PRO_ENTITLEMENTS
+from services.entitlement_engine import FEATURE_REQUIREMENTS
 
 def test_sql_rls_and_server_controlled_entitlements():
  s=Path("supabase/migrations/20260925_v23_2_0_identity.sql").read_text()
@@ -18,8 +18,8 @@ def test_auth_returns_generic_client_error():
  assert 'detail="Invalid or expired session"' in s
  assert "detail=str(" not in s
 def test_feature_entitlements():
- assert not FREE_ENTITLEMENTS["custom_market_slots"]
- assert PRO_ENTITLEMENTS["custom_market_slots"]
+ assert FEATURE_REQUIREMENTS["market.global"]=="general"
+ assert FEATURE_REQUIREMENTS["research.ai_brief"]=="premium"
 def test_saved_home_and_pro_slots_feed_existing_geo_engine():
  x=resolve_market_layout(None,{"subscription_tier":"pro","home_market":"GR","custom_market_slots":["US","GB","JP","HK","CA"]})
  assert x["home_market"]=="GR" and x["secondary_markets"]==["US","GB","JP","HK","CA"]

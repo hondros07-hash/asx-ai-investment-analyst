@@ -6210,18 +6210,43 @@ def _chr_company_search_page():
 
 
 if page in {"Sign In","Register"}:
+    from services.account_auth import register_user as _chr_register_user_v2330, sign_in_user as _chr_sign_in_user_v2330
     _is_register=(page=="Register")
     _auth_title="Create your Chrímata account" if _is_register else "Welcome back"
-    _auth_sub="Create an account to save research, portfolios and future alerts." if _is_register else "Sign in to access your saved Chrímata research workspace."
+    _auth_sub=("Start with 30 days of full Chrímata access. No payment required."
+               if _is_register else "Sign in to access your saved Chrímata research workspace.")
     st.markdown(f"<div style='max-width:470px;margin:34px auto 12px'><div style='font-size:25px;font-weight:900;color:#10264b'>{_auth_title}</div><div style='margin-top:5px;color:#6b7f99;font-size:13px'>{_auth_sub}</div></div>",unsafe_allow_html=True)
-    with st.container(border=True,key="v23000_auth_form"):
-        st.text_input("Email",key=f"v23000_email_{page}",placeholder="name@example.com")
-        st.text_input("Password",type="password",key=f"v23000_password_{page}")
+    with st.container(border=True,key="v2330_auth_form"):
+        _email=st.text_input("Email",key=f"v2330_email_{page}",placeholder="name@example.com")
+        _password=st.text_input("Password",type="password",key=f"v2330_password_{page}")
+        _confirm=""
         if _is_register:
-            st.text_input("Confirm password",type="password",key="v23000_confirm")
-        st.button("Create account" if _is_register else "Sign in",type="primary",use_container_width=True,key=f"v23000_submit_{page}",disabled=True)
-        st.caption("Authentication service is not connected yet. This build adds the banner entry points and account screens without pretending to authenticate users.")
-        st.button("← Back to Chrímata",key=f"v23000_back_{page}",on_click=_chr_clear_auth_route_v23000)
+            _confirm=st.text_input("Confirm password",type="password",key="v2330_confirm")
+            st.caption("30-day full-access trial begins after email verification. No payment details required.")
+        if st.button("Create account" if _is_register else "Sign in",type="primary",use_container_width=True,key=f"v2330_submit_{page}"):
+            if not _email.strip() or not _password:
+                st.error("Enter your email and password.")
+            elif _is_register and len(_password)<10:
+                st.error("Use a password with at least 10 characters.")
+            elif _is_register and _password!=_confirm:
+                st.error("Passwords do not match.")
+            else:
+                try:
+                    if _is_register:
+                        _result=_chr_register_user_v2330(_email,_password)
+                        if _result.get("email_confirmation_required"):
+                            st.success("Account created. Check your email to verify your address and start your 30-day full-access trial.")
+                        else:
+                            st.success("Account created. Your 30-day full-access trial is ready.")
+                    else:
+                        _result=_chr_sign_in_user_v2330(_email,_password)
+                        st.session_state["chr_access_token_v2330"]=_result.get("access_token")
+                        st.session_state["chr_signed_in_email_v2330"]=_result.get("email")
+                        st.success("Signed in successfully.")
+                except Exception:
+                    st.error("We couldn't complete that account request. Check your details and account configuration, then try again.")
+        st.caption("By continuing, you agree to Chrímata's Terms and Privacy Policy.")
+        st.button("← Back to Chrímata",key=f"v2330_back_{page}",on_click=_chr_clear_auth_route_v23000)
 
 elif page=="Markets":
     st.header("Global Market Opportunity Dashboard")

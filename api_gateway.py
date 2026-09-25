@@ -142,3 +142,41 @@ def chrimata_header_markets_v2321(home_market: str = "AU"):
         rec=broadcast_cache.get(code)
         items.append({"market":code,"country":cfg.country,"index":cfg.primary_index,"flag":cfg.flag,"snapshot":serialize_record(code,rec) if rec else None})
     return {"status":"ok","home_market":layout["home_market"],"items":items}
+
+
+# --- V23.3.0 Registration, Trial & 3-Tier Entitlement Engine -----------------
+from pydantic import BaseModel, EmailStr
+from services.account_auth import register_user
+from services.profile_service import check_user_feature
+
+class ChrimataRegisterRequestV2330(BaseModel):
+    email: EmailStr
+    password: str
+
+@app.post("/api/v1/auth/register")
+def chrimata_register_v2330(body: ChrimataRegisterRequestV2330):
+    if len(body.password) < 10:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400,detail="Password must contain at least 10 characters")
+    try:
+        result=register_user(str(body.email),body.password)
+        return {"status":"verification_required" if result["email_confirmation_required"] else "registered",
+                "email":result["email"],
+                "message":"Check your email to verify your Chrímata account." if result["email_confirmation_required"] else "Account created."}
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Chrímata registration failed")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400,detail="Registration could not be completed")
+
+@app.get("/api/v1/me/trial")
+def chrimata_trial_status_v2330(user=Depends(get_current_active_user)):
+    state=get_user_state(user)
+    e=state["entitlement"]
+    return {"status":"ok","trial_active":e["trial_active"],"trial_ends_at":e["trial_ends_at"],
+            "trial_days_remaining":e["trial_days_remaining"],"effective_plan":e["effective_plan"],
+            "plan":e["plan"]}
+
+@app.get("/api/v1/me/access/{feature_key:path}")
+def chrimata_feature_access_v2330(feature_key:str,user=Depends(get_current_active_user)):
+    return check_user_feature(user["id"],feature_key)
