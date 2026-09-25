@@ -92,20 +92,6 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
 
 
-def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    # Same full-model calculation and price history as the existing forecast API.
-    full=forecast_for_ticker(ticker)
-    t=yf.Ticker(ticker)
-    try: meta=t.info or {}
-    except Exception: meta={}
-    spot=_finite(full.get('target_price'))
-    predicted=_finite(full.get('forecast_return'))
-    # The full model target is calculated from the same spot. Recover its exact
-    # reference price without mixing a later provider quote into its delta.
-    reference=spot/(1+predicted) if spot is not None and predicted is not None and (1+predicted)>0 else None
-    return summarize_forecast(full,ticker,reference,meta.get('currency'))
-
-
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
 from services.market_registry import public_market_registry
 from services.market_broadcast import broadcast_cache, serialize_record
