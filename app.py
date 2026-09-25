@@ -3952,20 +3952,24 @@ def _chr_set_auth_route_v230032(target):
 # old account-bar column that disappeared in deployed Streamlit. Each market is rendered
 # natively so there is always visible content even if custom HTML styling is stripped.
 st.markdown(r"""<style>
-.st-key-v2322_market_strip{margin-top:-6px!important;margin-bottom:7px!important;padding:0!important}
-.st-key-v2322_market_strip [data-testid="stHorizontalBlock"]{gap:0!important;align-items:stretch!important}
-.st-key-v2322_market_strip [data-testid="column"]{border-right:1px solid #dfe8f1;min-height:51px!important}
+.st-key-v2322_market_strip{margin-top:-7px!important;margin-bottom:8px!important;padding:0!important}
+.st-key-v2322_market_strip [data-testid="stHorizontalBlock"]{gap:0!important;align-items:center!important}
+.st-key-v2322_market_strip [data-testid="column"]{border-right:1px solid #d9e3ed;min-height:58px!important}
 .st-key-v2322_market_strip [data-testid="column"]:nth-last-child(-n+2){border-right:0}
 .st-key-v2322_market_strip .stMarkdown{margin:0!important}
 .st-key-v2322_market_strip p{margin:0!important}
-.st-key-v2322_market_strip .stButton>button{height:32px!important;min-height:32px!important;margin-top:9px!important;
- border-radius:7px!important;font-size:11px!important;font-weight:800!important;padding:0 12px!important}
-.chr-v2322-index{padding:5px 10px 3px;min-height:48px;line-height:1.06;white-space:nowrap;overflow:hidden}
-.chr-v2322-index-name{font-size:10px;font-weight:800;color:#29445f;overflow:hidden;text-overflow:ellipsis}
-.chr-v2322-index-price{font-size:15px;font-weight:850;color:#0c2742;margin-top:3px;font-variant-numeric:tabular-nums}
-.chr-v2322-index-up{font-size:9px;font-weight:800;color:#00a86b;margin-top:2px}
-.chr-v2322-index-down{font-size:9px;font-weight:800;color:#ef4444;margin-top:2px}
-.chr-v2322-index-flat{font-size:9px;font-weight:800;color:#8294a6;margin-top:2px}
+.st-key-v2322_market_strip .stButton>button{height:28px!important;min-height:28px!important;margin-top:13px!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;font-size:12px!important;font-weight:700!important;padding:0 5px!important;color:#174f86!important}
+.chr-v2322-index{padding:7px 12px 5px;min-height:54px;line-height:1.06;white-space:nowrap;overflow:hidden}
+.chr-v2322-index-name{font-size:11px;font-weight:750;color:#38536d;overflow:hidden;text-overflow:ellipsis}
+.chr-v2322-index-price{font-size:17px;font-weight:800;color:#102b46;margin-top:4px;font-variant-numeric:tabular-nums}
+.chr-v2322-index-up{font-size:10px;font-weight:750;color:#00a86b;margin-top:3px}
+.chr-v2322-index-down{font-size:10px;font-weight:750;color:#ef4444;margin-top:3px}
+.chr-v2322-index-flat{font-size:10px;font-weight:750;color:#8294a6;margin-top:3px}
+.st-key-v2322_market_strip .stButton>button:hover{color:#0878e8!important;text-decoration:underline!important;background:transparent!important;border:0!important}
+.st-key-v2322_market_strip [data-testid="column"]:nth-last-child(2){position:relative!important;padding-left:8px!important}
+.st-key-v2322_market_strip [data-testid="column"]:nth-last-child(2)::after{content:"|";position:absolute;right:-3px;top:18px;color:#aebdcb;font-size:14px;font-weight:400}
+.st-key-v2322_market_strip [data-testid="column"]:last-child{padding-left:5px!important}
 @media(max-width:1050px){.st-key-v2322_market_strip [data-testid="column"]:nth-child(5){display:none}}
 @media(max-width:850px){.st-key-v2322_market_strip [data-testid="column"]:nth-child(4){display:none}}
 </style>""",unsafe_allow_html=True)
