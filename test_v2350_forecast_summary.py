@@ -1,21 +1,23 @@
-import pandas as pd
-from services.forecast_widget_engine import build_forecast_summary,summarize_forecast
+from pathlib import Path
+import ast
+from services.forecast_widget_engine import summarize_forecast
 
-def test_same_target_and_return():
- h=pd.Series([10.,11.,12.],index=pd.date_range('2026-01-01',periods=3,freq='ME'))
- m={'status':'ready','target_price':15.,'forecast_return':.25,'audit':{'model_version':'test','diagnostics':{'n':0}}}
- x=summarize_forecast(m,h,12.,'TEST')
- assert x['target_price']==15. and x['forecast_return']==.25 and x['delta_pct']==25.
- assert x['forward_monthly_path'] is None and x['sparkline_type']=='observed_historical_month_end'
- assert len(x['sparkline'])==3 and x['ai_calculated_math'] is False
+def test_no_fabricated_path():
+    x=summarize_forecast({'status':'ready','target_price':120,'forecast_return':.2,'audit':{'model_version':'test','diagnostics':{'n':12}}},100,'TEST')
+    assert x['status']=='ready' and abs(x['return_pct']-20)<1e-8 and x['sparkline_points']==[]
+    assert x['validation']['walk_forward_observations']==12 and x['ai_calculated_math'] is False
 
-def test_missing_model_no_fabrication():
- x=summarize_forecast({'status':'unavailable','audit':{'reason':'insufficient history'}},pd.Series(dtype=float),None,'X')
- assert x['target_price'] is None and x['sparkline']==[] and x['reason']=='insufficient history'
+def test_unavailable_not_fabricated():
+    x=summarize_forecast({'status':'unavailable','target_price':None,'audit':{'reason':'Insufficient history'}},100,'TEST')
+    assert x['target_price'] is None and x['return_label'] is None and x['reason']=='Insufficient history'
 
-def test_no_fake_forward_sparkline():
- from pathlib import Path
- s=Path('app.py').read_text()
- assert '_sparkpts="10,36' not in s
- assert 'Historical prices · not a forecast path' in s
- assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()
+def test_changed_spot_recalculates_delta():
+    x=summarize_forecast({'status':'ready','target_price':120,'forecast_return':.2},110,'TEST')
+    assert abs(x['return_pct']-100*(120/110-1))<1e-8
+
+def test_route_and_ui():
+    main=Path('main.py').read_text();app=Path('app.py').read_text()
+    assert '/api/v1/widget/forecast-summary' in main
+    assert 'summarize_forecast(_fc12,price,ticker)' in app
+    assert '_sparkpts="10,36' not in app
+    ast.parse(app)

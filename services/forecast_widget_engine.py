@@ -1,58 +1,54 @@
-"""V23.5.0 — display adapter for the existing 12-month forecast model.
+"""V23.5.0 — forecast presentation of the canonical deterministic model.
 
-The underlying model only predicts a terminal 12-month return. It does NOT predict
-12 monthly intermediate prices. The sparkline is therefore labelled historical,
-never represented as a forecast trajectory.
+No second predictor is fitted here. The canonical model supplies a 12-month
+endpoint, not twelve monthly predictions. Never imply interpolation is a model
+forecast: the UI renders the verified endpoint without a fabricated path.
 """
 from __future__ import annotations
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 import math
-import pandas as pd
-from services.forecast_engine import build_12m_forecast,price_series,MODEL_VERSION
+from typing import Any, Mapping
+from services.forecast_engine import MODEL_VERSION
 
-def _number(x):
+def finite(value: Any):
     try:
-        y=float(x)
-        return y if math.isfinite(y) else None
-    except (ValueError,TypeError,OverflowError):return None
+        number=float(value)
+        return number if math.isfinite(number) else None
+    except (ValueError,TypeError,OverflowError):
+        return None
 
-def historical_sparkline(history):
-    """Up to 12 observed month-end adjusted closes; no synthetic future points."""
-    px=price_series(history)
-    if px.empty or not isinstance(px.index,pd.DatetimeIndex):return []
-    monthly=px.sort_index().resample('ME').last().dropna().tail(12)
-    return [{'date':idx.date().isoformat(),'price':float(value)} for idx,value in monthly.items() if _number(value) is not None]
-
-def summarize_forecast(model,history,reference_price=None,ticker='',currency=None):
-    model=model if isinstance(model,dict) else {}
-    audit=model.get('audit') or {}
-    target=_number(model.get('target_price'))
-    spot=_number(reference_price)
-    if spot is None:
-        px=price_series(history)
-        spot=_number(px.iloc[-1]) if len(px) else None
-    ready=model.get('status')=='ready' and target is not None and target>0 and spot is not None and spot>0
-    diag=audit.get('diagnostics') or {}
-    path=historical_sparkline(history)
-    return {'status':'ready' if ready else 'unavailable','ticker':ticker,'currency':currency,
-      'reference_price':spot,'target_price':target if ready else None,
-      'forecast_return':target/spot-1 if ready else None,
-      'delta_pct':(target/spot-1)*100 if ready else None,
-      'probability_positive':_number(model.get('probability_positive')) if ready else None,
-      'sparkline':path,'sparkline_type':'observed_historical_month_end','forward_monthly_path':None,
-      'forward_path_status':'not_produced_by_underlying_model',
-      'validation':{'label':model.get('validation_label') or audit.get('validation_label'),
-        'walk_forward_observations':int(audit.get('walk_forward_observations') or 0),
-        'mae':_number(diag.get('mae')),'rmse':_number(diag.get('rmse')),
-        'direction_accuracy':_number(diag.get('direction_accuracy'))},
-      'model_version':audit.get('model_version',MODEL_VERSION),'method':audit.get('method'),
-      'reason':None if ready else audit.get('reason','Forecast inputs or validation unavailable'),
-      'missing_inputs':[] if ready else [audit.get('reason','verified forecast output')],
-      'provenance':{'source':'Existing deterministic forecast engine; observed adjusted price history',
+def summarize_forecast(model: Mapping[str,Any], reference_price: Any, ticker: str, *, currency: str|None=None, source: str='Yahoo Finance/yfinance adjusted daily history') -> dict:
+    """Summarize one existing build_12m_forecast result without reforecasting."""
+    audit=dict(model.get('audit') or {})
+    spot=finite(reference_price); target=finite(model.get('target_price'))
+    prediction=finite(model.get('forecast_return'))
+    ready=(model.get('status')=='ready' and spot is not None and spot>0 and target is not None and target>0 and prediction is not None)
+    # The canonical engine already calculates the target and return from the same spot.
+    # A mismatched reference quote is not silently used to report the old return.
+    delta=(target/spot-1) if ready else None
+    diag=dict(audit.get('diagnostics') or {})
+    missing=[]
+    if spot is None or spot<=0: missing.append('verified_reference_price')
+    if target is None: missing.append('canonical_model_target')
+    if prediction is None: missing.append('canonical_model_return')
+    if not ready and not missing: missing.append('canonical_model_ready_status')
+    probability=finite(model.get('probability_positive')) if ready else None
+    if probability is not None and not (0<=probability<=1): probability=None
+    return {'status':'ready' if ready else 'unavailable','ticker':ticker.upper(),
+        'target_price':target if ready else None,'reference_price':spot,'return_pct':delta*100 if ready else None,
+        'return_label':f'{delta:+.1%}' if ready else None,'currency':currency,
+        'sparkline_points':[], 'sparkline_status':'unavailable_model_does_not_supply_monthly_path',
+        'sparkline_reason':'The 12-month model supplies an endpoint, not a monthly forecast path.',
+        'probability_positive':probability,'validation':{
+            'label':model.get('validation_label') or audit.get('validation_label') or 'Unavailable',
+            'walk_forward_observations':int(diag.get('n') or 0),
+            'mae':finite(diag.get('mae')),'rmse':finite(diag.get('rmse')),
+            'direction_accuracy':finite(diag.get('direction_accuracy')),
+            'calibration_observations':int(audit.get('probability_calibration_observations') or 0)},
+        'model_version':audit.get('model_version') or MODEL_VERSION,
+        'method':audit.get('method'), 'forecast_origin':audit.get('forecast_origin'),
         'history_observations':audit.get('history_observations'),
-        'forecast_origin':audit.get('forecast_origin'),'generated_at':datetime.now(timezone.utc).isoformat(),
-        'ai_calculated_math':False},'ai_calculated_math':False}
-
-def build_forecast_summary(history,reference_price=None,ticker='',currency=None,model=None):
-    result=model if model is not None else build_12m_forecast(history,current_price=reference_price,security=ticker)
-    return summarize_forecast(result,history,reference_price,ticker,currency)
+        'reason':None if ready else audit.get('reason') or 'Canonical forecast unavailable',
+        'missing_inputs':missing,'provenance':{'source':source,'reference_price_basis':'selected listing quote',
+            'bridge':audit.get('bridge'),'ai_calculated_math':False},
+        'ai_calculated_math':False,'generated_at':datetime.now(timezone.utc).isoformat()}
