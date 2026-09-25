@@ -1,0 +1,9 @@
+Chrímata V21.3.16 — Macro-to-Micro Exposure Mapper + “So What?” Intelligence Layer
+
+- Adds services/macro_mapper.py as the single deterministic structural exposure dictionary.
+- Refactors the V21.3.15 chart exposure selector to consume the same mapper.
+- News Intelligence macro discovery now uses the active company's exposure keywords.
+- News rows can be deterministically translated into Economic Factor -> Tracker -> Affected KPI -> Transmission Channel.
+- Adds a “So What?” Macro-to-Micro Exposure Map inside relevant News & Events expanders.
+- Mapping identifies a structural channel; it does not predict share-price direction or prove causation.
+- QAN.AX includes an explicit airline override; other companies inherit industry templates with generic fallback.

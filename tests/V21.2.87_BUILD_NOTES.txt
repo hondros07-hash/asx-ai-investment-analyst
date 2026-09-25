@@ -1,0 +1,17 @@
+Chrímata V21.2.87 — Market Position Reference Match + Verified Data Engine
+
+Baseline: complete V21.2.86 project supplied by the user.
+
+Changes:
+- Rebuilt Market Position card spacing and range-label positioning to more closely match the approved reference card.
+- Current-price label now tracks the actual position marker rather than remaining centered.
+- Preserved all three compact metric rows and the existing Company Details navigation.
+- 52-week low/high are calculated from trailing 1-year daily Low/High history when available.
+- Average Daily Volume is a reproducible mean of the latest 20 observed sessions (minimum 10 sessions).
+- Short Interest remains provider-reported only; missing data is shown as an em dash.
+- Shares Outstanding uses provider reported sharesOutstanding, then provider impliedSharesOutstanding; it is no longer inferred from market cap/current price.
+- Range percentage/quartile is calculated by Chrímata from current price and verified range inputs.
+- Existing project modules/assets/configuration are preserved.
+
+Validation:
+- app.py successfully compiled with Python py_compile.

@@ -1,0 +1,11 @@
+Chrímata V21.3.15 — Macro-to-Micro Market Exposure Chart Engine
+
+- Adds services/macro_to_micro_engine.py.
+- Maps active company sector/industry profile to relevant macro/market overlays.
+- Adds Macro overlay checkbox and dynamic macro selector to the Company Command Centre Price Chart.
+- Adds dual-axis Plotly rendering: stock price on left axis, macro series on right axis.
+- Adds Rebase 100 mode for relative-performance comparison.
+- Keeps existing 1D/1W/1M/3M/6M/1Y/3Y/5Y chart controls.
+- Adds exposure-channel and data-source provenance beneath the chart when overlay is enabled.
+- Explicitly states that visual co-movement does not establish causation.
+- Unit tests cover airline exposure mapping and deterministic time-series alignment/rebasing.
