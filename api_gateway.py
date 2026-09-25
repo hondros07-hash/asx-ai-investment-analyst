@@ -10,6 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
+from services.forecast_widget_engine import summarize_forecast
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -45,15 +46,7 @@ def valuation_for_ticker(ticker:str)->Dict[str,Any]:
     t=yf.Ticker(ticker)
     try:meta=t.info or {}
     except Exception:meta={}
-    def _merged(q,a):
-        if q.empty:return a
-        if a.empty:return q
-        both=pd.concat([q,a],axis=1)
-        return both.loc[:,~both.columns.duplicated()]
-    rec=recover_financial_inputs(meta,
-        _merged(_frame(t,"quarterly_cashflow"),_frame(t,"cashflow")),
-        _merged(_frame(t,"quarterly_balance_sheet"),_frame(t,"balance_sheet")),
-        _merged(_frame(t,"quarterly_financials"),_frame(t,"income_stmt")))
+    rec=recover_financial_inputs(meta,_frame(t,"cashflow"),_frame(t,"balance_sheet"),_frame(t,"income_stmt"))
     price=_finite(meta.get("currentPrice") or meta.get("regularMarketPrice"))
     fc,lc=rec.get("financial_currency"),rec.get("listing_currency")
     x=calculate_dcf_scenarios(rec.get("fcf"),rec.get("shares"),rec.get("cash"),rec.get("debt"),
@@ -97,6 +90,20 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
     if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
         s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
+
+
+def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
+    # Same full-model calculation and price history as the existing forecast API.
+    full=forecast_for_ticker(ticker)
+    t=yf.Ticker(ticker)
+    try: meta=t.info or {}
+    except Exception: meta={}
+    spot=_finite(full.get('target_price'))
+    predicted=_finite(full.get('forecast_return'))
+    # The full model target is calculated from the same spot. Recover its exact
+    # reference price without mixing a later provider quote into its delta.
+    reference=spot/(1+predicted) if spot is not None and predicted is not None and (1+predicted)>0 else None
+    return summarize_forecast(full,ticker,reference,meta.get('currency'))
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
