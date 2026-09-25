@@ -180,3 +180,34 @@ def chrimata_trial_status_v2330(user=Depends(get_current_active_user)):
 @app.get("/api/v1/me/access/{feature_key:path}")
 def chrimata_feature_access_v2330(feature_key:str,user=Depends(get_current_active_user)):
     return check_user_feature(user["id"],feature_key)
+
+
+# --- V23.4.0 Causal Intelligence & Problem-Solving Core -----------------------
+from typing import Any as _AnyV2340, Dict as _DictV2340, List as _ListV2340, Optional as _OptionalV2340
+from services.synthesis_core import CausalSynthesisCore, Evidence
+from services.exposure_registry import DEFAULT_EXPOSURE_RULES
+
+_chr_synthesis_v2340=CausalSynthesisCore(DEFAULT_EXPOSURE_RULES)
+
+class ChrimataEvidenceV2340(BaseModel):
+    evidence_id: str
+    source_name: str
+    source_type: str
+    observed_at: str
+    fact: str
+    primary_source: bool=False
+    verified: bool=False
+    currency: _OptionalV2340[str]=None
+    url: _OptionalV2340[str]=None
+
+class ChrimataSynthesisRequestV2340(BaseModel):
+    company: _DictV2340[str,_AnyV2340]
+    event: _DictV2340[str,_AnyV2340]
+    company_exposure_keys: _ListV2340[str]
+    evidence: _ListV2340[ChrimataEvidenceV2340]=[]
+
+@app.post("/api/v1/intelligence/synthesize")
+def chrimata_synthesize_v2340(body: ChrimataSynthesisRequestV2340):
+    evidence=[Evidence(**x.model_dump()) for x in body.evidence]
+    return _chr_synthesis_v2340.synthesize(company=body.company,event=body.event,
+        company_exposure_keys=body.company_exposure_keys,evidence=evidence)
