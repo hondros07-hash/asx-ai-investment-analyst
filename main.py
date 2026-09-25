@@ -14,7 +14,7 @@ from fastapi import FastAPI,HTTPException,Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,ConfigDict
-from api_gateway import scorecard_for_ticker,valuation_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker
+from api_gateway import scorecard_for_ticker,valuation_for_ticker,valuation_summary_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker
 from services.brief_engine import generate_research_brief
 from services.dividend_api import dividend_calendar_payload
 
@@ -71,6 +71,10 @@ async def _run(ticker,fn,label):
 async def scorecard(ticker:str=Query(...)):return await _run(ticker,scorecard_for_ticker,"Scorecard")
 @app.get("/api/v1/widget/valuation",response_model=APIResponse)
 async def valuation(ticker:str=Query(...)):return await _run(ticker,valuation_for_ticker,"Valuation")
+@app.get("/api/v1/widget/valuation-summary",response_model=APIResponse)
+async def valuation_summary(ticker:str=Query(...)):
+    return await _run(ticker,valuation_summary_for_ticker,"Valuation summary")
+
 @app.get("/api/v1/widget/technicals",response_model=APIResponse)
 async def technicals(ticker:str=Query(...)):return await _run(ticker,technicals_for_ticker,"Technicals")
 @app.get("/api/v1/widget/consensus",response_model=APIResponse)

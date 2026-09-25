@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 import math, pandas as pd, yfinance as yf
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 from services.valuation_engine import calculate_dcf_scenarios
+from services.valuation_summary_engine import summarize_valuation
 from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
@@ -51,6 +52,15 @@ def valuation_for_ticker(ticker:str)->Dict[str,Any]:
         current_price=price,sector=rec.get("sector",""),industry=rec.get("industry",""),
         financial_currency=fc,listing_currency=lc,fx_rate_financial_to_listing=1.0 if fc and lc and fc==lc else None)
     x.update(audit=rec.get("audit",{}),security=ticker.upper(),ai_calculated=False); return x
+
+def valuation_summary_for_ticker(ticker:str)->Dict[str,Any]:
+    # Exactly the same recovered statements and DCF used by the Full Valuation API.
+    full=valuation_for_ticker(ticker)
+    t=yf.Ticker(ticker)
+    try: meta=t.info or {}
+    except Exception: meta={}
+    price=_finite(meta.get("currentPrice") or meta.get("regularMarketPrice"))
+    return summarize_valuation(full,price,ticker)
 
 def technicals_for_ticker(ticker:str)->Dict[str,Any]:
     h=yf.Ticker(ticker).history(period="1y",interval="1d",auto_adjust=False)

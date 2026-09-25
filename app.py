@@ -7147,6 +7147,9 @@ elif page=="Company Command Centre":
         _fcd=_fcaudit.get("diagnostics",{}) or {}
         _fc_diag={"n":int(_fcd.get("n",0) or 0),"mae":_mia_num(_fcd.get("mae")),"direction":_mia_num(_fcd.get("direction_accuracy"))}
         _fc_conf=str(_fc12.get("validation_label") or _fcaudit.get("validation_label") or "Validation limited")
+        # V23.4.6 — summarize the SAME valuation result as the Full Valuation page.
+        from services.valuation_summary_engine import summarize_valuation as _chr_summarize_valuation
+        _ccval_summary=_chr_summarize_valuation(_ccauto_val,price,ticker)
         _ccbase=_mia_num(_ccauto_val.get("base_case")) if isinstance(_ccauto_val,dict) else np.nan
         _ccvals=pd.DataFrame([{"scenario":k,"value_per_share":v.get("value_per_share"),"Margin of safety":v.get("model_gap")} for k,v in ((_ccauto_val.get("scenarios") or {}).items() if isinstance(_ccauto_val,dict) else []) if isinstance(v,dict) and np.isfinite(_mia_num(v.get("value_per_share")))])
         _cctarget=_mia_num(_ccanalyst.get("target")); _cctarget=_mia_num(_ccmeta.get("targetMeanPrice")) if not np.isfinite(_cctarget) else _cctarget
@@ -7948,11 +7951,18 @@ elif page=="Company Command Centre":
         _w1,_w2,_w3,_w4,_w5=st.columns([1,1,1,1.08,1.18],gap="small")
         _info='<span class="v21261-info">i</span>'
         with _w1:
-            _bear_gap=(_bear/price-1) if np.isfinite(_bear) and price else np.nan
-            _base_gap=(_ccbase/price-1) if np.isfinite(_mia_num(_ccbase)) and price else np.nan
-            _bull_gap=(_bull/price-1) if np.isfinite(_bull) and price else np.nan
-            def _vgap(x): return f'{x:+.0%}' if np.isfinite(x) else '—'
-            st.markdown(f'<div class="v21261-card" title="Chrímata valuation model. Bear, Base and Bull are model scenarios; percentages compare each scenario with the current provider price."><div class="v21261-title">Valuation Summary {_info}</div><div class="v21261-val-grid"><div><div class="v21261-val-lbl v21261-neg">Bear</div><div class="v21261-val-num">{display_price(_bear,ticker) if np.isfinite(_bear) else "—"}</div><div class="v21261-neg" style="font-size:8px">{_vgap(_bear_gap)}</div></div><div><div class="v21261-val-lbl" style="color:#086ee8">Base</div><div class="v21261-val-num">{display_price(_ccbase,ticker) if np.isfinite(_mia_num(_ccbase)) else "—"}</div><div class="{"v21261-pos" if np.isfinite(_base_gap) and _base_gap>=0 else "v21261-neg"}" style="font-size:8px">{_vgap(_base_gap)}</div></div><div><div class="v21261-val-lbl v21261-pos">Bull</div><div class="v21261-val-num">{display_price(_bull,ticker) if np.isfinite(_bull) else "—"}</div><div class="{"v21261-pos" if np.isfinite(_bull_gap) and _bull_gap>=0 else "v21261-neg"}" style="font-size:8px">{_vgap(_bull_gap)}</div></div></div><div class="v21261-range"><i class="bear"></i><i class="base"></i><i class="bull"></i></div><div class="v21261-range-labels"><span>{display_price(_bear,ticker) if np.isfinite(_bear) else "—"}<br>Bear</span><span>{display_price(_ccbase,ticker) if np.isfinite(_mia_num(_ccbase)) else "—"}<br>Base</span><span>{display_price(_bull,ticker) if np.isfinite(_bull) else "—"}<br>Bull</span></div></div>',unsafe_allow_html=True)
+            _vs=_ccval_summary
+            def _val_price(name):
+                _v=_vs["scenarios"][name]["price"]
+                return display_price(_v,ticker) if _v is not None else "—"
+            def _val_gap(name):
+                _v=_vs["scenarios"][name]["delta_pct"]
+                return f"{_v:+.0f}%" if _v is not None else "—"
+            def _val_position(name):
+                _v=_vs["marker_positions_pct"].get(name)
+                return f"left:{_v:.2f}%" if _v is not None else "display:none"
+            _vnote=html.escape(str(_vs.get("reason") or ("Missing: "+", ".join(_vs["missing_inputs"]) if _vs["missing_inputs"] else "Deterministic model scenarios; assumptions are templates, not analyst consensus.")))
+            st.markdown(f'<div class="v21261-card" title="{_vnote}"><div class="v21261-title">Valuation Summary {_info}</div><div class="v21261-val-grid"><div><div class="v21261-val-lbl v21261-neg">Bear</div><div class="v21261-val-num">{_val_price("bear")}</div><div class="v21261-neg" style="font-size:8px">{_val_gap("bear")}</div></div><div><div class="v21261-val-lbl" style="color:#086ee8">Base</div><div class="v21261-val-num">{_val_price("base")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("base")}</div></div><div><div class="v21261-val-lbl v21261-pos">Bull</div><div class="v21261-val-num">{_val_price("bull")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("bull")}</div></div></div><div class="v21261-range"><i class="bear" style="{_val_position("bear")}"></i><i class="base" style="{_val_position("base")}"></i><i class="bull" style="{_val_position("bull")}"></i></div><div class="v21261-range-labels"><span>{_val_price("bear")}<br>Bear</span><span>{_val_price("base")}<br>Base</span><span>{_val_price("bull")}<br>Bull</span></div></div>',unsafe_allow_html=True)
             st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
         with _w2:
             _sparkpts="10,36 35,31 60,32 85,26 110,21 135,15 160,20 185,22 210,16 235,12 260,2"
