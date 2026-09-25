@@ -10,7 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
-from services.forecast_widget_engine import summarize_forecast, observed_history_sparkline
+from services.forecast_widget_engine import build_forecast_summary
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -91,20 +91,14 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
         s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
 
-
 def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    # One canonical model invocation, same as the full forecast endpoint.
-    h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True)
-    close=pd.to_numeric(h["Close"],errors="coerce").dropna() if isinstance(h,pd.DataFrame) and "Close" in h else pd.Series(dtype=float)
-    spot=_finite(close.iloc[-1]) if len(close) else None
-    full=build_12m_forecast(h,current_price=spot,security=ticker)
-    currency=None
-    try: currency=(yf.Ticker(ticker).fast_info or {}).get("currency")
-    except Exception: pass
-    result=summarize_forecast(full,ticker,spot,currency)
-    result["observed_history_points"]=observed_history_sparkline(close)
-    result["observed_history_label"]="Observed history · not forecast path"
-    return result
+    t=yf.Ticker(ticker)
+    h=t.history(period="5y",interval="1d",auto_adjust=True)
+    px=pd.to_numeric(h["Close"],errors="coerce").dropna() if isinstance(h,pd.DataFrame) and "Close" in h else pd.Series(dtype=float)
+    spot=_finite(px.iloc[-1]) if len(px) else None
+    try: currency=(t.fast_info or {}).get("currency")
+    except Exception: currency=None
+    return build_forecast_summary(h,reference_price=spot,ticker=ticker,currency=currency)
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------

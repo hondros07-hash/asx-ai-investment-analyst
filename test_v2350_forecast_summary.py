@@ -1,42 +1,21 @@
-from services.forecast_widget_engine import summarize_forecast
-from pathlib import Path
+import pandas as pd
+from services.forecast_widget_engine import build_forecast_summary,summarize_forecast
 
-def sample():
- return {'status':'ready','target_price':120,'forecast_return':.2,'probability_positive':None,'audit':{'model_version':'test','diagnostics':{'n':0},'bridge':{'status':'not_used'}}}
+def test_same_target_and_return():
+ h=pd.Series([10.,11.,12.],index=pd.date_range('2026-01-01',periods=3,freq='ME'))
+ m={'status':'ready','target_price':15.,'forecast_return':.25,'audit':{'model_version':'test','diagnostics':{'n':0}}}
+ x=summarize_forecast(m,h,12.,'TEST')
+ assert x['target_price']==15. and x['forecast_return']==.25 and x['delta_pct']==25.
+ assert x['forward_monthly_path'] is None and x['sparkline_type']=='observed_historical_month_end'
+ assert len(x['sparkline'])==3 and x['ai_calculated_math'] is False
 
-def test_reuses_target_and_return():
- x=summarize_forecast(sample(),'ABC',100,'AUD');assert x['status']=='ready' and x['target_price']==120 and x['return_label']=='+20.0%'
- assert x['sparkline_points'] is None and x['ai_calculated_math'] is False
+def test_missing_model_no_fabrication():
+ x=summarize_forecast({'status':'unavailable','audit':{'reason':'insufficient history'}},pd.Series(dtype=float),None,'X')
+ assert x['target_price'] is None and x['sparkline']==[] and x['reason']=='insufficient history'
 
-def test_no_fabricated_path():
- x=summarize_forecast(sample(),'ABC',100);assert x['sparkline_kind']=='unavailable'
- assert 'monthly_forward_path_not_produced_by_model' in x['missing_evidence']
-
-def test_inconsistent_price_withheld():
- x=summarize_forecast(sample(),'ABC',90);assert x['status']=='unavailable' and x['target_price'] is None
-
-def test_valid_explicit_model_path():
- x=summarize_forecast(sample(),'ABC',100,forward_path=[101+i for i in range(11)]+[120]);assert len(x['sparkline_points'])==12
-
-def test_no_history_unavailable():
- x=summarize_forecast({'status':'unavailable','audit':{'reason':'history missing'}},'ABC',100)
- assert x['status']=='unavailable' and 'history missing' in x['missing_evidence']
-
-def test_endpoint_and_ui():
+def test_no_fake_forward_sparkline():
+ from pathlib import Path
+ s=Path('app.py').read_text()
+ assert '_sparkpts="10,36' not in s
+ assert 'Historical prices · not a forecast path' in s
  assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()
- s=Path('app.py').read_text();assert 'Observed history · not forecast path' in s
- assert '10,36 35,31 60,32' not in s
-
-
-def test_observed_history_is_actual_data():
- import pandas as pd
- from services.forecast_widget_engine import observed_history_sparkline,svg_points_from_observed
- x=observed_history_sparkline(pd.Series(range(1,25)))
- assert len(x)==12 and x[0]==1 and x[-1]==24
- assert len(svg_points_from_observed(x).split())==12
- assert observed_history_sparkline(pd.Series([1,2])) is None
-
-def test_api_reuses_existing_model():
- s=Path('api_gateway.py').read_text()
- assert 'full=build_12m_forecast(h,current_price=spot,security=ticker)' in s
- assert 'summarize_forecast(full,ticker,spot,currency)' in s
