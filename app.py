@@ -41,6 +41,9 @@ from announcement_engine import (announcements, fetch_document, extract_text, ev
     announcements_global, official_disclosure_gateway, announcement_provenance_global, resolve_announcement_market)
 from global_dividends import upcoming_dividends
 from corporate_actions_calendar import corporate_actions_calendar
+from services.evidence_thesis_integration import EvidenceToThesisEngine, CompanyExposure
+from services.synthesis_core import Evidence as SynthesisEvidence
+from services.intelligence_event_gateway import normalize_event
 
 import sqlite3
 import uuid
@@ -49,6 +52,69 @@ from datetime import datetime, timezone
 import json
 import base64
 from pathlib import Path
+
+
+# V23.4.2 — Company Intelligence Decision Card + Live Synthesis Integration
+_v2342_evidence_thesis_engine = EvidenceToThesisEngine()
+
+def _v2342_iso(value):
+    try: return pd.to_datetime(value, utc=True).isoformat()
+    except Exception: return datetime.now(timezone.utc).isoformat()
+
+def _v2342_verified_exposures(ticker, thesis_rows=None):
+    """Resolve only explicit, evidence-bearing exposure keys. Never infer exposure from sector alone."""
+    rows=[]
+    if thesis_rows is not None and hasattr(thesis_rows,"empty") and not thesis_rows.empty:
+        for _,r in thesis_rows.iterrows():
+            key=str(r.get("exposure_key") or "").strip()
+            source=str(r.get("source") or r.get("evidence_source") or "").strip()
+            evid=str(r.get("evidence_id") or "").strip()
+            verified=str(r.get("verified") or "").strip().lower() in {"true","1","yes","verified"}
+            if key and source and evid and verified:
+                rows.append(CompanyExposure(key,True,source,evid,_v2342_iso(r.get("observed_at") or r.get("date"))))
+    return rows
+
+def _v2342_event_candidates(news_df=None, ann_df=None):
+    """Accept structured event metadata only. A headline is evidence context, not a causal event key."""
+    out=[]
+    for df,stype in ((ann_df,"announcement"),(news_df,"news")):
+        if df is None or not hasattr(df,"empty") or df.empty: continue
+        for _,r in df.head(5).iterrows():
+            event_key=str(r.get("event_key") or "").strip()
+            if not event_key: continue
+            title=str(r.get("title") or r.get("Title") or r.get("Headline") or r.get("headline") or "").strip()
+            out.append(normalize_event({"source_type":stype,"event_key":event_key,
+                "direction":str(r.get("direction") or "unknown").lower(),"what_changed":title,
+                "why_it_matters":str(r.get("why_it_matters") or "").strip(),
+                "time_horizon":str(r.get("time_horizon") or "unknown")}))
+    return [x for x in out if x.get("status")=="accepted"]
+
+def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, base_value):
+    exposures=_v2342_verified_exposures(ticker,thesis_rows)
+    events=_v2342_event_candidates(news_df,ann_df)
+    if not exposures or not events:
+        missing=[]
+        if not exposures: missing.append("verified company exposure mapping")
+        if not events: missing.append("structured event classification")
+        return {"status":"insufficient_evidence","decision_package":{
+            "what_changed":"No material company-specific change has been established from the currently verified inputs.",
+            "why_it_matters":"Chrímata will not convert a headline or sector classification into a causal company claim without a verified exposure and structured event mapping.",
+            "affected_kpis":[],"directional_pressure":"unknown","magnitude":"unknown",
+            "what_to_watch_next":missing,
+            "what_would_change_the_thesis":["New verified evidence linking a material event to a company exposure and thesis condition."],
+            "thesis_status_change":"unknown","valuation_link":{"status":"not_established"},"ai_calculated_math":False}}
+    ev=events[0]
+    evidence=[SynthesisEvidence(x.evidence_id,x.source_name,"company_exposure",x.observed_at,
+              x.note or f"Verified company exposure: {x.exposure_key}",True,True,None,None) for x in exposures]
+    conditions=[]
+    if thesis_rows is not None and hasattr(thesis_rows,"empty") and not thesis_rows.empty:
+        for _,r in thesis_rows.iterrows():
+            key=str(r.get("condition_key") or r.get("key") or r.get("exposure_key") or "").strip()
+            if key: conditions.append({"key":key,"status":str(r.get("status") or "unknown"),"evidence":str(r.get("source") or "")})
+    valuation={"base_case":_mia_num(base_value)} if np.isfinite(_mia_num(base_value)) else {}
+    return _v2342_evidence_thesis_engine.integrate(company={"ticker":ticker,"name":company_name},
+        event=ev,exposures=exposures,evidence=evidence,thesis_state={"conditions":conditions},
+        valuation_state=valuation,fundamentals_state={"provider_metadata_loaded":True})
 
 st.set_page_config(page_title="Chrímata - Market Investment Analyst", page_icon="🏛️", layout="wide")
 
@@ -7982,6 +8048,37 @@ elif page=="Company Command Centre":
             if any(x in t for x in ("trading update","quarterly","activities")): return "Trading Update"
             if "presentation" in t: return "Presentation"
             return "Announcement"
+
+        # V23.4.2 — visible decision card driven by V23.4.1.
+        _v2342_payload=_v2342_decision_payload(ticker,_ccname,_news,_ann_df,_thesis_rows if "_thesis_rows" in locals() else pd.DataFrame(),_ccbase)
+        _v2342_dp=dict(_v2342_payload.get("decision_package") or {})
+        _v2342_changed=str(_v2342_dp.get("what_changed") or "No verified change established.")
+        _v2342_why=str(_v2342_dp.get("why_it_matters") or "No verified company-specific implication established.")
+        _v2342_kpis=[str(x) for x in (_v2342_dp.get("affected_kpis") or []) if str(x).strip()]
+        _v2342_watch=[str(x) for x in (_v2342_dp.get("what_to_watch_next") or []) if str(x).strip()]
+        _v2342_change=[str(x) for x in (_v2342_dp.get("what_would_change_the_thesis") or []) if str(x).strip()]
+        _v2342_pressure=str(_v2342_dp.get("directional_pressure") or "unknown")
+        _v2342_thesis=str(_v2342_dp.get("thesis_status_change") or "unknown")
+        _v2342_val=dict(_v2342_dp.get("valuation_link") or {})
+        _v2342_status=str(_v2342_payload.get("status") or "unknown")
+        _v2342_kpi_html="".join(f'<span class="v2342-chip">{html.escape(x)}</span>' for x in _v2342_kpis) or '<span class="v2342-muted">No KPI impact verified</span>'
+        _v2342_watch_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_watch[:4]) or '<li>No additional monitoring item established.</li>'
+        _v2342_change_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_change[:3]) or '<li>No thesis-change condition established.</li>'
+        _v2342_badge="EVIDENCE MAPPED" if _v2342_status=="mapped" else "INSUFFICIENT EVIDENCE"
+        st.markdown("""<style>
+        .v2342-card{background:#fff;border:1px solid #d8e5f2;border-radius:9px;padding:13px 15px 12px;margin:2px 0 10px;box-shadow:0 1px 2px rgba(15,43,84,.03)}
+        .v2342-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e6edf5;padding-bottom:8px;margin-bottom:9px}.v2342-title{font-size:13px;font-weight:900;color:#102b52}.v2342-sub{font-size:9px;color:#70849f;margin-top:2px}.v2342-badge{font-size:8px;font-weight:900;letter-spacing:.04em;color:#35618d;background:#f2f7fc;border:1px solid #d8e5f2;border-radius:12px;padding:3px 7px}
+        .v2342-grid{display:grid;grid-template-columns:1.25fr 1.25fr .9fr;gap:13px}.v2342-label{font-size:8px;font-weight:900;letter-spacing:.06em;color:#6c819b;margin-bottom:4px}.v2342-text{font-size:10px;line-height:1.38;color:#274a72}.v2342-section{min-width:0}.v2342-rule{border-left:1px solid #e3ebf4;padding-left:13px}.v2342-chip{display:inline-block;font-size:8px;color:#275b91;background:#f3f7fb;border:1px solid #dce7f2;border-radius:10px;padding:2px 6px;margin:1px 3px 2px 0}.v2342-muted{font-size:8.5px;color:#8293a8}.v2342-list{margin:2px 0 0 14px;padding:0;color:#355979;font-size:8.8px;line-height:1.35}.v2342-foot{border-top:1px solid #e6edf5;margin-top:9px;padding-top:7px;display:flex;gap:18px;font-size:8px;color:#71869f}
+        </style>""",unsafe_allow_html=True)
+        st.markdown(f"""<div class="v2342-card">
+          <div class="v2342-head"><div><div class="v2342-title">◎ Company Intelligence</div><div class="v2342-sub">What changed — why it matters — what to monitor next</div></div><span class="v2342-badge">{_v2342_badge}</span></div>
+          <div class="v2342-grid">
+            <div class="v2342-section"><div class="v2342-label">WHAT CHANGED</div><div class="v2342-text">{html.escape(_v2342_changed)}</div><div class="v2342-label" style="margin-top:8px">AFFECTED KPI</div>{_v2342_kpi_html}</div>
+            <div class="v2342-section v2342-rule"><div class="v2342-label">WHY IT MATTERS</div><div class="v2342-text">{html.escape(_v2342_why)}</div><div class="v2342-label" style="margin-top:8px">WHAT TO WATCH NEXT</div><ul class="v2342-list">{_v2342_watch_html}</ul></div>
+            <div class="v2342-section v2342-rule"><div class="v2342-label">THESIS IMPACT</div><div class="v2342-text">{html.escape(_v2342_thesis.title())}</div><div class="v2342-label" style="margin-top:8px">WHAT WOULD CHANGE THE THESIS?</div><ul class="v2342-list">{_v2342_change_html}</ul></div>
+          </div>
+          <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
+        </div>""",unsafe_allow_html=True)
 
         _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
         with _m1:
