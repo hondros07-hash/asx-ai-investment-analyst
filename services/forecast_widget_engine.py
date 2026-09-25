@@ -21,7 +21,9 @@ def finite(value: Any):
 def summarize_forecast(full: Mapping[str, Any], ticker: str, reference_price: Any = None,
                        currency: str | None = None, forward_path: Any = None) -> dict:
     """Do not rerun or change the forecast; use the same payload as Full Forecasts."""
+    full=full if isinstance(full,Mapping) else {}
     audit=full.get('audit') or {}
+    audit=audit if isinstance(audit,Mapping) else {}
     spot=finite(reference_price)
     target=finite(full.get('target_price'))
     reported_return=finite(full.get('forecast_return'))
@@ -29,7 +31,7 @@ def summarize_forecast(full: Mapping[str, Any], ticker: str, reference_price: An
     if full.get('status')!='ready': reasons.append(str(audit.get('reason') or 'forecast_model_unavailable'))
     if spot is None or spot<=0: reasons.append('reference_price_unavailable')
     if target is None or target<=0: reasons.append('model_target_unavailable')
-    if audit.get('bridge',{}).get('status')=='verified' and (spot is None or target is None):
+    if (audit.get('bridge') if isinstance(audit.get('bridge'),Mapping) else {}).get('status')=='verified' and (spot is None or target is None):
         reasons.append('verified_listing_conversion_incomplete')
     ready=not reasons
     ret=(target/spot-1) if ready else None
@@ -43,6 +45,7 @@ def summarize_forecast(full: Mapping[str, Any], ticker: str, reference_price: An
         else: reasons.append('forward_path_invalid')
     elif ready: reasons.append('monthly_forward_path_not_produced_by_model')
     diag=audit.get('diagnostics') or {}
+    diag=diag if isinstance(diag,Mapping) else {}
     return {
         'status':'ready' if ready else 'unavailable', 'target_ticker':ticker.upper(),
         'target_price':target if ready else None,'reference_price':spot if ready else None,

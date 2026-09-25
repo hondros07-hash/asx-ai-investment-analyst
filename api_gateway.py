@@ -85,25 +85,29 @@ def consensus_for_ticker(ticker:str)->Dict[str,Any]:
     x=build_analyst_payload(meta,counts,targets,_finite(meta.get("currentPrice") or meta.get("regularMarketPrice")),ticker,bridge=None)
     x["ai_calculated"]=False; return x
 
-def forecast_for_ticker(ticker:str)->Dict[str,Any]:
-    h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True); price=None
+def _forecast_snapshot_for_ticker(ticker: str):
+    """One provider history fetch, one canonical model run, one reference price."""
+    t=yf.Ticker(ticker)
+    h=t.history(period="5y",interval="1d",auto_adjust=True)
+    spot=None
     if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
-        s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
-    x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
+        prices=pd.to_numeric(h["Close"],errors="coerce").dropna()
+        if len(prices): spot=_finite(prices.iloc[-1])
+    full=build_12m_forecast(h,current_price=spot,security=ticker)
+    full["ai_calculated"]=False
+    return full,spot,t
+
+
+def forecast_for_ticker(ticker:str)->Dict[str,Any]:
+    full,_,_=_forecast_snapshot_for_ticker(ticker)
+    return full
 
 
 def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    # Same full-model calculation and price history as the existing forecast API.
-    full=forecast_for_ticker(ticker)
-    t=yf.Ticker(ticker)
+    full,reference,t=_forecast_snapshot_for_ticker(ticker)
     try: meta=t.info or {}
     except Exception: meta={}
-    spot=_finite(full.get('target_price'))
-    predicted=_finite(full.get('forecast_return'))
-    # The full model target is calculated from the same spot. Recover its exact
-    # reference price without mixing a later provider quote into its delta.
-    reference=spot/(1+predicted) if spot is not None and predicted is not None and (1+predicted)>0 else None
-    return summarize_forecast(full,ticker,reference,meta.get('currency'))
+    return summarize_forecast(full,ticker,reference_price=reference,currency=meta.get("currency"))
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
