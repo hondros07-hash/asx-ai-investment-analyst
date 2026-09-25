@@ -14,10 +14,9 @@ from fastapi import FastAPI,HTTPException,Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,ConfigDict
-from api_gateway import scorecard_for_ticker,valuation_for_ticker,valuation_summary_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker
+from api_gateway import scorecard_for_ticker,valuation_for_ticker,valuation_summary_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker,forecast_summary_for_ticker
 from services.brief_engine import generate_research_brief
 from services.dividend_api import dividend_calendar_payload
-from services.forecast_widget_engine import summarize_forecast
 
 class APIResponse(BaseModel):
     model_config=ConfigDict(extra="forbid")
@@ -80,6 +79,9 @@ async def valuation_summary(ticker:str=Query(...)):
 async def technicals(ticker:str=Query(...)):return await _run(ticker,technicals_for_ticker,"Technicals")
 @app.get("/api/v1/widget/consensus",response_model=APIResponse)
 async def consensus(ticker:str=Query(...)):return await _run(ticker,consensus_for_ticker,"Consensus")
+@app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
+async def forecast_summary(ticker:str=Query(...)):return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
+
 @app.get("/api/v1/widget/forecast",response_model=APIResponse)
 async def forecast(ticker:str=Query(...)):return await _run(ticker,forecast_for_ticker,"Forecast")
 @app.get("/api/v1/widget/research-brief",response_model=ResearchBriefData)
@@ -101,19 +103,3 @@ async def dividend_calendar(market:str=Query("AU",min_length=2,max_length=2),hor
         return _native(await run_in_threadpool(dividend_calendar_payload,market,horizon_days))
     except Exception as exc:
         raise HTTPException(status_code=503,detail="Dividend calendar unavailable") from exc
-
-
-# V23.5.0: canonical forecast summary, offloaded to threadpool.
-@app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
-async def forecast_summary(ticker:str=Query(...)):
-    symbol=_ticker(ticker)
-    def _compute():
-        full=forecast_for_ticker(symbol)
-        target=_finite(full.get('target_price'))
-        ret=_finite(full.get('forecast_return'))
-        spot=target/(1+ret) if target is not None and ret is not None and 1+ret>0 else None
-        return summarize_forecast(full,spot,symbol)
-    try:
-        return APIResponse(status="success",ticker=symbol,data=_native(await run_in_threadpool(_compute)))
-    except Exception as exc:
-        raise HTTPException(status_code=503,detail="Forecast summary unavailable") from exc

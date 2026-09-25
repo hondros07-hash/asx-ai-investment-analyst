@@ -24,7 +24,6 @@ from services.technical_engine import calculate_technical_snapshot, core_indicat
 from services.valuation_evidence import recover_financial_inputs, bridge_payload
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
-from services.forecast_widget_engine import summarize_forecast
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
 from services.security_identity import canonicalize_security, safe_classification, validate_identity, CACHE_TTL
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
@@ -7142,7 +7141,6 @@ elif page=="Company Command Centre":
         _ccth_met=int((_ccthesis["status"]=="Met").sum()) if _ccthesis is not None and not _ccthesis.empty and "status" in _ccthesis else 0; _ccth_total=len(_ccthesis) if _ccthesis is not None else 0
         # V21.3.22 — deterministic 12M forecast is a dedicated, single-source service.
         _fc12=build_12m_forecast(_ccforecast_hist,current_price=price,security=ticker)
-        _fc_summary=summarize_forecast(_fc12,price,ticker,_currency)
         _ccf12=_mia_num(_fc12.get("forecast_return")); _fc_target=_mia_num(_fc12.get("target_price"))
         _fc_prob=_mia_num(_fc12.get("probability_positive")); _fcaudit=_fc12.get("audit",{}) or {}
         _fc_prob_n=int(_fcaudit.get("probability_calibration_observations",0) or 0)
@@ -7967,22 +7965,19 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card" title="{_vnote}"><div class="v21261-title">Valuation Summary {_info}</div><div class="v21261-val-grid"><div><div class="v21261-val-lbl v21261-neg">Bear</div><div class="v21261-val-num">{_val_price("bear")}</div><div class="v21261-neg" style="font-size:8px">{_val_gap("bear")}</div></div><div><div class="v21261-val-lbl" style="color:#086ee8">Base</div><div class="v21261-val-num">{_val_price("base")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("base")}</div></div><div><div class="v21261-val-lbl v21261-pos">Bull</div><div class="v21261-val-num">{_val_price("bull")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("bull")}</div></div></div><div class="v21261-range"><i class="bear" style="{_val_position("bear")}"></i><i class="base" style="{_val_position("base")}"></i><i class="bull" style="{_val_position("bull")}"></i></div><div class="v21261-range-labels"><span>{_val_price("bear")}<br>Bear</span><span>{_val_price("base")}<br>Base</span><span>{_val_price("bull")}<br>Bull</span></div></div>',unsafe_allow_html=True)
             st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
         with _w2:
-            # Plot only canonical-model endpoint interpolation; never show decorative upward trend.
-            _fc_path=_fc_summary.get("monthly_path") or []
-            _fc_spark=""
-            if len(_fc_path)==12 and np.isfinite(_mia_num(price)):
-                _fc_series=[float(price)]+[float(v) for v in _fc_path]
-                _fc_low=min(_fc_series); _fc_high=max(_fc_series); _fc_span=max(_fc_high-_fc_low,abs(_fc_low)*.001,1e-9)
-                _sparkpts=" ".join(f"{10+250*i/12:.2f},{40-34*(v-_fc_low)/_fc_span:.2f}" for i,v in enumerate(_fc_series))
-                _fc_spark=f'<div class="v21261-spark" title="Illustrative constant compounded-return interpolation, not twelve independent monthly forecasts"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div>'
-            else:
-                _fc_spark='<div class="v21261-spark v2350-no-path">Model path unavailable</div>'
-            _fc_note=html.escape(str(_fc_summary.get("reason") or "12M target from canonical deterministic model. Chart is an illustrative compounded-return interpolation, not independent monthly forecasts."))
-            _fc_value=_fc_summary.get("target_price")
-            _fc_return=_fc_summary.get("return_pct")
-            _fc_return_class="v21261-pos" if _fc_return is not None and _fc_return>=0 else "v21261-neg" if _fc_return is not None else "v21261-muted"
-            _fc_return_label=f"{_fc_return:+.1f}%" if _fc_return is not None else "Forecast unavailable"
-            st.markdown(f'<div class="v21261-card v21281-fc" title="{_fc_note}"><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_fc_value,ticker) if _fc_value is not None else "—"}</div><div class="v21281-fc-return {_fc_return_class}">{_fc_return_label}</div>{_fc_spark}<div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
+            # V23.5.0: the full model publishes an endpoint, not monthly forward points.
+            # Render only observed history, clearly labelled; never fabricate a forecast path.
+            from services.forecast_widget_engine import summarize_forecast as _chr_forecast_summary
+            _fc_summary=_chr_forecast_summary(_fc12,ticker,reference_price=price,currency=_ccmeta.get("currency"))
+            _observed=pd.to_numeric(_ccforecast_hist.get("Close",pd.Series(dtype=float)),errors="coerce").dropna().tail(12) if isinstance(_ccforecast_hist,pd.DataFrame) else pd.Series(dtype=float)
+            _spark_html='<div class="v21261-spark" style="color:#527298;font-size:9px;padding-top:9px">Forward monthly path unavailable</div>'
+            if len(_observed)==12 and np.isfinite(_observed.to_numpy(dtype=float)).all():
+                _lo,_hi=float(_observed.min()),float(_observed.max())
+                _span=max(_hi-_lo,1e-12)
+                _sparkpts=" ".join(f"{10+i*250/11:.1f},{40-(float(v)-_lo)/_span*34:.1f}" for i,v in enumerate(_observed))
+                _spark_html=f'<div class="v21261-spark" title="Observed last 12 closes; not a projected trajectory"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div style="font-size:7px;color:#527298">Observed history · not forecast path</div>'
+
+            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div>{_spark_html}<div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Forecasts  →",key=f"v21261_nav_fc_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w3:
             _al=str(_ccanalyst.get("label") or "Unavailable"); _ac="v21261-pos" if "buy" in _al.lower() else "v21261-neg" if "sell" in _al.lower() else "v21261-muted"
