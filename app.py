@@ -3872,6 +3872,40 @@ def render_chrimata_persistent_header():
 
 render_chrimata_persistent_header()
 
+# V23.2.1 — Geo-Adaptive Global Index Header Ribbon
+_CHR_HEADER_INDEX_V2321={"AU":("ASX 200","^AXJO","🇦🇺"),"US":("S&P 500","^GSPC","🇺🇸"),"GB":("FTSE 100","^FTSE","🇬🇧"),"JP":("NIKKEI","^N225","🇯🇵"),"HK":("HANG SENG","^HSI","🇭🇰"),"CA":("TSX","^GSPTSE","🇨🇦"),"GR":("ATHEX","GD.AT","🇬🇷")}
+
+def _chr_header_market_order_v2321():
+    home=str(st.session_state.get("chr_home_market_override") or st.session_state.get("chr_detected_home_market") or st.session_state.get("mia_country_code") or "AU").upper()
+    home={"UK":"GB","EL":"GR","UNITED STATES":"US","UNITED KINGDOM":"GB","AUSTRALIA":"AU","JAPAN":"JP","CANADA":"CA","HONG KONG":"HK","GREECE":"GR"}.get(home,home)
+    defaults=["AU","US","GB","JP","HK","CA","GR"]
+    if home not in _CHR_HEADER_INDEX_V2321: home="AU"
+    return ([home]+[x for x in defaults if x!=home])[:5]
+
+@st.cache_data(ttl=60,show_spinner=False)
+def _chr_header_quote_v2321(code):
+    name,ticker,flag=_CHR_HEADER_INDEX_V2321[code]
+    try:
+        h=yf.Ticker(ticker).history(period="2d",interval="1d",auto_adjust=False)
+        closes=pd.to_numeric(h["Close"],errors="coerce").dropna() if h is not None and not h.empty and "Close" in h.columns else pd.Series(dtype=float)
+        if closes.empty: return {"name":name,"flag":flag,"price":None,"pct":None}
+        price=float(closes.iloc[-1]); pct=None
+        if len(closes)>=2 and float(closes.iloc[-2])!=0: pct=(price/float(closes.iloc[-2])-1)*100
+        return {"name":name,"flag":flag,"price":price,"pct":pct}
+    except Exception:
+        return {"name":name,"flag":flag,"price":None,"pct":None}
+
+def _chr_render_header_ribbon_v2321():
+    cells=[]
+    for q in [_chr_header_quote_v2321(c) for c in _chr_header_market_order_v2321()]:
+        price="—" if q["price"] is None else f'{q["price"]:,.2f}'
+        if q["pct"] is None: move='<span class="chr-ribbon-flat">—</span>'
+        elif q["pct"]>=0: move=f'<span class="chr-ribbon-up">▲ +{q["pct"]:.2f}%</span>'
+        else: move=f'<span class="chr-ribbon-down">▼ {q["pct"]:.2f}%</span>'
+        cells.append('<div class="chr-ribbon-cell"><div class="chr-ribbon-name">'+q["flag"]+' '+q["name"]+'</div><div class="chr-ribbon-value">'+price+'</div><div class="chr-ribbon-move">'+move+'</div></div>')
+    css="""<style>.chr-header-ribbon-v2321{display:flex;align-items:stretch;background:#fff;border:1px solid #d7e1ec;border-radius:8px;overflow:hidden;height:54px;box-shadow:0 1px 2px rgba(14,55,92,.04)}.chr-ribbon-cell{min-width:112px;flex:1;padding:5px 11px 4px;border-right:1px solid #e4ebf2;line-height:1.08;overflow:hidden}.chr-ribbon-cell:last-child{border-right:0}.chr-ribbon-name{font-size:10px;font-weight:800;color:#29445f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chr-ribbon-value{font-size:15px;font-weight:850;color:#0c2742;margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap}.chr-ribbon-move{font-size:9px;font-weight:800;margin-top:2px;white-space:nowrap;font-variant-numeric:tabular-nums}.chr-ribbon-up{color:#00a86b}.chr-ribbon-down{color:#ef4444}.chr-ribbon-flat{color:#8294a6}@media(max-width:1100px){.chr-ribbon-cell:nth-child(n+5){display:none}}@media(max-width:900px){.chr-ribbon-cell:nth-child(n+4){display:none}}@media(max-width:700px){.chr-header-ribbon-v2321{display:none}}</style>"""
+    st.markdown(css+'<div class="chr-header-ribbon-v2321">'+''.join(cells)+'</div>',unsafe_allow_html=True)
+
 # V23.0.3.2 — Persistent native Streamlit account bar.
 # This intentionally sits BELOW the proven banner instead of trying to overlay it.
 # Native Streamlit buttons provide reliable rendering and click handling.
@@ -3913,14 +3947,53 @@ def _chr_set_auth_route_v230032(target):
     except Exception:
         pass
 
-with st.container(key="v230032_account_bar"):
-    _account_spacer,_account_signin,_account_register=st.columns([12,1.05,1.15],gap="small")
-    with _account_signin:
-        st.button("Sign in",key="v230032_signin",type="secondary",
-                  use_container_width=True,on_click=_chr_set_auth_route_v230032,args=("Sign In",))
-    with _account_register:
-        st.button("Register",key="v230032_register",type="primary",
-                  use_container_width=True,on_click=_chr_set_auth_route_v230032,args=("Register",))
+# V23.2.2 — Persistent Global Market Ribbon Render Repair
+# The ribbon is now a first-class normal-flow Streamlit row. It is not nested inside the
+# old account-bar column that disappeared in deployed Streamlit. Each market is rendered
+# natively so there is always visible content even if custom HTML styling is stripped.
+st.markdown(r"""<style>
+.st-key-v2322_market_strip{margin-top:-6px!important;margin-bottom:7px!important;padding:0!important}
+.st-key-v2322_market_strip [data-testid="stHorizontalBlock"]{gap:0!important;align-items:stretch!important}
+.st-key-v2322_market_strip [data-testid="column"]{border-right:1px solid #dfe8f1;min-height:51px!important}
+.st-key-v2322_market_strip [data-testid="column"]:nth-last-child(-n+2){border-right:0}
+.st-key-v2322_market_strip .stMarkdown{margin:0!important}
+.st-key-v2322_market_strip p{margin:0!important}
+.st-key-v2322_market_strip .stButton>button{height:32px!important;min-height:32px!important;margin-top:9px!important;
+ border-radius:7px!important;font-size:11px!important;font-weight:800!important;padding:0 12px!important}
+.chr-v2322-index{padding:5px 10px 3px;min-height:48px;line-height:1.06;white-space:nowrap;overflow:hidden}
+.chr-v2322-index-name{font-size:10px;font-weight:800;color:#29445f;overflow:hidden;text-overflow:ellipsis}
+.chr-v2322-index-price{font-size:15px;font-weight:850;color:#0c2742;margin-top:3px;font-variant-numeric:tabular-nums}
+.chr-v2322-index-up{font-size:9px;font-weight:800;color:#00a86b;margin-top:2px}
+.chr-v2322-index-down{font-size:9px;font-weight:800;color:#ef4444;margin-top:2px}
+.chr-v2322-index-flat{font-size:9px;font-weight:800;color:#8294a6;margin-top:2px}
+@media(max-width:1050px){.st-key-v2322_market_strip [data-testid="column"]:nth-child(5){display:none}}
+@media(max-width:850px){.st-key-v2322_market_strip [data-testid="column"]:nth-child(4){display:none}}
+</style>""",unsafe_allow_html=True)
+
+def _chr_native_index_cell_v2322(code):
+    q=_chr_header_quote_v2321(code)
+    price="—" if q["price"] is None else f'{q["price"]:,.2f}'
+    if q["pct"] is None:
+        move,cls="—","chr-v2322-index-flat"
+    elif q["pct"]>=0:
+        move,cls=f'▲ +{q["pct"]:.2f}%',"chr-v2322-index-up"
+    else:
+        move,cls=f'▼ {q["pct"]:.2f}%',"chr-v2322-index-down"
+    st.markdown(f'<div class="chr-v2322-index"><div class="chr-v2322-index-name">{q["flag"]} {q["name"]}</div><div class="chr-v2322-index-price">{price}</div><div class="{cls}">{move}</div></div>',unsafe_allow_html=True)
+
+with st.container(key="v2322_market_strip"):
+    _v2322_codes=_chr_header_market_order_v2321()
+    _m1,_m2,_m3,_m4,_m5,_signin,_register=st.columns([1.3,1.3,1.3,1.3,1.3,1.0,1.05],gap="small")
+    for _col,_code in zip((_m1,_m2,_m3,_m4,_m5),_v2322_codes):
+        with _col:
+            _chr_native_index_cell_v2322(_code)
+    with _signin:
+        st.button("Sign in",key="v2322_signin",type="secondary",use_container_width=True,
+                  on_click=_chr_set_auth_route_v230032,args=("Sign In",))
+    with _register:
+        st.button("Register",key="v2322_register",type="primary",use_container_width=True,
+                  on_click=_chr_set_auth_route_v230032,args=("Register",))
+
 
 
 _PAGE_SUBTITLES={

@@ -126,3 +126,19 @@ def chrimata_my_market_layout_v2320(user=Depends(get_current_active_user)):
               "home_market":profile.get("home_market_override"),
               "custom_market_slots":profile.get("custom_market_slots") or []})
     return {"status":"ok",**layout}
+
+
+# --- V23.2.1 Geo-Adaptive Global Index Header Ribbon contract ----------------
+@app.get("/api/v1/header-markets")
+def chrimata_header_markets_v2321(home_market: str = "AU"):
+    from services.geo_router import resolve_market_layout
+    from services.market_registry import MARKETS
+    layout=resolve_market_layout(home_market,{"subscription_tier":"free"})
+    ordered=[layout["home_market"]]+layout["secondary_markets"]
+    items=[]
+    for code in ordered[:5]:
+        cfg=MARKETS.get(code)
+        if not cfg: continue
+        rec=broadcast_cache.get(code)
+        items.append({"market":code,"country":cfg.country,"index":cfg.primary_index,"flag":cfg.flag,"snapshot":serialize_record(code,rec) if rec else None})
+    return {"status":"ok","home_market":layout["home_market"],"items":items}
