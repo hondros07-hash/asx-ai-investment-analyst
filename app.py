@@ -7307,10 +7307,14 @@ elif page=="Company Command Centre":
             min-height:22px!important;height:22px!important;width:auto!important;min-width:0!important;
         }
         [class*="st-key-v213172_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
-        /* V21.3.23.3 — fixed footer geometry and visible white breathing room. */
-        [class*="st-key-v213172_technical_"]{min-height:24px!important;margin:0!important;padding:0!important}
-        .v213233-price-bottom-space{height:18px;min-height:18px;width:100%;display:block}
+        /* V23.4.4.2 — Price Chart Footer Visibility Fix.
+           Keep the plot geometry unchanged; reserve a safe footer zone inside the card. */
+        [class*="st-key-v213172_technical_"]{min-height:28px!important;height:28px!important;margin:0!important;padding:0 4px 0 0!important;overflow:visible!important}
+        [class*="st-key-v213172_technical_"] .stButton{min-height:28px!important;height:28px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;overflow:visible!important}
+        [class*="st-key-v213172_technical_"] .stButton>button{line-height:22px!important;overflow:visible!important}
+        .v213233-price-bottom-space{height:10px;min-height:10px;width:100%;display:block;flex-shrink:0!important}
         [class*="st-key-v21243_price_card"] [data-testid="stHorizontalBlock"]{flex-shrink:0!important}
+        [class*="st-key-v21243_price_card"] [data-testid="stVerticalBlockBorderWrapper"]{padding-bottom:8px!important}
         [class*="st-key-v213171_timeframe_"] [aria-checked="true"],
         [class*="st-key-v213171_timeframe_"] [data-state="on"],
         [class*="st-key-v213171_timeframe_"] [data-state="checked"]{background:#086ee8!important;border-color:#086ee8!important;color:#fff!important}
