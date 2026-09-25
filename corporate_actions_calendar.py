@@ -77,7 +77,10 @@ def _row(x, source):
             "Record-Date":x.get("record_date") or x.get("recordDate") or "—",
             "Pay-Date":x.get("payment_date") or x.get("paymentDate") or "—",
             "Amount":x.get("amount") if x.get("amount") is not None else (x.get("dividend") if x.get("dividend") is not None else x.get("adjDividend")),
-            "Currency":x.get("currency") or "—","Status":"Confirmed","Source":source}
+             "Currency":x.get("currency") or "—",
+            "Type":x.get("type") or x.get("dividend_type") or x.get("dividendType") or "—",
+            "Franking":x.get("franking") or x.get("franking_percentage") or x.get("frankingPercentage") or "N/A",
+            "Status":"Confirmed","Source":source,"Verified":True}
 
 def _twelve_calendar(market,start,end,key,universe):
     if not key:return []
@@ -170,25 +173,78 @@ def _fmp_calendar(market,start,end,key,universe):
         if r:out.append(r)
     return out
 
-def corporate_actions_calendar(market, universe, horizon_days=120, twelve_data_key="", fmp_key=""):
-    """Confirmed forward dividend calendar with resilient global fallbacks."""
-    start=date.today(); end=start+timedelta(days=horizon_days)
-    rows=[]
-    td=_twelve_calendar(market,start,end,twelve_data_key,universe); rows.extend(td)
-    rows.extend(_fmp_calendar(market,start,end,fmp_key,universe))
-    try:
-        y=yahoo_upcoming_dividends(tuple(universe),horizon_days)
-        if y is not None and not y.empty:
-            for _,x in y.iterrows():
-                rows.append({"Ticker":x.get("Ticker"),"Company":x.get("Company"),"Ex-Date":x.get("Ex-Date"),"Record-Date":"—","Pay-Date":x.get("Pay-Date","—"),"Amount":x.get("Amount"),"Currency":"—","Status":"Confirmed","Source":x.get("Source","Yahoo declared calendar")})
-    except Exception:pass
-    # AU/US hardening: if all calendar/fallback sources are still empty, ask
-    # Twelve Data for each configured security's next declared dividend.
-    if not rows and market in {"Australia","United States"}:
-        rows.extend(_twelve_next_per_security(market,start,end,twelve_data_key,universe))
-    df=pd.DataFrame(rows)
-    if df.empty:return df
+
+def _empty_calendar(status, market, diagnostics):
+    cols=["Ticker","Company","Ex-Date","Record-Date","Pay-Date","Amount","Currency","Type","Franking","Status","Source","Verified"]
+    df=pd.DataFrame(columns=cols)
+    df.attrs.update({"status":status,"market":market,"diagnostics":diagnostics,"provider_success":False})
+    return df
+
+def _normalize_final(df, market, start, end, diagnostics):
+    if df is None or df.empty:
+        attempted=diagnostics.get("attempted",[])
+        configured=diagnostics.get("configured",[])
+        status="NO_CONFIRMED_EVENTS" if configured else "PROVIDERS_NOT_CONFIGURED"
+        return _empty_calendar(status,market,diagnostics)
+    for c,default in [("Record-Date","—"),("Pay-Date","—"),("Amount",None),("Currency","—"),
+                      ("Type","—"),("Franking","N/A"),("Status","Confirmed"),("Source","—"),("Verified",True)]:
+        if c not in df.columns: df[c]=default
     df["_date"]=pd.to_datetime(df["Ex-Date"],errors="coerce")
-    df=df[df["_date"].notna() & (df["_date"].dt.date>=start) & (df["_date"].dt.date<=end)]
+    df=df[df["_date"].notna() & (df["_date"].dt.date>=start) & (df["_date"].dt.date<=end)].copy()
+    if df.empty:return _empty_calendar("NO_CONFIRMED_EVENTS",market,diagnostics)
+    df["Ticker"]=df["Ticker"].astype(str).str.strip()
+    df["Company"]=df["Company"].fillna(df["Ticker"]).astype(str).str.strip()
     df=df.sort_values(["_date","Ticker","Source"]).drop_duplicates(["Ticker","Ex-Date"],keep="first")
-    return df.drop(columns=["_date"]).reset_index(drop=True)
+    df=df.drop(columns=["_date"]).reset_index(drop=True)
+    df.attrs.update({"status":"SUCCESS","market":market,"diagnostics":diagnostics,
+                     "provider_success":True,"row_count":len(df)})
+    return df
+
+class DividendCorporateActionBroker:
+    """Provider-neutral confirmed-dividend broker.
+
+    No historical dividend is projected forward. Market-wide structured calendars
+    are preferred; exchange-qualified Yahoo declared events are a fallback.
+    """
+    def fetch(self, market, universe, horizon_days=120, twelve_data_key="", fmp_key=""):
+        start=date.today(); end=start+timedelta(days=horizon_days)
+        universe=tuple(dict.fromkeys(str(x).strip() for x in universe if str(x).strip()))
+        diagnostics={"attempted":[],"configured":[],"market":market,"universe_size":len(universe)}
+        rows=[]
+
+        if twelve_data_key:
+            diagnostics["configured"].append("Twelve Data")
+            diagnostics["attempted"].append("Twelve Data market calendar")
+            td=_twelve_calendar(market,start,end,twelve_data_key,universe)
+            rows.extend(td)
+            if not td:
+                diagnostics["attempted"].append("Twelve Data next-dividend security fallback")
+                rows.extend(_twelve_next_per_security(market,start,end,twelve_data_key,universe))
+
+        if fmp_key:
+            diagnostics["configured"].append("FMP")
+            diagnostics["attempted"].append("FMP dividend calendar")
+            rows.extend(_fmp_calendar(market,start,end,fmp_key,universe))
+
+        # Yahoo is always a declared-event fallback. It is not treated as a
+        # market-wide calendar and cannot prove that a market has no events.
+        diagnostics["configured"].append("Yahoo declared events")
+        diagnostics["attempted"].append("Yahoo calendar + corporate-action events")
+        try:
+            y=yahoo_upcoming_dividends(universe,horizon_days)
+            if y is not None and not y.empty:
+                for _,x in y.iterrows():
+                    rows.append({"Ticker":x.get("Ticker"),"Company":x.get("Company"),
+                      "Ex-Date":x.get("Ex-Date"),"Record-Date":"—","Pay-Date":x.get("Pay-Date","—"),
+                      "Amount":x.get("Amount"),"Currency":"—","Type":"—","Franking":"N/A",
+                      "Status":"Confirmed","Source":x.get("Source","Yahoo declared calendar"),"Verified":True})
+        except Exception as exc:
+            diagnostics["yahoo_error"]=type(exc).__name__
+
+        return _normalize_final(pd.DataFrame(rows),market,start,end,diagnostics)
+
+_DIVIDEND_BROKER=DividendCorporateActionBroker()
+
+def corporate_actions_calendar(market, universe, horizon_days=120, twelve_data_key="", fmp_key=""):
+    """V23.4.3 confirmed forward dividend calendar with provider diagnostics."""
+    return _DIVIDEND_BROKER.fetch(market, universe, horizon_days, twelve_data_key, fmp_key)

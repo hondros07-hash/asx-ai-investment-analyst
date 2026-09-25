@@ -4228,7 +4228,7 @@ def overview_batch(tickers):
         rows.append({"Ticker":t,"Company":nm,"Last":q["last"],"Change":q["change"],"% Chg":q["pct"]})
     return pd.DataFrame(rows)
 
-@st.cache_data(ttl=21600, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def overview_global_dividends(market, tickers, twelve_data_key="", fmp_key=""):
     # V20.5.9: forward corporate-actions provider hierarchy. Calendar data is
     # cached because declarations change far less frequently than market prices.
@@ -4943,12 +4943,35 @@ def render_global_market_overview():
     except Exception: _td_div_key=''
     try: _fmp_div_key=st.secrets.get('FMP_API_KEY','')
     except Exception: _fmp_div_key=''
-    dividends=overview_global_dividends(market, tuple(cfg['universe']), _td_div_key, _fmp_div_key)
+    # V23.4.3: use the broader country universe for dividend discovery rather
+    # than the 12–20 securities used by the market overview cards.
+    _div_universe=tuple(dict.fromkeys(list(TOP_GAINERS_UNIVERSE.get(market,[]))+list(cfg.get('universe',[]))))
+    dividends=overview_global_dividends(market, _div_universe, _td_div_key, _fmp_div_key)
+    _div_status=str(getattr(dividends,'attrs',{}).get('status','UNKNOWN')) if dividends is not None else 'UNAVAILABLE'
+    _div_diag=dict(getattr(dividends,'attrs',{}).get('diagnostics',{}) or {}) if dividends is not None else {}
     if dividends is not None and not dividends.empty:
         for _,r in dividends.head(8).iterrows():
-            amt=r.get('Amount','—'); amt='—' if pd.isna(amt) else f'{float(amt):.4g}'
-            divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:23],'Ex-Date':r.get('Ex-Date',''),'Pay-Date':r.get('Pay-Date','—'),'Amount':amt})
-    div_t=_chr_table(divrows,['Code','Company','Ex-Date','Pay-Date','Amount']) if divrows else '<div class="chr-empty">No confirmed upcoming dividends were returned by the configured calendar providers for this market. Chrímata does not estimate undeclared future dividends.</div>'
+            amt=r.get('Amount','—')
+            try: amt='—' if pd.isna(amt) else f"{float(amt):.4g}"
+            except Exception: amt=str(amt or '—')
+            cur=str(r.get('Currency') or '—')
+            amount_display=(f"{amt} {cur}" if amt!='—' and cur!='—' else amt)
+            try: exfmt=pd.to_datetime(r.get('Ex-Date'),errors='coerce').strftime('%d %b')
+            except Exception: exfmt=str(r.get('Ex-Date') or '—')
+            frank=str(r.get('Franking') or 'N/A')
+            divrows.append({'Code':str(r.get('Ticker','')).split('.')[0],
+              'Company':str(r.get('Company',''))[:22],'Ex-Date':exfmt,'Amount':amount_display,
+              'Franking':frank if market=='Australia' else 'N/A'})
+    if divrows:
+        _div_cols=['Code','Company','Ex-Date','Amount']+(['Franking'] if market=='Australia' else [])
+        div_t=_chr_table(divrows,_div_cols)
+        _div_sources=", ".join(dict.fromkeys(str(x) for x in dividends.get('Source',pd.Series(dtype=str)).tolist() if str(x).strip()))
+        div_t+=f'<div class="chr-div-evidence">Confirmed declared events · {_div_sources or "configured providers"} · 15 min cache</div>'
+    elif _div_status=='NO_CONFIRMED_EVENTS':
+        div_t='<div class="chr-empty"><b>No confirmed upcoming dividends found.</b><br>The configured providers responded but returned no verified declared events in Chrímata’s current market coverage. Undeclared dividends are never estimated.</div>'
+    else:
+        _configured=", ".join(_div_diag.get('configured',[]) or [])
+        div_t=f'<div class="chr-empty"><b>Dividend data unavailable.</b><br>Chrímata could not establish a verified forward calendar for this market from the configured provider chain{(" ("+html.escape(_configured)+")") if _configured else ""}. This is not a claim that no companies are paying dividends.</div>'
     earnrows=[]
     if earnings is not None and not earnings.empty:
         for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
@@ -4978,7 +5001,7 @@ def render_global_market_overview():
     gm_doc='''<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif;color:#20364f;overflow:hidden}
 .gm-tabs{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px}.gm-tab{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;font-family:inherit}.gm-tab:hover{background:#f5f8fc;color:#0b57d0}.gm-tab.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700}.gm-panel{display:none}.gm-panel.active{display:block}
-table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#65778b;font-weight:600;background:#fafbfd}.chr-empty{font-size:11px;color:#718096;padding:12px 2px}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#65778b;font-weight:600;background:#fafbfd}.chr-empty{font-size:11px;color:#718096;padding:12px 2px}.chr-div-evidence{font-size:8.5px;color:#7b8ea6;padding:5px 7px;border-top:1px solid #edf1f5}
 </style></head><body><div class="gm-tabs">'''+''.join(gm_buttons)+'''</div><div class="gm-panels">'''+''.join(gm_panels)+'''</div><script>
 (function(){const KEY='chrimata-global-markets-tab-v2074188';const tabs=[...document.querySelectorAll('.gm-tab')];const panels=[...document.querySelectorAll('.gm-panel')];function activate(idx){if(idx<0||idx>=tabs.length)idx=0;tabs.forEach((b,i)=>b.classList.toggle('active',i===idx));panels.forEach((p,i)=>p.classList.toggle('active',i===idx));try{localStorage.setItem(KEY,String(idx));}catch(e){}}let initial=0;try{const saved=parseInt(localStorage.getItem(KEY),10);if(Number.isInteger(saved)&&saved>=0&&saved<tabs.length)initial=saved;}catch(e){}tabs.forEach((b,i)=>b.addEventListener('click',()=>activate(i)));activate(initial);})();
 </script></body></html>'''
