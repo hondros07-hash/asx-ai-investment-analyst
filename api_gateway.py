@@ -79,3 +79,28 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
     if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
         s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
+
+
+# --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
+from services.market_registry import public_market_registry
+from services.market_broadcast import broadcast_cache, serialize_record
+from services.geo_router import resolve_market_layout
+
+@app.get("/api/v1/markets/registry")
+def chrimata_market_registry_v2310():
+    return {"status":"ok","markets":public_market_registry()}
+
+@app.get("/api/v1/markets/{market_code}/snapshot")
+def chrimata_market_snapshot_v2310(market_code: str):
+    code=market_code.upper()
+    rec=broadcast_cache.get(code)
+    if rec is None:
+        return {"status":"unavailable","market":code,"data":None,
+                "freshness":{"stale":True,"reason":"cache_not_warmed"}}
+    return {"status":"ok",**serialize_record(code,rec)}
+
+@app.get("/api/v1/markets/layout")
+def chrimata_market_layout_v2310(country: str | None = None, tier: str = "free"):
+    # Geo header resolution belongs at the trusted deployment edge; this endpoint accepts
+    # the already-resolved country code and never trusts arbitrary X-Forwarded-For itself.
+    return {"status":"ok",**resolve_market_layout(country,{"subscription_tier":tier})}
