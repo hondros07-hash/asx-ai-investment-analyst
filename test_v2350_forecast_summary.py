@@ -1,23 +1,24 @@
-from pathlib import Path
 import ast
+from pathlib import Path
+import pandas as pd
 from services.forecast_widget_engine import summarize_forecast
 
-def test_no_fabricated_path():
-    x=summarize_forecast({'status':'ready','target_price':120,'forecast_return':.2,'audit':{'model_version':'test','diagnostics':{'n':12}}},100,'TEST')
-    assert x['status']=='ready' and abs(x['return_pct']-20)<1e-8 and x['sparkline_points']==[]
-    assert x['validation']['walk_forward_observations']==12 and x['ai_calculated_math'] is False
+def test_reuses_canonical_result():
+    model={'status':'ready','target_price':120,'forecast_return':.2,'probability_positive':None,'audit':{'model_version':'x','diagnostics':{'n':4}}}
+    h=pd.DataFrame({'Close':[100+i for i in range(400)]},index=pd.date_range('2024-01-01',periods=400))
+    x=summarize_forecast(model,h,100,'TEST')
+    assert x['target_price']==120 and abs(x['return_pct']-20)<1e-8
+    assert x['forward_path'] is None and len(x['sparkline'])<=12
+    assert x['sparkline_type']=='observed_trailing_12_monthly_closes'
+    assert x['ai_calculated_math'] is False
 
-def test_unavailable_not_fabricated():
-    x=summarize_forecast({'status':'unavailable','target_price':None,'audit':{'reason':'Insufficient history'}},100,'TEST')
-    assert x['target_price'] is None and x['return_label'] is None and x['reason']=='Insufficient history'
+def test_missing_and_inconsistent_targets():
+    assert summarize_forecast({},None,100)['status']=='unavailable'
+    assert summarize_forecast({'status':'ready','target_price':120,'forecast_return':.1},None,100)['status']=='unavailable'
 
-def test_changed_spot_recalculates_delta():
-    x=summarize_forecast({'status':'ready','target_price':120,'forecast_return':.2},110,'TEST')
-    assert abs(x['return_pct']-100*(120/110-1))<1e-8
-
-def test_route_and_ui():
-    main=Path('main.py').read_text();app=Path('app.py').read_text()
-    assert '/api/v1/widget/forecast-summary' in main
-    assert 'summarize_forecast(_fc12,price,ticker)' in app
-    assert '_sparkpts="10,36' not in app
-    ast.parse(app)
+def test_integration():
+    a=Path('app.py').read_text();ast.parse(a)
+    assert 'summarize_forecast as _chr_forecast_summary' in a
+    assert 'Historical trend unavailable' in a
+    assert '10,36 35,31 60,32' not in a
+    assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()

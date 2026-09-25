@@ -10,6 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
+from services.forecast_widget_engine import forecast_summary_from_history
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -90,18 +91,14 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
         s=pd.to_numeric(h["Close"],errors="coerce").dropna(); price=_finite(s.iloc[-1]) if len(s) else None
     x=build_12m_forecast(h,current_price=price,security=ticker); x["ai_calculated"]=False; return x
 
+
 def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    """One provider fetch and one canonical model call, isolated by FastAPI threadpool."""
-    from services.forecast_widget_engine import summarize_forecast
-    from services.forecast_engine import build_12m_forecast
     h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True)
     price=None
     if isinstance(h,pd.DataFrame) and not h.empty and "Close" in h:
-        close=pd.to_numeric(h["Close"],errors="coerce").dropna()
-        price=_finite(close.iloc[-1]) if len(close) else None
-    result=build_12m_forecast(h,current_price=price,security=ticker)
-    return summarize_forecast(result,price,ticker,source="Yahoo Finance/yfinance adjusted daily history")
-
+        s=pd.to_numeric(h["Close"],errors="coerce").dropna()
+        price=_finite(s.iloc[-1]) if len(s) else None
+    return forecast_summary_from_history(h,reference_price=price,ticker=ticker)
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------
