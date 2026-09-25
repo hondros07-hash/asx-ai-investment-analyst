@@ -4571,7 +4571,7 @@ section[data-testid="stMain"] .block-container, .main .block-container{
 .chr-chart-axis{position:absolute;left:18px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;pointer-events:none}
 
 /* V20.5.6 — inline autocomplete search + interactive bottom intelligence widgets */
-.chr-grid-bottom>.chr-panel{min-height:290px!important}
+.chr-grid-bottom>.chr-panel{min-height:290px!important;display:flex!important;flex-direction:column!important}.chr-grid-bottom>.chr-panel>footer{margin-top:auto!important}
 .chr-cal-tabs,.chr-global-tabs{padding:8px 9px}
 .chr-cal-tabs>input,.chr-global-tabs>input{position:absolute;opacity:0;pointer-events:none}
 .chr-cal-tabs>label,.chr-global-tabs>label,.gm-btn{display:inline-block;padding:5px 11px;margin:0 3px 7px 0;border:1px solid #d8e5f2;border-radius:5px;background:#f1f6fb;color:#17365d;font-size:10px;font-weight:700;cursor:pointer}
@@ -4950,7 +4950,10 @@ def render_global_market_overview():
     _div_status=str(getattr(dividends,'attrs',{}).get('status','UNKNOWN')) if dividends is not None else 'UNAVAILABLE'
     _div_diag=dict(getattr(dividends,'attrs',{}).get('diagnostics',{}) or {}) if dividends is not None else {}
     if dividends is not None and not dividends.empty:
-        for _,r in dividends.head(8).iterrows():
+        _div_display=dividends.copy()
+        _div_display["_sort_ex"]=pd.to_datetime(_div_display["Ex-Date"],errors="coerce")
+        _div_display=_div_display.sort_values(["_sort_ex","Ticker"],na_position="last").head(5)
+        for _,r in _div_display.iterrows():
             amt=r.get('Amount','—')
             try: amt='—' if pd.isna(amt) else f"{float(amt):.4g}"
             except Exception: amt=str(amt or '—')
@@ -4965,8 +4968,6 @@ def render_global_market_overview():
     if divrows:
         _div_cols=['Code','Company','Ex-Date','Amount']+(['Franking'] if market=='Australia' else [])
         div_t=_chr_table(divrows,_div_cols)
-        _div_sources=", ".join(dict.fromkeys(str(x) for x in dividends.get('Source',pd.Series(dtype=str)).tolist() if str(x).strip()))
-        div_t+=f'<div class="chr-div-evidence">Confirmed declared events · {_div_sources or "configured providers"} · 15 min cache</div>'
     elif _div_status=='NO_CONFIRMED_EVENTS':
         div_t='<div class="chr-empty"><b>No confirmed upcoming dividends found.</b><br>The configured providers responded but returned no verified declared events in Chrímata’s current market coverage. Undeclared dividends are never estimated.</div>'
     else:
@@ -5001,7 +5002,7 @@ def render_global_market_overview():
     gm_doc='''<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif;color:#20364f;overflow:hidden}
 .gm-tabs{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px}.gm-tab{cursor:pointer;padding:4px 9px;border:1px solid #d7e0ea;border-radius:5px;background:#fff;color:#43566d;font-size:10px;line-height:1.2;font-family:inherit}.gm-tab:hover{background:#f5f8fc;color:#0b57d0}.gm-tab.active{background:#eef5ff;color:#0b57d0;border-color:#b9d3ff;font-weight:700}.gm-panel{display:none}.gm-panel.active{display:block}
-table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#65778b;font-weight:600;background:#fafbfd}.chr-empty{font-size:11px;color:#718096;padding:12px 2px}.chr-div-evidence{font-size:8.5px;color:#7b8ea6;padding:5px 7px;border-top:1px solid #edf1f5}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#65778b;font-weight:600;background:#fafbfd}.chr-empty{font-size:11px;color:#718096;padding:12px 2px}
 </style></head><body><div class="gm-tabs">'''+''.join(gm_buttons)+'''</div><div class="gm-panels">'''+''.join(gm_panels)+'''</div><script>
 (function(){const KEY='chrimata-global-markets-tab-v2074188';const tabs=[...document.querySelectorAll('.gm-tab')];const panels=[...document.querySelectorAll('.gm-panel')];function activate(idx){if(idx<0||idx>=tabs.length)idx=0;tabs.forEach((b,i)=>b.classList.toggle('active',i===idx));panels.forEach((p,i)=>p.classList.toggle('active',i===idx));try{localStorage.setItem(KEY,String(idx));}catch(e){}}let initial=0;try{const saved=parseInt(localStorage.getItem(KEY),10);if(Number.isInteger(saved)&&saved>=0&&saved<tabs.length)initial=saved;}catch(e){}tabs.forEach((b,i)=>b.addEventListener('click',()=>activate(i)));activate(initial);})();
 </script></body></html>'''
