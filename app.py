@@ -7142,8 +7142,6 @@ elif page=="Company Command Centre":
         # V21.3.22 — deterministic 12M forecast is a dedicated, single-source service.
         _fc12=build_12m_forecast(_ccforecast_hist,current_price=price,security=ticker)
         _ccf12=_mia_num(_fc12.get("forecast_return")); _fc_target=_mia_num(_fc12.get("target_price"))
-        from services.forecast_widget_engine import summarize_forecast as _chr_forecast_summary
-        _fc_widget=_chr_forecast_summary(_fc12,price,ticker=ticker,currency=_currency)
         _fc_prob=_mia_num(_fc12.get("probability_positive")); _fcaudit=_fc12.get("audit",{}) or {}
         _fc_prob_n=int(_fcaudit.get("probability_calibration_observations",0) or 0)
         _fcd=_fcaudit.get("diagnostics",{}) or {}
@@ -7967,18 +7965,19 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card" title="{_vnote}"><div class="v21261-title">Valuation Summary {_info}</div><div class="v21261-val-grid"><div><div class="v21261-val-lbl v21261-neg">Bear</div><div class="v21261-val-num">{_val_price("bear")}</div><div class="v21261-neg" style="font-size:8px">{_val_gap("bear")}</div></div><div><div class="v21261-val-lbl" style="color:#086ee8">Base</div><div class="v21261-val-num">{_val_price("base")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("base")}</div></div><div><div class="v21261-val-lbl v21261-pos">Bull</div><div class="v21261-val-num">{_val_price("bull")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("bull")}</div></div></div><div class="v21261-range"><i class="bear" style="{_val_position("bear")}"></i><i class="base" style="{_val_position("base")}"></i><i class="bull" style="{_val_position("bull")}"></i></div><div class="v21261-range-labels"><span>{_val_price("bear")}<br>Bear</span><span>{_val_price("base")}<br>Base</span><span>{_val_price("bull")}<br>Bull</span></div></div>',unsafe_allow_html=True)
             st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
         with _w2:
-            # Model endpoint interpolation: 12 deterministic display coordinates,
-            # not invented independent monthly predictions.
-            _fc_path=_fc_widget.get("sparkline_points") or []
-            _fc_origin=_fc_widget.get("reference_price")
-            _fc_series=([_fc_origin]+_fc_path) if _fc_origin is not None and len(_fc_path)==12 else []
-            if _fc_series:
-                _lo=min(_fc_series);_hi=max(_fc_series);_spread=_hi-_lo
-                _sparkpts=" ".join(f"{10+i*250/12:.2f},{24-18*(v-_lo)/_spread:.2f}" if _spread>0 else f"{10+i*250/12:.2f},24" for i,v in enumerate(_fc_series))
-            else:
-                _sparkpts=""
-            _fc_spark_html=(f'<div class="v21261-spark" title="Illustrative interpolation between reference price and the model 12-month endpoint; not independent monthly forecasts."><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polygon points="10,42 {_sparkpts.split(" ",1)[1]} 260,48 10,48" fill="#d9ebfb" opacity=".85"/><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div>' if _sparkpts else '<div class="v21261-spark" aria-label="Forecast trajectory unavailable"></div>')
-            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div>{_fc_spark_html}<div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
+            # V23.5.0: the full model publishes an endpoint, not monthly forward points.
+            # Render only observed history, clearly labelled; never fabricate a forecast path.
+            from services.forecast_widget_engine import summarize_forecast as _chr_forecast_summary
+            _fc_summary=_chr_forecast_summary(_fc12,ticker,reference_price=price,currency=_ccmeta.get("currency"))
+            _observed=pd.to_numeric(_ccforecast_hist.get("Close",pd.Series(dtype=float)),errors="coerce").dropna().tail(12) if isinstance(_ccforecast_hist,pd.DataFrame) else pd.Series(dtype=float)
+            _spark_html='<div class="v21261-spark" style="color:#527298;font-size:9px;padding-top:9px">Forward monthly path unavailable</div>'
+            if len(_observed)==12 and np.isfinite(_observed.to_numpy(dtype=float)).all():
+                _lo,_hi=float(_observed.min()),float(_observed.max())
+                _span=max(_hi-_lo,1e-12)
+                _sparkpts=" ".join(f"{10+i*250/11:.1f},{40-(float(v)-_lo)/_span*34:.1f}" for i,v in enumerate(_observed))
+                _spark_html=f'<div class="v21261-spark" title="Observed last 12 closes; not a projected trajectory"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div style="font-size:7px;color:#527298">Observed history · not forecast path</div>'
+
+            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div>{_spark_html}<div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Forecasts  →",key=f"v21261_nav_fc_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w3:
             _al=str(_ccanalyst.get("label") or "Unavailable"); _ac="v21261-pos" if "buy" in _al.lower() else "v21261-neg" if "sell" in _al.lower() else "v21261-muted"

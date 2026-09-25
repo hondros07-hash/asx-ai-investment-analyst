@@ -1,43 +1,67 @@
-"""V23.5.0: presentation adapter for the canonical deterministic 12-month model.
+"""V23.5.0: evidence-preserving summary of the existing 12-month model.
 
-The existing model produces an endpoint, not twelve independently forecast monthly
-prices. The optional 12-point curve is explicitly an endpoint interpolation, never
-presented as twelve independently estimated forecasts.
+The underlying model publishes a 12-month endpoint, NOT monthly forecasts. Consequently
+this adapter never manufactures a twelve-point forward trajectory. A chart is emitted
+only when a separately validated, model-produced forward path is supplied.
 """
 from __future__ import annotations
 from datetime import datetime, timezone
 import math
+from typing import Any, Mapping
 
-def finite(value):
+
+def finite(value: Any):
     try:
         x=float(value)
         return x if math.isfinite(x) else None
-    except (TypeError, ValueError, OverflowError):
+    except (ValueError, TypeError, OverflowError):
         return None
 
-def summarize_forecast(model, reference_price, ticker="", currency=None):
-    model=model if isinstance(model,dict) else {}
-    audit=model.get("audit") if isinstance(model.get("audit"),dict) else {}
+
+def summarize_forecast(full: Mapping[str, Any], ticker: str, reference_price: Any = None,
+                       currency: str | None = None, forward_path: Any = None) -> dict:
+    """Do not rerun or change the forecast; use the same payload as Full Forecasts."""
+    audit=full.get('audit') or {}
     spot=finite(reference_price)
-    target=finite(model.get("target_price"))
-    diagnostics=audit.get("diagnostics") if isinstance(audit.get("diagnostics"),dict) else {}
-    result={
-        "status":"unavailable","ticker":ticker,"currency":currency,
-        "reference_price":spot,"target_price":None,"return_pct":None,
-        "sparkline_points":[],"sparkline_kind":"endpoint_interpolation_not_monthly_forecast",
-        "probability_positive":None,"validation":diagnostics,
-        "validation_label":model.get("validation_label") or audit.get("validation_label"),
-        "model_version":audit.get("model_version"),"history_observations":audit.get("history_observations"),
-        "forecast_origin":audit.get("forecast_origin"),"source":"canonical_forecast_engine",
-        "method":audit.get("method"),"reason":audit.get("reason"),
-        "ai_calculated_math":False,"generated_at":datetime.now(timezone.utc).isoformat(),
+    target=finite(full.get('target_price'))
+    reported_return=finite(full.get('forecast_return'))
+    reasons=[]
+    if full.get('status')!='ready': reasons.append(str(audit.get('reason') or 'forecast_model_unavailable'))
+    if spot is None or spot<=0: reasons.append('reference_price_unavailable')
+    if target is None or target<=0: reasons.append('model_target_unavailable')
+    if audit.get('bridge',{}).get('status')=='verified' and (spot is None or target is None):
+        reasons.append('verified_listing_conversion_incomplete')
+    ready=not reasons
+    ret=(target/spot-1) if ready else None
+    if ready and reported_return is not None and not math.isclose(ret,reported_return,rel_tol=1e-7,abs_tol=1e-7):
+        reasons.append('target_return_inconsistent');ready=False;ret=None
+    path=None
+    if ready and isinstance(forward_path,(list,tuple)) and len(forward_path)==12:
+        values=[finite(v) for v in forward_path]
+        if all(v is not None and v>0 for v in values) and math.isclose(values[-1],target,rel_tol=1e-7):
+            path=values
+        else: reasons.append('forward_path_invalid')
+    elif ready: reasons.append('monthly_forward_path_not_produced_by_model')
+    diag=audit.get('diagnostics') or {}
+    return {
+        'status':'ready' if ready else 'unavailable', 'target_ticker':ticker.upper(),
+        'target_price':target if ready else None,'reference_price':spot if ready else None,
+        'forecast_return':ret,'return_pct':ret*100 if ret is not None else None,
+        'return_label':f'{ret:+.1%}' if ret is not None else '—',
+        'currency':currency,'horizon_months':12,
+        'sparkline_points':path,'sparkline_kind':'model_forward_path' if path else 'unavailable',
+        'sparkline_reason':None if path else 'The existing model publishes a 12-month endpoint, not a monthly forward trajectory.',
+        'probability_positive':finite(full.get('probability_positive')) if ready else None,
+        'validation':{'label':full.get('validation_label') or audit.get('validation_label') or 'Validation limited',
+                      'walk_forward_observations':int(diag.get('n') or 0),
+                      'mae':finite(diag.get('mae')),'rmse':finite(diag.get('rmse')),
+                      'direction_accuracy':finite(diag.get('direction_accuracy'))},
+        'model_version':audit.get('model_version'),'method':audit.get('method'),
+        'history_observations':audit.get('history_observations'),
+        'forecast_origin':audit.get('forecast_origin'),
+        'missing_evidence':list(dict.fromkeys(reasons)),
+        'provenance':{'model':'services.forecast_engine.build_12m_forecast',
+                      'market_data':'Yahoo Finance/yfinance (API adapter); dashboard uses existing history service',
+                      'ai_calculated_math':False},
+        'ai_calculated_math':False,'generated_at':datetime.now(timezone.utc).isoformat(),
     }
-    if model.get("status")!="ready" or spot is None or spot<=0 or target is None or target<=0:
-        result["reason"]=result["reason"] or "Verified model target and positive reference price required"
-        return result
-    result.update(status="ready",target_price=target,return_pct=(target/spot-1)*100,
-                  probability_positive=finite(model.get("probability_positive")),reason=None)
-    # Mathematical display interpolation only; the model does not predict monthly milestones.
-    ratio=target/spot
-    result["sparkline_points"]=[float(spot*ratio**(i/12)) for i in range(1,13)]
-    return result

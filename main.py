@@ -80,8 +80,7 @@ async def technicals(ticker:str=Query(...)):return await _run(ticker,technicals_
 @app.get("/api/v1/widget/consensus",response_model=APIResponse)
 async def consensus(ticker:str=Query(...)):return await _run(ticker,consensus_for_ticker,"Consensus")
 @app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
-async def forecast_summary(ticker:str=Query(...)):
-    return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
+async def forecast_summary(ticker:str=Query(...)):return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
 
 @app.get("/api/v1/widget/forecast",response_model=APIResponse)
 async def forecast(ticker:str=Query(...)):return await _run(ticker,forecast_for_ticker,"Forecast")
