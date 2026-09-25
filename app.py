@@ -3872,38 +3872,56 @@ def render_chrimata_persistent_header():
 
 render_chrimata_persistent_header()
 
-# V23.0.3.1 — authentication isolation.
-# The proven banner remains untouched above. Account entry links live in their own
-# fixed layer; no CSS rule disables, replaces, or reparents the banner pseudo-element.
+# V23.0.3.2 — Persistent native Streamlit account bar.
+# This intentionally sits BELOW the proven banner instead of trying to overlay it.
+# Native Streamlit buttons provide reliable rendering and click handling.
 st.markdown(r"""<style>
-.chr-auth-isolated-v23031{
- position:fixed!important;right:22px!important;top:72px!important;z-index:1000015!important;
- display:flex!important;gap:7px!important;align-items:center!important;
- pointer-events:auto!important;background:transparent!important;
+/* Compact account strip directly below the 108px banner. */
+.st-key-v230032_account_bar{
+ margin-top:-5px!important;margin-bottom:4px!important;padding:0!important;
+ min-height:31px!important;
 }
-.chr-auth-isolated-v23031 a{
- display:inline-flex!important;align-items:center!important;justify-content:center!important;
- height:27px!important;padding:0 10px!important;border-radius:7px!important;
- font:800 10px/1 Arial,sans-serif!important;text-decoration:none!important;white-space:nowrap!important;
- box-sizing:border-box!important;
+.st-key-v230032_account_bar [data-testid="stHorizontalBlock"]{
+ gap:7px!important;align-items:center!important;justify-content:flex-end!important;
+ min-height:31px!important;
 }
-.chr-auth-isolated-v23031 .signin{color:#fff!important;background:rgba(4,30,63,.48)!important;border:1px solid rgba(255,255,255,.62)!important}
-.chr-auth-isolated-v23031 .register{color:#0a3d70!important;background:#fff!important;border:1px solid #fff!important}
-@media(max-width:760px){.chr-auth-isolated-v23031{right:8px!important;top:75px!important;gap:4px!important}.chr-auth-isolated-v23031 a{height:24px!important;padding:0 7px!important;font-size:9px!important}}
-</style>
-<div class="chr-auth-isolated-v23031" aria-label="Account">
- <a class="signin" href="?chr_auth=signin" target="_self">Sign in</a>
- <a class="register" href="?chr_auth=register" target="_self">Register</a>
-</div>""",unsafe_allow_html=True)
+.st-key-v230032_account_bar [data-testid="column"]{
+ flex:0 0 auto!important;width:auto!important;min-width:0!important;
+}
+.st-key-v230032_account_bar .stButton{margin:0!important}
+.st-key-v230032_account_bar .stButton>button{
+ height:29px!important;min-height:29px!important;padding:0 14px!important;
+ border-radius:7px!important;font-size:11px!important;font-weight:800!important;
+ box-shadow:none!important;white-space:nowrap!important;
+}
+.st-key-v230032_account_bar .stButton>button[kind="secondary"]{
+ background:#fff!important;color:#0a3d70!important;border:1px solid #b8cbe0!important;
+}
+.st-key-v230032_account_bar .stButton>button[kind="primary"]{
+ background:#0878e8!important;color:#fff!important;border:1px solid #0878e8!important;
+}
+@media(max-width:760px){
+ .st-key-v230032_account_bar .stButton>button{height:27px!important;min-height:27px!important;padding:0 9px!important;font-size:10px!important}
+}
+</style>""",unsafe_allow_html=True)
 
-try:
-    _chr_auth_q=str(st.query_params.get("chr_auth") or "").strip().lower()
-except Exception:
-    _chr_auth_q=""
-if _chr_auth_q=="signin":
-    st.session_state["chr_auth_route_v23000"]="Sign In"
-elif _chr_auth_q=="register":
-    st.session_state["chr_auth_route_v23000"]="Register"
+def _chr_set_auth_route_v230032(target):
+    st.session_state["chr_auth_route_v23000"]=target
+    try:
+        if "chr_auth" in st.query_params:
+            del st.query_params["chr_auth"]
+    except Exception:
+        pass
+
+with st.container(key="v230032_account_bar"):
+    _account_spacer,_account_signin,_account_register=st.columns([12,1.05,1.15],gap="small")
+    with _account_signin:
+        st.button("Sign in",key="v230032_signin",type="secondary",
+                  use_container_width=True,on_click=_chr_set_auth_route_v230032,args=("Sign In",))
+    with _account_register:
+        st.button("Register",key="v230032_register",type="primary",
+                  use_container_width=True,on_click=_chr_set_auth_route_v230032,args=("Register",))
+
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
