@@ -3523,6 +3523,11 @@ def _chr_set_auth_route_v23000(target):
         st.session_state["chr_auth_route_v23000"]=target
 def _chr_clear_auth_route_v23000():
     st.session_state.pop("chr_auth_route_v23000",None)
+    try:
+        if "chr_auth" in st.query_params:
+            del st.query_params["chr_auth"]
+    except Exception:
+        pass
 
 def _chr_set_primary_nav_v2074191(target):
     if target in _valid_nav:
@@ -3850,50 +3855,63 @@ except Exception:
 st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
-    # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
-    # element in document flow, eliminating the phantom 100+ px spacer below it.
+    """V23.0.3 — native persistent header layer.
+
+    The banner image and authentication controls are rendered inside the SAME fixed
+    HTML component. This avoids Streamlit button-parent stacking contexts entirely.
+    Navigation uses query parameters, which the existing router consumes below.
+    """
     banner_path=Path(__file__).resolve().parent/"assets"/"chrimata_banner_crisp.jpg"
     try:
         banner_b64=base64.b64encode(banner_path.read_bytes()).decode("ascii")
-        st.markdown(f"""<style>
-        [data-testid="stAppViewContainer"]::before{{
-          content:"";position:fixed;left:0;right:0;top:0;height:108px;z-index:999990;
-          background-image:url(data:image/jpeg;base64,{banner_b64});background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
-          pointer-events:none;
-        }}
-        </style>""",unsafe_allow_html=True)
     except Exception:
-        pass
+        banner_b64=""
+    _banner_bg=(f"url(data:image/jpeg;base64,{banner_b64})" if banner_b64 else "linear-gradient(90deg,#062e58,#174d7a)")
+    st.markdown(f"""
+<style>
+[data-testid="stAppViewContainer"]::before{{display:none!important;content:none!important}}
+.chr-native-header-v2303{{
+ position:fixed;left:0;right:0;top:0;height:108px;z-index:1000050;
+ background-image:{_banner_bg};background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
+ pointer-events:none;overflow:hidden;
+}}
+.chr-native-auth-v2303{{
+ position:absolute;right:24px;bottom:8px;display:flex;gap:8px;align-items:center;
+ pointer-events:auto;z-index:2;
+}}
+.chr-native-auth-v2303 a{{
+ height:28px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+ padding:0 12px;border-radius:7px;font:800 11px/1 Arial,sans-serif;text-decoration:none!important;
+ transition:transform .12s ease,filter .12s ease;white-space:nowrap;
+}}
+.chr-native-auth-v2303 a:hover{{transform:translateY(-1px);filter:brightness(1.06)}}
+.chr-native-signin-v2303{{background:rgba(4,30,63,.42);color:#fff!important;border:1px solid rgba(255,255,255,.62)}}
+.chr-native-register-v2303{{background:#fff;color:#0a3d70!important;border:1px solid #fff}}
+@media(max-width:900px){{
+ .chr-native-auth-v2303{{right:10px;bottom:6px;gap:5px}}
+ .chr-native-auth-v2303 a{{height:25px;padding:0 8px;font-size:9px}}
+}}
+</style>
+<div class="chr-native-header-v2303" role="banner" aria-label="Chrímata">
+ <nav class="chr-native-auth-v2303" aria-label="Account">
+  <a class="chr-native-signin-v2303" href="?chr_auth=signin" target="_self">Sign in</a>
+  <a class="chr-native-register-v2303" href="?chr_auth=register" target="_self">Register</a>
+ </nav>
+</div>
+""",unsafe_allow_html=True)
 
 render_chrimata_persistent_header()
 
-# V23.0.0 — compact authentication entry controls integrated into the existing banner.
-st.markdown(r"""<style>
-/* V23.0.2 — Render repair: the banner pseudo-element previously painted above the
-   Streamlit button container. Target both Streamlit key renderings and establish a
-   fixed, isolated layer above the banner without changing banner geometry. */
-.st-key-v23000_banner_auth,
-[data-testid="stElementContainer"]:has(.st-key-v23000_banner_auth),
-[data-testid="stVerticalBlock"]:has(> .st-key-v23000_banner_auth){
- position:fixed!important;right:24px!important;top:70px!important;z-index:1000010!important;
- width:190px!important;height:34px!important;margin:0!important;padding:0!important;
- background:transparent!important;isolation:isolate!important;pointer-events:auto!important;
-}
-.st-key-v23000_banner_auth [data-testid="stHorizontalBlock"]{gap:7px!important;align-items:center!important;position:relative!important;z-index:1000011!important}
-.st-key-v23000_banner_auth [data-testid="stColumn"]{min-width:0!important}
-.st-key-v23000_banner_auth{display:block!important;visibility:visible!important;opacity:1!important}
-.st-key-v23000_banner_auth .stButton>button{display:flex!important;visibility:visible!important;opacity:1!important;height:30px!important;min-height:30px!important;padding:0 10px!important;border-radius:7px!important;font-size:11px!important;font-weight:800!important;box-shadow:none!important;white-space:nowrap!important}
-.st-key-v23000_banner_auth [data-testid="stColumn"]:first-child .stButton>button{background:rgba(4,30,63,.34)!important;color:#fff!important;border:1px solid rgba(255,255,255,.48)!important}
-.st-key-v23000_banner_auth [data-testid="stColumn"]:last-child .stButton>button{background:#fff!important;color:#0a3d70!important;border:1px solid #fff!important}
-.st-key-v23000_banner_auth .stButton>button:hover{transform:translateY(-1px)!important;filter:brightness(1.04)!important}
-@media(max-width:760px){.st-key-v23000_banner_auth{right:8px!important;top:70px!important;width:146px!important}.st-key-v23000_banner_auth .stButton>button{height:27px!important;min-height:27px!important;padding:0 7px!important;font-size:9px!important}}
-</style>""",unsafe_allow_html=True)
-with st.container(key="v23000_banner_auth"):
-    _auth_signin,_auth_register=st.columns(2,gap="small")
-    with _auth_signin:
-        st.button("Sign in",key="v23000_signin",use_container_width=True,on_click=_chr_set_auth_route_v23000,args=("Sign In",))
-    with _auth_register:
-        st.button("Register",key="v23000_register",use_container_width=True,on_click=_chr_set_auth_route_v23000,args=("Register",))
+# V23.0.3 — consume native-header account routes before normal page rendering.
+try:
+    _chr_auth_q=str(st.query_params.get("chr_auth") or "").strip().lower()
+except Exception:
+    _chr_auth_q=""
+if _chr_auth_q=="signin":
+    st.session_state["chr_auth_route_v23000"]="Sign In"
+elif _chr_auth_q=="register":
+    st.session_state["chr_auth_route_v23000"]="Register"
+
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
