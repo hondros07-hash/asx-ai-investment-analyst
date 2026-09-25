@@ -65,3 +65,26 @@ def summarize_forecast(full: Mapping[str, Any], ticker: str, reference_price: An
                       'ai_calculated_math':False},
         'ai_calculated_math':False,'generated_at':datetime.now(timezone.utc).isoformat(),
     }
+
+
+def observed_history_sparkline(history, count=12):
+    """Exactly 12 observed historical close samples; NEVER a forward forecast path."""
+    import pandas as pd
+    if isinstance(history, pd.DataFrame):
+        if 'Close' not in history: return None
+        x=history['Close']
+        if isinstance(x,pd.DataFrame): x=x.iloc[:,0]
+    elif isinstance(history,pd.Series): x=history
+    else: return None
+    x=pd.to_numeric(x,errors='coerce').replace([float('inf'),-float('inf')],float('nan')).dropna()
+    x=x[x>0]
+    if len(x)<count:return None
+    import numpy as np
+    indices=np.linspace(0,len(x)-1,count).round().astype(int)
+    return [float(x.iloc[i]) for i in indices]
+
+def svg_points_from_observed(values):
+    """Presentation-only mapping of actual historical samples into a 270x48 SVG."""
+    if not values or len(values)!=12:return None
+    lo=min(values); hi=max(values); span=hi-lo
+    return ' '.join(f'{10+i*250/11:.2f},{24 if span==0 else 40-(v-lo)/span*32:.2f}' for i,v in enumerate(values))

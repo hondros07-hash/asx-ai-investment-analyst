@@ -10,7 +10,7 @@ from services.valuation_evidence import recover_financial_inputs
 from services.technical_engine import calculate_technical_snapshot
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
-from services.forecast_widget_engine import summarize_forecast
+from services.forecast_widget_engine import summarize_forecast, observed_history_sparkline
 
 def _finite(v: Any)->Optional[float]:
     try:
@@ -93,17 +93,18 @@ def forecast_for_ticker(ticker:str)->Dict[str,Any]:
 
 
 def forecast_summary_for_ticker(ticker:str)->Dict[str,Any]:
-    # Same full-model calculation and price history as the existing forecast API.
-    full=forecast_for_ticker(ticker)
-    t=yf.Ticker(ticker)
-    try: meta=t.info or {}
-    except Exception: meta={}
-    spot=_finite(full.get('target_price'))
-    predicted=_finite(full.get('forecast_return'))
-    # The full model target is calculated from the same spot. Recover its exact
-    # reference price without mixing a later provider quote into its delta.
-    reference=spot/(1+predicted) if spot is not None and predicted is not None and (1+predicted)>0 else None
-    return summarize_forecast(full,ticker,reference,meta.get('currency'))
+    # One canonical model invocation, same as the full forecast endpoint.
+    h=yf.Ticker(ticker).history(period="5y",interval="1d",auto_adjust=True)
+    close=pd.to_numeric(h["Close"],errors="coerce").dropna() if isinstance(h,pd.DataFrame) and "Close" in h else pd.Series(dtype=float)
+    spot=_finite(close.iloc[-1]) if len(close) else None
+    full=build_12m_forecast(h,current_price=spot,security=ticker)
+    currency=None
+    try: currency=(yf.Ticker(ticker).fast_info or {}).get("currency")
+    except Exception: pass
+    result=summarize_forecast(full,ticker,spot,currency)
+    result["observed_history_points"]=observed_history_sparkline(close)
+    result["observed_history_label"]="Observed history · not forecast path"
+    return result
 
 
 # --- V23.1.0 Global Market Broadcast & Cache Engine ---------------------------

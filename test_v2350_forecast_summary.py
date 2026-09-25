@@ -26,3 +26,17 @@ def test_endpoint_and_ui():
  assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()
  s=Path('app.py').read_text();assert 'Observed history · not forecast path' in s
  assert '10,36 35,31 60,32' not in s
+
+
+def test_observed_history_is_actual_data():
+ import pandas as pd
+ from services.forecast_widget_engine import observed_history_sparkline,svg_points_from_observed
+ x=observed_history_sparkline(pd.Series(range(1,25)))
+ assert len(x)==12 and x[0]==1 and x[-1]==24
+ assert len(svg_points_from_observed(x).split())==12
+ assert observed_history_sparkline(pd.Series([1,2])) is None
+
+def test_api_reuses_existing_model():
+ s=Path('api_gateway.py').read_text()
+ assert 'full=build_12m_forecast(h,current_price=spot,security=ticker)' in s
+ assert 'summarize_forecast(full,ticker,spot,currency)' in s
