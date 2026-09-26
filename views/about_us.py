@@ -6,13 +6,13 @@ def render_about_us():
     /* AXÍA V23.7.5.2: restrained research-terminal design, scoped to About. */
     .ax-about{width:100%;max-width:none;margin:0 0 10px;padding:25px 28px 28px;background:#fff;border:1px solid #dbe6f0;border-radius:8px;color:#183b60;font-family:Arial,Helvetica,sans-serif}
     .ax-about *{box-sizing:border-box}
-    .ax-about .eyebrow{color:#1765ae;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+    .ax-about .eyebrow{color:#a67520;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
     .ax-about h1{font-size:28px;line-height:1.25;letter-spacing:-.025em;margin:8px 0 11px;color:#082f59!important;font-weight:750}
     .ax-about h2{font-size:19px;line-height:1.35;letter-spacing:-.015em;color:#123b64!important;margin:6px 0 13px;font-weight:750}
     .ax-about h3{font-size:16px;line-height:1.35;color:#123b64!important;margin:8px 0 12px;font-weight:750}
     .ax-about p{font-size:13px;line-height:1.72;color:#506782;margin:0 0 11px}
     .ax-about .hero{padding:0 0 19px;background:transparent;border:0;border-bottom:1px solid #dce6f0;border-radius:0;color:#173d66}
-    .ax-about .hero .eyebrow{color:#1765ae!important}
+    .ax-about .hero .eyebrow{color:#a67520!important}
     .ax-about .hero h1,.ax-about .hero p{color:#173d66!important}
     .ax-about .hero p{max-width:940px}
     .ax-about .greek{font-family:Georgia,serif;font-size:15px;color:#55718e;margin:0 0 11px}
@@ -21,14 +21,14 @@ def render_about_us():
     .ax-about .family{background:transparent;border:0;border-radius:0;padding:0}
     .ax-about .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:15px;align-items:stretch}
     .ax-about .card{background:#fff;border:1px solid #dbe6f0;border-radius:6px;padding:19px 20px;min-width:0;border-top:2px solid #1768b4}
-    .ax-about .number{font-size:10px;letter-spacing:.09em;font-weight:800;color:#1765ae}
+    .ax-about .number{font-size:10px;letter-spacing:.09em;font-weight:800;color:#a67520}
     .ax-about .card p{font-size:12px;line-height:1.7}
     .ax-about .card strong{color:#163e69}
     .ax-about .closing{background:transparent;border:0;border-radius:0;padding:21px 0 0;margin-top:0}
     .ax-about .fine{font-size:11px;line-height:1.6;color:#657a91}
     @media(max-width:850px){.ax-about{padding:18px}.ax-about .cards{grid-template-columns:1fr}.ax-about .hero{padding:0 0 17px}.ax-about .family{padding:0}.ax-about .closing{padding:17px 0 0}.ax-about .section{padding:19px 0}}
     </style><div class="ax-about">
-    <section class="hero"><div class="eyebrow" style="color:#a6d6ff">Our story · Our purpose</div>
+    <section class="hero"><div class="eyebrow" style="color:#a67520">Our story · Our purpose</div>
     <h1>The Axía Story</h1><div class="greek">Αξία · Worth. Value. Merit.</div>
     <p>Welcome to Axía. We are here to serve you.</p>
     <p>Our name draws on the Greek words <em>axios</em> (ἄξιος), meaning worthy or deserving, and <em>axía</em> (αξία), meaning value. It reflects what we seek in financial research: a clearer understanding of intrinsic value.</p></section>
