@@ -8287,6 +8287,31 @@ elif page=="Company Command Centre":
           </div>
           <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
         </div>""",unsafe_allow_html=True)
+        # V23.7.8 — native Streamlit navigation, scoped to the active ticker.
+        # A real button (not an HTML anchor) preserves the existing CC router.
+        st.markdown("""<style>
+        [class*="st-key-v2378_intelligence_news_"] {
+            display:flex!important;justify-content:flex-end!important;
+            margin-top:-6px!important;margin-bottom:8px!important;
+        }
+        [class*="st-key-v2378_intelligence_news_"] button {
+            width:auto!important;min-height:25px!important;height:25px!important;
+            padding:0 3px!important;border:0!important;background:transparent!important;
+            box-shadow:none!important;color:#1765ae!important;font-size:11px!important;
+            font-weight:800!important;white-space:nowrap!important;
+        }
+        [class*="st-key-v2378_intelligence_news_"] button:hover {
+            color:#0c477f!important;text-decoration:underline!important;
+        }
+        </style>""", unsafe_allow_html=True)
+        with st.container(key=f"v2378_intelligence_news_{ticker}"):
+            _v2378_left, _v2378_right = st.columns([5, 1.3], gap="small")
+            with _v2378_right:
+                if st.button("View News & Events →", key=f"v2378_nav_intelligence_news_{ticker}",
+                             use_container_width=False):
+                    _chr_set_cc_sub_v2111("News & Events")
+                    st.rerun()
+
         # V23.7.7: Keep the Overview compact. Diagnostics remain accessible on demand;
         # headlines are context, not verified event or company-exposure evidence.
         if _v2342_status != "mapped":
