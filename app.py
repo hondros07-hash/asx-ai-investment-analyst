@@ -2243,6 +2243,14 @@ def valuation_pipeline(ticker,price):
                 _vmeta["_shares_source"]="provider_shares_history"
         except Exception: pass
     recovered=_recover_valuation_bundle(_vmeta,bundle)
+    # The recovery engine owns FCF; never substitute an unrelated annual row.
+    recovered["audit"]["fcf_pipeline_version"]="V23.6.5"
+    recovered["audit"]["fcf_statement_coverage"]={
+        name:{"status":bundle.get("_diagnostics",{}).get(name,{}).get("status","unknown"),
+              "rows":bundle.get("_diagnostics",{}).get(name,{}).get("rows",[]),
+              "periods":bundle.get("_diagnostics",{}).get(name,{}).get("periods",[])}
+        for name in ("cashflow","quarterly_cashflow")}
+
     if _vmeta.get("_shares_source") and recovered.get("audit",{}).get("inputs",{}).get("shares",{}).get("status")=="verified":
         recovered["audit"]["inputs"]["shares"]["source"]=_vmeta["_shares_source"]
 

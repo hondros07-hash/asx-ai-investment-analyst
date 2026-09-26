@@ -11,8 +11,8 @@ def _num(v):
 def _norm(s): return re.sub(r"[^a-z0-9]","",str(s or "").lower())
 
 ALIASES={
-"operating_cash_flow":("Operating Cash Flow","Total Cash From Operating Activities","Cash Flow From Continuing Operating Activities"),
- "capex":("Capital Expenditure","Capital Expenditures","Capital Expenditure Reported","Purchase Of PPE","Purchases Of PPE","Purchase Of Property Plant And Equipment","Purchases Of Property Plant And Equipment"),
+"operating_cash_flow":("Operating Cash Flow","Total Cash From Operating Activities","Cash Flow From Continuing Operating Activities","Cash Flow From Operations","Net Cash Provided By Operating Activities","Net Cash From Operating Activities"),
+ "capex":("Capital Expenditure","Capital Expenditures","Capital Expenditure Reported","Purchase Of PPE","Purchases Of PPE","Purchase Of Property Plant And Equipment","Purchases Of Property Plant And Equipment","Payments To Acquire Property Plant And Equipment"),
 "cash":("Cash Cash Equivalents And Short Term Investments","Cash And Cash Equivalents","Cash"),
 "debt":("Total Debt","Long Term Debt And Capital Lease Obligation","Long Term Debt","Current Debt And Capital Lease Obligation"),
 "shares":("Ordinary Shares Number","Share Issued","Diluted Average Shares","Basic Average Shares"),
@@ -197,18 +197,31 @@ def _four_quarter_sum(values):
     return total if kind=="TTM: four consecutive quarters" else None
 
 def _fcf_ttm_annual_bridge(annual_cf,interim_cf):
-    """FY + current YTD - prior-year matching YTD, only for explicit interim periods."""
-    annual,_=_row(annual_cf,("Free Cash Flow","FreeCashFlow"))
-    interim,_=_row(interim_cf,("Free Cash Flow","FreeCashFlow"))
-    if annual is None or interim is None:return None,None
-    av=_dated_values(annual);iv=_dated_values(interim)
+    """FY + current YTD - prior matching YTD, including derived OCF/capex rows.
+
+    A bridge requires an explicit annual observation and comparable interim
+    observations approximately one year apart; it never annualises one period.
+    """
+    def series(frame):
+        direct,_=_row(frame,("Free Cash Flow","FreeCashFlow"))
+        if direct is not None:
+            vals=_dated_values(direct)
+            if vals:return vals,"direct_fcf"
+        ocf,_=_row(frame,ALIASES["operating_cash_flow"])
+        capex,_=_row(frame,ALIASES["capex"])
+        if ocf is None or capex is None:return {},None
+        operating=_dated_values(ocf);cap=_dated_values(capex)
+        return {dt:operating[dt]-abs(cap[dt]) for dt in operating.keys()&cap.keys()},"ocf_minus_capex"
+    av,annual_method=series(annual_cf);iv,interim_method=series(interim_cf)
     if not av or len(iv)<2:return None,None
     fy=max(av);recent=max(iv)
     if not 30<=(recent-fy).days<=330:return None,None
     previous=[d for d in iv if 330<=(recent-d).days<=400]
     if not previous:return None,None
     prior=max(previous)
-    return av[fy]+iv[recent]-iv[prior],{"source":"annual_plus_interim_bridge","period":f"FY {fy.date()} + YTD {recent.date()} - YTD {prior.date()}"}
+    return av[fy]+iv[recent]-iv[prior],{"source":"annual_plus_interim_bridge",
+        "method":f"{annual_method} / {interim_method}",
+        "period":f"FY {fy.date()} + YTD {recent.date()} - YTD {prior.date()}"}
 
 def recover_financial_inputs_v2362(meta, annual_cf=None, quarterly_cf=None, annual_bs=None,
                                    quarterly_bs=None, annual_inc=None, quarterly_inc=None):
@@ -224,6 +237,10 @@ def recover_financial_inputs_v2362(meta, annual_cf=None, quarterly_cf=None, annu
         if val is not None:
             recovered["fcf"]=val
             audit["inputs"]["fcf"]={"status":"derived","value":val,**prov}
+        else:
+            recovered["fcf"]=None
+            audit["inputs"]["fcf"]={"status":"missing","value":None,
+                "reason":"No matching reported FCF or operating cash flow and capital expenditure periods; see statement diagnostics."}
     for key,aliases,metadata_key in (
         ("cash",ALIASES["cash"],"totalCash"),
         ("debt",ALIASES["debt"],"totalDebt"),
