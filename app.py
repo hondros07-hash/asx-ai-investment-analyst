@@ -6359,7 +6359,14 @@ def _chr_company_search_page():
             try: hd=yf.Ticker(resolved).history(period=per,interval=itv,auto_adjust=True) if itv else history(resolved,per)
             except: hd=pd.DataFrame()
             if hd is not None and not hd.empty and "Close" in hd.columns:
-                fig=go.Figure(go.Scatter(x=hd.index,y=hd["Close"],mode="lines",line={"width":2,"color":"#159447"},fill="tozeroy",fillcolor="rgba(21,148,71,.08)")); fig.update_layout(height=104,margin=dict(l=0,r=0,t=1,b=1),showlegend=False,xaxis=dict(visible=False),yaxis=dict(visible=False),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)"); st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                _close=pd.to_numeric(hd["Close"],errors="coerce").dropna()
+                if len(_close)>=2 and float(_close.max())>float(_close.min()):
+                    _pad=max(float(_close.max()-_close.min())*.12,abs(float(_close.iloc[-1]))*.002)
+                    fig=go.Figure(go.Scatter(x=_close.index,y=_close,mode="lines",line={"width":2,"color":"#159447"}))
+                    fig.update_layout(height=104,margin=dict(l=0,r=0,t=1,b=1),showlegend=False,xaxis=dict(visible=False),yaxis=dict(visible=False,range=[float(_close.min())-_pad,float(_close.max())+_pad]),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
+                    st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                else:
+                    st.caption("Insufficient price variation for this timeframe.")
             else:
                 st.markdown('<div style="height:104px;display:flex;align-items:center;justify-content:center;color:#8191a5;font-size:11px">Chart data unavailable</div>',unsafe_allow_html=True)
             if _cap_display=="—":
