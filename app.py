@@ -8357,27 +8357,24 @@ elif page=="Company Command Centre":
                         _chr_set_cc_sub_v2111("News & Events")
                         st.rerun()
 
-        # V23.7.19: Equal-height lower Overview cards. All four columns
-        # stretch to the tallest card; news rows scroll inside their own card.
-        # No changes to data retrieval, evidence or navigation.
+        # V23.7.20: Four cards are now actually nested in the same keyed
+        # row. Give their outer surfaces the same 300px height; news scrolls.
         st.markdown("""<style>
-        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] {
-            align-items:stretch!important;
+        [class*="st-key-v23713_lower_cards_"] [data-testid="stHorizontalBlock"] {
+            align-items:stretch!important;gap:16px!important;
         }
-        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-            display:flex!important;flex-direction:column!important;min-width:0!important;
+        [class*="st-key-v23713_lower_cards_"] [data-testid="column"] {
+            min-width:0!important;
         }
-        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] > [data-testid="column"] > [data-testid="stVerticalBlock"],
         [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21310_ann_card_"],
         [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21313_news_card_"],
-        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v2373_cat_card_"] {
-            flex:1 1 auto!important;height:100%!important;
+        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v2373_cat_card_"],
+        [class*="st-key-v23713_lower_cards_"] .v21290-attn {
+            height:300px!important;min-height:300px!important;
+            max-height:300px!important;box-sizing:border-box!important;
         }
         [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21313_news_card_"] .v21313-news-body {
-            max-height:260px!important;overflow-y:auto!important;
-        }
-        [class*="st-key-v23713_lower_cards_"] .v21290-attn {
-            height:100%!important;min-height:100%!important;box-sizing:border-box!important;
+            max-height:210px!important;overflow-y:auto!important;
         }
         </style>""",unsafe_allow_html=True)
         # V23.7.18: Match the 22px vertical rhythm between the intelligence
@@ -8409,88 +8406,88 @@ elif page=="Company Command Centre":
 
         with st.container(key=f"v23713_lower_cards_{ticker}"):
             _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
-        with _m1:
-            _rows=[]
-            if not _ann_df.empty:
-                for _,r in _ann_df.iterrows():
-                    _d=_v21290_date(_v21290_pick(r,["date","Date","published","datetime","release_date"]))
-                    _t=_v21290_pick(r,["title","Title","headline","Headline","name","announcement"],"Announcement")
-                    _ty=_v21290_ann_type(_t,_v21290_pick(r,["type","Type","category","Category"]))
-                    _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","URL","url","link","Link"])
-                    _has_pdf=bool(r.get("Has PDF",False)) if hasattr(r,"get") else False
-                    _doc_label=("PDF" if _has_pdf else ("FILE" if str(_v21291_prov.get("market") or "") in ("NASDAQ","NYSE") else "VIEW"))
-                    _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
-                    _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
-            _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
-            _authority=str(_v21291_prov.get("authority") or "")
-            _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
-            _empty_detail=html.escape(_status_msg or _empty_fallback)
-            if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED","SEC_USER_AGENT_REQUIRED"}:
-                _empty_detail += ' <span title="Check SEC_USER_AGENT and provider diagnostics">(source diagnostic)</span>' 
-            _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
-            _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
-                  f'Document access: {_v21291_prov.get("document_policy","—")}')
-            # V21.3.10 — self-contained reference header; no page-level/absolute positioning.
-            _body09=_body.replace('v21290-row','v21310-ann-row').replace('v21290-empty','v21310-ann-empty')
-            with st.container(border=True,key=f"v21310_ann_card_{ticker}"):
-                _ann_h1,_ann_h2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
-                with _ann_h1:
-                    st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
-                with _ann_h2:
-                    if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
-                        _chr_set_cc_sub_v2111("Announcements & Reports")
-                        st.rerun()
-                st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
-        with _m2:
-            _rows=[]
-            if _news is not None and not _news.empty:
-                for r in _news.itertuples():
-                    _headline=html.escape(str(r.Headline)); _src=html.escape(str(r.Source)); _url=html.escape(str(getattr(r,"URL","") or ""),quote=True)
-                    _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
-                    _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta" title="{html.escape(str(r.Source),quote=True)}">{_src}</span></div>')
-            _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No recent company news is available from the configured provider.</div>'
-            with st.container(border=True,key=f"v21313_news_card_{ticker}"):
-                _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
-                with _nh1: st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
-                with _nh2:
-                    if st.button("View all →",key=f"v21313_nav_news_{ticker}",use_container_width=False):
-                        _chr_set_cc_sub_v2111("News & Events"); st.rerun()
-                st.markdown(f'<div class="v21313-news-body">{_body}</div>',unsafe_allow_html=True)
-        with _m3:
-            _rows=[]
-            if not _cat_df.empty:
-                for _,r in _cat_df.iterrows():
-                    _rawdate=_v21290_pick(r,["event_date","date","Date"])
-                    _d=_v21290_date(_rawdate) if _rawdate and str(_rawdate).upper()!="TBD" else (str(_rawdate) or "TBD")
-                    _event=_v21290_pick(r,["event","Event","title","Title"],"Catalyst")
-                    _status=_v21290_pick(r,["status","Status"]).lower()
-                    _done=any(x in _status for x in ("done","complete","actual","occurred"))
-                    _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main">{html.escape(_event)}</span><span class="status {"done" if _done else ""}">{"●" if _done else "○"}</span></div>')
-            _body="".join(_rows) if _rows else '<div class="v21290-empty">No stored catalysts yet. Add evidence in Catalyst Calendar.</div>'
-            with st.container(border=True,key=f"v2373_cat_card_{ticker}"):
-                _ch1,_ch2=st.columns([4.5,1],gap="small",vertical_alignment="center")
-                with _ch1: st.markdown('<div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div>',unsafe_allow_html=True)
-                with _ch2:
-                    if st.button("View all →",key=f"v21290_nav_cat_{ticker}"):
-                        _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
-                st.markdown(f'<div class="v2373-cat-body">{_body}</div>',unsafe_allow_html=True)
-        with _m4:
-            _attention=[]
-            if _ccattention is not None and not _ccattention.empty:
-                for _,r in _ccattention.head(4).iterrows():
-                    _item=_v21290_pick(r,["Item","item","Metric","metric","Condition","condition"],"Research condition")
-                    _detail=_v21290_pick(r,["Why","why","Detail","detail","Evidence","evidence","Status","status"],"Evidence requires review")
-                    _attention.append((_item,_detail,"Watch" if len(_attention)<2 else "Monitor"))
-            if not _attention and '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
-                for _,r in _thesis_rows.iterrows():
-                    _st=str(r.get("status") or "").lower()
-                    if _st in {"watch","warning","at risk","attention","broken","pending"}:
-                        _attention.append((str(r.get("metric") or r.get("condition") or "Thesis condition"),str(r.get("source") or "Evidence requires review"),"Watch" if len(_attention)<2 else "Monitor"))
-                    if len(_attention)>=4: break
-            _ah="".join(f'<div class="v21290-attn-item"><span class="v21290-rank">{i}</span><div><div class="v21290-attn-main">{html.escape(a[:58])}</div><div class="v21290-attn-sub">{html.escape(b[:82])}</div></div><span class="v21290-pill {"watch" if c=="Watch" else ""}">{c}</span></div>' for i,(a,b,c) in enumerate(_attention[:4],1))
-            if not _ah:_ah='<div class="v21290-empty">No evidence-backed attention item is currently triggered. This is not a statement that the company has no risks.</div>'
-            st.markdown(f'<div class="v21290-card v21290-attn"><div class="v21290-title"><span class="v21290-icon">▲</span>What Requires My Attention?</div>{_ah}</div>',unsafe_allow_html=True)
+            with _m1:
+                _rows=[]
+                if not _ann_df.empty:
+                    for _,r in _ann_df.iterrows():
+                        _d=_v21290_date(_v21290_pick(r,["date","Date","published","datetime","release_date"]))
+                        _t=_v21290_pick(r,["title","Title","headline","Headline","name","announcement"],"Announcement")
+                        _ty=_v21290_ann_type(_t,_v21290_pick(r,["type","Type","category","Category"]))
+                        _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","URL","url","link","Link"])
+                        _has_pdf=bool(r.get("Has PDF",False)) if hasattr(r,"get") else False
+                        _doc_label=("PDF" if _has_pdf else ("FILE" if str(_v21291_prov.get("market") or "") in ("NASDAQ","NYSE") else "VIEW"))
+                        _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
+                        _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
+                _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
+                _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
+                _authority=str(_v21291_prov.get("authority") or "")
+                _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
+                _empty_detail=html.escape(_status_msg or _empty_fallback)
+                if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED","SEC_USER_AGENT_REQUIRED"}:
+                    _empty_detail += ' <span title="Check SEC_USER_AGENT and provider diagnostics">(source diagnostic)</span>' 
+                _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
+                _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
+                      f'Document access: {_v21291_prov.get("document_policy","—")}')
+                # V21.3.10 — self-contained reference header; no page-level/absolute positioning.
+                _body09=_body.replace('v21290-row','v21310-ann-row').replace('v21290-empty','v21310-ann-empty')
+                with st.container(border=True,key=f"v21310_ann_card_{ticker}"):
+                    _ann_h1,_ann_h2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
+                    with _ann_h1:
+                        st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
+                    with _ann_h2:
+                        if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
+                            _chr_set_cc_sub_v2111("Announcements & Reports")
+                            st.rerun()
+                    st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
+            with _m2:
+                _rows=[]
+                if _news is not None and not _news.empty:
+                    for r in _news.itertuples():
+                        _headline=html.escape(str(r.Headline)); _src=html.escape(str(r.Source)); _url=html.escape(str(getattr(r,"URL","") or ""),quote=True)
+                        _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
+                        _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta" title="{html.escape(str(r.Source),quote=True)}">{_src}</span></div>')
+                _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No recent company news is available from the configured provider.</div>'
+                with st.container(border=True,key=f"v21313_news_card_{ticker}"):
+                    _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
+                    with _nh1: st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
+                    with _nh2:
+                        if st.button("View all →",key=f"v21313_nav_news_{ticker}",use_container_width=False):
+                            _chr_set_cc_sub_v2111("News & Events"); st.rerun()
+                    st.markdown(f'<div class="v21313-news-body">{_body}</div>',unsafe_allow_html=True)
+            with _m3:
+                _rows=[]
+                if not _cat_df.empty:
+                    for _,r in _cat_df.iterrows():
+                        _rawdate=_v21290_pick(r,["event_date","date","Date"])
+                        _d=_v21290_date(_rawdate) if _rawdate and str(_rawdate).upper()!="TBD" else (str(_rawdate) or "TBD")
+                        _event=_v21290_pick(r,["event","Event","title","Title"],"Catalyst")
+                        _status=_v21290_pick(r,["status","Status"]).lower()
+                        _done=any(x in _status for x in ("done","complete","actual","occurred"))
+                        _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main">{html.escape(_event)}</span><span class="status {"done" if _done else ""}">{"●" if _done else "○"}</span></div>')
+                _body="".join(_rows) if _rows else '<div class="v21290-empty">No stored catalysts yet. Add evidence in Catalyst Calendar.</div>'
+                with st.container(border=True,key=f"v2373_cat_card_{ticker}"):
+                    _ch1,_ch2=st.columns([4.5,1],gap="small",vertical_alignment="center")
+                    with _ch1: st.markdown('<div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div>',unsafe_allow_html=True)
+                    with _ch2:
+                        if st.button("View all →",key=f"v21290_nav_cat_{ticker}"):
+                            _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
+                    st.markdown(f'<div class="v2373-cat-body">{_body}</div>',unsafe_allow_html=True)
+            with _m4:
+                _attention=[]
+                if _ccattention is not None and not _ccattention.empty:
+                    for _,r in _ccattention.head(4).iterrows():
+                        _item=_v21290_pick(r,["Item","item","Metric","metric","Condition","condition"],"Research condition")
+                        _detail=_v21290_pick(r,["Why","why","Detail","detail","Evidence","evidence","Status","status"],"Evidence requires review")
+                        _attention.append((_item,_detail,"Watch" if len(_attention)<2 else "Monitor"))
+                if not _attention and '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
+                    for _,r in _thesis_rows.iterrows():
+                        _st=str(r.get("status") or "").lower()
+                        if _st in {"watch","warning","at risk","attention","broken","pending"}:
+                            _attention.append((str(r.get("metric") or r.get("condition") or "Thesis condition"),str(r.get("source") or "Evidence requires review"),"Watch" if len(_attention)<2 else "Monitor"))
+                        if len(_attention)>=4: break
+                _ah="".join(f'<div class="v21290-attn-item"><span class="v21290-rank">{i}</span><div><div class="v21290-attn-main">{html.escape(a[:58])}</div><div class="v21290-attn-sub">{html.escape(b[:82])}</div></div><span class="v21290-pill {"watch" if c=="Watch" else ""}">{c}</span></div>' for i,(a,b,c) in enumerate(_attention[:4],1))
+                if not _ah:_ah='<div class="v21290-empty">No evidence-backed attention item is currently triggered. This is not a statement that the company has no risks.</div>'
+                st.markdown(f'<div class="v21290-card v21290-attn"><div class="v21290-title"><span class="v21290-icon">▲</span>What Requires My Attention?</div>{_ah}</div>',unsafe_allow_html=True)
 
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
         _b1,_b2=st.columns([.98,1.78],gap="small")
