@@ -8295,37 +8295,40 @@ elif page=="Company Command Centre":
         .v2342-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e6edf5;padding-bottom:6px;margin-bottom:8px}.v2342-title{font-size:13px;font-weight:900;color:#102b52}.v2342-sub{font-size:9px;color:#70849f;margin-top:2px}.v2342-badge{font-size:8px;font-weight:900;letter-spacing:.04em;color:#35618d;background:#f2f7fc;border:1px solid #d8e5f2;border-radius:12px;padding:3px 7px}
         .v2342-grid{display:grid;grid-template-columns:1.25fr 1.25fr .9fr;gap:13px}.v2342-label{font-size:8px;font-weight:900;letter-spacing:.06em;color:#6c819b;margin-bottom:4px}.v2342-text{font-size:10px;line-height:1.38;color:#274a72}.v2342-section{min-width:0}.v2342-rule{border-left:1px solid #e3ebf4;padding-left:13px}.v2342-chip{display:inline-block;font-size:8px;color:#275b91;background:#f3f7fb;border:1px solid #dce7f2;border-radius:10px;padding:2px 6px;margin:1px 3px 2px 0}.v2342-muted{font-size:8.5px;color:#8293a8}.v2342-list{margin:2px 0 0 14px;padding:0;color:#355979;font-size:8.8px;line-height:1.35}.v2342-foot{border-top:1px solid #e6edf5;margin-top:11px;padding-top:9px;display:flex;gap:18px;font-size:8px;color:#71869f}
         </style>""",unsafe_allow_html=True)
-        st.markdown(f"""<div class="v2342-card">
-          <div class="v2342-head"><div><div class="v2342-title">◎ Company Intelligence</div><div class="v2342-sub">What changed — why it matters — what to monitor next</div></div><span class="v2342-badge">{_v2342_badge}</span></div>
-          <div class="v2342-grid">
-            <div class="v2342-section"><div class="v2342-label">WHAT CHANGED</div><div class="v2342-text">{html.escape(_v2342_changed)}</div><div class="v2342-label" style="margin-top:8px">AFFECTED KPI</div>{_v2342_kpi_html}</div>
-            <div class="v2342-section v2342-rule"><div class="v2342-label">WHY IT MATTERS</div><div class="v2342-text">{html.escape(_v2342_why)}</div><div class="v2342-label" style="margin-top:8px">WHAT TO WATCH NEXT</div><ul class="v2342-list">{_v2342_watch_html}</ul></div>
-            <div class="v2342-section v2342-rule"><div class="v2342-label">THESIS IMPACT</div><div class="v2342-text">{html.escape(_v2342_thesis.title())}</div><div class="v2342-label" style="margin-top:8px">WHAT WOULD CHANGE THE THESIS?</div><ul class="v2342-list">{_v2342_change_html}</ul></div>
-          </div>
-          <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
-        </div>""",unsafe_allow_html=True)
-        # V23.7.8 — native Streamlit navigation, scoped to the active ticker.
-        # A real button (not an HTML anchor) preserves the existing CC router.
+        # V23.7.10: Keep the native navigation control within the visual card.
+        # The keyed Streamlit container anchors the button to the card footer.
         st.markdown("""<style>
-        [class*="st-key-v2378_intelligence_news_"] {
-            display:flex!important;justify-content:flex-end!important;
-            margin-top:-6px!important;margin-bottom:8px!important;
+        [class*="st-key-v23710_intelligence_card_"] {position:relative!important}
+        [class*="st-key-v23710_intelligence_card_"] .v2342-foot {
+            padding-right:190px!important;flex-wrap:wrap!important;row-gap:4px!important;
+            min-height:30px!important;align-items:center!important;
         }
-        [class*="st-key-v2378_intelligence_news_"] button {
+        [class*="st-key-v23710_intelligence_card_"] [class*="st-key-v23710_news_link_"] {
+            position:absolute!important;right:15px!important;bottom:13px!important;
+            z-index:2!important;width:auto!important;margin:0!important;padding:0!important;
+        }
+        [class*="st-key-v23710_news_link_"] button {
             width:auto!important;min-height:25px!important;height:25px!important;
             padding:0 3px!important;border:0!important;background:transparent!important;
             box-shadow:none!important;color:#1765ae!important;font-size:11px!important;
             font-weight:800!important;white-space:nowrap!important;
         }
-        [class*="st-key-v2378_intelligence_news_"] button:hover {
+        [class*="st-key-v23710_news_link_"] button:hover {
             color:#0c477f!important;text-decoration:underline!important;
         }
-        </style>""", unsafe_allow_html=True)
-        with st.container(key=f"v2378_intelligence_news_{ticker}"):
-            _v2378_left, _v2378_right = st.columns([5, 1.3], gap="small")
-            with _v2378_right:
-                if st.button("View News & Events →", key=f"v2378_nav_intelligence_news_{ticker}",
-                             use_container_width=False):
+        </style>""",unsafe_allow_html=True)
+        with st.container(key=f"v23710_intelligence_card_{ticker}"):
+            st.markdown(f"""<div class="v2342-card">
+              <div class="v2342-head"><div><div class="v2342-title">◎ Company Intelligence</div><div class="v2342-sub">What changed — why it matters — what to monitor next</div></div><span class="v2342-badge">{_v2342_badge}</span></div>
+              <div class="v2342-grid">
+                <div class="v2342-section"><div class="v2342-label">WHAT CHANGED</div><div class="v2342-text">{html.escape(_v2342_changed)}</div><div class="v2342-label" style="margin-top:8px">AFFECTED KPI</div>{_v2342_kpi_html}</div>
+                <div class="v2342-section v2342-rule"><div class="v2342-label">WHY IT MATTERS</div><div class="v2342-text">{html.escape(_v2342_why)}</div><div class="v2342-label" style="margin-top:8px">WHAT TO WATCH NEXT</div><ul class="v2342-list">{_v2342_watch_html}</ul></div>
+                <div class="v2342-section v2342-rule"><div class="v2342-label">THESIS IMPACT</div><div class="v2342-text">{html.escape(_v2342_thesis.title())}</div><div class="v2342-label" style="margin-top:8px">WHAT WOULD CHANGE THE THESIS?</div><ul class="v2342-list">{_v2342_change_html}</ul></div>
+              </div>
+              <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
+            </div>""",unsafe_allow_html=True)
+            with st.container(key=f"v23710_news_link_{ticker}"):
+                if st.button("View News & Events →", key=f"v23710_nav_intelligence_news_{ticker}"):
                     _chr_set_cc_sub_v2111("News & Events")
                     st.rerun()
 
