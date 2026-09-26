@@ -8191,6 +8191,10 @@ elif page=="Company Command Centre":
 [class*="st-key-v21310_ann_card_"]{min-height:168px!important;padding:7px 10px 8px!important;overflow:visible!important;background:#fff!important;}
 [class*="st-key-v21310_ann_card_"]>div,[class*="st-key-v21310_ann_card_"] [data-testid="stVerticalBlock"]{background:#fff!important;}
 [class*="st-key-v21310_ann_card_"] [class*="st-key-v21310_nav_ann_"] button{width:auto!important;min-height:25px!important;height:25px!important;padding:0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#0067e8!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important;}
+/* V23.7.9.1 — footer link, scoped to announcements only. */
+[class*="st-key-v21310_ann_card_"]{position:relative!important;padding-bottom:48px!important;}
+[class*="st-key-v21310_ann_card_"] .v21310-ann-source{padding-right:100px!important;}
+[class*="st-key-v21310_ann_card_"] [class*="st-key-v21310_nav_ann_"]{position:absolute!important;right:12px!important;bottom:9px!important;z-index:2!important;}
 </style>''',unsafe_allow_html=True)
 
         # V21.2.90 — Company Intelligence & Decision Monitoring Reference Cards.
@@ -8432,14 +8436,12 @@ elif page=="Company Command Centre":
                 # V21.3.10 — self-contained reference header; no page-level/absolute positioning.
                 _body09=_body.replace('v21290-row','v21310-ann-row').replace('v21290-empty','v21310-ann-empty')
                 with st.container(border=True,key=f"v21310_ann_card_{ticker}"):
-                    _ann_h1,_ann_h2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
-                    with _ann_h1:
-                        st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
-                    with _ann_h2:
-                        if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
-                            _chr_set_cc_sub_v2111("Announcements & Reports")
-                            st.rerun()
+                    st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
                     st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_coverage or _v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
+                    # V23.7.9.1: footer navigation retains the active ticker.
+                    if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
+                        _chr_set_cc_sub_v2111("Announcements & Reports")
+                        st.rerun()
             with _m2:
                 _rows=[]
                 if _news is not None and not _news.empty:
