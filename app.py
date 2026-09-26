@@ -4024,16 +4024,34 @@ def _chr_header_market_order_v2321():
 
 @st.cache_data(ttl=60,show_spinner=False)
 def _chr_header_quote_v2321(code):
+    """Latest provider observation; exchange-live status is not guaranteed."""
+    from datetime import datetime, timezone
     name,ticker,flag=_CHR_HEADER_INDEX_V2321[code]
+    result={"name":name,"flag":flag,"price":None,"pct":None,"asof":"Unknown",
+            "status":"Unavailable","checked":datetime.now(timezone.utc).strftime("%H:%M UTC")}
     try:
-        h=yf.Ticker(ticker).history(period="2d",interval="1d",auto_adjust=False)
-        closes=pd.to_numeric(h["Close"],errors="coerce").dropna() if h is not None and not h.empty and "Close" in h.columns else pd.Series(dtype=float)
-        if closes.empty: return {"name":name,"flag":flag,"price":None,"pct":None}
-        price=float(closes.iloc[-1]); pct=None
-        if len(closes)>=2 and float(closes.iloc[-2])!=0: pct=(price/float(closes.iloc[-2])-1)*100
-        return {"name":name,"flag":flag,"price":price,"pct":pct}
+        asset=yf.Ticker(ticker)
+        intraday=asset.history(period="2d",interval="1m",auto_adjust=False)
+        daily=asset.history(period="5d",interval="1d",auto_adjust=False)
+        d=pd.to_numeric(daily["Close"],errors="coerce").dropna() if daily is not None and not daily.empty and "Close" in daily.columns else pd.Series(dtype=float)
+        m=pd.to_numeric(intraday["Close"],errors="coerce").dropna() if intraday is not None and not intraday.empty and "Close" in intraday.columns else pd.Series(dtype=float)
+        if not m.empty:
+            result["price"]=float(m.iloc[-1])
+            stamp=m.index[-1]
+            if getattr(stamp,"tzinfo",None) is not None:
+                result["asof"]=stamp.tz_convert("UTC").strftime("%d %b %H:%M UTC")
+            result["status"]="Provider quote · delay unverified"
+            if len(d)>=2:
+                previous=float(d.iloc[-2] if d.index[-1].date()>=stamp.date() else d.iloc[-1])
+                if previous: result["pct"]=(result["price"]/previous-1)*100
+        elif not d.empty:
+            result["price"]=float(d.iloc[-1])
+            if len(d)>=2 and float(d.iloc[-2]): result["pct"]=(result["price"]/float(d.iloc[-2])-1)*100
+            result["asof"]=str(d.index[-1].date())
+            result["status"]="Daily close · intraday unavailable"
     except Exception:
-        return {"name":name,"flag":flag,"price":None,"pct":None}
+        result["status"]="Quote unavailable"
+    return result
 
 def _chr_render_header_ribbon_v2321():
     cells=[]
@@ -4094,18 +4112,18 @@ def _chr_set_auth_route_v230032(target):
 st.markdown(r"""<style>
 .st-key-v2322_market_strip{margin-top:-7px!important;margin-bottom:8px!important;padding:0!important}
 .st-key-v2322_market_strip [data-testid="stHorizontalBlock"]{gap:0!important;align-items:center!important}
-.st-key-v2322_market_strip [data-testid="column"]{border-right:1px solid #d9e3ed;min-height:58px!important}
+.st-key-v2322_market_strip [data-testid="column"]{border-right:1px solid #d9e3ed;min-height:66px!important}
 .st-key-v2322_market_strip [data-testid="column"]:nth-last-child(-n+2){border-right:0}
 .st-key-v2322_market_strip .stMarkdown{margin:0!important}
 .st-key-v2322_market_strip p{margin:0!important}
 .st-key-v2322_market_strip .stButton>button{height:28px!important;min-height:28px!important;margin-top:13px!important;
  border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;font-size:12px!important;font-weight:700!important;padding:0 5px!important;color:#174f86!important}
-.chr-v2322-index{padding:7px 12px 5px;min-height:54px;line-height:1.06;white-space:nowrap;overflow:hidden}
+.chr-v2322-index{padding:5px 12px 4px;min-height:66px;line-height:1.06;white-space:nowrap;overflow:hidden}
 .chr-v2322-index-name{font-size:11px;font-weight:750;color:#38536d;overflow:hidden;text-overflow:ellipsis}
 .chr-v2322-index-price{font-size:17px;font-weight:800;color:#102b46;margin-top:4px;font-variant-numeric:tabular-nums}
 .chr-v2322-index-up{font-size:10px;font-weight:750;color:#00a86b;margin-top:3px}
 .chr-v2322-index-down{font-size:10px;font-weight:750;color:#ef4444;margin-top:3px}
-.chr-v2322-index-flat{font-size:10px;font-weight:750;color:#8294a6;margin-top:3px}
+.chr-v2322-index-flat{font-size:10px;font-weight:750;color:#8294a6;margin-top:3px}.chr-v2322-index-asof{font-size:8px;color:#74879b;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-key-v2322_market_strip .stButton>button:hover{color:#0878e8!important;text-decoration:underline!important;background:transparent!important;border:0!important}
 .st-key-v2322_market_strip [data-testid="column"]:nth-last-child(2){position:relative!important;padding-left:8px!important}
 .st-key-v2322_market_strip [data-testid="column"]:nth-last-child(2)::after{content:"|";position:absolute;right:-3px;top:18px;color:#aebdcb;font-size:14px;font-weight:400}
@@ -4123,21 +4141,26 @@ def _chr_native_index_cell_v2322(code):
         move,cls=f'▲ +{q["pct"]:.2f}%',"chr-v2322-index-up"
     else:
         move,cls=f'▼ {q["pct"]:.2f}%',"chr-v2322-index-down"
-    st.markdown(f'<div class="chr-v2322-index"><div class="chr-v2322-index-name">{q["flag"]} {q["name"]}</div><div class="chr-v2322-index-price">{price}</div><div class="{cls}">{move}</div></div>',unsafe_allow_html=True)
+    st.markdown(f'<div class="chr-v2322-index" title="{q["status"]} | Quote: {q["asof"]} | Checked: {q["checked"]}"><div class="chr-v2322-index-name">{q["flag"]} {q["name"]}</div><div class="chr-v2322-index-price">{price}</div><div class="{cls}">{move}</div><div class="chr-v2322-index-asof">{q["asof"]} · {q["status"]}</div></div>',unsafe_allow_html=True)
 
-with st.container(key="v2322_market_strip"):
-    _v2322_codes=_chr_header_market_order_v2321()
-    _m1,_m2,_m3,_m4,_m5,_signin,_register=st.columns([1.3,1.3,1.3,1.3,1.3,1.0,1.05],gap="small")
-    for _col,_code in zip((_m1,_m2,_m3,_m4,_m5),_v2322_codes):
-        with _col:
-            _chr_native_index_cell_v2322(_code)
-    with _signin:
-        st.button("Sign in",key="v2322_signin",type="secondary",use_container_width=True,
-                  on_click=_chr_set_auth_route_v230032,args=("Sign In",))
-    with _register:
-        st.button("Register",key="v2322_register",type="primary",use_container_width=True,
-                  on_click=_chr_set_auth_route_v230032,args=("Register",))
+@st.fragment(run_every="60s")
+def _chr_render_market_strip_v2376():
+    """Refresh only the ribbon, not the full application."""
+    with st.container(key="v2322_market_strip"):
+        _v2322_codes=_chr_header_market_order_v2321()
+        _m1,_m2,_m3,_m4,_m5,_signin,_register=st.columns([1.3,1.3,1.3,1.3,1.3,1.0,1.05],gap="small")
+        for _col,_code in zip((_m1,_m2,_m3,_m4,_m5),_v2322_codes):
+            with _col:
+                _chr_native_index_cell_v2322(_code)
+        with _signin:
+            st.button("Sign in",key="v2322_signin",type="secondary",use_container_width=True,
+                      on_click=_chr_set_auth_route_v230032,args=("Sign In",))
+        with _register:
+            st.button("Register",key="v2322_register",type="primary",use_container_width=True,
+                      on_click=_chr_set_auth_route_v230032,args=("Register",))
+    
 
+_chr_render_market_strip_v2376()
 
 
 _PAGE_SUBTITLES={
