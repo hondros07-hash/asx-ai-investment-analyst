@@ -30,9 +30,8 @@ def render_about_us():
     @media(max-width:650px){.ax-about{padding:16px}.ax-about .section{padding:14px 0}.ax-about .card{padding:14px}}
     </style><div class="ax-about">
     <section class="hero"><div class="eyebrow" style="color:#a67520">Our story · Our purpose</div>
-    <h1>The Axía Story</h1><div class="greek">Αξία · Worth. Value. Merit.</div>
-    <p>Welcome to Axía. We are here to serve you.</p>
-    <p>Our name draws on the Greek words <em>axios</em> (ἄξιος), meaning worthy or deserving, and <em>axía</em> (αξία), meaning value. It reflects what we seek in financial research: a clearer understanding of intrinsic value.</p></section>
+    <h1>Welcome to Axía. We are here to serve you.</h1>
+    <p>The name Axía derives from the classical Greek word <em>axios</em> (ἄξιος), meaning worthy or deserving, and <em>axía</em> (αξία), meaning value.<br>It reflects what we seek in financial research: a clearer understanding of intrinsic value.</p></section>
     <section class="section"><div class="eyebrow">Why we exist</div><h2>Clarity in a world of financial noise.</h2>
     <p>Axía was created to go beyond a generic market tracker or an AI summary of headlines. Investors face information overload, inconsistent data and models whose assumptions are difficult to inspect. We aim to bring the evidence together in one calm, coherent research workspace.</p>
     <p>Our philosophy brings Greek cultural values together with disciplined financial analysis, transparent calculations and technology designed to support independent judgement.</p></section>
