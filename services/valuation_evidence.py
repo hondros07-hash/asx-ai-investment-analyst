@@ -55,7 +55,8 @@ def recover_financial_inputs(meta: Mapping[str,Any], cashflow: Optional[pd.DataF
                              income_statement: Optional[pd.DataFrame]=None) -> Dict[str,Any]:
     """Metadata → statements → deterministic derivation. Never invents missing inputs."""
     meta=meta or {}; audit={"inputs":{},"ai_calculated":False,"calculation":"deterministic_python"}
-    fcf=_num(meta.get("freeCashflow") or meta.get("freeCashFlow"))
+    fcf=_num(meta.get("freeCashflow"))
+    if fcf is None:fcf=_num(meta.get("freeCashFlow"))
     if fcf is not None:
         audit["inputs"]["fcf"]={"status":"verified","source":"provider_metadata","value":fcf}
     else:
@@ -97,7 +98,7 @@ def recover_financial_inputs(meta: Mapping[str,Any], cashflow: Optional[pd.DataF
     audit["inputs"]["financial_currency"]={"status":"verified" if fc else "missing","source":"provider_metadata" if fc else None,"value":fc}
     audit["inputs"]["listing_currency"]={"status":"verified" if lc else "missing","source":"provider_metadata" if lc else None,"value":lc}
     audit["complete_for_dcf"]=fcf is not None and fcf>0 and shares is not None and shares>0
-    return {"fcf":fcf,"shares":shares,"cash":cash or 0.0,"debt":debt or 0.0,
+    return {"fcf":fcf,"shares":shares,"cash":cash,"debt":debt,
             "financial_currency":fc,"listing_currency":lc,
             "sector":meta.get("sector") or meta.get("sectorDisp") or "",
             "industry":meta.get("industry") or meta.get("industryDisp") or "","audit":audit}
@@ -160,38 +161,54 @@ def _dated_values(row):
     return out
 
 def _fcf_from_statement(frame, quarterly=False):
-    """Use direct FCF or matched OCF/capex dates, never mix reporting periods."""
+    """Period-matched FCF; quarterly provider can contain 3m or 6m observations."""
     direct,label=_row(frame,("Free Cash Flow","FreeCashFlow"))
     if direct is not None:
         values=_dated_values(direct)
         if quarterly:
-            result=_four_quarter_sum(values)
-            if result is not None:return result,{"source":"quarterly_cash_flow","row":label,"period":"TTM: four consecutive quarters"}
+            total,kind=_trailing_period_sum(values)
+            if total is not None:return total,{"source":"interim_cash_flow","row":label,"period":kind}
         elif values:
-            dt=max(values)
-            return values[dt],{"source":"annual_cash_flow","row":label,"period":str(dt.date())}
+            dt=max(values);return values[dt],{"source":"annual_cash_flow","row":label,"period":str(dt.date())}
     ocf,orow=_row(frame,ALIASES["operating_cash_flow"])
     cap,crow=_row(frame,ALIASES["capex"])
     if ocf is None or cap is None:return None,None
     o=_dated_values(ocf);c=_dated_values(cap)
     paired={dt:o[dt]+c[dt] if c[dt]<0 else o[dt]-c[dt] for dt in o.keys()&c.keys()}
     if quarterly:
-        value=_four_quarter_sum(paired)
-        if value is None:return None,None
-        return value,{"source":"quarterly_cash_flow","rows":[orow,crow],"period":"TTM: four consecutive matched quarters"}
-    if paired:
-        dt=max(paired)
-        return paired[dt],{"source":"annual_cash_flow","rows":[orow,crow],"period":str(dt.date())}
+        total,kind=_trailing_period_sum(paired)
+        if total is not None:return total,{"source":"interim_cash_flow","rows":[orow,crow],"period":kind}
+    elif paired:
+        dt=max(paired);return paired[dt],{"source":"annual_cash_flow","rows":[orow,crow],"period":str(dt.date())}
+    return None,None
+
+def _trailing_period_sum(values):
+    dates=sorted(values,reverse=True)
+    if len(dates)>=4:
+        latest=dates[:4];gaps=[(latest[i]-latest[i+1]).days for i in range(3)]
+        if all(65<=g<=120 for g in gaps):return sum(values[d] for d in latest),"TTM: four consecutive quarters"
+    if len(dates)>=2:
+        a,b=dates[:2];gap=(a-b).days
+        if 150<=gap<=215:return values[a]+values[b],"TTM: two consecutive half-years"
     return None,None
 
 def _four_quarter_sum(values):
-    dates=sorted(values,reverse=True)
-    if len(dates)<4:return None
-    latest=dates[:4]
-    # A genuine four-quarter sequence spans about nine months and has no missing quarter.
-    gaps=[(latest[i]-latest[i+1]).days for i in range(3)]
-    if not all(65<=gap<=120 for gap in gaps):return None
-    return sum(values[d] for d in latest)
+    total,kind=_trailing_period_sum(values)
+    return total if kind=="TTM: four consecutive quarters" else None
+
+def _fcf_ttm_annual_bridge(annual_cf,interim_cf):
+    """FY + current YTD - prior-year matching YTD, only for explicit interim periods."""
+    annual,_=_row(annual_cf,("Free Cash Flow","FreeCashFlow"))
+    interim,_=_row(interim_cf,("Free Cash Flow","FreeCashFlow"))
+    if annual is None or interim is None:return None,None
+    av=_dated_values(annual);iv=_dated_values(interim)
+    if not av or len(iv)<2:return None,None
+    fy=max(av);recent=max(iv)
+    if not 30<=(recent-fy).days<=330:return None,None
+    previous=[d for d in iv if 330<=(recent-d).days<=400]
+    if not previous:return None,None
+    prior=max(previous)
+    return av[fy]+iv[recent]-iv[prior],{"source":"annual_plus_interim_bridge","period":f"FY {fy.date()} + YTD {recent.date()} - YTD {prior.date()}"}
 
 def recover_financial_inputs_v2362(meta, annual_cf=None, quarterly_cf=None, annual_bs=None,
                                    quarterly_bs=None, annual_inc=None, quarterly_inc=None):
@@ -202,6 +219,7 @@ def recover_financial_inputs_v2362(meta, annual_cf=None, quarterly_cf=None, annu
     audit=recovered["audit"]
     if _num(meta.get("freeCashflow")) is None and _num(meta.get("freeCashFlow")) is None:
         val,prov=_fcf_from_statement(quarterly_cf,quarterly=True)
+        if val is None:val,prov=_fcf_ttm_annual_bridge(annual_cf,quarterly_cf)
         if val is None:val,prov=_fcf_from_statement(annual_cf,quarterly=False)
         if val is not None:
             recovered["fcf"]=val

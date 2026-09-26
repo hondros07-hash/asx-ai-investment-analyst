@@ -13,7 +13,7 @@ def n(v):
  except:return None
 def methodology_for(s="",i=""):
  x=f"{s} {i}".lower()
- if any(k in x for k in ("financial","bank","insurance","reit","real estate")):return "unsupported"
+ if any(k in x for k in ("financial","bank","insurance","reit","real estate","credit services","consumer lending","buy now pay later")):return "unsupported"
  if any(k in x for k in ("technology","software","semiconductor","internet")):return "technology"
  if any(k in x for k in ("consumer","retail","apparel","footwear","restaurant")):return "consumer"
  if any(k in x for k in ("industrial","airline","transport","aerospace","machinery")):return "industrial"

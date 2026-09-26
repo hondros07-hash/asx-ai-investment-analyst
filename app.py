@@ -2198,8 +2198,10 @@ def _compact_valuation_blocker(audit, fallback="Evidence required"):
     inputs=audit.get("inputs",{}) if isinstance(audit.get("inputs",{}),dict) else {}
     fcf=inputs.get("fcf",{}) if isinstance(inputs.get("fcf",{}),dict) else {}
     shares=inputs.get("shares",{}) if isinstance(inputs.get("shares",{}),dict) else {}
-    if fcf.get("status")=="missing" or not (audit.get("eligibility_checks",{}) or {}).get("positive_fcf",False):
-        return "FCF unavailable"
+    if fcf.get("status")=="missing":
+        return "FCF not reported"
+    if fcf.get("status") in ("verified","derived") and not (audit.get("eligibility_checks",{}) or {}).get("positive_fcf",False):
+        return "FCF non-positive"
     if shares.get("status")=="missing" or not (audit.get("eligibility_checks",{}) or {}).get("shares_available",False):
         return "Shares unavailable"
     if not (audit.get("eligibility_checks",{}) or {}).get("currency_aligned",False):
@@ -2282,7 +2284,7 @@ def valuation_pipeline(ticker,price):
     }
     audit["eligibility_checks"]=checks
     blockers=[]
-    if not checks["positive_fcf"]: blockers.append("Positive Free Cash Flow unavailable")
+    if not checks["positive_fcf"]: blockers.append("Free cash flow not reported" if audit.get("inputs",{}).get("fcf",{}).get("status")=="missing" else "Reported free cash flow is non-positive")
     if not checks["shares_available"]: blockers.append("Shares outstanding unavailable")
     if not checks["currency_aligned"]: blockers.append("Currency pair/FX unavailable")
     if result.get("status")!="success" and result.get("reason"): blockers.append(str(result.get("reason")))
