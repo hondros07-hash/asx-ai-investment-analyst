@@ -14,7 +14,7 @@ from fastapi import FastAPI,HTTPException,Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,ConfigDict
-from api_gateway import scorecard_for_ticker,valuation_for_ticker,valuation_summary_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker,forecast_summary_for_ticker
+from api_gateway import scorecard_for_ticker,valuation_for_ticker,valuation_summary_for_ticker,technicals_for_ticker,consensus_for_ticker,forecast_for_ticker
 from services.brief_engine import generate_research_brief
 from services.dividend_api import dividend_calendar_payload
 
@@ -79,9 +79,6 @@ async def valuation_summary(ticker:str=Query(...)):
 async def technicals(ticker:str=Query(...)):return await _run(ticker,technicals_for_ticker,"Technicals")
 @app.get("/api/v1/widget/consensus",response_model=APIResponse)
 async def consensus(ticker:str=Query(...)):return await _run(ticker,consensus_for_ticker,"Consensus")
-@app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
-async def forecast_summary(ticker:str=Query(...)):return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
-
 @app.get("/api/v1/widget/forecast",response_model=APIResponse)
 async def forecast(ticker:str=Query(...)):return await _run(ticker,forecast_for_ticker,"Forecast")
 @app.get("/api/v1/widget/research-brief",response_model=ResearchBriefData)

@@ -48,7 +48,7 @@ export default function DashboardRouter(){
  return <div className="min-h-screen bg-[#f4f7fb] text-[#082b55]">
   <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
    <div className="mx-auto flex max-w-[1800px] items-center justify-between px-5 py-3">
-    <button onClick={()=>navigate("search")} onMouseEnter={()=>warmTicker(ticker)} className="text-xl font-bold tracking-wide">CHRÍMATA</button>
+    <button onClick={()=>navigate("search")} onMouseEnter={()=>warmTicker(ticker)} className="text-xl font-bold tracking-wide">AXÍA</button>
     <nav className="flex gap-2 text-sm">
      <button onClick={()=>navigate("search")} className="rounded-lg px-3 py-2 hover:bg-slate-100">Search</button>
      <button onMouseEnter={()=>warmTicker(ticker)} onClick={()=>navigate("command_centre")} className="rounded-lg px-3 py-2 hover:bg-slate-100">Command Centre</button>

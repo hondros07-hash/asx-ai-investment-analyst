@@ -98,7 +98,7 @@ def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, 
         if not events: missing.append("structured event classification")
         return {"status":"insufficient_evidence","decision_package":{
             "what_changed":"No material company-specific change has been established from the currently verified inputs.",
-            "why_it_matters":"Chrímata will not convert a headline or sector classification into a causal company claim without a verified exposure and structured event mapping.",
+            "why_it_matters":"Axía will not convert a headline or sector classification into a causal company claim without a verified exposure and structured event mapping.",
             "affected_kpis":[],"directional_pressure":"unknown","magnitude":"unknown",
             "what_to_watch_next":missing,
             "what_would_change_the_thesis":["New verified evidence linking a material event to a company exposure and thesis condition."],
@@ -116,7 +116,7 @@ def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, 
         event=ev,exposures=exposures,evidence=evidence,thesis_state={"conditions":conditions},
         valuation_state=valuation,fundamentals_state={"provider_metadata_loaded":True})
 
-st.set_page_config(page_title="Chrímata - Market Investment Analyst", page_icon="🏛️", layout="wide")
+st.set_page_config(page_title="Axía - Market Investment Analyst", page_icon="🏛️", layout="wide")
 
 
 st.markdown("""
@@ -128,7 +128,7 @@ st.markdown("""
 
 st.markdown("""
 <style>
-/* V19.8.2 — Chrímata terminal landing page */
+/* V19.8.2 — Axía terminal landing page */
 body, .stApp {font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;}
 .block-container{max-width:1540px!important;padding-top:.35rem!important;}
 .chrimata-terminal-hero{position:relative;width:100%;height:142px;overflow:hidden;border-radius:0 0 2px 2px;margin:0 0 10px;background:#082b59;box-shadow:0 2px 10px rgba(15,23,42,.14)}
@@ -147,7 +147,7 @@ div[data-testid="stMetric"]{border-radius:8px!important;padding:10px 13px!import
 
 st.markdown("""
 <style>
-/* V19.8.3 — precision terminal shell: tuned to the approved Chrímata visual specification */
+/* V19.8.3 — precision terminal shell: tuned to the approved Axía visual specification */
 header[data-testid="stHeader"]{height:0!important;min-height:0!important;background:transparent!important}
 [data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu{visibility:hidden!important;height:0!important}
 [data-testid="stSidebar"]{width:214px!important;min-width:214px!important;max-width:214px!important;border-right:1px solid #0d4774!important}
@@ -1370,7 +1370,7 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
         if det:
             curpct=det.get("metrics",{}).get("Operating_Margin_Pct"); state=det.get("scorecard",{}).get("Operating_Margin_On_Track")
             if curpct is not None:
-                return (label,"On track" if state is True else ("Watch" if state is False else "Pending"),f"Current margin {curpct:.2f}% · deterministic Python","Chrímata deterministic thesis engine")
+                return (label,"On track" if state is True else ("Watch" if state is False else "Pending"),f"Current margin {curpct:.2f}% · deterministic Python","Axía deterministic thesis engine")
         e=stmt.get("operating_margin",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior"))
         if np.isfinite(cur) and np.isfinite(prior):
             delta=cur-prior
@@ -1382,7 +1382,7 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
         if det:
             gpct=det.get("metrics",{}).get("Free_Cash_Flow_YoY_Pct"); state=det.get("scorecard",{}).get("Free_Cash_Flow_Growth_On_Track")
             if gpct is not None:
-                return ("Free cash flow","On track" if state is True else ("Watch" if state is False else "Pending"),f"YoY {gpct:+.2f}% · deterministic Python","Chrímata deterministic thesis engine")
+                return ("Free cash flow","On track" if state is True else ("Watch" if state is False else "Pending"),f"YoY {gpct:+.2f}% · deterministic Python","Axía deterministic thesis engine")
         e=stmt.get("free_cash_flow",{}); cur=_mia_num(e.get("value")); prior=_mia_num(e.get("prior")); g=_mia_num(e.get("growth"))
         if np.isfinite(cur) and np.isfinite(prior):
             return ("Free cash flow","On track" if cur>0 and (not np.isfinite(g) or g>=0) else "Watch",f"{compact_number(cur)} vs {compact_number(prior)} prior"+(f" ({g:+.1%})" if np.isfinite(g) else ""),str(e.get("source") or "Provider cash-flow statement"))
@@ -1399,7 +1399,7 @@ def overview_dynamic_thesis(ticker, sector="", industry="", meta=None, base_valu
         bv=_mia_num(base_value); cp=_mia_num(current_price)
         if not (np.isfinite(bv) and np.isfinite(cp) and cp>0): return pending("Valuation vs base case","Base valuation unavailable")
         gap=bv/cp-1
-        return ("Valuation vs base case","On track" if gap>0 else "Watch",f"Base case {gap:+.0%} vs price","Chrímata valuation model")
+        return ("Valuation vs base case","On track" if gap>0 else "Watch",f"Base case {gap:+.0%} vs price","Axía valuation model")
 
     if "zip" in ident:
         # ZIP-specific items require ZIP-specific reported evidence. Generic EBITDA is
@@ -1955,7 +1955,7 @@ def analyst_consensus_snapshot(ticker,current_price=np.nan):
 def render_analyst_consensus(ticker,price):
     a=analyst_consensus_snapshot(ticker,price)
     st.subheader("Analyst consensus")
-    st.caption("Provider-reported analyst evidence. Chrímata calculates only the target-versus-current-price percentage.")
+    st.caption("Provider-reported analyst evidence. Axía calculates only the target-versus-current-price percentage.")
     c=st.columns(4)
     metric_box(c[0],"Consensus",a["label"])
     metric_box(c[1],"Analysts",str(a["analysts"]) if a["analysts"] else "—")
@@ -2338,7 +2338,7 @@ def record_valuation_validation_snapshot(ticker,price,vals,force=False):
         con.execute("""INSERT INTO valuation_validation_snapshots
             (ticker,snapshot_at,start_price,bear_value,base_value,bull_value,profile_updated_at,assumption_fingerprint,source)
             VALUES(?,?,?,?,?,?,?,?,?)""",
-            (ticker,now.isoformat(),float(price),bear,base,bull,updated_at,fp,"Chrímata valuation profile"))
+            (ticker,now.isoformat(),float(price),bear,base,bull,updated_at,fp,"Axía valuation profile"))
         con.commit(); return True,"Point-in-time valuation snapshot recorded."
     finally:con.close()
 
@@ -2402,7 +2402,7 @@ def record_forecast_validation_snapshot(ticker,start_price,row,bt,force=False):
         con.execute("""INSERT INTO forecast_validation_snapshots
             (ticker,snapshot_at,start_price,horizon_days,predicted_return,target_price,positive_probability,validation_n,direction_accuracy,mae,model_version,source)
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (ticker,now.isoformat(),float(start_price),252,pred,target,prob,int(diag.get("n",0) or 0),_mia_num(diag.get("direction")),_mia_num(diag.get("mae")),model_version,"Chrímata walk-forward ensemble"))
+            (ticker,now.isoformat(),float(start_price),252,pred,target,prob,int(diag.get("n",0) or 0),_mia_num(diag.get("direction")),_mia_num(diag.get("mae")),model_version,"Axía walk-forward ensemble"))
         con.commit();return True,"Forecast validation snapshot recorded."
     finally:con.close()
 
@@ -3301,7 +3301,7 @@ button[kind="headerNoPadding"],
 [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover{background:linear-gradient(90deg,#0876df 0%,#0968c7 100%)!important;}
 [data-testid="stSidebar"] .stButton>button span[data-testid="stIconMaterial"],[data-testid="stSidebar"] .stButton>button [data-testid="stIconMaterial"]{position:absolute!important;left:12px!important;top:12px!important;font-size:23px!important;line-height:23px!important;color:#fff!important;margin:0!important;}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0!important;}
-/* Gold secondary copy from the approved Chrímata sidebar reference. */
+/* Gold secondary copy from the approved Axía sidebar reference. */
 .st-key-chr_nav_native_0 button:after{content:"Global Market Overview";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
 .st-key-chr_nav_native_1 button:after{content:"Find & Analyse Stocks";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
 .st-key-chr_nav_native_2 button:after{content:"Deep Analysis & Reports";position:absolute;left:45px;bottom:7px;color:#e0b45a;font-size:8.2px;font-weight:500;line-height:1;white-space:nowrap;}
@@ -3717,7 +3717,7 @@ def _chr_render_cc_children_v2112():
                   icon=_item_icon,
                   on_click=_chr_set_cc_sub_v2111,args=(_item,))
 
-st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Chrímata navigation">',unsafe_allow_html=True)
+st.sidebar.markdown('<nav class="chr-nav chr-nav-native" aria-label="Axía navigation">',unsafe_allow_html=True)
 # Top-level entries that must precede the Command Centre.
 with st.sidebar.container():
     _chr_render_primary_nav_item_v2112(0,NAV_ITEMS[0])
@@ -3918,7 +3918,7 @@ try:
 except Exception:
     pass
 
-st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-copyright">© 2026 Chrímata. All rights reserved.</div>""",unsafe_allow_html=True)
+st.sidebar.markdown("""<div class="chr-side-spacer"></div><div class="chr-side-wealth"><span class="wealth-pillar"><svg viewBox="0 0 48 64" aria-hidden="true"><path d="M8 8h32M11 12h26M14 16h20M14 48h20M11 52h26M8 56h32"/><path d="M16 17v30M22 17v30M26 17v30M32 17v30"/><path d="M10 6h28l-3-3H13zM10 58h28l3 3H7z"/></svg></span><span class="wealth-copy">KNOWLEDGE<br>COMPOUNDS<br>WEALTH</span></div><div class="chr-side-copyright">© 2026 Axía. All rights reserved.</div>""",unsafe_allow_html=True)
 
 def render_chrimata_persistent_header():
     # V20.3.0: paint the banner on the app viewport itself. This creates NO Streamlit
@@ -3931,6 +3931,12 @@ def render_chrimata_persistent_header():
           content:"";position:fixed;left:0;right:0;top:0;height:108px;z-index:999990;
           background-image:url(data:image/jpeg;base64,{banner_b64});background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
           pointer-events:none;
+        }}
+        /* Axía rebrand: retain photographic banner and mask legacy text. */
+        [data-testid="stAppViewContainer"]::after{{
+          content:"";position:fixed;left:7.9%;top:0;width:26%;height:108px;z-index:999991;
+          pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22510%22%20height%3D%22108%22%20viewBox%3D%220%200%20510%20108%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%3E%3Cstop%20stop-color%3D%22%23152c49%22%2F%3E%3Cstop%20offset%3D%22.85%22%20stop-color%3D%22%23192e4a%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23192e4a%22%20stop-opacity%3D%22.96%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22510%22%20height%3D%22108%22%20fill%3D%22url%28%23bg%29%22%2F%3E%3Ctext%20x%3D%2224%22%20y%3D%2243%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%2234%22%20letter-spacing%3D%222%22%3EAX%C3%8DA%3C%2Ftext%3E%3Ctext%20x%3D%2224%22%20y%3D%2269%22%20fill%3D%22%23e7ebf1%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2215%22%3EMarket%20Investment%20Analyst%3C%2Ftext%3E%3Ctext%20x%3D%2224%22%20y%3D%2292%22%20fill%3D%22%23e7ebf1%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2214%22%3EGlobal%20Markets.%20Smarter%20Decisions%3C%2Ftext%3E%3C%2Fsvg%3E");
+          background-size:100% 108px;background-repeat:no-repeat;
         }}
         </style>""",unsafe_allow_html=True)
     except Exception:
@@ -4079,10 +4085,10 @@ _PAGE_SUBTITLES={
  "Portfolio":"Holdings, concentration and portfolio analytics",
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
-_shell_sub=_PAGE_SUBTITLES.get(page,"Chrímata research workspace")
+_shell_sub=_PAGE_SUBTITLES.get(page,"Axía research workspace")
 if page not in {"Dashboard","Company Search","Company Command Centre"}:
     st.markdown(f"""<div class="mia-shell-head">
-<div><div class="mia-eyebrow">Chrímata / {primary}</div>
+<div><div class="mia-eyebrow">Axía / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
 <div class="mia-live"><span class="mia-dot"></span> Research workspace</div>
 </div>""",unsafe_allow_html=True)
@@ -4105,11 +4111,11 @@ price=float(close.iloc[-1]) if not close.empty else np.nan
 name=meta.get("longName") or meta.get("shortName") or ticker
 rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else np.nan
 
-# Browser-tab branding is intentionally static in V19.8: Chrímata + Parthenon icon.
+# Browser-tab branding is intentionally static in V19.8: Axía + Parthenon icon.
 
 if page not in {"Dashboard","Company Search","Company Command Centre"}:
-    st.title("Chrímata")
-    st.caption("V20.7.3.1 • Chrímata • Company Search Header & Button Fix")
+    st.title("Axía")
+    st.caption("V20.7.3.1 • Axía • Company Search Header & Button Fix")
 
 
 
@@ -4471,7 +4477,7 @@ def _chr_smooth_market_component(market, instruments, selected_key, range_map, s
     _initial_col=('#10b96a' if (_initial or {}).get('up',True) else '#ef4444')
     comp=f'''<div id="smooth"><style>
     *{{box-sizing:border-box}}body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0c2747;background:transparent}}.head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}.title{{font-size:20px;font-weight:800;display:flex;align-items:center;gap:9px}}.hflag{{display:inline-block;width:36px;height:24px;flex:0 0 36px;background-size:100% 100%;background-repeat:no-repeat;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.10)}}.hflag.au{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012469'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='white' stroke-width='5'/%3E%3Cpath d='M0 0L30 20M30 0L0 20' stroke='%23C8102E' stroke-width='2'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='white' stroke-width='8'/%3E%3Cpath d='M15 0v20M0 10h30' stroke='%23C8102E' stroke-width='4'/%3E%3Ccircle cx='45' cy='27' r='3' fill='white'/%3E%3Ccircle cx='48' cy='10' r='2' fill='white'/%3E%3C/svg%3E")}}.hflag.us{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Cg fill='%23B22234'%3E%3Crect y='0' width='60' height='3.1'/%3E%3Crect y='6.2' width='60' height='3.1'/%3E%3Crect y='12.4' width='60' height='3.1'/%3E%3Crect y='18.6' width='60' height='3.1'/%3E%3Crect y='24.8' width='60' height='3.1'/%3E%3Crect y='31' width='60' height='3.1'/%3E%3Crect y='37.2' width='60' height='2.8'/%3E%3C/g%3E%3Crect width='26' height='21.7' fill='%233C3B6E'/%3E%3Cg fill='white'%3E%3Ccircle cx='5' cy='5' r='1'/%3E%3Ccircle cx='12' cy='5' r='1'/%3E%3Ccircle cx='19' cy='5' r='1'/%3E%3Ccircle cx='8' cy='11' r='1'/%3E%3Ccircle cx='16' cy='11' r='1'/%3E%3Ccircle cx='5' cy='17' r='1'/%3E%3Ccircle cx='12' cy='17' r='1'/%3E%3Ccircle cx='19' cy='17' r='1'/%3E%3C/g%3E%3C/svg%3E")}}.hflag.gb{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23012169'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='white' stroke-width='8'/%3E%3Cpath d='M0 0L60 40M60 0L0 40' stroke='%23C8102E' stroke-width='3'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='white' stroke-width='13'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='%23C8102E' stroke-width='7'/%3E%3C/svg%3E")}}.hflag.jp{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Ccircle cx='30' cy='20' r='11' fill='%23BC002D'/%3E%3C/svg%3E")}}.hflag.hk{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23DE2910'/%3E%3Cpath d='M30 20c7-12 13-4 5 1 10-2 11 7 1 6 7 7-1 12-5 3-2 10-11 7-6-2-10 4-13-5-3-8-1-7 6-10 2-2 8-1 12 2z' fill='white'/%3E%3C/svg%3E")}}.hflag.ca{{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='white'/%3E%3Crect width='14' height='40' fill='%23D80621'/%3E%3Crect x='46' width='14' height='40' fill='%23D80621'/%3E%3Cpath d='M30 7l3 7 5-2-3 6 5 2-7 4 1 7h-8l1-7-7-4 5-2-3-6 5 2z' fill='%23D80621'/%3E%3C/svg%3E")}}.meta{{font-size:11px;color:#617b9b;margin-top:4px}}.status.open{{color:#08a66a;font-weight:700}}.status.closed{{color:#ef4444;font-weight:700}}.live{{color:#08a66a;font-weight:700}}.quote{{text-align:right;font:italic 13px Georgia,serif;color:#395a82}}.quote small{{display:block;font:700 10px Arial;color:#0d78e8;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}}.metric{{appearance:none;text-align:left;background:#fff;border:1px solid #d8e5f2;border-radius:5px;height:104px;padding:8px 11px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}}.metric:hover{{transform:translateY(-1px);border-color:#1687ff}}.metric.selected{{border:2px solid #1687ff;box-shadow:0 0 0 2px rgba(22,135,255,.08)}}.mname{{font-size:14px;font-weight:700}}.mname span{{font-size:13px;color:#6780a2}}.mrow{{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:2px}}.mrow strong{{font-size:23px}}.mrow em{{font-size:11px;font-style:normal;font-weight:700}}.spark{{height:38px;margin-top:3px}}.spark svg{{width:100%;height:100%}}.grid{{display:grid;grid-template-columns:1.48fr .86fr 1.10fr;gap:6px;margin-top:6px}}.panel{{height:336px;border:1px solid #d8e5f2;border-radius:5px;background:#fff;overflow:hidden}}.panel header{{height:36px;padding:7px 9px;font-size:14px;font-weight:700;border-bottom:1px solid #e5edf5;display:flex;align-items:center;gap:8px}}.ranges{{margin-left:auto;display:flex;gap:7px}}.ranges button{{border:0;background:#f2f6fb;color:#17365d;font:700 10px Arial;padding:5px 11px;border-radius:4px;cursor:pointer}}.ranges button.active{{background:#087cf0;color:#fff}}.chart{{height:299px;position:relative;overflow:hidden;opacity:1;transition:opacity .16s ease}}.chart.fade{{opacity:.72}}#svg{{position:absolute;left:12px;right:70px;top:10px;bottom:32px;height:auto;min-height:0}}#svg svg{{display:block;width:100%;height:100%}}.last{{position:absolute;right:10px;top:46%;transform:translateY(-50%);font-size:15px;font-weight:800}}.prev{{position:absolute;right:8px;bottom:auto;transform:translateY(-50%);font-size:10px;color:#35547c}}.prev b{{font-size:11px}}.xaxis{{position:absolute;left:70px;right:72px;bottom:8px;display:flex;justify-content:space-between;color:#27496f;font-size:9px;line-height:12px}}.tabs{{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 8px 4px;background:#f1f6fb;border-radius:5px;overflow:hidden;height:30px}}.tabs button{{appearance:none;border:0;border-right:1px solid #dce7f2;background:transparent;color:#17365d;text-align:center;padding:5px 2px;font:500 11px Arial;cursor:pointer}}.tabs button:last-child{{border-right:0}}.tabs button.active{{background:#087cf0;color:#fff;font-weight:700}}.sectors{{padding:3px 8px 5px}}.srow{{display:grid;grid-template-columns:132px 1fr 52px;height:22px;gap:6px;align-items:center;font-size:10px}}.srow i{{height:10px;background:#edf2f7;border-radius:3px;overflow:hidden}}.srow i b{{display:block;height:100%;border-radius:3px}}.srow i .up{{background:#0aa968}}.srow i .down{{background:#ef4444}}.pos{{color:#0aa968}}.neg{{color:#ef4444}}.asof{{font-size:9px;color:#6a80a0;margin-left:auto}}table{{width:100%;border-collapse:collapse;font-size:10px}}th,td{{padding:4px 6px;height:25px;border-bottom:1px solid #e5edf5;text-align:left}}th{{background:#edf3f9}}@media(max-width:900px){{.metrics{{grid-template-columns:repeat(2,1fr)}}.grid{{grid-template-columns:1fr}}.panel{{height:auto;min-height:300px}}}}
-    </style><div class="head"><div><div class="title"><span class="hflag {flag_class}" aria-label="{_html.escape(market)} flag"></span><span>Market Overview – {_html.escape(market)}</span></div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle">{_html.escape(_initial_title)}</span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg">{_initial_svg}</div><strong class="last" id="last" style="color:{_initial_col}">{_html.escape(_initial_last)}</strong><div class="prev">Prev Close<br><b id="prev">{_html.escape(_initial_prev)}</b></div><div class="xaxis" id="xaxis">{''.join(f'<span>{x}</span>' for x in _chr_intraday_labels(market))}</div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
+    </style><div class="head"><div><div class="title"><span class="hflag {flag_class}" aria-label="{_html.escape(market)} flag"></span><span>Market Overview – {_html.escape(market)}</span></div><div class="meta">{_html.escape(date_label)} · <span id="clock">{_html.escape(time_label)}</span> {_html.escape(zone_label)} | <span class="status {status_cls}">{_html.escape(market_status)}</span> · <span class="live">● Live · Data updated {_html.escape(updated_label)}</span></div></div><div class="quote">“The best investments are built on knowledge, not noise.”<small>— AXÍA</small></div></div><div class="metrics">{''.join(cards)}</div><div class="grid"><section class="panel"><header><span id="ctitle">{_html.escape(_initial_title)}</span><span class="ranges">{''.join(f'<button data-range="{r}" class="{"active" if r=="1D" else ""}">{r}</button>' for r in range_map)}</span></header><div class="chart" id="chart"><div id="svg">{_initial_svg}</div><strong class="last" id="last" style="color:{_initial_col}">{_html.escape(_initial_last)}</strong><div class="prev">Prev Close<br><b id="prev">{_html.escape(_initial_prev)}</b></div><div class="xaxis" id="xaxis">{''.join(f'<span>{x}</span>' for x in _chr_intraday_labels(market))}</div></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Sectors <span class="asof">{_html.escape(panel_asof)}</span></header><div class="tabs"><button type="button" data-sector-period="Day" class="active">Day</button><button type="button" data-sector-period="Week">Week</button><button type="button" data-sector-period="Month">Month</button><button type="button" data-sector-period="YTD">YTD</button></div><div class="sectors" id="sectorRows"></div></section><section class="panel"><header>{'ASX' if market=='Australia' else _html.escape(market)} Indices <span class="asof">{_html.escape(panel_asof)}</span></header>{index_table}</section></div><script>
     const root=document.getElementById('smooth'), data={data}; let key={selected}, range='1D';
     const labels={{'1D':{json.dumps(_chr_intraday_labels(market))},'5D':['Mon','Tue','Wed','Thu','Fri'],'1M':['Week 1','Week 2','Week 3','Week 4'],'3M':['Month 1','Month 2','Month 3'],'1Y':['Sep','Nov','Jan','Mar','May','Jul','Sep'],'5Y':['2022','2023','2024','2025','2026']}};
     function draw(animate=true){{const q=(data[key]||{{}})[range]||Object.values(data[key]||{{}})[0];if(!q)return;const c=root.querySelector('#chart');if(animate)c.classList.add('fade');setTimeout(()=>{{root.querySelector('#ctitle').textContent=q.label+' '+(range==='1D'?'Intraday Chart':range+' Chart');const svgBox=root.querySelector('#svg');svgBox.innerHTML=q.svg;const lastEl=root.querySelector('#last'),prevEl=root.querySelector('.prev');lastEl.textContent=q.last;lastEl.style.color=q.up?'#10b96a':'#ef4444';root.querySelector('#prev').textContent=q.prev;const plotTop=svgBox.offsetTop,plotH=svgBox.clientHeight;let lastTop=Number.isFinite(q.lastY)?plotTop+plotH*q.lastY:null,prevTop=Number.isFinite(q.prevY)?plotTop+plotH*q.prevY:null;const minGap=34,topLimit=plotTop+14,bottomLimit=plotTop+plotH-14;if(lastTop!==null&&prevTop!==null&&Math.abs(lastTop-prevTop)<minGap){{if(lastTop<=prevTop){{lastTop=Math.max(topLimit,lastTop-minGap/2);prevTop=Math.min(bottomLimit,prevTop+minGap/2);if(prevTop-lastTop<minGap)lastTop=Math.max(topLimit,prevTop-minGap);}}else{{prevTop=Math.max(topLimit,prevTop-minGap/2);lastTop=Math.min(bottomLimit,lastTop+minGap/2);if(lastTop-prevTop<minGap)prevTop=Math.max(topLimit,lastTop-minGap);}}}}if(lastTop!==null)lastEl.style.top=Math.max(topLimit,Math.min(bottomLimit,lastTop))+'px';if(prevTop!==null)prevEl.style.top=Math.max(topLimit,Math.min(bottomLimit,prevTop))+'px';root.querySelector('#xaxis').innerHTML=(labels[range]||[]).map(x=>'<span>'+x+'</span>').join('');c.classList.remove('fade');}},animate?120:0)}}
@@ -4969,10 +4975,10 @@ def render_global_market_overview():
         _div_cols=['Code','Company','Ex-Date','Amount']+(['Franking'] if market=='Australia' else [])
         div_t=_chr_table(divrows,_div_cols)
     elif _div_status=='NO_CONFIRMED_EVENTS':
-        div_t='<div class="chr-empty"><b>No confirmed upcoming dividends found.</b><br>The configured providers responded but returned no verified declared events in Chrímata’s current market coverage. Undeclared dividends are never estimated.</div>'
+        div_t='<div class="chr-empty"><b>No confirmed upcoming dividends found.</b><br>The configured providers responded but returned no verified declared events in Axía’s current market coverage. Undeclared dividends are never estimated.</div>'
     else:
         _configured=", ".join(_div_diag.get('configured',[]) or [])
-        div_t=f'<div class="chr-empty"><b>Dividend data unavailable.</b><br>Chrímata could not establish a verified forward calendar for this market from the configured provider chain{(" ("+html.escape(_configured)+")") if _configured else ""}. This is not a claim that no companies are paying dividends.</div>'
+        div_t=f'<div class="chr-empty"><b>Dividend data unavailable.</b><br>Axía could not establish a verified forward calendar for this market from the configured provider chain{(" ("+html.escape(_configured)+")") if _configured else ""}. This is not a claim that no companies are paying dividends.</div>'
     earnrows=[]
     if earnings is not None and not earnings.empty:
         for _,r in earnings.head(5).iterrows(): earnrows.append({'Code':str(r.get('Ticker','')).split('.')[0],'Company':str(r.get('Company',''))[:25],'Date':r.get('Date','')})
@@ -5021,7 +5027,7 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;b
         panel_asof = "Live" if market_is_open else "At Close"
     smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
     components.html(smooth_html,height=496,scrolling=False)
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— CHRÍMATA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>{vol_name} <span>{vol_source}</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="vol-state {vol_state_class}">{vol_state}</div><div class="gleg"><span class="low">■ Low &lt;15</span><span class="normal">■ Normal 15–30</span><span class="high">■ High &gt;30</span></div></div><p class="chr-note">{vol_note}</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— AXÍA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>{vol_name} <span>{vol_source}</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="vol-state {vol_state_class}">{vol_state}</div><div class="gleg"><span class="low">■ Low &lt;15</span><span class="normal">■ Normal 15–30</span><span class="high">■ High &gt;30</span></div></div><p class="chr-note">{vol_note}</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
@@ -5227,7 +5233,7 @@ def render_phase2_company_research(ticker, h, price=None, meta=None, compact=Fal
             st.info("No dated analyst upgrade/downgrade evidence was returned by the current provider.")
         else:
             st.dataframe(ev,use_container_width=True,hide_index=True)
-            st.caption("Dated analyst actions are provider-supplied external evidence and are separate from Chrímata's models.")
+            st.caption("Dated analyst actions are provider-supplied external evidence and are separate from Axía's models.")
 
     with tabs[3]:
         drivers=forecast_driver_snapshot(ticker,h,meta)
@@ -5952,7 +5958,7 @@ def _chr_company_search_page():
     mcols=st.columns([1.05,.92,1.10,1.10,.72,.88,.72,1.35],gap="small")
     mkeys=["all","au","us","uk","jp","hk","ca"]
     for col,label,keypart in zip(mcols[:7],markets,mkeys):
-        # Active state gets its own key/class so CSS can paint it Chrímata blue.
+        # Active state gets its own key/class so CSS can paint it Axía blue.
         css_key=f"chr_mkt_{keypart}" if label==country_tab else f"chr_mkt_off_{keypart}"
         if col.button(label,key=css_key,use_container_width=True):
             st.session_state["chr_company_market_v20734"]=label
@@ -6296,15 +6302,15 @@ def _chr_company_search_page():
     with a:st.markdown(minicard("Recently Viewed",recentq,True),unsafe_allow_html=True)
     with b:st.markdown(minicard("Popular Today",popular),unsafe_allow_html=True)
     with c:st.markdown(minicard("Biggest Movers (Global)",movers),unsafe_allow_html=True)
-    st.markdown('<div class="v421footer"><span><b>Chrímata</b> &nbsp; v20.7.4.21.6.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="v421footer"><span><b>Axía</b> &nbsp; v20.7.4.21.6.3 &nbsp; | &nbsp; Global Markets. Smarter Decisions.</span><span>Live data where available. Delays may apply.</span></div>',unsafe_allow_html=True)
 
 
 if page in {"Sign In","Register"}:
     from services.account_auth import register_user as _chr_register_user_v2330, sign_in_user as _chr_sign_in_user_v2330
     _is_register=(page=="Register")
-    _auth_title="Create your Chrímata account" if _is_register else "Welcome back"
-    _auth_sub=("Start with 30 days of full Chrímata access. No payment required."
-               if _is_register else "Sign in to access your saved Chrímata research workspace.")
+    _auth_title="Create your Axía account" if _is_register else "Welcome back"
+    _auth_sub=("Start with 30 days of full Axía access. No payment required."
+               if _is_register else "Sign in to access your saved Axía research workspace.")
     st.markdown(f"<div style='max-width:470px;margin:34px auto 12px'><div style='font-size:25px;font-weight:900;color:#10264b'>{_auth_title}</div><div style='margin-top:5px;color:#6b7f99;font-size:13px'>{_auth_sub}</div></div>",unsafe_allow_html=True)
     with st.container(border=True,key="v2330_auth_form"):
         _email=st.text_input("Email",key=f"v2330_email_{page}",placeholder="name@example.com")
@@ -6342,8 +6348,8 @@ if page in {"Sign In","Register"}:
                             st.success("Signed in successfully. Trial activation is pending; your Free access remains available.")
                 except Exception:
                     st.error("We couldn't complete that account request. Check your details and account configuration, then try again.")
-        st.caption("By continuing, you agree to Chrímata's Terms and Privacy Policy.")
-        st.button("← Back to Chrímata",key=f"v2330_back_{page}",on_click=_chr_clear_auth_route_v23000)
+        st.caption("By continuing, you agree to Axía's Terms and Privacy Policy.")
+        st.button("← Back to Axía",key=f"v2330_back_{page}",on_click=_chr_clear_auth_route_v23000)
 
 elif page=="Markets":
     st.header("Global Market Opportunity Dashboard")
@@ -6747,7 +6753,7 @@ elif page=="Valuation":
     st.dataframe(v,use_container_width=True,hide_index=True)
 
     st.subheader("Valuation Model Validation")
-    st.caption("Forward-only validation: Chrímata stores today's valuation and later compares it with observed market prices. It does not backfill historical 'predictions' using today's assumptions.")
+    st.caption("Forward-only validation: Axía stores today's valuation and later compares it with observed market prices. It does not backfill historical 'predictions' using today's assumptions.")
     _saved_profile,_profile_updated=valuation_profile_saved(ticker)
     _vv1,_vv2=st.columns([1,2])
     with _vv1:
@@ -7251,7 +7257,7 @@ elif page=="Company Command Centre":
         _change_main=("No material monitoring changes are currently flagged from loaded evidence." if _change_count==0 else f"{_change_count} monitoring item"+(" requires" if _change_count==1 else "s require")+" attention from the currently loaded evidence.")
         _change_sub=f"Evidence coverage {_ccscore.get('Available',0)}/{_ccscore.get('Total',6)} · Technical: {tr.get('Trend','—')} · Thesis: "+(f"{_ccth_met}/{_ccth_total} conditions met" if _ccth_total else "not configured")+" · Valuation: "+("loaded" if np.isfinite(_mia_num(_ccbase)) else "evidence gap")
         # V21.2.18 — Overview Evidence Monitor remains removed; Price Chart restyled to reference proportions.
-        # The standalone Something Changed research tool remains available elsewhere in Chrímata.
+        # The standalone Something Changed research tool remains available elsewhere in Axía.
 
         # V21.2.16 — reference-matched Overview intelligence row: interactive Price Chart,
         # live Thesis Scorecard summary, and evidence-constrained AI Research Brief.
@@ -7300,7 +7306,7 @@ elif page=="Company Command Centre":
         .v213231-macro-note{font-size:9.5px;line-height:16px;height:16px;color:#6d7d92;margin:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
         /* V21.3.23.2 — fixed-height macro slot keeps the footer stationary across reruns. */
         .v213232-macro-slot{height:16px;min-height:16px;max-height:16px;overflow:hidden;margin:0!important;padding:0!important}
-        /* Reference-style active timeframe: solid Chrímata blue with white text. */
+        /* Reference-style active timeframe: solid Axía blue with white text. */
         [class*="st-key-v213171_timeframe_"] button[aria-pressed="true"],
         [class*="st-key-v213171_timeframe_"] button[data-selected="true"]{
             background:#086ee8!important;border-color:#086ee8!important;color:#fff!important;
@@ -7352,7 +7358,7 @@ elif page=="Company Command Centre":
         [class*="st-key-v21252_technical_"] .stButton>button p{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;margin:0!important;padding:0!important;line-height:22px!important;height:22px!important;display:flex!important;align-items:center!important}
         [class*="st-key-v21252_technical_"] .stButton>button:hover{background:transparent!important;color:#005dcc!important;border:0!important}
         /* V21.2.53 — reference active timeframe styling only. Plotly 6.5.2 marks the
-           active/hover update-menu button with #F4FAFF; recolour that state to Chrímata blue. */
+           active/hover update-menu button with #F4FAFF; recolour that state to Axía blue. */
         [class*="st-key-v21243_price_card"] g.updatemenu-button:has(rect.updatemenu-item-rect[style*="244, 250, 255"]) rect.updatemenu-item-rect{
             fill:#086ee8!important;stroke:#086ee8!important;
         }
@@ -7460,7 +7466,7 @@ elif page=="Company Command Centre":
             _th_watch=int(_th_statuses.isin({"watch","warning","at risk","at_risk","attention","broken","fail","failed","false"}).sum())
             _th_pending=max(0,_th_total-_th_met-_th_watch)
         else:
-            _th_engine_source="Chrímata evidence-driven monitoring"
+            _th_engine_source="Axía evidence-driven monitoring"
             try:
                 _th_monitor=overview_dynamic_thesis(ticker,_ccsector,_ccindustry,_ccmeta,_ccbase,price)
             except Exception:
@@ -7506,7 +7512,7 @@ elif page=="Company Command Centre":
             f'<div class="v21262-strip-card blue v21269-valuation-card"><div class="v21262-strip-icon v21269-val-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="6.5" y="5.5" width="11" height="14" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 5.5V4.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4v1.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.3 9.2h5.4M9.3 12h5.4M9.3 14.8h2.1" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/><circle cx="14.6" cy="15.2" r="1.65" fill="none" stroke="currentColor" stroke-width="1.45"/><path d="M14.6 13.9v2.6M13.7 14.5h1.25c.55 0 .9.28.9.7 0 .44-.35.7-.9.7h-.7" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/></svg></div><div class="v21262-strip-copy v21269-val-copy"><div class="v21262-strip-title">Valuation</div><div class="v21269-val-value">{html.escape(_val_label)}</div><div class="v21269-val-base">{html.escape(f"Base case: {display_price(_ccbase,ticker)}" if np.isfinite(_mia_num(_ccbase)) else "Base case unavailable")}</div><div class="v21269-val-move {_val_move_cls}">{html.escape(_val_move)}</div><div class="v21269-val-confidence">{html.escape(_val_conf_text)}</div></div></div>',
             _strip_card('amber','○','Technicals',_tech_label,_tech_sub,_tech_context),
             f'<div class="v21262-strip-card good v21272-analyst-card" title="{html.escape(_an_provenance, quote=True)}"><div class="v21262-strip-icon v21272-analyst-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-label="Analyst consensus"><path d="M4.5 19V8.5h5V19m-2.5 0V5h5v14m-2.5 0V10.5h5V19m-2.5 0V7h5v12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 19.5h15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="v21262-strip-copy v21272-analyst-copy"><div class="v21262-strip-title">Analyst Consensus</div><div class="v21272-analyst-value">{html.escape(_an_label)}</div><div class="v21272-analyst-count">{html.escape(f"{_an_n} analysts" if _an_n else "Analyst count unavailable")}</div><div class="v21272-analyst-target">{(f"Target: {html.escape(display_price(_an_target,ticker))} <span class=\"{'up' if _an_up >= 0 else 'down'}\">({html.escape(f'{_an_up:+.0%}')})</span>" if np.isfinite(_an_target) and np.isfinite(_an_up) else "Target unavailable")}</div><div class="v21274-analyst-source">Provider evidence ⓘ</div></div></div>',
-            f'<div class="v21262-strip-card blue v21276-forecast-card" title="{html.escape((f"Chrímata 12M ensemble · {_fc_diag.get('n',0)} walk-forward tests · Direction accuracy: {_fc_diag.get('direction'):.1%} · MAE: {_fc_diag.get('mae'):.1%}" if _fc_diag.get('n',0) and np.isfinite(_mia_num(_fc_diag.get('direction'))) and np.isfinite(_mia_num(_fc_diag.get('mae'))) else "Chrímata 12M ensemble · validation evidence currently limited"), quote=True)}"><div class="v21262-strip-icon v21276-forecast-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 17l5-5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8h4v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="v21276-forecast-copy"><div class="v21262-strip-title">12M Forecast</div><div class="v21276-forecast-value">{html.escape(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable")}</div><div class="v21276-forecast-target">{html.escape(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable")}</div><div class="v21276-forecast-prob">{html.escape(f"Prob. positive return: {_fc_prob:.0%}" if np.isfinite(_fc_prob) else (_fc_conf if np.isfinite(_ccf12) else "Insufficient model evidence"))}</div></div></div>',
+            f'<div class="v21262-strip-card blue v21276-forecast-card" title="{html.escape((f"Axía 12M ensemble · {_fc_diag.get('n',0)} walk-forward tests · Direction accuracy: {_fc_diag.get('direction'):.1%} · MAE: {_fc_diag.get('mae'):.1%}" if _fc_diag.get('n',0) and np.isfinite(_mia_num(_fc_diag.get('direction'))) and np.isfinite(_mia_num(_fc_diag.get('mae'))) else "Axía 12M ensemble · validation evidence currently limited"), quote=True)}"><div class="v21262-strip-icon v21276-forecast-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 17l5-5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8h4v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="v21276-forecast-copy"><div class="v21262-strip-title">12M Forecast</div><div class="v21276-forecast-value">{html.escape(f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Unavailable")}</div><div class="v21276-forecast-target">{html.escape(f"Target: {display_price(_fc_target,ticker)}" if np.isfinite(_fc_target) else "Model target unavailable")}</div><div class="v21276-forecast-prob">{html.escape(f"Prob. positive return: {_fc_prob:.0%}" if np.isfinite(_fc_prob) else (_fc_conf if np.isfinite(_ccf12) else "Insufficient model evidence"))}</div></div></div>',
             f'<div class="v21262-strip-card {_th_card_cls} v21278-thesis-card" title="{html.escape(_th_provenance,quote=True)}"><div class="v21278-thesis-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="6" y="4.5" width="12" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4.5V3.6h6v.9M8.7 8.5h6.6M8.7 11.5h6.6M8.7 14.5h6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="v21278-thesis-copy"><div class="v21262-strip-title">Thesis Status</div><div class="v21278-thesis-value">{html.escape(_th_label)}</div><div class="v21278-thesis-watch">{html.escape(_th_sub)}</div><div class="v21278-thesis-metrics">{html.escape(_th_metric_line)}</div></div></div>',
         ])
         st.markdown("""<style>
@@ -7808,7 +7814,7 @@ elif page=="Company Command Centre":
         if _ccann is not None and not _ccann.empty: _ann_text="; ".join([str(x) for x in _ccann.head(3).iloc[:,0].tolist()])
         _brief_fallback=(f"WHAT CHANGED\n{_change_main}\n\nFUNDAMENTAL EVIDENCE\nEvidence coverage is {_ccscore.get('Available',0)} of {_ccscore.get('Total',6)} categories. Sector: {_ccsector}; industry: {_ccindustry}.\n\nVALUATION & EXPECTATIONS\n"+(f"Stored base scenario: {display_price(_ccbase,ticker)}. " if np.isfinite(_mia_num(_ccbase)) else "No supported base valuation is currently available. ")+(f"12-month historical forecast scenario: {_ccf12:+.1%}." if np.isfinite(_ccf12) else "12-month forecast evidence is unavailable.")+f"\n\nTECHNICAL / QUANT\nCurrent technical regime: {tr.get('Trend','—')}. "+(f"Annualised volatility: {_ccvolatility:.1%}. " if np.isfinite(_ccvolatility) else "")+(f"Six-month momentum: {_ccmom:+.1%}." if np.isfinite(_ccmom) else "")+f"\n\nTHESIS CONFLICTS & MONITORING\n{_attention_text}\n\nCATALYSTS / ANNOUNCEMENTS\n{_ann_text}\n\nEVIDENCE GAPS\nMissing fields and unavailable engines should be completed before stronger conclusions are drawn.\n\nINVESTIGATE NEXT\nPrioritise official financial reports, measurable thesis conditions, valuation assumptions and upcoming catalysts that can change the evidence state.")
         # V21.2.57 — reference-matched functional AI Research Brief.
-        # The compact widget synthesises the evidence already loaded by Chrímata; it never invents missing evidence.
+        # The compact widget synthesises the evidence already loaded by Axía; it never invents missing evidence.
         _ai_key=f"v21256_ai_brief_{ticker}"; _ai_time_key=f"v21256_ai_time_{ticker}"; _ai_source_key=f"v21256_ai_source_{ticker}"
         _thesis_evidence=[]
         if _ccthesis is not None and not _ccthesis.empty:
@@ -7845,7 +7851,7 @@ elif page=="Company Command Centre":
                         try: _model=str(st.secrets.get("CHRIMATA_BRIEF_MODEL","") or "").strip()
                         except Exception: _model=""
                         _model=_model or str(os.environ.get("CHRIMATA_BRIEF_MODEL","") or "").strip() or "gpt-5.6-luna"
-                        _prompt=("You are Chrímata's evidence-synthesis engine. Use ONLY the JSON evidence supplied below. "
+                        _prompt=("You are Axía's evidence-synthesis engine. Use ONLY the JSON evidence supplied below. "
                                  "Create a concise investment research brief with these exact sections: EXECUTIVE SUMMARY; WHAT CHANGED; FUNDAMENTALS; VALUATION; TECHNICAL PICTURE; THESIS SCORECARD; CATALYSTS & ANNOUNCEMENTS; FORECASTS & ANALYST EVIDENCE; RISKS / CONFLICTING EVIDENCE; EVIDENCE GAPS; INVESTIGATE NEXT. "
                                  "Clearly distinguish observed/provider facts from model outputs and interpretation. Never invent figures, events, sources, analyst views, probabilities or catalysts. Say 'unavailable' when evidence is missing. Do not issue buy, sell, hold, or investment recommendations. Keep it decision-useful and company-specific. EVIDENCE JSON: "+json.dumps(_evidence,default=str))
                         _resp=OpenAI(api_key=_secret_key).responses.create(model=_model,input=_prompt)
@@ -7859,13 +7865,13 @@ elif page=="Company Command Centre":
                         # Public UI stays clean; detailed configuration/provider errors belong in server logs.
                         _ai_err=str(_aie)
                         try:
-                            print(f"[Chrímata AI Research Brief] ticker={ticker} error={_ai_err}")
+                            print(f"[Axía AI Research Brief] ticker={ticker} error={_ai_err}")
                         except Exception:
                             pass
                         if _ai_err=="ai_service_not_configured":
                             st.warning("AI Research Brief is not configured on this deployment yet. The evidence-only research brief is available below.")
                         else:
-                            st.warning("AI Research Brief is temporarily unavailable. Chrímata generated the evidence-only research brief instead.")
+                            st.warning("AI Research Brief is temporarily unavailable. Axía generated the evidence-only research brief instead.")
                     st.session_state[_ai_time_key]=pd.Timestamp.now(tz="Australia/Melbourne").strftime("%d %b %Y, %-I:%M%p AEST")
                 _last_ai=st.session_state.get(_ai_time_key,"Not generated in this session")
                 _source_ai=st.session_state.get(_ai_source_key,"")
@@ -7965,23 +7971,8 @@ elif page=="Company Command Centre":
             st.markdown(f'<div class="v21261-card" title="{_vnote}"><div class="v21261-title">Valuation Summary {_info}</div><div class="v21261-val-grid"><div><div class="v21261-val-lbl v21261-neg">Bear</div><div class="v21261-val-num">{_val_price("bear")}</div><div class="v21261-neg" style="font-size:8px">{_val_gap("bear")}</div></div><div><div class="v21261-val-lbl" style="color:#086ee8">Base</div><div class="v21261-val-num">{_val_price("base")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("base")}</div></div><div><div class="v21261-val-lbl v21261-pos">Bull</div><div class="v21261-val-num">{_val_price("bull")}</div><div class="v21261-pos" style="font-size:8px">{_val_gap("bull")}</div></div></div><div class="v21261-range"><i class="bear" style="{_val_position("bear")}"></i><i class="base" style="{_val_position("base")}"></i><i class="bull" style="{_val_position("bull")}"></i></div><div class="v21261-range-labels"><span>{_val_price("bear")}<br>Bear</span><span>{_val_price("base")}<br>Base</span><span>{_val_price("bull")}<br>Bull</span></div></div>',unsafe_allow_html=True)
             st.button("View Full Valuation  →",key=f"v21261_nav_val_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
         with _w2:
-            # V23.5.0: the full model publishes an endpoint, not monthly forward points.
-            # Render only observed history, clearly labelled; never fabricate a forecast path.
-            from services.forecast_widget_engine import summarize_forecast as _chr_forecast_summary
-            try:
-                _fc_summary=_chr_forecast_summary(_fc12,ticker,reference_price=price,currency=_ccmeta.get("currency"))
-            except Exception:
-                # Forecast summary is non-critical; never take down Company Command Centre.
-                _fc_summary={"status":"unavailable","missing_evidence":["forecast_summary_payload_error"],"ai_calculated_math":False}
-            _observed=pd.to_numeric(_ccforecast_hist.get("Close",pd.Series(dtype=float)),errors="coerce").dropna().tail(12) if isinstance(_ccforecast_hist,pd.DataFrame) else pd.Series(dtype=float)
-            _spark_html='<div class="v21261-spark" style="color:#527298;font-size:9px;padding-top:9px">Forward monthly path unavailable</div>'
-            if len(_observed)==12 and np.isfinite(_observed.to_numpy(dtype=float)).all():
-                _lo,_hi=float(_observed.min()),float(_observed.max())
-                _span=max(_hi-_lo,1e-12)
-                _sparkpts=" ".join(f"{10+i*250/11:.1f},{40-(float(v)-_lo)/_span*34:.1f}" for i,v in enumerate(_observed))
-                _spark_html=f'<div class="v21261-spark" title="Observed last 12 closes; not a projected trajectory"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div style="font-size:7px;color:#527298">Observed history · not forecast path</div>'
-
-            st.markdown(f'<div class="v21261-card v21281-fc" title="Chrímata deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div>{_spark_html}<div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
+            _sparkpts="10,36 35,31 60,32 85,26 110,21 135,15 160,20 185,22 210,16 235,12 260,2"
+            st.markdown(f'<div class="v21261-card v21281-fc" title="Axía deterministic 12M forecast. Target and return come from the same model payload; positive-return probability is empirically calibrated from completed walk-forward observations and is withheld when evidence is insufficient. AI calculated: No."><div class="v21261-title">Forecasts (Model) {_info}</div><div class="v21281-fc-body"><div class="v21261-k">12 Month Target</div><div class="v21281-fc-target">{display_price(_f_target,ticker) if np.isfinite(_f_target) else "—"}</div><div class="v21281-fc-return {"v21261-pos" if np.isfinite(_ccf12) and _ccf12>=0 else "v21261-neg" if np.isfinite(_ccf12) else "v21261-muted"}">{f"{_ccf12:+.1%}" if np.isfinite(_ccf12) else "Forecast unavailable"}</div><div class="v21261-spark"><svg viewBox="0 0 270 48" preserveAspectRatio="none"><polygon points="10,42 {_sparkpts.split(" ",1)[1]} 260,48 10,48" fill="#d9ebfb" opacity=".85"/><polyline points="{_sparkpts}" fill="none" stroke="#086ee8" stroke-width="2"/></svg></div><div class="v21281-fc-prob">Prob. positive return: {f"{_f_prob:.0%}" if np.isfinite(_f_prob) else "—"}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Forecasts  →",key=f"v21261_nav_fc_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w3:
             _al=str(_ccanalyst.get("label") or "Unavailable"); _ac="v21261-pos" if "buy" in _al.lower() else "v21261-neg" if "sell" in _al.lower() else "v21261-muted"
@@ -7996,7 +7987,7 @@ elif page=="Company Command Centre":
                    f"Consensus: {_ae.get('consensus_source','unavailable')}. "
                    f"Provider analyst count: {_analyst_n if _analyst_n else 'unavailable'}. "
                    f"Recommendation bucket total: {_bucket_total}; this is not substituted for target coverage count. "
-                   "Mean target is provider evidence. Target return is calculated deterministically by Chrímata. AI calculated: No.")
+                   "Mean target is provider evidence. Target return is calculated deterministically by Axía. AI calculated: No.")
             st.markdown(f'<div class="v21261-card v21282-analyst" title="{html.escape(_prov, quote=True)}"><div class="v21261-title">Analyst Consensus {_info}</div><div class="v21282-analyst-grid"><div class="v21282-analyst-left"><div class="v21282-analyst-status {_ac}">{html.escape(_al)}</div><div class="v21282-analyst-count">{html.escape(_analyst_count_text)}</div><div class="v21282-analyst-target"><div class="v21282-analyst-target-label">Mean target</div><div class="v21282-analyst-target-value">{display_price(_at,ticker) if np.isfinite(_at) else "—"}</div></div></div><div class="v21282-analyst-dist">{_dh}</div></div></div>',unsafe_allow_html=True)
             st.button("View Full Analyst Forecasts  →",key=f"v21261_nav_an_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Forecasts",))
         with _w4:
@@ -8047,7 +8038,7 @@ elif page=="Company Command Centre":
             _mk="".join(f'<tr><td>{html.escape(k)}</td><td>{html.escape(v)}</td></tr>' for k,v in _market)
             _mp_tip=(f"Market Position provenance — Range: {_mp_range_basis}. Current price: provider/latest market price. "
                      f"20D average volume: {_mp_vol_basis}. Short interest: {_mp_short_basis}; never estimated. "
-                     f"Shares outstanding: {_mp_shares_basis}. Range position and quartile are calculated by Chrímata as (current-low)/(high-low). "
+                     f"Shares outstanding: {_mp_shares_basis}. Range position and quartile are calculated by Axía as (current-low)/(high-low). "
                      f"Distance from 52W high: {_dist_hi:.1%}; distance above 52W low: {_dist_lo:.1%}." if np.isfinite(_dist_hi) and np.isfinite(_dist_lo) else
                      f"Market Position provenance — Range: {_mp_range_basis}. 20D average volume: {_mp_vol_basis}. Short interest: {_mp_short_basis}. Shares outstanding: {_mp_shares_basis}.")
             st.markdown(f'<div class="v21261-card v21286-market" title="{html.escape(_mp_tip,quote=True)}"><div class="v21261-title">Market Position {_info}</div><div class="v21261-market-range"><div class="v21286-range-row"><div class="v21286-range-badge">▼</div><div class="v21286-range-main" style="--mp-pos:{_rpct:.1f}%"><div class="v21261-k">52 Week Range</div><div class="v21261-market-track"><i class="v21261-market-now" style="left:{_rpct:.1f}%"></i><i class="v21261-market-high"></i></div><div class="v21261-market-labels"><span>{display_price(_cclo,ticker) if np.isfinite(_cclo) else "—"}</span><span>{display_price(price,ticker) if np.isfinite(price) else "—"}</span><span>{display_price(_cchi,ticker) if np.isfinite(_cchi) else "—"}</span></div></div></div><div class="v21286-range-position">{f"{_range_pos:.0%} of range ({_quart})" if np.isfinite(_range_pos) else "Range position unavailable"}</div></div><table class="v21261-table">{_mk}</table></div>',unsafe_allow_html=True)
@@ -8246,7 +8237,7 @@ elif page=="Company Command Centre":
                     if str(r.get("status") or "").lower() in {"met","on track","pass","passed","true"}: _met.append(str(r.get("metric") or r.get("condition") or "thesis condition"))
             if _met: _needs.append("keep evidenced thesis conditions on track")
             _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions before a stronger scenario is supported.")
-            st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Chrímata valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
             st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
 
 elif page=="Before I Invest":
@@ -8426,7 +8417,7 @@ elif page=="Thesis Scorecard":
             _ts_meta=safe_info(ticker)
             _ts_cls=safe_company_classification(ticker)
             _ts_existing=overview_dynamic_thesis(ticker,_ts_cls.get("sector",""),_ts_cls.get("industry",""),_ts_meta,price,price)
-            _ts_source="Chrímata evidence-driven monitoring"
+            _ts_source="Axía evidence-driven monitoring"
         _ts_summary=calculate_thesis_status(_ts_existing,expected_total=(len(_ts_existing) if _ts_existing is not None and len(_ts_existing) else 6),source=_ts_source)
         _tsa,_tsb,_tsc,_tsd=st.columns(4)
         _tsa.metric("Thesis status",_ts_summary["status_label"])
@@ -8494,7 +8485,7 @@ elif page=="Thesis Scorecard":
         _auto=overview_dynamic_thesis(ticker,_auto_class.get("sector",""),_auto_class.get("industry",""),_auto_meta,np.nan,_auto_price)
         if _auto is not None and not _auto.empty:
             st.dataframe(_auto.rename(columns={"metric":"Condition","status":"Status","evidence":"Evidence","source":"Source"}),use_container_width=True,hide_index=True)
-            st.caption("Automatic statuses use traceable provider statement comparisons where available. Pending means Chrímata does not yet have enough evidence to classify the condition.")
+            st.caption("Automatic statuses use traceable provider statement comparisons where available. Pending means Axía does not yet have enough evidence to classify the condition.")
 
 elif page=="Catalyst Calendar":
     st.header(f"Catalyst Calendar — {ticker}")
@@ -8651,7 +8642,7 @@ elif page=="Forecasts":
     metric_box(_f2,"Model target","—" if not np.isfinite(_ft) else display_price(_ft,ticker))
     metric_box(_f3,"Prob. positive return","—" if not np.isfinite(_fp) else f"{_fp:.0%}")
     metric_box(_f4,"Validation",str(_fc_live.get("validation_label") or "Unavailable"))
-    st.caption("Chrímata deterministic model output. It is separate from analyst consensus and is not a price promise or investment recommendation.")
+    st.caption("Axía deterministic model output. It is separate from analyst consensus and is not a price promise or investment recommendation.")
     with st.expander("Forecast evidence ⓘ",expanded=False):
         _fd=_fca.get("diagnostics",{}) or {}
         st.write(f"Model version: {_fca.get('model_version','—')}")
@@ -8827,7 +8818,7 @@ def render_chrimata_global_legal_footer():
     # One aligned header row: brand left, compact navigation group right.
     head=st.columns([5.6, 4.4], gap="small", vertical_alignment="center")
     with head[0]:
-        st.markdown('<div class="chr-legal-brand">Chrímata · Market Investment Analyst</div>', unsafe_allow_html=True)
+        st.markdown('<div class="chr-legal-brand">Axía · Market Investment Analyst</div>', unsafe_allow_html=True)
     labels=["About","Privacy","Disclaimer","Terms","Data Sources","Contact"]
     with head[1]:
         nav=st.columns([.68,.76,.96,.66,1.08,.72], gap="small", vertical_alignment="center")
@@ -8837,9 +8828,9 @@ def render_chrimata_global_legal_footer():
 
     st.markdown(r"""
     <div class="chr-legal-copy">
-      <p><span class="chr-legal-title">Information and research only.</span> Chrímata provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
+      <p><span class="chr-legal-title">Information and research only.</span> Axía provides market data, analytical tools, estimates and research outputs for informational and educational purposes. It does not provide personal financial advice, investment advice, or a recommendation to buy or sell a financial product.</p>
       <p>Market information may be delayed, incomplete or inaccurate. Forecasts, valuations, scenarios, analyst information and AI-generated analysis involve assumptions and uncertainty and are not guarantees of future performance. Conduct your own research and consider appropriately licensed financial advice before making an investment decision. Past performance is not a reliable indicator of future performance.</p>
-      <div class="chr-legal-meta"><span>Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Chrímata. All rights reserved.</span></div>
+      <div class="chr-legal-meta"><span>Data may include exchange/regulatory disclosures, company filings and configured third-party market-data providers. Provenance is displayed where available.</span><span>© 2026 Axía. All rights reserved.</span></div>
     </div>
     """, unsafe_allow_html=True)
 

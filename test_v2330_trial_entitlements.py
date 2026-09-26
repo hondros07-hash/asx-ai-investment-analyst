@@ -33,7 +33,7 @@ def test_registration_ui_is_functional_not_disabled():
  s=Path("app.py").read_text()
  assert "_chr_register_user_v2330(_email,_password)" in s
  assert "disabled=True" not in s[s.index('if page in {"Sign In","Register"}:'):s.index('elif page=="Markets":')]
- assert "30 days of full Chrímata access" in s
+ assert "30 days of full Axía access" in s
 
 def test_api_has_trial_and_gate_routes():
  s=Path("api_gateway.py").read_text()
