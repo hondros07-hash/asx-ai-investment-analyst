@@ -8853,8 +8853,11 @@ elif page=="Portfolio":
             metric_box(cs[0], "Annualised return",f"{a['annualised_return']*100:.1f}%"); metric_box(cs[1], "Volatility",f"{a['annualised_volatility']*100:.1f}%"); metric_box(cs[2], "Max drawdown",f"{a['max_drawdown']*100:.1f}%"); metric_box(cs[3], "HHI",f"{concentration(w):.3f}")
             st.dataframe(a["correlation"],use_container_width=True)
 
-elif page in {"About","Privacy","Disclaimer","Terms","Data Sources","Contact"}:
-    # V21.2.99 — intentionally minimal placeholders. Full legal/information copy will be added later.
+elif page=="About":
+    from views.about_us import render_about_us
+    render_about_us()
+
+elif page in {"Privacy","Disclaimer","Terms","Data Sources","Contact"}:
     st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
     st.header(page)
     st.caption("Content coming soon.")
