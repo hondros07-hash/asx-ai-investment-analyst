@@ -8302,7 +8302,7 @@ elif page=="Company Command Centre":
             margin-top:0!important;
             margin-bottom:0!important;
         }
-        [class*="st-key-v23713_lower_cards_"] > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+        [class*="st-key-v23713_lower_cards_"] [data-testid="stHorizontalBlock"] {
             gap:16px!important;
             align-items:stretch!important;
         }
