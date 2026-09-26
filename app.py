@@ -8357,19 +8357,32 @@ elif page=="Company Command Centre":
                         _chr_set_cc_sub_v2111("News & Events")
                         st.rerun()
 
+        # V23.7.18: Match the 22px vertical rhythm between the intelligence
+        # card, its evidence disclosure, and the four lower Overview cards.
+        # Existing Streamlit block spacing is approximately 12px here;
+        # add 10px at each boundary without affecting inner card content.
+        st.markdown("""<style>
+        [class*="st-key-v23718_evidence_panel_"] {
+            margin-top:10px!important;
+        }
+        [class*="st-key-v23713_lower_cards_"] {
+            margin-top:10px!important;
+        }
+        </style>""", unsafe_allow_html=True)
         # V23.7.7: Keep the Overview compact. Diagnostics remain accessible on demand;
         # headlines are context, not verified event or company-exposure evidence.
         if _v2342_status != "mapped":
             _v2377_missing = _v2342_dp.get("missing_evidence", []) or []
             _v2377_news = _v2342_dp.get("news_context", []) or []
-            with st.expander("Evidence status · details", expanded=False):
-                st.caption("No verified company-specific event/exposure mapping is available. News headlines are context only.")
-                st.write("Missing evidence:", ", ".join(map(str, _v2377_missing)) if _v2377_missing else "None identified")
-                st.caption(f"{len(_v2377_news)} contextual news item(s) · {len(_v2377_missing)} evidence gap(s)")
-                if st.checkbox("Show raw technical diagnostics", value=False, key=f"v2377_raw_evidence_{ticker}"):
-                    st.json({"ticker": ticker, **_v2342_diag,
-                             "missing_evidence": _v2377_missing,
-                             "news_context": _v2377_news}, expanded=False)
+            with st.container(key=f"v23718_evidence_panel_{ticker}"):
+                with st.expander("Evidence status · details", expanded=False):
+                    st.caption("No verified company-specific event/exposure mapping is available. News headlines are context only.")
+                    st.write("Missing evidence:", ", ".join(map(str, _v2377_missing)) if _v2377_missing else "None identified")
+                    st.caption(f"{len(_v2377_news)} contextual news item(s) · {len(_v2377_missing)} evidence gap(s)")
+                    if st.checkbox("Show raw technical diagnostics", value=False, key=f"v2377_raw_evidence_{ticker}"):
+                        st.json({"ticker": ticker, **_v2342_diag,
+                                 "missing_evidence": _v2377_missing,
+                                 "news_context": _v2377_news}, expanded=False)
 
         with st.container(key=f"v23713_lower_cards_{ticker}"):
             _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
