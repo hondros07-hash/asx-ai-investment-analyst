@@ -2,7 +2,7 @@
 import streamlit as st
 
 def render_about_us():
-    st.markdown("""<style>
+    html = """<style>
     .ax-about{max-width:1120px;margin:0 auto 24px;color:#12365c;font-family:Arial,Helvetica,sans-serif}
     .ax-about *{box-sizing:border-box}.ax-about .eyebrow{color:#1871bf;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
     .ax-about h1{font-size:clamp(30px,4vw,48px);line-height:1.12;letter-spacing:-.035em;margin:12px 0 18px;color:#082f5b}
@@ -40,4 +40,6 @@ def render_about_us():
     <section class="closing"><div class="eyebrow">Our commitment</div><h2>All the evidence. A clearer perspective.</h2>
     <p>Axía exists to help you ask better questions, understand what drives a business and monitor whether the reasons behind an investment still hold. Your decisions remain your own.</p>
     <p class="fine">Axía provides research and information, not personal financial advice. Data, models and AI-generated analysis can contain errors, delays or omissions. Verify important information against primary sources and seek appropriately licensed professional advice where needed.</p></section>
-    </div>""", unsafe_allow_html=True)
+    </div>"""
+    # Strip indentation before Markdown parsing: four leading spaces make HTML a code block.
+    st.markdown("".join(line.lstrip() for line in html.splitlines()), unsafe_allow_html=True)
