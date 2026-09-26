@@ -3,19 +3,19 @@ import streamlit as st
 
 def render_about_us():
     html = """<style>
-    /* AXÍA V23.7.5.5 — screenshot-matched About, isolated from global UI. */
-    .ax-about{width:100%;margin:0 0 10px;padding:17px 24px 18px;background:#fff;border:1px solid #dbe6f0;border-radius:7px;color:#183b60;font-family:Arial,Helvetica,sans-serif}
+    /* AXÍA V23.7.5.7 — reference-matched compact typography; overrides global heading margins. */
+    .ax-about{width:100%;margin:0 0 10px!important;padding:17px 24px 18px!important;background:#fff;border:1px solid #dbe6f0;border-radius:7px;color:#183b60;font-family:Arial,Helvetica,sans-serif}
     .ax-about *{box-sizing:border-box}
-    .ax-about .eyebrow{color:#a67520!important;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-    .ax-about h1{font-size:19px;line-height:1.28;margin:5px 0 6px;color:#122e4d!important;font-weight:750;letter-spacing:-.01em}
-    .ax-about h2{font-size:17px;line-height:1.32;margin:5px 0 7px;color:#122e4d!important;font-weight:750}
-    .ax-about h3{font-size:14px;line-height:1.35;margin:5px 0 9px;color:#173b60!important;font-weight:750}
-    .ax-about p{font-size:12px;line-height:1.5;color:#455c76;margin:0 0 7px}
-    .ax-about .hero{padding:0 0 10px;background:transparent;border:0;border-bottom:1px solid #dce6f0;border-radius:0;color:#173d66}
+    .ax-about .eyebrow{color:#a67520!important;font-size:11px!important;line-height:1.35!important;font-weight:800!important;letter-spacing:.12em;text-transform:uppercase;margin:0 0 4px!important;padding:0!important}
+    .ax-about h1{font-size:19px!important;line-height:1.28!important;margin:3px 0 5px!important;padding:0!important;color:#122e4d!important;font-weight:750!important;letter-spacing:-.01em!important}
+    .ax-about h2{font-size:17px!important;line-height:1.32!important;margin:3px 0 5px!important;padding:0!important;color:#122e4d!important;font-weight:750!important}
+    .ax-about h3{font-size:14px!important;line-height:1.35!important;margin:5px 0 9px!important;color:#173b60!important;font-weight:750!important}
+    .ax-about p{font-size:12px!important;line-height:1.5!important;color:#455c76!important;margin:0 0 7px!important;padding:0!important}
+    .ax-about .hero{padding:0 0 10px!important;margin:0!important;background:transparent;border:0;border-bottom:1px solid #dce6f0;border-radius:0;color:#173d66}
     .ax-about .hero p{max-width:100%}
     .ax-about .greek{font-family:Georgia,serif;font-size:13px;color:#55718e;margin:0 0 7px}
-    .ax-about .section{padding:12px 0;border-bottom:1px solid #dce6f0}
-    .ax-about .family{background:transparent;border:0;border-radius:0;padding:0}
+    .ax-about .section{padding:12px 0!important;margin:0!important;border-bottom:1px solid #dce6f0}
+    .ax-about .family{background:transparent;border:0;border-radius:0;padding:0!important}
     .ax-about .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px;align-items:stretch}
     .ax-about .card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;background:#fff;border:1px solid #dbe6f0;border-radius:8px;padding:15px 14px;min-width:0}
     .ax-about .card-icon{width:34px;height:34px;color:#a67520;margin-top:1px}
