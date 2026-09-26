@@ -3932,13 +3932,7 @@ def render_chrimata_persistent_header():
           background-image:url(data:image/jpeg;base64,{banner_b64});background-size:100% 108px;background-repeat:no-repeat;background-position:center top;
           pointer-events:none;
         }}
-        /* V23.5.3: legacy lettering removed from banner JPG; transparent AXÍA text only. */
-        [data-testid="stAppViewContainer"]::after{{
-          content:"";position:fixed;left:7.9%;top:0;width:26%;height:108px;z-index:999991;
-          pointer-events:none;
-          background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22510%22%20height%3D%22108%22%20viewBox%3D%220%200%20510%20108%22%3E%3Ctext%20x%3D%2224%22%20y%3D%2243%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%2234%22%20letter-spacing%3D%222%22%3EAX%C3%8DA%3C%2Ftext%3E%3Ctext%20x%3D%2224%22%20y%3D%2269%22%20fill%3D%22%23e7ebf1%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2215%22%3EMarket%20Investment%20Analyst%3C%2Ftext%3E%3Ctext%20x%3D%2224%22%20y%3D%2292%22%20fill%3D%22%23e7ebf1%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2214%22%3EGlobal%20Markets.%20Smarter%20Decisions%3C%2Ftext%3E%3C%2Fsvg%3E");
-          background-size:100% 108px;background-repeat:no-repeat;
-        }}
+        /* V23.5.5: AXÍA branding is embedded in the single clean banner image. No duplicate overlay. */
         </style>""",unsafe_allow_html=True)
     except Exception:
         pass
