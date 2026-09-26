@@ -1,30 +1,28 @@
-import ast
-from pathlib import Path
-import pandas as pd
 from services.forecast_widget_engine import summarize_forecast
+from pathlib import Path
 
-def history():
-    return pd.DataFrame({'Close':[10+i/100 for i in range(60)]},index=pd.bdate_range('2026-01-01',periods=60))
-def test_model_target_and_return_same_payload():
-    m={'status':'ready','target_price':12,'forecast_return':.2,'audit':{'model_version':'test','diagnostics':{'n':12}}}
-    x=summarize_forecast(m,history(),'ZIP.AX',10,'AUD')
-    assert x['target_price']==12 and abs(x['return_pct']-20)<1e-9 and x['ai_calculated_math'] is False
-    assert x['forward_path'] is None and x['sparkline_kind']=='observed_historical_monthly_closes'
-    assert len(x['sparkline_points'])<=12
+def sample():
+ return {'status':'ready','target_price':120,'forecast_return':.2,'probability_positive':None,'audit':{'model_version':'test','diagnostics':{'n':0},'bridge':{'status':'not_used'}}}
 
-def test_unavailable_never_invents_target_or_path():
-    x=summarize_forecast({'status':'unavailable','audit':{'reason':'Insufficient completed 12M outcomes'}},history(),'ZIP.AX',10)
-    assert x['status']=='unavailable' and x['target_price'] is None and x['return_pct'] is None
-    assert x['reason']=='Insufficient completed 12M outcomes' and x['forward_path'] is None
+def test_reuses_target_and_return():
+ x=summarize_forecast(sample(),'ABC',100,'AUD');assert x['status']=='ready' and x['target_price']==120 and x['return_label']=='+20.0%'
+ assert x['sparkline_points'] is None and x['ai_calculated_math'] is False
 
-def test_invalid_spot_never_returns_ready():
-    x=summarize_forecast({'status':'ready','target_price':12},history(),'ZIP.AX',0)
-    assert x['status']=='unavailable' and x['return_pct'] is None
+def test_no_fabricated_path():
+ x=summarize_forecast(sample(),'ABC',100);assert x['sparkline_kind']=='unavailable'
+ assert 'monthly_forward_path_not_produced_by_model' in x['missing_evidence']
 
-def test_route_and_live_card():
-    assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()
-    s=Path('app.py').read_text()
-    assert 'summarize_forecast(_fc12,_ccforecast_hist,ticker,price)' in s
-    assert 'Observed historical monthly closes (not a projected price path)' in s
-    assert '10,36 35,31 60,32' not in s
-    ast.parse(s)
+def test_inconsistent_price_withheld():
+ x=summarize_forecast(sample(),'ABC',90);assert x['status']=='unavailable' and x['target_price'] is None
+
+def test_valid_explicit_model_path():
+ x=summarize_forecast(sample(),'ABC',100,forward_path=[101+i for i in range(11)]+[120]);assert len(x['sparkline_points'])==12
+
+def test_no_history_unavailable():
+ x=summarize_forecast({'status':'unavailable','audit':{'reason':'history missing'}},'ABC',100)
+ assert x['status']=='unavailable' and 'history missing' in x['missing_evidence']
+
+def test_endpoint_and_ui():
+ assert '/api/v1/widget/forecast-summary' in Path('main.py').read_text()
+ s=Path('app.py').read_text();assert 'Observed history · not forecast path' in s
+ assert '10,36 35,31 60,32' not in s

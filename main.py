@@ -79,12 +79,11 @@ async def valuation_summary(ticker:str=Query(...)):
 async def technicals(ticker:str=Query(...)):return await _run(ticker,technicals_for_ticker,"Technicals")
 @app.get("/api/v1/widget/consensus",response_model=APIResponse)
 async def consensus(ticker:str=Query(...)):return await _run(ticker,consensus_for_ticker,"Consensus")
+@app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
+async def forecast_summary(ticker:str=Query(...)):return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
+
 @app.get("/api/v1/widget/forecast",response_model=APIResponse)
 async def forecast(ticker:str=Query(...)):return await _run(ticker,forecast_for_ticker,"Forecast")
-@app.get("/api/v1/widget/forecast-summary",response_model=APIResponse)
-async def forecast_summary(ticker:str=Query(...)):
-    return await _run(ticker,forecast_summary_for_ticker,"Forecast summary")
-
 @app.get("/api/v1/widget/research-brief",response_model=ResearchBriefData)
 async def research_brief(ticker:str=Query(...,description="Target ticker")):
     symbol=_ticker(ticker)
