@@ -149,12 +149,27 @@ def _row(df, aliases):
                 key=_norm(alias)
                 if len(key)>=8:
                     for norm,raw in lookup.items():
-                        if key in norm or norm in key:matches.append(raw)
+                        if key in norm or (len(norm)>=8 and norm in key):matches.append(raw)
         for raw in dict.fromkeys(matches):
             values=pd.to_numeric(frame.loc[raw],errors="coerce")
             if isinstance(values,pd.DataFrame):values=values.iloc[0]
             if values.notna().any():return values,str(raw)
     return None,None
+
+def cashflow_row_diagnostics(frame):
+    """Inspect exact provider rows and date alignment without guessing missing values."""
+    if frame is None or frame.empty:return {"status":"empty","rows":[]}
+    ocf,orow=_row(frame,ALIASES["operating_cash_flow"])
+    cap,crow=_row(frame,ALIASES["capex"])
+    direct,drow=_row(frame,("Free Cash Flow","FreeCashFlow"))
+    ov=_dated_values(ocf);cv=_dated_values(cap);dv=_dated_values(direct)
+    return {"status":"received","shape":list(frame.shape),
+            "operating_row":orow,"capex_row":crow,"direct_fcf_row":drow,
+            "operating_periods":[str(x.date()) for x in sorted(ov,reverse=True)],
+            "capex_periods":[str(x.date()) for x in sorted(cv,reverse=True)],
+            "direct_fcf_periods":[str(x.date()) for x in sorted(dv,reverse=True)],
+            "matched_periods":[str(x.date()) for x in sorted(ov.keys()&cv.keys(),reverse=True)],
+            "available_rows":list(map(str,frame.index[:80]))}
 
 def _dated_values(row):
     out={}

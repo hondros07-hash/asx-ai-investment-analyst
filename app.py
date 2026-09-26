@@ -44,6 +44,7 @@ from corporate_actions_calendar import corporate_actions_calendar
 from services.evidence_thesis_integration import EvidenceToThesisEngine, CompanyExposure
 from services.synthesis_core import Evidence as SynthesisEvidence
 from services.intelligence_event_gateway import normalize_event
+from services.company_intelligence_engine import orchestrate_company_synthesis
 
 import sqlite3
 import uuid
@@ -90,6 +91,32 @@ def _v2342_event_candidates(news_df=None, ann_df=None):
     return [x for x in out if x.get("status")=="accepted"]
 
 def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, base_value):
+    # V23.7.0: central orchestrator consumes structured, sourced rows only.
+    # Preserve legacy integration for rows already carrying its full verified contract.
+    _structured=[]
+    for _df,_stype in ((ann_df,"announcement"),(news_df,"news")):
+        if _df is None or getattr(_df,"empty",True): continue
+        for _,_r in _df.head(5).iterrows():
+            _e={"source_type":_stype,"event_key":str(_r.get("event_key") or ""),
+                "direction":str(_r.get("direction") or "unknown"),
+                "what_changed":str(_r.get("title") or _r.get("Title") or _r.get("headline") or ""),
+                "verified":_r.get("verified") is True,
+                "source":str(_r.get("source") or _r.get("source_name") or ""),
+                "evidence_id":str(_r.get("evidence_id") or ""),
+                "ticker":str(_r.get("ticker") or ticker),
+                "published_at":str(_r.get("published_at") or _r.get("date") or ""),
+                "url":str(_r.get("url") or "")}
+            if _e["event_key"]: _structured.append(_e)
+    _exposures=[{"exposure_key":x.exposure_key,"verified":x.verified,
+                 "source":x.source_name,"evidence_id":x.evidence_id} for x in _v2342_verified_exposures(ticker,thesis_rows)]
+    _conditions=[]
+    if thesis_rows is not None and not getattr(thesis_rows,"empty",True):
+        for _,_r in thesis_rows.iterrows():
+            _conditions.append({"metric":str(_r.get("condition_key") or _r.get("key") or ""),"status":_r.get("status")})
+    _orchestrated=orchestrate_company_synthesis(ticker,raw_event=_structured[0] if _structured else None,
+                                              exposures=_exposures,thesis_conditions=_conditions)
+    # No legacy bypass: a headline without verified source metadata cannot become a mapped claim.
+    return {"status":_orchestrated["status"],"decision_package":_orchestrated}
     exposures=_v2342_verified_exposures(ticker,thesis_rows)
     events=_v2342_event_candidates(news_df,ann_df)
     if not exposures or not events:
@@ -2244,8 +2271,12 @@ def valuation_pipeline(ticker,price):
         except Exception: pass
     recovered=_recover_valuation_bundle(_vmeta,bundle)
     # The recovery engine owns FCF; never substitute an unrelated annual row.
-    recovered["audit"]["fcf_pipeline_version"]="V23.6.6"
+    recovered["audit"]["fcf_pipeline_version"]="V23.6.7"
     from services.valuation_evidence import _row as _fcf_row, ALIASES as _fcf_aliases
+    from services.valuation_evidence import cashflow_row_diagnostics
+    recovered["audit"]["fcf_root_cause"]={
+        name:cashflow_row_diagnostics(bundle[name])
+        for name in ("cashflow","quarterly_cashflow")}
     recovered["audit"]["fcf_row_resolution"]={
         name: {"operating_cash_flow":_fcf_row(bundle[name],_fcf_aliases["operating_cash_flow"])[1],
                "capital_expenditure":_fcf_row(bundle[name],_fcf_aliases["capex"])[1],
