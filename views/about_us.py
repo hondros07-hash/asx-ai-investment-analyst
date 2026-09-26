@@ -3,23 +3,30 @@ import streamlit as st
 
 def render_about_us():
     html = """<style>
-    .ax-about{max-width:1120px;margin:0 auto 24px;color:#12365c;font-family:Arial,Helvetica,sans-serif}
-    .ax-about *{box-sizing:border-box}.ax-about .eyebrow{color:#1871bf;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
-    .ax-about h1{font-size:clamp(30px,4vw,48px);line-height:1.12;letter-spacing:-.035em;margin:12px 0 18px;color:#082f5b}
-    .ax-about h2{font-size:clamp(23px,3vw,31px);letter-spacing:-.025em;color:#082f5b;margin:0 0 15px}
-    .ax-about h3{font-size:21px;color:#082f5b;margin:8px 0 12px}.ax-about p{font-size:15px;line-height:1.8;color:#4b617b;margin:0 0 15px}
-    .ax-about .hero{padding:48px clamp(24px,5vw,62px);background:linear-gradient(120deg,#082f5b,#125c9b);border-radius:16px;color:#fff}
-    .ax-about .hero h1,.ax-about .hero p{color:#fff}.ax-about .hero p{max-width:780px;color:#e0ebf7}
-    .ax-about .greek{font-family:Georgia,serif;font-size:20px;color:#9acdf7;margin:0 0 10px}
-    .ax-about .section{padding:42px 0;border-bottom:1px solid #dce7f2}.ax-about .section:last-child{border-bottom:0}
-    .ax-about .family{background:#fff;border:1px solid #dce7f2;border-radius:14px;padding:32px}
-    .ax-about .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px}
-    .ax-about .card{background:#fff;border:1px solid #dce7f2;border-radius:13px;padding:26px;min-width:0;border-top:4px solid #1871bf}
-    .ax-about .number{font-size:12px;letter-spacing:.13em;font-weight:800;color:#1871bf}
-    .ax-about .card p{font-size:14px;line-height:1.75}.ax-about .card strong{color:#163e69}
-    .ax-about .closing{background:#edf5fc;border-radius:14px;padding:30px;margin-top:30px}
-    .ax-about .fine{font-size:12px;line-height:1.6;color:#60758e}
-    @media(max-width:850px){.ax-about .cards{grid-template-columns:1fr}.ax-about .hero{padding:30px 24px}.ax-about .section{padding:26px 0}.ax-about .family{padding:23px}}
+    /* AXÍA V23.7.5.2: restrained research-terminal design, scoped to About. */
+    .ax-about{width:100%;max-width:none;margin:0 0 10px;color:#183b60;font-family:Arial,Helvetica,sans-serif}
+    .ax-about *{box-sizing:border-box}
+    .ax-about .eyebrow{color:#1765ae;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+    .ax-about h1{font-size:28px;line-height:1.25;letter-spacing:-.025em;margin:8px 0 11px;color:#082f59!important;font-weight:750}
+    .ax-about h2{font-size:19px;line-height:1.35;letter-spacing:-.015em;color:#123b64!important;margin:6px 0 13px;font-weight:750}
+    .ax-about h3{font-size:16px;line-height:1.35;color:#123b64!important;margin:8px 0 12px;font-weight:750}
+    .ax-about p{font-size:13px;line-height:1.72;color:#506782;margin:0 0 11px}
+    .ax-about .hero{padding:23px 27px 19px;background:#fff;border:1px solid #dbe6f0;border-left:3px solid #1768b4;border-radius:8px;color:#173d66}
+    .ax-about .hero .eyebrow{color:#1765ae!important}
+    .ax-about .hero h1,.ax-about .hero p{color:#173d66!important}
+    .ax-about .hero p{max-width:940px}
+    .ax-about .greek{font-family:Georgia,serif;font-size:15px;color:#55718e;margin:0 0 11px}
+    .ax-about .section{padding:23px 0;border-bottom:1px solid #dce6f0}
+    .ax-about .section:last-child{border-bottom:0}
+    .ax-about .family{background:#fff;border:1px solid #dbe6f0;border-radius:8px;padding:21px 25px}
+    .ax-about .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:15px;align-items:stretch}
+    .ax-about .card{background:#fff;border:1px solid #dbe6f0;border-radius:8px;padding:19px 20px;min-width:0;border-top:2px solid #1768b4}
+    .ax-about .number{font-size:10px;letter-spacing:.09em;font-weight:800;color:#1765ae}
+    .ax-about .card p{font-size:12px;line-height:1.7}
+    .ax-about .card strong{color:#163e69}
+    .ax-about .closing{background:#f1f6fb;border:1px solid #dbe6f0;border-radius:8px;padding:21px 25px;margin-top:20px}
+    .ax-about .fine{font-size:11px;line-height:1.6;color:#657a91}
+    @media(max-width:850px){.ax-about .cards{grid-template-columns:1fr}.ax-about .hero,.ax-about .family,.ax-about .closing{padding:19px}.ax-about .section{padding:19px 0}}
     </style><div class="ax-about">
     <section class="hero"><div class="eyebrow" style="color:#a6d6ff">Our story · Our purpose</div>
     <h1>The Axía Story</h1><div class="greek">Αξία · Worth. Value. Merit.</div>
