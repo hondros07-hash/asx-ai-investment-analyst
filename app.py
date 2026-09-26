@@ -8222,7 +8222,19 @@ elif page=="Company Command Centre":
         _v2342_change_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_change[:3]) or '<li>No thesis-change condition established.</li>'
         _v2342_badge="EVIDENCE MAPPED" if _v2342_status=="mapped" else "INSUFFICIENT EVIDENCE"
         st.markdown("""<style>
-        .v2342-card{background:#fff;border:1px solid #d8e5f2;border-radius:9px;padding:7px 15px 22px;margin:2px 0 14px;box-shadow:0 1px 2px rgba(15,43,84,.03)}
+        /* V23.7.2: spacing is owned by Streamlit wrappers, not only the HTML card. */
+        [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .v2342-card){
+            row-gap:0.35rem!important;
+        }
+        [data-testid="stElementContainer"]:has(.v2342-card){
+            margin-top:-0.85rem!important;
+            margin-bottom:1.1rem!important;
+            padding:0!important;
+        }
+        [data-testid="stElementContainer"]:has(.v2342-card) [data-testid="stMarkdownContainer"]{
+            margin:0!important;padding:0!important;
+        }
+        .v2342-card{background:#fff;border:1px solid #d8e5f2;border-radius:9px;padding:7px 15px 22px;margin:0 0 24px;box-shadow:0 1px 2px rgba(15,43,84,.03)}
         .v2342-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e6edf5;padding-bottom:6px;margin-bottom:8px}.v2342-title{font-size:13px;font-weight:900;color:#102b52}.v2342-sub{font-size:9px;color:#70849f;margin-top:2px}.v2342-badge{font-size:8px;font-weight:900;letter-spacing:.04em;color:#35618d;background:#f2f7fc;border:1px solid #d8e5f2;border-radius:12px;padding:3px 7px}
         .v2342-grid{display:grid;grid-template-columns:1.25fr 1.25fr .9fr;gap:13px}.v2342-label{font-size:8px;font-weight:900;letter-spacing:.06em;color:#6c819b;margin-bottom:4px}.v2342-text{font-size:10px;line-height:1.38;color:#274a72}.v2342-section{min-width:0}.v2342-rule{border-left:1px solid #e3ebf4;padding-left:13px}.v2342-chip{display:inline-block;font-size:8px;color:#275b91;background:#f3f7fb;border:1px solid #dce7f2;border-radius:10px;padding:2px 6px;margin:1px 3px 2px 0}.v2342-muted{font-size:8.5px;color:#8293a8}.v2342-list{margin:2px 0 0 14px;padding:0;color:#355979;font-size:8.8px;line-height:1.35}.v2342-foot{border-top:1px solid #e6edf5;margin-top:14px;padding-top:9px;display:flex;gap:18px;font-size:8px;color:#71869f}
         </style>""",unsafe_allow_html=True)
