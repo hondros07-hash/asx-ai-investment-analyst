@@ -6092,12 +6092,12 @@ def _chr_company_search_page():
     if results.empty: st.info("No listings matched the current market filters. Try All Markets / All Exchanges."); return
 
     rows=[]
-    for _,r in results.head(16).iterrows():
+    for _,r in results.head(32).iterrows():
         sym=str(r["Symbol"]); resolved=resolve_listing(sym,r.get("Exchange",""),r.get("Country","")); oq=overview_quote(resolved,"5d") or {}
         last=_mia_num(oq.get("last")); chg=_mia_num(oq.get("pct"))
         try: meta=_chr_search_market_enrichment_v2074214(resolved) or {}
         except Exception: meta={}
-        rows.append({"Company":str(meta.get("longName") or meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":_chr_identity_country(resolved, r.get("Exchange",""), meta.get("country") or r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Logo":str(meta.get("logo_url") or meta.get("logoUrl") or ""),"Website":str(meta.get("website") or ""),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"_resolved":resolved})
+        rows.append({"Company":str(meta.get("longName") or meta.get("shortName") or r.get("Company") or sym),"Ticker":sym,"Exchange":str(r.get("Exchange") or ""),"Market":str(r.get("Market") or ""),"Country":_chr_identity_country(resolved, r.get("Exchange",""), meta.get("country") or r.get("Country") or ""),"Currency":str(meta.get("currency") or r.get("Currency") or ""),"Sector":str(meta.get("sector") or "—"),"Logo":str(meta.get("logo_url") or meta.get("logoUrl") or ""),"Website":str(meta.get("website") or ""),"Market Cap":_mia_num(meta.get("marketCap")),"Price":None if not np.isfinite(last) else float(last),"Day %":None if not np.isfinite(chg) else float(chg),"Financial Currency":str(meta.get("financialCurrency") or ""),"Primary Exchange":str(meta.get("primaryExchange") or ""),"_resolved":resolved})
     view=pd.DataFrame(rows)
     # V20.7.4.20 — keep the strongest listing for duplicate search hits.
     # Search providers can return the same security several times with partial
@@ -6111,8 +6111,11 @@ def _chr_company_search_page():
         # Market cap is used only as a relevance signal; no listings are fabricated.
         _q=query.strip().lower()
         view["_name_match"]=view["Company"].fillna("").astype(str).str.lower().map(lambda x: 2 if x==_q else (1 if _q in x else 0))
+        view["_ticker_match"]=view["Ticker"].fillna("").astype(str).str.lower().eq(_q).astype(int)
+        view["_home_listing"]=((view["Country"].eq("United States")) & (view["Market"].isin(["NYSE","NASDAQ"]))).astype(int)
         view["_cap_rank"]=pd.to_numeric(view["Market Cap"],errors="coerce").fillna(-1)
-        view=view.sort_values(["_name_match","_cap_rank"],ascending=[False,False],kind="stable").drop(columns=["_name_match","_cap_rank"]).reset_index(drop=True)
+        # Exact ticker, matching company name, then US listing for US company matches.
+        view=view.sort_values(["_ticker_match","_name_match","_home_listing","_cap_rank"],ascending=[False,False,False,False],kind="stable").drop(columns=["_ticker_match","_name_match","_home_listing","_cap_rank"]).reset_index(drop=True)
     if sector_filter!="All Sectors": view=view[view["Sector"].eq(sector_filter)].copy()
     if cap_filter!="All Market Caps":
         mc=pd.to_numeric(view["Market Cap"],errors="coerce")
@@ -6195,7 +6198,7 @@ def _chr_company_search_page():
 .v421qhero{display:flex;align-items:center;gap:11px;min-width:0}.v421qhero .v421qlogo{width:46px;height:46px;object-fit:contain;border-radius:8px}.v421qhero .v421av{width:46px;height:46px;border-radius:50%;background:#eef3f8;display:inline-flex;align-items:center;justify-content:center;font-weight:900;color:#17365d}.v421qname{font-size:19px!important;line-height:1.12;font-weight:900;color:#10264b}.v421meta{font-size:10.5px;color:#71839a;margin-top:4px}.v421price-line{display:flex;align-items:baseline;gap:14px;margin:10px 0 4px;flex-wrap:wrap}.v421price-main{font-size:31px;line-height:1;font-weight:900;color:#111827}.v421price-change{font-size:15px;font-weight:850}.v421stats{margin-top:4px}.v421stat{font-size:11.5px!important;padding:5px 0!important}.v421section-rule{height:1px;background:#e4ebf3;margin:10px -14px 9px}.v421cons-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.v421cons-title b{font-size:14px;color:#10264b}.v421consbar{height:10px;border-radius:999px;overflow:hidden;display:flex;gap:4px;margin:5px 0 8px}.v421consbar span{display:block;border-radius:999px}.v421consbar .buy{background:#18a05e;flex:6}.v421consbar .hold{background:#f4a621;flex:2}.v421consbar .sell{background:#e53935;flex:1}.v421analyst-note{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#6b7f96;margin-bottom:3px}.v421target{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-top:6px}.v421target span{color:#64778e}.v421target b{color:#159447;font-size:12.5px}.st-key-chr_qv_range_v207421{margin:0!important}.st-key-chr_search_watch_top_v2074215 button{min-height:34px!important;height:34px!important;padding:0 9px!important;font-size:11px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.st-key-chr_search_open_cc_v207421 button{min-height:42px!important}.st-key-chr_search_watch_v207421 button{min-height:40px!important;color:#0b63c9!important;border-color:#79aef0!important;background:#fff!important}.v421mh{display:flex;justify-content:space-between;border-bottom:1px solid #e8eef5;padding-bottom:7px}.v421mh b{font-size:14px;color:#10264b}.v421see{font-size:10.5px;color:#0863c5;font-weight:800}.v421mr{display:grid;grid-template-columns:62px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v421mt{font-weight:900;color:#18345b}.v421mn{color:#526981;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v421footer{display:flex;justify-content:space-between;color:#71839a;font-size:10px;margin:11px 2px}.v421footer b{color:#10264b}
 /* V20.7.4.21.6 — reference-matched compact Company Quick View. */
-.st-key-chr_search_quickview_panel_v2074211{height:620px!important;min-height:620px!important;max-height:620px!important;padding:12px 14px!important;overflow:hidden!important}
+.st-key-chr_search_quickview_panel_v2074211{height:auto!important;min-height:620px!important;max-height:none!important;padding:12px 14px!important;overflow:visible!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stVerticalBlock"]{gap:5px!important}
 .st-key-chr_search_quickview_panel_v2074211 [data-testid="stHorizontalBlock"]{gap:8px!important}
 .st-key-chr_search_quickview_panel_v2074211 div[data-testid="stMarkdownContainer"] p{margin:0!important}
@@ -6245,7 +6248,7 @@ def _chr_company_search_page():
             lh=f'<span class="v421av">{initial}</span>'
         try:dv=float(r.get("Day %")); dt="—" if not np.isfinite(dv) else f"{dv:+.2f}%"; dc="v421up" if dv>0 else ("v421down" if dv<0 else "v421flat")
         except:dt="—";dc="v421flat"
-        bg=' style="background:#f5f9ff"' if str(r.get("_resolved"))==selres else ""
+        bg=' style="background:#eaf3ff;border-left:3px solid #1268d6"' if str(r.get("_resolved"))==selres else ""
         rows.append(f'<div class="v421row"{bg}><div class="v421cell v421co">{lh}<span>{html.escape(str(r.get("Company") or "—"))}</span></div><div class="v421cell">{html.escape(str(r.get("Ticker") or "—"))}</div><div class="v421cell">{html.escape(exch(r.get("Exchange")))}</div><div class="v421cell v421country">{flag_html(cr)}{html.escape(cr or "—")}</div><div class="v421cell v421num">{price(r.get("Price"),r.get("Currency"))}</div><div class="v421cell v421num {dc}">{dt}</div><div class="v421cell v421num">{capfmt(r.get("Market Cap"),r.get("Currency"))}</div></div>')
     left=f'<div class="v421card v421results"><div class="v421head"><div class="v421title">Search Results</div><div class="v421sub">Showing results for <b>“{html.escape(query)}”</b> ({len(view)} results)</div></div><div class="v421table"><div class="v421row v421th"><div class="v421cell">Company ↕</div><div class="v421cell">Ticker ↕</div><div class="v421cell">Exchange</div><div class="v421cell">Country</div><div class="v421cell v421num">Price</div><div class="v421cell v421num">Day</div><div class="v421cell v421num">Market Cap</div></div>{"".join(rows)}</div></div>'
     resolved=selres
@@ -6254,6 +6257,9 @@ def _chr_company_search_page():
     oq=overview_quote(resolved,"5d") or {}; last=_mia_num(oq.get("last")); pct=_mia_num(oq.get("pct")); company=meta.get("longName") or meta.get("shortName") or selected.get("Company") or resolved; cur=meta.get("currency") or selected.get("Currency") or ""
     mc=_mia_num(meta.get("marketCap"));
     if not np.isfinite(mc): mc=_mia_num(selected.get("Market Cap"))
+    _financial_currency=str(meta.get("financialCurrency") or selected.get("Financial Currency") or "").upper()
+    _quote_currency=str(cur or "").upper()
+    _cap_display=capfmt(mc,_financial_currency) if _financial_currency and _quote_currency==_financial_currency else "—"
     lo=_mia_num(meta.get("fiftyTwoWeekLow")); hi=_mia_num(meta.get("fiftyTwoWeekHigh")); pe=_mia_num(meta.get("trailingPE"));
     if not np.isfinite(pe): pe=_mia_num(meta.get("forwardPE"))
     dy=_mia_num(meta.get("dividendYield"));
@@ -6295,6 +6301,8 @@ def _chr_company_search_page():
                     cr=_chr_identity_country(rres, r.get("Exchange",""), r.get("Country", ""))
                     logo_meta={"logo_url":str(r.get("Logo") or ""),"website":str(r.get("Website") or "")}
                     candidates=_chr_identity_logo_candidates(rres,logo_meta,str(r.get("Company") or ""),96)
+                    if rres==selres:
+                        st.markdown(f'<style>[class*="st-key-chr_pick_native_v20742141_{i}_{rres}"] button{{background:#eaf3ff!important;border-left:3px solid #1268d6!important;color:#0b4c99!important}}</style>',unsafe_allow_html=True)
                     with c0:
                         a,b=st.columns([.18,.82],gap="small",vertical_alignment="center")
                         with a:
@@ -6325,7 +6333,7 @@ def _chr_company_search_page():
                 if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_top_v2074215"):
                     try: watch_add(resolved); st.toast(f"{resolved} added to Watchlist.")
                     except Exception as exc: st.warning(f"Could not add {resolved}: {exc}")
-            st.markdown(f'<div class="v421price-line"><span class="v421price-main">{price(last,cur)}</span><span class="v421price-change {dcls}">{dt}</span></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="v421price-line"><span class="v421price-main">{price(last,cur)} <small style="font-size:12px;color:#59728e">{html.escape(str(cur or "Currency unavailable").upper())}</small></span><span class="v421price-change {dcls}">{dt}</span></div>',unsafe_allow_html=True)
             # V20.7.4.21.6.6 — reference-matched timeframe selector.
             # Use seven independent Streamlit buttons instead of segmented_control.
             # This avoids the native segmented rail/dividers entirely while keeping
@@ -6351,10 +6359,19 @@ def _chr_company_search_page():
             try: hd=yf.Ticker(resolved).history(period=per,interval=itv,auto_adjust=True) if itv else history(resolved,per)
             except: hd=pd.DataFrame()
             if hd is not None and not hd.empty and "Close" in hd.columns:
-                fig=go.Figure(go.Scatter(x=hd.index,y=hd["Close"],mode="lines",line={"width":2,"color":"#159447"},fill="tozeroy",fillcolor="rgba(21,148,71,.08)")); fig.update_layout(height=104,margin=dict(l=0,r=0,t=1,b=1),showlegend=False,xaxis=dict(visible=False),yaxis=dict(visible=False),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)"); st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                _close=pd.to_numeric(hd["Close"],errors="coerce").dropna()
+                if len(_close)>=2 and float(_close.max())>float(_close.min()):
+                    _pad=max(float(_close.max()-_close.min())*.12,abs(float(_close.iloc[-1]))*.002)
+                    fig=go.Figure(go.Scatter(x=_close.index,y=_close,mode="lines",line={"width":2,"color":"#159447"}))
+                    fig.update_layout(height=104,margin=dict(l=0,r=0,t=1,b=1),showlegend=False,xaxis=dict(visible=False),yaxis=dict(visible=False,range=[float(_close.min())-_pad,float(_close.max())+_pad]),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
+                    st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                else:
+                    st.caption("Insufficient price variation for this timeframe.")
             else:
                 st.markdown('<div style="height:104px;display:flex;align-items:center;justify-content:center;color:#8191a5;font-size:11px">Chart data unavailable</div>',unsafe_allow_html=True)
-            st.markdown(f'<div class="v421stats"><div class="v421stat"><span>Market Cap</span><b>{capfmt(mc,cur)}</b></div><div class="v421stat"><span>52 Week Range</span><b>{rng}</b></div><div class="v421stat"><span>P/E Ratio</span><b>{pet}</b></div><div class="v421stat"><span>Dividend Yield</span><b>{dyt}</b></div><div class="v421stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v421stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div><div class="v421section-rule"></div><div class="v421cons-title"><b>Analyst Consensus</b><span class="v421pill">{html.escape(rec)}</span></div><div class="v421consbar" aria-label="Consensus indicator"><span class="buy"></span><span class="hold"></span><span class="sell"></span></div><div class="v421analyst-note"><span>{html.escape(analyst_txt)}</span><span>Provider consensus</span></div><div class="v421target"><span>12M Target</span><b>{tt}</b></div>',unsafe_allow_html=True)
+            if _cap_display=="—":
+                st.caption("Issuer market cap unavailable: reporting currency or conversion not verified.")
+            st.markdown(f'<div class="v421stats"><div class="v421stat"><span>Market Cap</span><b>{_cap_display}</b></div><div class="v421stat"><span>52 Week Range</span><b>{rng}</b></div><div class="v421stat"><span>P/E Ratio</span><b>{pet}</b></div><div class="v421stat"><span>Dividend Yield</span><b>{dyt}</b></div><div class="v421stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v421stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div><div class="v421section-rule"></div><div class="v421cons-title"><b>Analyst Consensus</b><span class="v421pill">{html.escape(rec)}</span></div><div class="v421consbar" aria-label="Consensus indicator"><span class="buy"></span><span class="hold"></span><span class="sell"></span></div><div class="v421analyst-note"><span>{html.escape(analyst_txt)}</span><span>Provider consensus</span></div><div class="v421target"><span>12M Target</span><b>{tt}</b></div>',unsafe_allow_html=True)
             if st.button("Open Company Command Centre  →",type="primary",use_container_width=True,key="chr_search_open_cc_v207421"):
                 st.session_state["chr_active_ticker"]=resolved
                 st.session_state["mia_search_query"]=resolved
