@@ -4154,7 +4154,7 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Axía research workspace")
-if page not in {"Dashboard","Company Search","Company Command Centre"}:
+if page not in {"Dashboard","Company Search","Company Command Centre","About"}:
     st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Axía / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
