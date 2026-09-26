@@ -47,6 +47,7 @@ from services.intelligence_event_gateway import normalize_event
 from services.company_intelligence_engine import orchestrate_company_synthesis
 
 import sqlite3
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -125,6 +126,19 @@ def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, 
     if _orchestrated is None:
         _orchestrated=orchestrate_company_synthesis(ticker,raw_event=None,
             exposures=_exposures,thesis_conditions=_conditions)
+    # A retrieved headline is contextual evidence, not a verified event or causal claim.
+    # Expose it without promoting it to a mapped thesis impact.
+    if _orchestrated.get("status") != "mapped" and news_df is not None and not news_df.empty:
+        _headlines=[]
+        for _,_n in news_df.head(3).iterrows():
+            _title=str(_n.get("Headline") or _n.get("title") or "").strip()
+            _source=str(_n.get("Source") or _n.get("source") or "").strip()
+            if _title and _title.lower() not in {x["title"].lower() for x in _headlines}:
+                _headlines.append({"title":_title,"source":_source,"url":str(_n.get("URL") or "")})
+        _orchestrated["news_context"]=_headlines
+        _orchestrated["what_changed"]="Recent news retrieved; no company-specific material change verified."
+        _orchestrated["why_it_matters"]="News is available, but the source has not supplied a verified event classification or company exposure. Headlines are not evidence of financial impact."
+        _orchestrated["what_to_watch_next"]=["Verify the company announcement or financial report", "Confirm the relevant KPI and reporting period"]
     _orchestrated["pipeline_diagnostics"]={"structured_events":len(_structured),
         "verified_exposures":len(_exposures),"announcement_rows":0 if ann_df is None else len(ann_df),
         "news_rows":0 if news_df is None else len(news_df)}
@@ -8150,14 +8164,19 @@ elif page=="Company Command Centre":
         .v2373-cat-body{margin-top:2px;border-top:1px solid #dfe8f2;min-width:0;overflow:hidden}
         .v2373-cat-body .v21290-row{grid-template-columns:57px minmax(0,1fr) 15px;min-width:0}
         .v21313-news-title{font-size:10.5px;font-weight:950;color:#10264b;white-space:nowrap}.v21313-news-title span{color:#086ee8;margin-right:4px}
-        .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:58px minmax(0,1fr) 48px;gap:5px;min-width:0;overflow:hidden;align-items:center;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
-        .v21313-news-row .main{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{display:block;min-width:0;text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
+        .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:3px 6px;min-width:0;width:100%;overflow:hidden;align-items:start;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
+        .v21313-news-row .main{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{grid-column:2;display:block;min-width:0;text-align:left;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
         </style>""",unsafe_allow_html=True)
         _news=overview_news_safe(ticker,5)
         # V21.2.91 — load the official/regulatory announcement engine directly for
         # the reference card. `latest_announcements_safe` can be provider-thin and
         # previously caused the Overview card to show empty even when ASX had rows.
         try:
+            if not os.environ.get("SEC_USER_AGENT"):
+                try:
+                    _sec_ua=str(st.secrets.get("SEC_USER_AGENT", "") or "").strip()
+                    if _sec_ua: os.environ["SEC_USER_AGENT"]=_sec_ua
+                except (FileNotFoundError, KeyError, AttributeError): pass
             _secid=dict(st.session_state.get("chr_security_identity") or {})
             _id_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
             _id_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
@@ -8165,8 +8184,10 @@ elif page=="Company Command Centre":
             _v21291_ann_all,_v21291_coverage,_v21292_identity=official_disclosure_gateway(
                 _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country
             )
-        except Exception:
+        except Exception as _sec_error:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
+            _v21291_ann_all.attrs["status"]="UPSTREAM_ERROR"
+            _v21291_ann_all.attrs["diagnostics"]=[type(_sec_error).__name__+": "+str(_sec_error)[:160]]
         _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
         if _v21291_ann_all is not None and hasattr(_v21291_ann_all,"attrs"):
             _ann_df.attrs.update(_v21291_ann_all.attrs)
@@ -8216,7 +8237,7 @@ elif page=="Company Command Centre":
         _v2342_watch_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_watch[:4]) or '<li>No additional monitoring item established.</li>'
         _v2342_change_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_change[:3]) or '<li>No thesis-change condition established.</li>'
         _v2342_diag=dict(_v2342_dp.get("pipeline_diagnostics") or {})
-        _v2342_badge="EVIDENCE MAPPED" if _v2342_status=="mapped" else "INSUFFICIENT EVIDENCE"
+        _v2342_badge="EVIDENCE MAPPED" if _v2342_status=="mapped" else "NEWS CONTEXT ONLY" if _v2342_dp.get("news_context") else "INSUFFICIENT EVIDENCE"
         st.markdown("""<style>
         /* V23.7.2: spacing is owned by Streamlit wrappers, not only the HTML card. */
         [data-testid="stElementContainer"]:has(.v2342-card){
@@ -8241,9 +8262,10 @@ elif page=="Company Command Centre":
           <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
         </div>""",unsafe_allow_html=True)
         if _v2342_status != "mapped":
-            with st.expander("Company Intelligence · evidence diagnostics", expanded=False):
+            with st.expander("Evidence diagnostics · technical details", expanded=False):
                 st.json({"ticker":ticker, **_v2342_diag,
-                         "missing_evidence":_v2342_dp.get("missing_evidence",[])})
+                         "missing_evidence":_v2342_dp.get("missing_evidence",[]),
+                         "news_context":_v2342_dp.get("news_context",[])})
 
         _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
         with _m1:
@@ -8263,7 +8285,7 @@ elif page=="Company Command Centre":
             _authority=str(_v21291_prov.get("authority") or "")
             _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
             _empty_detail=html.escape(_status_msg or _empty_fallback)
-            if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED"}:
+            if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED","SEC_USER_AGENT_REQUIRED"}:
                 _empty_detail += ' <span title="Check SEC_USER_AGENT and provider diagnostics">(source diagnostic)</span>' 
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
@@ -8285,7 +8307,7 @@ elif page=="Company Command Centre":
                 for r in _news.itertuples():
                     _headline=html.escape(str(r.Headline)); _src=html.escape(str(r.Source)); _url=html.escape(str(getattr(r,"URL","") or ""),quote=True)
                     _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
-                    _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta">{_src}</span></div>')
+                    _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta" title="{html.escape(str(r.Source),quote=True)}">{_src}</span></div>')
             _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No recent company news is available from the configured provider.</div>'
             with st.container(border=True,key=f"v21313_news_card_{ticker}"):
                 _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
