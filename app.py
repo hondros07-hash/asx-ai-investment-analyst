@@ -8284,11 +8284,19 @@ elif page=="Company Command Centre":
           </div>
           <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
         </div>""",unsafe_allow_html=True)
+        # V23.7.7: Keep the Overview compact. Diagnostics remain accessible on demand;
+        # headlines are context, not verified event or company-exposure evidence.
         if _v2342_status != "mapped":
-            with st.expander("Evidence diagnostics · technical details", expanded=False):
-                st.json({"ticker":ticker, **_v2342_diag,
-                         "missing_evidence":_v2342_dp.get("missing_evidence",[]),
-                         "news_context":_v2342_dp.get("news_context",[])})
+            _v2377_missing = _v2342_dp.get("missing_evidence", []) or []
+            _v2377_news = _v2342_dp.get("news_context", []) or []
+            with st.expander("Evidence status · details", expanded=False):
+                st.caption("No verified company-specific event/exposure mapping is available. News headlines are context only.")
+                st.write("Missing evidence:", ", ".join(map(str, _v2377_missing)) if _v2377_missing else "None identified")
+                st.caption(f"{len(_v2377_news)} contextual news item(s) · {len(_v2377_missing)} evidence gap(s)")
+                if st.checkbox("Show raw technical diagnostics", value=False, key=f"v2377_raw_evidence_{ticker}"):
+                    st.json({"ticker": ticker, **_v2342_diag,
+                             "missing_evidence": _v2377_missing,
+                             "news_context": _v2377_news}, expanded=False)
 
         _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
         with _m1:
@@ -8304,7 +8312,7 @@ elif page=="Company Command Centre":
                     _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
             _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
+            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
             _authority=str(_v21291_prov.get("authority") or "")
             _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
             _empty_detail=html.escape(_status_msg or _empty_fallback)
