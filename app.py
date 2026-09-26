@@ -4825,6 +4825,14 @@ def _chr_detect_home_market_v21222():
     return {"AU":"Australia", "US":"United States", "GB":"United Kingdom",
             "JP":"Japan", "HK":"Hong Kong", "CA":"Canada"}.get(region, "Australia")
 
+def _chr_select_home_market_v2378(market):
+    """Apply the selection before the fragment renders its button styles and data."""
+    if market not in MARKET_OVERVIEW_CONFIG:
+        return
+    st.session_state["home_market_v2021"] = market
+    st.session_state["chr_home_market_user_selected_v21222"] = True
+    st.session_state["chr_home_market_auto_v21222"] = False
+
 @st.fragment(run_every="60s")
 def render_global_market_overview():
     # V21.2.22 — Home Market Localisation Engine. Detect once per browser session.
@@ -4857,16 +4865,11 @@ def render_global_market_overview():
             nav_cols=st.columns(6,gap="small")
             for i,m in enumerate(names):
                 with nav_cols[i]:
-                    if st.button(m, key=f"country_v2027_{i}", use_container_width=True,
-                                 type="primary" if st.session_state.home_market_v2021==m else "secondary"):
-                        # V20.7.4.19 — single-pass country switching. The button
-                        # interaction already triggered this run, so update local/session
-                        # state and continue directly into the selected market render.
-                        # Avoid query-param mutation + st.rerun(), which previously caused
-                        # extra app executions and the visible white/loading transition.
-                        st.session_state.home_market_v2021=m
-                        st.session_state["chr_home_market_user_selected_v21222"]=True
-                        st.session_state["chr_home_market_auto_v21222"]=False
+                    # Callback runs before the fragment is rendered, so the selected
+                    # button and the market data always read the same session state.
+                    st.button(m, key=f"country_v2027_{i}", use_container_width=True,
+                              type="primary" if st.session_state.home_market_v2021==m else "secondary",
+                              on_click=_chr_select_home_market_v2378, args=(m,))
     market=st.session_state.home_market_v2021; cfg=MARKET_OVERVIEW_CONFIG[market]
     idx=[]
     for label,t in cfg['indices'].items(): idx.append((label,t,overview_quote(t,'5d')))
