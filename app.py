@@ -37,6 +37,7 @@ from sector_peer_engine import classification, find_peers, peer_table, normalize
 from research_system import snapshot as research_snapshot, kpi_framework, technical_state, peer_fundamentals, evidence_status, thesis_checklist
 from market_terminal import td_catalog, commodity_catalog, fallback_catalog, live_rows
 from security_search import search_securities, resolve_listing, identity
+from services.regulatory_disclosure_engine import get_regulatory_announcements
 from announcement_engine import (announcements, fetch_document, extract_text, evidence_summary, announcement_provenance,
     announcements_global, official_disclosure_gateway, announcement_provenance_global, resolve_announcement_market)
 from global_dividends import upcoming_dividends
@@ -8224,7 +8225,7 @@ elif page=="Company Command Centre":
             _id_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
             _id_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
             _id_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or _ccmeta.get("country") or "")
-            _v21291_ann_all,_v21291_coverage,_v21292_identity=official_disclosure_gateway(
+            _v21291_ann_all,_v21291_coverage,_v21292_identity=get_regulatory_announcements(
                 _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country
             )
         except Exception as _sec_error:
@@ -8413,20 +8414,20 @@ elif page=="Company Command Centre":
                         _d=_v21290_date(_v21290_pick(r,["date","Date","published","datetime","release_date"]))
                         _t=_v21290_pick(r,["title","Title","headline","Headline","name","announcement"],"Announcement")
                         _ty=_v21290_ann_type(_t,_v21290_pick(r,["type","Type","category","Category"]))
-                        _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","URL","url","link","Link"])
+                        _url=_v21290_pick(r,["PDFURL","pdf_url","document_url","ReadURL","URL","url","link","Link"])
                         _has_pdf=bool(r.get("Has PDF",False)) if hasattr(r,"get") else False
                         _doc_label=("PDF" if _has_pdf else ("FILE" if str(_v21291_prov.get("market") or "") in ("NASDAQ","NYSE") else "VIEW"))
                         _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                         _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
                 _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-                _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
+                _status_msg={"ISSUER_FALLBACK":"Issuer investor-relations documents (not exchange-verified).","IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
                 _authority=str(_v21291_prov.get("authority") or "")
                 _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
                 _empty_detail=html.escape(_status_msg or _empty_fallback)
                 if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED","SEC_USER_AGENT_REQUIRED"}:
                     _empty_detail += ' <span title="Check SEC_USER_AGENT and provider diagnostics">(source diagnostic)</span>' 
                 _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
-                _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
+                _tip=(f'Source: {_v21291_coverage}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                       f'Document access: {_v21291_prov.get("document_policy","—")}')
                 # V21.3.10 — self-contained reference header; no page-level/absolute positioning.
                 _body09=_body.replace('v21290-row','v21310-ann-row').replace('v21290-empty','v21310-ann-empty')
@@ -8438,7 +8439,7 @@ elif page=="Company Command Centre":
                         if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
                             _chr_set_cc_sub_v2111("Announcements & Reports")
                             st.rerun()
-                    st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
+                    st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_coverage or _v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
             with _m2:
                 _rows=[]
                 if _news is not None and not _news.empty:
