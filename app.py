@@ -8357,6 +8357,29 @@ elif page=="Company Command Centre":
                         _chr_set_cc_sub_v2111("News & Events")
                         st.rerun()
 
+        # V23.7.19: Equal-height lower Overview cards. All four columns
+        # stretch to the tallest card; news rows scroll inside their own card.
+        # No changes to data retrieval, evidence or navigation.
+        st.markdown("""<style>
+        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] {
+            align-items:stretch!important;
+        }
+        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            display:flex!important;flex-direction:column!important;min-width:0!important;
+        }
+        [class*="st-key-v23713_lower_cards_"] > [data-testid="stHorizontalBlock"] > [data-testid="column"] > [data-testid="stVerticalBlock"],
+        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21310_ann_card_"],
+        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21313_news_card_"],
+        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v2373_cat_card_"] {
+            flex:1 1 auto!important;height:100%!important;
+        }
+        [class*="st-key-v23713_lower_cards_"] [class*="st-key-v21313_news_card_"] .v21313-news-body {
+            max-height:260px!important;overflow-y:auto!important;
+        }
+        [class*="st-key-v23713_lower_cards_"] .v21290-attn {
+            height:100%!important;min-height:100%!important;box-sizing:border-box!important;
+        }
+        </style>""",unsafe_allow_html=True)
         # V23.7.18: Match the 22px vertical rhythm between the intelligence
         # card, its evidence disclosure, and the four lower Overview cards.
         # Existing Streamlit block spacing is approximately 12px here;
