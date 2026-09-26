@@ -136,15 +136,24 @@ def bridge_payload(selected_ticker: str, selected_meta: Mapping[str,Any], candid
             "candidate_ticker":candidate_ticker,**v}
 
 def _row(df, aliases):
-    if df is None or getattr(df, "empty", True): return None, None
-    lookup={_norm(i):i for i in df.index}
-    for alias in aliases:
-        key=_norm(alias)
-        if key in lookup:
-            raw=lookup[key]
-            values=pd.to_numeric(df.loc[raw],errors="coerce")
-            if isinstance(values,pd.DataFrame): values=values.iloc[0]
-            return values, str(raw)
+    """Resolve statement rows in either orientation, with conservative provider aliases."""
+    if df is None or getattr(df, "empty", True): return None,None
+    for frame in (df,df.T):
+        lookup={_norm(i):i for i in frame.index}
+        matches=[]
+        for alias in aliases:
+            key=_norm(alias)
+            if key in lookup:matches.append(lookup[key])
+        if not matches:
+            for alias in aliases:
+                key=_norm(alias)
+                if len(key)>=8:
+                    for norm,raw in lookup.items():
+                        if key in norm or norm in key:matches.append(raw)
+        for raw in dict.fromkeys(matches):
+            values=pd.to_numeric(frame.loc[raw],errors="coerce")
+            if isinstance(values,pd.DataFrame):values=values.iloc[0]
+            if values.notna().any():return values,str(raw)
     return None,None
 
 def _dated_values(row):

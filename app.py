@@ -2244,7 +2244,13 @@ def valuation_pipeline(ticker,price):
         except Exception: pass
     recovered=_recover_valuation_bundle(_vmeta,bundle)
     # The recovery engine owns FCF; never substitute an unrelated annual row.
-    recovered["audit"]["fcf_pipeline_version"]="V23.6.5"
+    recovered["audit"]["fcf_pipeline_version"]="V23.6.6"
+    from services.valuation_evidence import _row as _fcf_row, ALIASES as _fcf_aliases
+    recovered["audit"]["fcf_row_resolution"]={
+        name: {"operating_cash_flow":_fcf_row(bundle[name],_fcf_aliases["operating_cash_flow"])[1],
+               "capital_expenditure":_fcf_row(bundle[name],_fcf_aliases["capex"])[1],
+               "direct_fcf":_fcf_row(bundle[name],("Free Cash Flow","FreeCashFlow"))[1]}
+        for name in ("cashflow","quarterly_cashflow")}
     recovered["audit"]["fcf_statement_coverage"]={
         name:{"status":bundle.get("_diagnostics",{}).get(name,{}).get("status","unknown"),
               "rows":bundle.get("_diagnostics",{}).get(name,{}).get("rows",[]),
