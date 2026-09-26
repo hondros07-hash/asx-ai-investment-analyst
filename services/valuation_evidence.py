@@ -133,3 +133,95 @@ def bridge_payload(selected_ticker: str, selected_meta: Mapping[str,Any], candid
     v=verify_primary_listing_relationship(selected_meta,candidate_meta)
     return {"status":"verified" if v["verified"] else "rejected","selected_ticker":selected_ticker,
             "candidate_ticker":candidate_ticker,**v}
+
+def _row(df, aliases):
+    if df is None or getattr(df, "empty", True): return None, None
+    lookup={_norm(i):i for i in df.index}
+    for alias in aliases:
+        key=_norm(alias)
+        if key in lookup:
+            raw=lookup[key]
+            values=pd.to_numeric(df.loc[raw],errors="coerce")
+            if isinstance(values,pd.DataFrame): values=values.iloc[0]
+            return values, str(raw)
+    return None,None
+
+def _dated_values(row):
+    out={}
+    if row is None:return out
+    for col,value in row.items():
+        n=_num(value)
+        if n is None:continue
+        try:
+            dt=pd.Timestamp(col)
+            if pd.isna(dt):continue
+            out[dt]=n
+        except (ValueError,TypeError):continue
+    return out
+
+def _fcf_from_statement(frame, quarterly=False):
+    """Use direct FCF or matched OCF/capex dates, never mix reporting periods."""
+    direct,label=_row(frame,("Free Cash Flow","FreeCashFlow"))
+    if direct is not None:
+        values=_dated_values(direct)
+        if quarterly:
+            result=_four_quarter_sum(values)
+            if result is not None:return result,{"source":"quarterly_cash_flow","row":label,"period":"TTM: four consecutive quarters"}
+        elif values:
+            dt=max(values)
+            return values[dt],{"source":"annual_cash_flow","row":label,"period":str(dt.date())}
+    ocf,orow=_row(frame,ALIASES["operating_cash_flow"])
+    cap,crow=_row(frame,ALIASES["capex"])
+    if ocf is None or cap is None:return None,None
+    o=_dated_values(ocf);c=_dated_values(cap)
+    paired={dt:o[dt]+c[dt] if c[dt]<0 else o[dt]-c[dt] for dt in o.keys()&c.keys()}
+    if quarterly:
+        value=_four_quarter_sum(paired)
+        if value is None:return None,None
+        return value,{"source":"quarterly_cash_flow","rows":[orow,crow],"period":"TTM: four consecutive matched quarters"}
+    if paired:
+        dt=max(paired)
+        return paired[dt],{"source":"annual_cash_flow","rows":[orow,crow],"period":str(dt.date())}
+    return None,None
+
+def _four_quarter_sum(values):
+    dates=sorted(values,reverse=True)
+    if len(dates)<4:return None
+    latest=dates[:4]
+    # A genuine four-quarter sequence spans about nine months and has no missing quarter.
+    gaps=[(latest[i]-latest[i+1]).days for i in range(3)]
+    if not all(65<=gap<=120 for gap in gaps):return None
+    return sum(values[d] for d in latest)
+
+def recover_financial_inputs_v2362(meta, annual_cf=None, quarterly_cf=None, annual_bs=None,
+                                   quarterly_bs=None, annual_inc=None, quarterly_inc=None):
+    """Annual/TTM recovery with period-matched inputs and transparent provenance."""
+    meta=meta or {}
+    # Metadata is normally trailing FCF. If absent, prefer verified four-quarter TTM.
+    recovered=recover_financial_inputs(meta,annual_cf,annual_bs,annual_inc)
+    audit=recovered["audit"]
+    if _num(meta.get("freeCashflow")) is None and _num(meta.get("freeCashFlow")) is None:
+        val,prov=_fcf_from_statement(quarterly_cf,quarterly=True)
+        if val is None:val,prov=_fcf_from_statement(annual_cf,quarterly=False)
+        if val is not None:
+            recovered["fcf"]=val
+            audit["inputs"]["fcf"]={"status":"derived","value":val,**prov}
+    for key,aliases,metadata_key in (
+        ("cash",ALIASES["cash"],"totalCash"),
+        ("debt",ALIASES["debt"],"totalDebt"),
+        ("shares",ALIASES["shares"],"sharesOutstanding")):
+        if _num(meta.get(metadata_key)) is not None:continue
+        if key=="shares":
+            frames=(quarterly_bs,annual_bs,quarterly_inc,annual_inc)
+        else:frames=(quarterly_bs,annual_bs)
+        for frame in frames:
+            val,row,period=_latest_statement_value(frame,aliases)
+            if val is not None:
+                recovered[key]=val
+                audit["inputs"][key]={"status":"verified","value":val,"source":"quarterly_statement" if frame is quarterly_bs or frame is quarterly_inc else "annual_statement","row":row,"period":period}
+                break
+    audit["complete_for_dcf"]=bool(_num(recovered["fcf"]) is not None and recovered["fcf"]>0
+                                   and _num(recovered["shares"]) is not None and recovered["shares"]>0)
+    # Zero is legitimate only when explicitly reported; missing cash/debt must block the equity bridge.
+    audit["balance_sheet_complete"]=all(audit["inputs"].get(k,{}).get("status")!="missing" for k in ("cash","debt"))
+    return recovered

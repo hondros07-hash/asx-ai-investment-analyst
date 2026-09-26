@@ -21,7 +21,7 @@ from services.thesis_template_engine import get_thesis_template, classify_thesis
 from services.research_score_engine import calculate_research_score
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs as valuation_provider_inputs
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
-from services.valuation_evidence import recover_financial_inputs, bridge_payload
+from services.valuation_evidence import recover_financial_inputs_v2362, recover_financial_inputs, bridge_payload
 from services.analyst_engine import build_analyst_payload
 from services.forecast_engine import build_12m_forecast
 from services.macro_to_micro_engine import exposure_map, fetch_close as macro_fetch_close, align_series as macro_align_series, normalize_100 as macro_normalize_100, macro_by_label
@@ -2162,17 +2162,22 @@ def valuation_fx_rate(a,b):
  return np.nan
 @st.cache_data(ttl=21600, show_spinner=False)
 def valuation_statement_bundle(ticker):
-    """Return the richest available Yahoo statements; quarterly can expose fresher/TTM evidence."""
+    """Separate annual and quarterly statements; do not select one and discard the other."""
     try:
         t=yf.Ticker(ticker)
-        def richest(*frames):
-            valid=[x for x in frames if isinstance(x,pd.DataFrame) and not x.empty]
-            return max(valid,key=lambda x:(x.notna().sum().sum(),x.shape[0]*x.shape[1])) if valid else pd.DataFrame()
-        return (richest(getattr(t,"quarterly_cashflow",pd.DataFrame()),getattr(t,"cashflow",pd.DataFrame())),
-                richest(getattr(t,"quarterly_balance_sheet",pd.DataFrame()),getattr(t,"balance_sheet",pd.DataFrame())),
-                richest(getattr(t,"quarterly_financials",pd.DataFrame()),getattr(t,"financials",pd.DataFrame())))
-    except Exception:
-        return pd.DataFrame(),pd.DataFrame(),pd.DataFrame()
+        def get(name):
+            try:
+                value=getattr(t,name,pd.DataFrame())
+                return value if isinstance(value,pd.DataFrame) else pd.DataFrame()
+            except Exception:return pd.DataFrame()
+        return {name:get(name) for name in ("cashflow","quarterly_cashflow",
+                "balance_sheet","quarterly_balance_sheet","financials","quarterly_financials")}
+    except Exception:return {name:pd.DataFrame() for name in ("cashflow","quarterly_cashflow","balance_sheet","quarterly_balance_sheet","financials","quarterly_financials")}
+
+def _recover_valuation_bundle(meta,bundle):
+    return recover_financial_inputs_v2362(meta,bundle["cashflow"],bundle["quarterly_cashflow"],
+        bundle["balance_sheet"],bundle["quarterly_balance_sheet"],
+        bundle["financials"],bundle["quarterly_financials"])
 
 def _primary_listing_candidate(meta):
     """Only provider-explicit primary/underlying symbols are considered. Never guess by stripping suffixes."""
@@ -2213,7 +2218,10 @@ def valuation_pipeline(ticker,price):
     """Single source of truth for automatic valuation and its live diagnostics."""
     selected_ticker=str(ticker or "").upper().strip()
     meta=_valuation_meta(selected_ticker) if selected_ticker else {}
-    cf,bs,inc=valuation_statement_bundle(selected_ticker) if selected_ticker else (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
+    bundle=valuation_statement_bundle(selected_ticker) if selected_ticker else valuation_statement_bundle("")
+    cf=bundle["quarterly_cashflow"] if not bundle["quarterly_cashflow"].empty else bundle["cashflow"]
+    bs=bundle["quarterly_balance_sheet"] if not bundle["quarterly_balance_sheet"].empty else bundle["balance_sheet"]
+    inc=bundle["quarterly_financials"] if not bundle["quarterly_financials"].empty else bundle["financials"]
     _vmeta=dict(meta or {})
     if not _mia_num(_vmeta.get("sharesOutstanding")) and selected_ticker:
         try:
@@ -2222,29 +2230,35 @@ def valuation_pipeline(ticker,price):
                 _vmeta["sharesOutstanding"]=float(pd.to_numeric(_sh,errors="coerce").dropna().iloc[-1])
                 _vmeta["_shares_source"]="provider_shares_history"
         except Exception: pass
-    recovered=recover_financial_inputs(_vmeta,cf,bs,inc)
+    recovered=_recover_valuation_bundle(_vmeta,bundle)
     if _vmeta.get("_shares_source") and recovered.get("audit",{}).get("inputs",{}).get("shares",{}).get("status")=="verified":
         recovered["audit"]["inputs"]["shares"]["source"]=_vmeta["_shares_source"]
 
     bridge={"status":"not_used","verified":False,"reason":"Selected listing evidence used","ai_calculated":False}
-    if not recovered["audit"].get("complete_for_dcf") and selected_ticker:
+    if not (recovered["audit"].get("complete_for_dcf") and recovered["audit"].get("balance_sheet_complete")) and selected_ticker:
         candidate=_primary_listing_candidate(_vmeta)
         if candidate and candidate!=selected_ticker:
             cmeta=_valuation_meta(candidate)
             bridge=bridge_payload(selected_ticker,_vmeta,candidate,cmeta)
             if bridge.get("verified"):
-                ccf,cbs,cinc=valuation_statement_bundle(candidate)
-                crecovered=recover_financial_inputs(cmeta,ccf,cbs,cinc)
-                if crecovered["audit"].get("complete_for_dcf"):
+                cbundle=valuation_statement_bundle(candidate)
+                crecovered=_recover_valuation_bundle(cmeta,cbundle)
+                if crecovered["audit"].get("complete_for_dcf") and crecovered["audit"].get("balance_sheet_complete"):
                     crecovered["listing_currency"]=_vmeta.get("currency") or recovered.get("listing_currency")
                     crecovered["audit"]["bridge"]=bridge
                     recovered=crecovered
 
+    if not recovered["audit"].get("balance_sheet_complete"):
+        missing=[k for k in ("cash","debt") if recovered["audit"]["inputs"].get(k,{}).get("status")=="missing"]
+        result={"status":"unavailable","reason":"Verified balance-sheet inputs unavailable: "+", ".join(missing),
+                "scenarios":{},"ai_calculated":False}
+    else:
+        result=None
     fc=recovered.get("financial_currency"); lc=recovered.get("listing_currency")
     fx=1.0
     if fc and lc and str(fc).upper()!=str(lc).upper():
         fx=valuation_fx_rate(fc,lc)
-    result=calculate_dcf_scenarios(recovered.get("fcf"),recovered.get("shares"),recovered.get("cash"),recovered.get("debt"),
+    result=result or calculate_dcf_scenarios(recovered.get("fcf"),recovered.get("shares"),recovered.get("cash"),recovered.get("debt"),
         current_price=price,sector=recovered.get("sector",""),industry=recovered.get("industry",""),
         financial_currency=fc,listing_currency=lc,
         fx_rate_financial_to_listing=fx if np.isfinite(_mia_num(fx)) else None)
