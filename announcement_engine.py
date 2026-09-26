@@ -336,7 +336,7 @@ def _sec_primary_url(cik, accession, primary):
 def _sec_headers():
     # SEC asks automated clients to declare a User-Agent. Operators can set a
     # real contact string in Streamlit/host secrets via SEC_USER_AGENT.
-    ua=os.getenv("SEC_USER_AGENT", "Chrimata/21.3.06 (+https://github.com/hondros07-hash/asx-ai-investment-analyst; market-research application)")
+    ua=os.getenv("SEC_USER_AGENT", "AXIA Market Investment Analyst contact: support@axia-research.invalid")
     return {"User-Agent":ua,"Accept":"application/json,text/html,*/*"}
 
 
@@ -724,6 +724,9 @@ def _sec_cik_from_company_atom(ticker, headers):
 def sec_archive_gateway(ticker, limit=250, include_regulatory=False):
     """SEC adapter with two independent official CIK-resolution routes."""
     headers=_sec_headers(); diagnostics=[]
+    if not os.getenv("SEC_USER_AGENT", "").strip():
+        return _empty_disclosures("SEC_USER_AGENT_REQUIRED","U.S. SEC EDGAR",ticker,
+            ["Configure SEC_USER_AGENT with your application name and real contact email."])
     cik,match,errs=_sec_ticker_to_cik(ticker,headers); diagnostics.extend(errs)
     if not cik:
         cik,match2,errs2=_sec_cik_from_company_atom(ticker,headers); diagnostics.extend(errs2)
@@ -735,6 +738,12 @@ def sec_archive_gateway(ticker, limit=250, include_regulatory=False):
         raw,ctype=_get(endpoint,headers,30)
         diagnostics.append({"endpoint":endpoint,"bytes":len(raw),"content_type":ctype})
         payload=json.loads(raw.decode("utf-8")); recent=((payload.get("filings") or {}).get("recent") or {})
+        # SEC CIK resolution must not silently return a different issuer.
+        issuer_tickers={str(x).upper() for x in payload.get("tickers") or []}
+        requested=str(ticker or "").upper().split(".",1)[0]
+        if issuer_tickers and requested not in issuer_tickers:
+            return _empty_disclosures("IDENTITY_MISMATCH","U.S. SEC EDGAR",ticker,
+                diagnostics+["Resolved SEC issuer does not list the requested ticker."])
     except Exception as e:
         diagnostics.append("submissions:"+type(e).__name__+":"+str(e)[:160])
         return _empty_disclosures("UPSTREAM_ERROR","U.S. SEC EDGAR",ticker,diagnostics)

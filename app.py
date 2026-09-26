@@ -100,7 +100,7 @@ def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, 
             _e={"source_type":_stype,"event_key":str(_r.get("event_key") or ""),
                 "direction":str(_r.get("direction") or "unknown"),
                 "what_changed":str(_r.get("title") or _r.get("Title") or _r.get("headline") or ""),
-                "verified":_r.get("verified") is True,
+                "verified":str(_r.get("verified") or "").strip().lower() in {"true","1","yes","verified"},
                 "source":str(_r.get("source") or _r.get("source_name") or ""),
                 "evidence_id":str(_r.get("evidence_id") or ""),
                 "ticker":str(_r.get("ticker") or ticker),
@@ -113,35 +113,22 @@ def _v2342_decision_payload(ticker, company_name, news_df, ann_df, thesis_rows, 
     if thesis_rows is not None and not getattr(thesis_rows,"empty",True):
         for _,_r in thesis_rows.iterrows():
             _conditions.append({"metric":str(_r.get("condition_key") or _r.get("key") or ""),"status":_r.get("status")})
-    _orchestrated=orchestrate_company_synthesis(ticker,raw_event=_structured[0] if _structured else None,
-                                              exposures=_exposures,thesis_conditions=_conditions)
-    # No legacy bypass: a headline without verified source metadata cannot become a mapped claim.
+    # Select the first fully mapped sourced event, not simply the first headline.
+    _orchestrated=None
+    for _event in _structured:
+        _candidate=orchestrate_company_synthesis(ticker,raw_event=_event,
+            exposures=_exposures,thesis_conditions=_conditions)
+        if _candidate.get("status")=="mapped":
+            _orchestrated=_candidate; break
+        if _orchestrated is None or len(_candidate.get("missing_evidence",[]))<len(_orchestrated.get("missing_evidence",[])):
+            _orchestrated=_candidate
+    if _orchestrated is None:
+        _orchestrated=orchestrate_company_synthesis(ticker,raw_event=None,
+            exposures=_exposures,thesis_conditions=_conditions)
+    _orchestrated["pipeline_diagnostics"]={"structured_events":len(_structured),
+        "verified_exposures":len(_exposures),"announcement_rows":0 if ann_df is None else len(ann_df),
+        "news_rows":0 if news_df is None else len(news_df)}
     return {"status":_orchestrated["status"],"decision_package":_orchestrated}
-    exposures=_v2342_verified_exposures(ticker,thesis_rows)
-    events=_v2342_event_candidates(news_df,ann_df)
-    if not exposures or not events:
-        missing=[]
-        if not exposures: missing.append("verified company exposure mapping")
-        if not events: missing.append("structured event classification")
-        return {"status":"insufficient_evidence","decision_package":{
-            "what_changed":"No material company-specific change has been established from the currently verified inputs.",
-            "why_it_matters":"Axía will not convert a headline or sector classification into a causal company claim without a verified exposure and structured event mapping.",
-            "affected_kpis":[],"directional_pressure":"unknown","magnitude":"unknown",
-            "what_to_watch_next":missing,
-            "what_would_change_the_thesis":["New verified evidence linking a material event to a company exposure and thesis condition."],
-            "thesis_status_change":"unknown","valuation_link":{"status":"not_established"},"ai_calculated_math":False}}
-    ev=events[0]
-    evidence=[SynthesisEvidence(x.evidence_id,x.source_name,"company_exposure",x.observed_at,
-              x.note or f"Verified company exposure: {x.exposure_key}",True,True,None,None) for x in exposures]
-    conditions=[]
-    if thesis_rows is not None and hasattr(thesis_rows,"empty") and not thesis_rows.empty:
-        for _,r in thesis_rows.iterrows():
-            key=str(r.get("condition_key") or r.get("key") or r.get("exposure_key") or "").strip()
-            if key: conditions.append({"key":key,"status":str(r.get("status") or "unknown"),"evidence":str(r.get("source") or "")})
-    valuation={"base_case":_mia_num(base_value)} if np.isfinite(_mia_num(base_value)) else {}
-    return _v2342_evidence_thesis_engine.integrate(company={"ticker":ticker,"name":company_name},
-        event=ev,exposures=exposures,evidence=evidence,thesis_state={"conditions":conditions},
-        valuation_state=valuation,fundamentals_state={"provider_metadata_loaded":True})
 
 st.set_page_config(page_title="Axía - Market Investment Analyst", page_icon="🏛️", layout="wide")
 
@@ -8156,9 +8143,15 @@ elif page=="Company Command Centre":
         [class*="st-key-v21313_news_card_"] [data-testid="stVerticalBlock"]{gap:0!important}
         [class*="st-key-v21313_news_card_"] .stButton{display:flex!important;justify-content:flex-end!important}
         [class*="st-key-v21313_news_card_"] .stButton>button{width:auto!important;min-height:22px!important;height:22px!important;padding:0 2px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important;font-size:8.5px!important;font-weight:900!important}
+        [class*="st-key-v2373_cat_card_"]{height:158px!important;min-height:158px!important;overflow:hidden!important;background:#fff!important;border-color:#d8e5f2!important}
+        [class*="st-key-v2373_cat_card_"] [data-testid="stVerticalBlock"]{gap:0!important}
+        [class*="st-key-v2373_cat_card_"] .stButton{display:flex!important;justify-content:flex-end!important}
+        [class*="st-key-v2373_cat_card_"] .stButton>button{width:auto!important;min-height:22px!important;height:22px!important;padding:0 2px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important;font-size:8.5px!important;font-weight:900!important}
+        .v2373-cat-body{margin-top:2px;border-top:1px solid #dfe8f2;min-width:0;overflow:hidden}
+        .v2373-cat-body .v21290-row{grid-template-columns:57px minmax(0,1fr) 15px;min-width:0}
         .v21313-news-title{font-size:10.5px;font-weight:950;color:#10264b;white-space:nowrap}.v21313-news-title span{color:#086ee8;margin-right:4px}
-        .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:68px minmax(0,1fr) 72px;gap:5px;align-items:center;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
-        .v21313-news-row .main{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
+        .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:58px minmax(0,1fr) 48px;gap:5px;min-width:0;overflow:hidden;align-items:center;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
+        .v21313-news-row .main{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{display:block;min-width:0;text-align:right;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
         </style>""",unsafe_allow_html=True)
         _news=overview_news_safe(ticker,5)
         # V21.2.91 — load the official/regulatory announcement engine directly for
@@ -8175,6 +8168,8 @@ elif page=="Company Command Centre":
         except Exception:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
         _ann_df=_v21291_ann_all.head(5).copy() if _v21291_ann_all is not None and not _v21291_ann_all.empty else pd.DataFrame()
+        if _v21291_ann_all is not None and hasattr(_v21291_ann_all,"attrs"):
+            _ann_df.attrs.update(_v21291_ann_all.attrs)
         _secid=dict(st.session_state.get("chr_security_identity") or {})
         _prov_ticker=str(_secid.get("ticker") or _secid.get("provider_symbol") or ticker)
         _prov_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
@@ -8220,23 +8215,21 @@ elif page=="Company Command Centre":
         _v2342_kpi_html="".join(f'<span class="v2342-chip">{html.escape(x)}</span>' for x in _v2342_kpis) or '<span class="v2342-muted">No KPI impact verified</span>'
         _v2342_watch_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_watch[:4]) or '<li>No additional monitoring item established.</li>'
         _v2342_change_html="".join(f'<li>{html.escape(x)}</li>' for x in _v2342_change[:3]) or '<li>No thesis-change condition established.</li>'
+        _v2342_diag=dict(_v2342_dp.get("pipeline_diagnostics") or {})
         _v2342_badge="EVIDENCE MAPPED" if _v2342_status=="mapped" else "INSUFFICIENT EVIDENCE"
         st.markdown("""<style>
         /* V23.7.2: spacing is owned by Streamlit wrappers, not only the HTML card. */
-        [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .v2342-card){
-            row-gap:0.35rem!important;
-        }
         [data-testid="stElementContainer"]:has(.v2342-card){
-            margin-top:-0.85rem!important;
-            margin-bottom:1.1rem!important;
+            margin-top:0!important;
+            margin-bottom:1.25rem!important;
             padding:0!important;
         }
         [data-testid="stElementContainer"]:has(.v2342-card) [data-testid="stMarkdownContainer"]{
             margin:0!important;padding:0!important;
         }
-        .v2342-card{background:#fff;border:1px solid #d8e5f2;border-radius:9px;padding:7px 15px 22px;margin:0 0 24px;box-shadow:0 1px 2px rgba(15,43,84,.03)}
+        .v2342-card{background:#fff;border:1px solid #d8e5f2;border-radius:9px;padding:9px 15px 17px;margin:0;box-shadow:0 1px 2px rgba(15,43,84,.03)}
         .v2342-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e6edf5;padding-bottom:6px;margin-bottom:8px}.v2342-title{font-size:13px;font-weight:900;color:#102b52}.v2342-sub{font-size:9px;color:#70849f;margin-top:2px}.v2342-badge{font-size:8px;font-weight:900;letter-spacing:.04em;color:#35618d;background:#f2f7fc;border:1px solid #d8e5f2;border-radius:12px;padding:3px 7px}
-        .v2342-grid{display:grid;grid-template-columns:1.25fr 1.25fr .9fr;gap:13px}.v2342-label{font-size:8px;font-weight:900;letter-spacing:.06em;color:#6c819b;margin-bottom:4px}.v2342-text{font-size:10px;line-height:1.38;color:#274a72}.v2342-section{min-width:0}.v2342-rule{border-left:1px solid #e3ebf4;padding-left:13px}.v2342-chip{display:inline-block;font-size:8px;color:#275b91;background:#f3f7fb;border:1px solid #dce7f2;border-radius:10px;padding:2px 6px;margin:1px 3px 2px 0}.v2342-muted{font-size:8.5px;color:#8293a8}.v2342-list{margin:2px 0 0 14px;padding:0;color:#355979;font-size:8.8px;line-height:1.35}.v2342-foot{border-top:1px solid #e6edf5;margin-top:14px;padding-top:9px;display:flex;gap:18px;font-size:8px;color:#71869f}
+        .v2342-grid{display:grid;grid-template-columns:1.25fr 1.25fr .9fr;gap:13px}.v2342-label{font-size:8px;font-weight:900;letter-spacing:.06em;color:#6c819b;margin-bottom:4px}.v2342-text{font-size:10px;line-height:1.38;color:#274a72}.v2342-section{min-width:0}.v2342-rule{border-left:1px solid #e3ebf4;padding-left:13px}.v2342-chip{display:inline-block;font-size:8px;color:#275b91;background:#f3f7fb;border:1px solid #dce7f2;border-radius:10px;padding:2px 6px;margin:1px 3px 2px 0}.v2342-muted{font-size:8.5px;color:#8293a8}.v2342-list{margin:2px 0 0 14px;padding:0;color:#355979;font-size:8.8px;line-height:1.35}.v2342-foot{border-top:1px solid #e6edf5;margin-top:11px;padding-top:9px;display:flex;gap:18px;font-size:8px;color:#71869f}
         </style>""",unsafe_allow_html=True)
         st.markdown(f"""<div class="v2342-card">
           <div class="v2342-head"><div><div class="v2342-title">◎ Company Intelligence</div><div class="v2342-sub">What changed — why it matters — what to monitor next</div></div><span class="v2342-badge">{_v2342_badge}</span></div>
@@ -8247,6 +8240,10 @@ elif page=="Company Command Centre":
           </div>
           <div class="v2342-foot"><span>Directional pressure: {html.escape(_v2342_pressure)}</span><span>Magnitude: {html.escape(str(_v2342_dp.get("magnitude") or "unknown"))}</span><span>Valuation link: {html.escape(str(_v2342_val.get("status") or "not established"))}</span><span>AI calculated math: False</span></div>
         </div>""",unsafe_allow_html=True)
+        if _v2342_status != "mapped":
+            with st.expander("Company Intelligence · evidence diagnostics", expanded=False):
+                st.json({"ticker":ticker, **_v2342_diag,
+                         "missing_evidence":_v2342_dp.get("missing_evidence",[])})
 
         _m1,_m2,_m3,_m4=st.columns([1.34,1.13,.94,.98],gap="small")
         with _m1:
@@ -8262,10 +8259,12 @@ elif page=="Company Command Centre":
                     _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
             _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned."}.get(_sec_status,"")
+            _status_msg={"IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
             _authority=str(_v21291_prov.get("authority") or "")
             _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
             _empty_detail=html.escape(_status_msg or _empty_fallback)
+            if _sec_status in {"IDENTITY_FAILED","UPSTREAM_ERROR","SEC_REQUEST_FAILED"}:
+                _empty_detail += ' <span title="Check SEC_USER_AGENT and provider diagnostics">(source diagnostic)</span>' 
             _body="".join(_rows) if _rows else f'<div class="v21290-empty">{_empty_detail}</div>'
             _tip=(f'Source: {_v21291_prov.get("authority","—")}. Coverage: {_v21291_prov.get("coverage","—")}. '+
                   f'Document access: {_v21291_prov.get("document_policy","—")}')
@@ -8306,8 +8305,13 @@ elif page=="Company Command Centre":
                     _done=any(x in _status for x in ("done","complete","actual","occurred"))
                     _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main">{html.escape(_event)}</span><span class="status {"done" if _done else ""}">{"●" if _done else "○"}</span></div>')
             _body="".join(_rows) if _rows else '<div class="v21290-empty">No stored catalysts yet. Add evidence in Catalyst Calendar.</div>'
-            st.markdown(f'<div class="v21290-card v21290-cat"><div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div><span class="v21290-viewall">View all →</span>{_body}</div>',unsafe_allow_html=True)
-            st.button("View all catalysts",key=f"v21290_nav_cat_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Catalyst Calendar",))
+            with st.container(border=True,key=f"v2373_cat_card_{ticker}"):
+                _ch1,_ch2=st.columns([4.5,1],gap="small",vertical_alignment="center")
+                with _ch1: st.markdown('<div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div>',unsafe_allow_html=True)
+                with _ch2:
+                    if st.button("View all →",key=f"v21290_nav_cat_{ticker}"):
+                        _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
+                st.markdown(f'<div class="v2373-cat-body">{_body}</div>',unsafe_allow_html=True)
         with _m4:
             _attention=[]
             if _ccattention is not None and not _ccattention.empty:
