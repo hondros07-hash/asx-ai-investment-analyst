@@ -31,7 +31,7 @@ def _issuer_header(data, ticker, currency):
  def safe(x): return html.escape(str(x),quote=True)
  name=m.get("longName") or m.get("shortName") or ticker
  logo=m.get("logo_url") or m.get("logoUrl") or ""
- mark=('<img alt="" src="'+safe(logo)+'" style="max-width:100%;max-height:72px;object-fit:contain">') if isinstance(logo,str) and logo.startswith("https://") else '<span style="font-size:32px;color:#0868d8;font-weight:800">'+safe(str(name)[:1].upper())+'</span>'
+ mark=('<img alt="" src="'+safe(logo)+'" style="max-width:100%;max-height:88px;object-fit:contain">') if isinstance(logo,str) and logo.startswith("https://") else '<span style="font-size:32px;color:#0868d8;font-weight:800">'+safe(str(ticker)[:1].upper())+'</span>'
  price=m.get("currentPrice")
  if not isinstance(price,(int,float)) or not math.isfinite(price):price=m.get("regularMarketPrice")
  quote=(f"{price:,.2f} "+safe(m.get("currency") or "")) if isinstance(price,(int,float)) and math.isfinite(price) else "Quote unavailable"
@@ -40,10 +40,10 @@ def _issuer_header(data, ticker, currency):
  delta_color="#168b62" if isinstance(change,(int,float)) and change>=0 else "#c54450" if isinstance(change,(int,float)) else "#60758f"
  def stat(label,v,kind="number"):
   display=("—" if not isinstance(v,(int,float)) or not math.isfinite(v) else f"{v:.2f}%" if kind=="percent" else f"{v:.1f}×" if kind=="multiple" else fmt(v))
-  return '<div style="padding:0 12px;border-left:1px solid #dce6f2"><strong style="display:block;color:#142d4d;font-size:16px">'+display+'</strong><span style="color:#60758f;font-size:11px">'+label+'</span></div>'
+  return '<div class="axia-issuer-stat"><strong style="display:block;color:#142d4d;font-size:17px">'+display+'</strong><span style="color:#60758f;font-size:11px">'+label+'</span></div>'
  stats=stat("Market Cap",m.get("marketCap"))+stat("P/E (TTM)",m.get("trailingPE"),"multiple")+stat("Dividend Yield",m.get("dividendYield"),"percent")+stat("Beta (5Y)",m.get("beta"))
  identity=' &nbsp; | &nbsp; '.join(safe(v) for v in (str(ticker).upper(),m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed",m.get("country") or "Country unconfirmed",m.get("sector") or "Sector unconfirmed",m.get("industry") or "Industry unconfirmed"))
- st.markdown('<div class="axia-issuer-header"><div class="axia-issuer-mark">'+mark+'</div><div class="axia-issuer-identity"><div style="color:#0868d8;font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:7px">AXÍA / COMPANY COMMAND CENTRE / FUNDAMENTALS</div><h2 style="margin:0 0 6px;color:#142d4d;font-size:clamp(22px,2vw,29px)">'+safe(name)+'</h2><div style="color:#60758f;font-size:12px">'+identity+'</div><div style="color:#60758f;font-size:12px;font-style:italic;margin-top:8px">Financial statements · '+safe(currency)+'</div></div><div class="axia-issuer-market"><div style="font-size:24px;color:#142d4d;font-weight:800">'+quote+' <span style="font-size:15px;color:'+delta_color+'">'+delta+'</span></div><div style="color:#60758f;font-size:11px;margin:5px 0 15px">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div></div>',unsafe_allow_html=True)
+ st.markdown('<div class="axia-issuer-header"><div class="axia-issuer-mark">'+mark+'</div><div class="axia-issuer-identity"><h2 style="margin:0 0 6px;color:#142d4d;font-size:clamp(23px,2vw,30px)">'+safe(name)+'</h2><div style="color:#60758f;font-size:12px">'+identity+'</div><div style="color:#60758f;font-size:12px;font-style:italic;margin-top:8px">Financial statements · '+safe(currency)+'</div></div><div class="axia-issuer-market"><div style="font-size:27px;color:#142d4d;font-weight:800">'+quote+' <span style="font-size:15px;color:'+delta_color+'">'+delta+'</span></div><div style="color:#60758f;font-size:11px;margin:5px 0 15px">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div></div>',unsafe_allow_html=True)
  st.caption("Quote currency and financial-statement currency are separate provider fields. Unavailable values are not estimated.")
 
 def _financial_overview(data,ticker,currency):
@@ -119,7 +119,18 @@ def render(ticker):
 .st-key-axia_fund_workspace [data-testid="stPlotlyChart"]{background:white;border:1px solid #e0e9f3;border-radius:12px;padding:7px}
 @media(max-width:800px){.st-key-axia_fund_workspace [data-testid="stMetric"]{padding:10px}.st-key-axia_fund_workspace [data-baseweb="tab"]{font-size:.78rem!important}}
 </style>""",unsafe_allow_html=True)
- st.markdown("<style>\n.st-key-axia_fund_workspace .axia-issuer-header{display:flex;align-items:center;gap:22px;padding:20px 22px;background:#fff;border:1px solid #d9e5f3;border-radius:13px;box-shadow:0 2px 12px rgba(20,45,77,.035);margin-bottom:4px}\n.st-key-axia_fund_workspace .axia-issuer-mark{width:90px;height:80px;flex:0 0 90px;display:flex;align-items:center;justify-content:center;background:#f7faff;border-radius:9px}\n.st-key-axia_fund_workspace .axia-issuer-identity{flex:1;min-width:0}\n.st-key-axia_fund_workspace .axia-issuer-market{text-align:right;min-width:310px}\n.st-key-axia_fund_workspace .axia-issuer-stats{display:flex;justify-content:flex-end;gap:0}\n@media(max-width:1100px){.st-key-axia_fund_workspace .axia-issuer-header{flex-wrap:wrap}.st-key-axia_fund_workspace .axia-issuer-market{text-align:left;min-width:0;width:100%}.st-key-axia_fund_workspace .axia-issuer-stats{justify-content:flex-start;flex-wrap:wrap;gap:10px}}\n@media(max-width:600px){.st-key-axia_fund_workspace .axia-issuer-header{padding:13px;gap:10px}.st-key-axia_fund_workspace .axia-issuer-mark{width:55px;height:55px;flex-basis:55px}.st-key-axia_fund_workspace .axia-issuer-stats>div{padding:0 8px}}\n</style>",unsafe_allow_html=True)
+ st.markdown("<style>\n.st-key-axia_fund_workspace .axia-issuer-header{display:flex;align-items:center;gap:22px;padding:20px 22px;background:#fff;border:1px solid #d9e5f3;border-radius:13px;box-shadow:0 2px 12px rgba(20,45,77,.035);margin-bottom:4px}\n.st-key-axia_fund_workspace .axia-issuer-mark{width:90px;height:80px;flex:0 0 90px;display:flex;align-items:center;justify-content:center;background:#f7faff;border-radius:9px}\n.st-key-axia_fund_workspace .axia-issuer-identity{flex:1;min-width:0}\n.st-key-axia_fund_workspace .axia-issuer-market{text-align:right;min-width:310px}\n.st-key-axia_fund_workspace .axia-issuer-stats{display:flex;justify-content:flex-end;gap:0}\n@media(max-width:1100px){.st-key-axia_fund_workspace .axia-issuer-header{flex-wrap:wrap}.st-key-axia_fund_workspace .axia-issuer-market{text-align:left;min-width:0;width:100%}.st-key-axia_fund_workspace .axia-issuer-stats{justify-content:flex-start;flex-wrap:wrap;gap:10px}}\n@media(max-width:600px){.st-key-axia_fund_workspace .axia-issuer-header{padding:13px;gap:10px}.st-key-axia_fund_workspace .axia-issuer-mark{width:55px;height:55px;flex-basis:55px}.st-key-axia_fund_workspace .axia-issuer-stats>div{padding:0 8px}}\n
+/* Reference-inspired compact issuer identity: scoped to Fundamentals only. */
+.st-key-axia_fund_workspace .axia-issuer-header{align-items:center;gap:18px;padding:14px 18px;border-radius:5px;border-top:3px solid #12365d;box-shadow:none;margin-bottom:8px}
+.st-key-axia_fund_workspace .axia-issuer-mark{width:92px;height:92px;flex:0 0 92px;background:#fff;border-radius:0}
+.st-key-axia_fund_workspace .axia-issuer-identity h2{font-weight:800;line-height:1.2}
+.st-key-axia_fund_workspace .axia-issuer-market{min-width:390px;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
+.st-key-axia_fund_workspace .axia-issuer-stats{border-bottom:1px solid #dce6f2;padding-bottom:5px}
+.st-key-axia_fund_workspace .axia-issuer-stat{padding:0 13px;border-left:1px solid #dce6f2;white-space:nowrap;text-align:center}
+.st-key-axia_fund_workspace .axia-issuer-stat:first-child{border-left:0}
+@media(max-width:1100px){.st-key-axia_fund_workspace .axia-issuer-market{min-width:0;width:100%;gap:12px}.st-key-axia_fund_workspace .axia-issuer-stats{justify-content:flex-start}}
+@media(max-width:600px){.st-key-axia_fund_workspace .axia-issuer-mark{width:62px;height:62px;flex-basis:62px}.st-key-axia_fund_workspace .axia-issuer-stat{padding:0 7px}}
+</style>",unsafe_allow_html=True)
  with st.container(key="axia_fund_workspace"):
   _render_workspace(ticker)
 
