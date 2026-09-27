@@ -270,7 +270,7 @@ def _render_workspace(ticker):
  with st.container(key="axia_fund_issuer"):
   _issuer_header(data,ticker,currency)
  if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
- tabs=st.tabs(["Financial Overview","Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
+ tabs=st.tabs(["Financial Overview","Income Statement","Balance Sheet","Cash Flow","Key Metrics","Growth & Trends","Capital Allocation","Valuation & Peers","Data & Verification"])
  with tabs[0]:
   _financial_overview(data,ticker,currency)
   with st.expander("Financial health methodology & detailed scorecard",expanded=False):
@@ -312,28 +312,30 @@ def _render_workspace(ticker):
       for evidence in component["evidence"]:
        st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
      for note in health["notes"]: st.caption("• "+note)
- with tabs[1]:
-  st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
-  mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
-  mode=mode or "Reported values"
-  if mode=="Period growth":
-   st.caption("Change against the preceding available reporting period. Annual = annual change; quarterly = sequential quarter change, not year-on-year. Non-positive or missing bases are withheld.")
-  elif mode=="Common size":
-   st.caption("Income statement: % of revenue · Balance sheet: % of total assets · Cash flow: % of operating cash flow. Non-positive or missing denominators are withheld; EPS and share counts are excluded.")
-  col_a,col_b=st.columns(2)
-  with col_a: show_sparks=st.checkbox("Show inline sparklines",value=True,key="axia_statement_inline_sparks")
-  with col_b: reverse_order=st.checkbox("Oldest period first",value=False,key="axia_statement_reverse")
-  for group,table in data["statements"].items():
-   with st.expander(group,expanded=True):
-    if not data["periods"]: st.info("No complete periods available.");continue
-    df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
-    config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
-    st.dataframe(df,hide_index=True,use_container_width=True,column_config=config)
-    export=df.drop(columns=["10Y Trend"],errors="ignore")
-    st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
-    if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
-    if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
- with tabs[2]:
+ for statement_tab, statement_group in ((1,"Income Statement"),(2,"Balance Sheet"),(3,"Cash Flow")):
+  with tabs[statement_tab]:
+    st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
+    mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
+    mode=mode or "Reported values"
+    if mode=="Period growth":
+     st.caption("Change against the preceding available reporting period. Annual = annual change; quarterly = sequential quarter change, not year-on-year. Non-positive or missing bases are withheld.")
+    elif mode=="Common size":
+     st.caption("Income statement: % of revenue · Balance sheet: % of total assets · Cash flow: % of operating cash flow. Non-positive or missing denominators are withheld; EPS and share counts are excluded.")
+    col_a,col_b=st.columns(2)
+    with col_a: show_sparks=st.checkbox("Show inline sparklines",value=True,key="axia_statement_inline_sparks")
+    with col_b: reverse_order=st.checkbox("Oldest period first",value=False,key="axia_statement_reverse")
+    for group,table in data["statements"].items():
+      if group != statement_group: continue
+     with st.expander(group,expanded=True):
+      if not data["periods"]: st.info("No complete periods available.");continue
+      df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
+      config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
+      st.dataframe(df,hide_index=True,use_container_width=True,column_config=config)
+      export=df.drop(columns=["10Y Trend"],errors="ignore")
+      st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
+      if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
+      if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
+ with tabs[4]:
   st.subheader("Profitability, liquidity and efficiency")
   groups={
    "Profitability":["Gross Margin","Operating Margin","Net Margin","ROE","ROA"],
@@ -377,7 +379,7 @@ def _render_workspace(ticker):
    st.caption("Annual calculations use 365 days; quarterly calculations require a preceding reporting date 70–110 days earlier. TTM working-capital cycle is withheld pending matching average balances.")
    st.caption("Bank and BNPL ROIC, net debt/EBITDA and conventional working-capital-cycle metrics are withheld pending sector-specific methods. All figures remain provider-transcribed, not filing-verified.")
 
- with tabs[3]:
+ with tabs[4]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Issuer-specific operating measures are separate from generic financial statement ratios.")
   st.markdown("**Issuer operating KPIs · Verification requirements (not a live filing feed)**")
@@ -418,7 +420,7 @@ def _render_workspace(ticker):
    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
   else: st.info("No compatible annual or quarterly statements are available from this provider. No values have been estimated.")
   st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs. Values may use different definitions from issuer-reported underlying metrics.")
- with tabs[4]:
+ with tabs[5]:
   st.subheader("Historical financial trends")
   chart_data=data
   if frequency=="TTM":
@@ -466,7 +468,7 @@ def _render_workspace(ticker):
      if chart_data["frequency"]=="Annual (5Y)" and len(points)>=2 and points[0][1]>0 and points[-1][1]>0:
       years=len(points)-1
       st.caption(f"{years}-year CAGR: {(points[-1][1]/points[0][1])**(1/years)-1:+.1%}")
- with tabs[5]:
+ with tabs[6]:
   st.subheader("Earnings Quality Intelligence")
   st.caption("Evidence-led diagnostics · Provider-transcribed statements · Not an accounting misconduct assessment or investment rating.")
   quality_data=data
@@ -522,7 +524,10 @@ def _render_workspace(ticker):
     st.caption("Dilution trend = change in diluted weighted-average shares from preceding reported period. Quarterly changes are sequential, not year-on-year.")
     st.caption("Receivables and inventory ratios use reported revenue, and may not be comparable for banks, BNPL companies or issuers with different business models.")
     st.caption("No official filing reconciliation, segment-level cash-flow bridge or issuer-specific accounting adjustments are claimed. Missing values remain unavailable.")
- with tabs[6]:
+ with tabs[7]:
+  st.subheader("Valuation & Peers")
+  st.info("Comparable peer valuation requires validated market and issuer data. Missing values are not estimated.")
+ with tabs[8]:
   st.markdown('<div style="background:linear-gradient(110deg,#102f51,#1a507b);color:white;border-radius:14px;padding:21px 24px;margin:2px 0 17px;box-shadow:0 7px 20px rgba(16,47,81,.13)"><div style="font-size:11px;font-weight:800;letter-spacing:.13em;color:#9ed1f3">AXÍA · RESEARCH TRANSPARENCY</div><div style="font-size:23px;font-weight:750;letter-spacing:-.025em;margin-top:5px">Data Confidence &amp; Verification</div><div style="font-size:12px;color:#d4e5f4;margin-top:5px">Traceable financial inputs · Internal consistency · Source limitations</div></div>',unsafe_allow_html=True)
   checks=validate(data)
   counts=summary(checks)
