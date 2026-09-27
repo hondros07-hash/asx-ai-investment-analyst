@@ -6823,16 +6823,9 @@ elif page=="Investment Committee":
     st.dataframe(pd.DataFrame(rows,columns=["Engine","Status"]),use_container_width=True,hide_index=True)
 
 elif page=="Fundamentals":
-    st.header("Fundamentals")
-    fields={"Revenue growth":meta.get("revenueGrowth"),"Earnings growth":meta.get("earningsGrowth"),"Operating margin":meta.get("operatingMargins"),"Profit margin":meta.get("profitMargins"),"ROE":meta.get("returnOnEquity"),"ROA":meta.get("returnOnAssets"),"Current ratio":meta.get("currentRatio"),"Debt / Equity":meta.get("debtToEquity")}
-    rows=[]
-    for k,v in fields.items():
-        if v is None: out="—"
-        elif k in ["Current ratio","Debt / Equity"]: out=f"{v:.2f}"
-        else: out=f"{v*100:.1f}%"
-        rows.append([k,out])
-    st.dataframe(pd.DataFrame(rows,columns=["Metric","Current feed value"]),use_container_width=True,hide_index=True)
-    st.warning("Generic feed accounting fields must be verified against company reports before thesis decisions, especially for financial/BNPL businesses.")
+    # V23.9.0: dedicated 3-statement financial intelligence workspace.
+    from views.fundamentals_view import render as render_fundamentals
+    render_fundamentals(ticker)
 
 elif page=="Valuation":
     st.header("Valuation & Expectations")
