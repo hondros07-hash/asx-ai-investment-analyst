@@ -255,9 +255,8 @@ def _render_workspace(ticker):
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
  is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
- with st.container(key="axia_fund_issuer"):
-  _issuer_header(data,ticker,currency)
- if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
+ # Keep the reporting selector accessible on every tab, without separating the
+ # issuer banner from the Financial Overview navigation and KPI cards.
  st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  quality_notes=list(data.get("quality",[]))
  if currency=="Unconfirmed":
@@ -268,6 +267,9 @@ def _render_workspace(ticker):
  periods=data.get("periods",[])
  negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
  if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
+ with st.container(key="axia_fund_issuer"):
+  _issuer_header(data,ticker,currency)
+ if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
  tabs=st.tabs(["Financial Overview","Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
  with tabs[0]:
   _financial_overview(data,ticker,currency)
