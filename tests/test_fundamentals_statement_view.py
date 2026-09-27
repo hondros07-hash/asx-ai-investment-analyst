@@ -1,5 +1,6 @@
 """Regression tests: python -m unittest tests.test_fundamentals_statement_view"""
 import unittest
+import pandas as pd
 from services.fundamentals_statement_view_engine import transform,row_trend,display_frame,statement_table
 
 class StatementViewTests(unittest.TestCase):
@@ -13,10 +14,10 @@ class StatementViewTests(unittest.TestCase):
  def test_common_size(self):
   r=transform(self.sample(),"Income Statement","Common size")
   self.assertAlmostEqual(r.loc[1,"2026-06-30"],10)
-  self.assertIsNone(r.loc[2,"2026-06-30"])
+  self.assertTrue(pd.isna(r.loc[2,"2026-06-30"]))
  def test_nonpositive_growth_base_withheld(self):
   d=self.sample();d["statements"]["Income Statement"]["Revenue"]["2025-06-30"]=0
-  self.assertIsNone(transform(d,"Income Statement","Period growth").loc[0,"2026-06-30"])
+  self.assertTrue(pd.isna(transform(d,"Income Statement","Period growth").loc[0,"2026-06-30"]))
  def test_ttm_growth_withheld(self):
   d=self.sample();d["frequency"]="TTM"
   self.assertIsNone(transform(d,"Income Statement","Period growth").loc[0,"2026-06-30"])
@@ -41,7 +42,7 @@ class StatementViewTests(unittest.TestCase):
   d["statements"]["Income Statement"]["Net Income"]["2025-06-30"]=None
   def fmt(v,ratio=False,eps=False): return "—" if v is None else f"{v:,.2f}"
   frame=statement_table(d,"Income Statement","Common size",fmt)
-  self.assertIsNone(frame.loc[1,"10Y Trend"])
+  self.assertTrue(pd.isna(frame.loc[1,"10Y Trend"]))
   plain=statement_table(d,"Income Statement","Period growth",fmt,sparklines=False)
   self.assertNotIn("10Y Trend",plain.columns)
  def test_original_unchanged(self):
