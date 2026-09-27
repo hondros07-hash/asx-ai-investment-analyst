@@ -198,11 +198,11 @@ def render(ticker):
 .axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:left;transform:translate(-40px, -2px)}
 .axia-issuer-quote span{font-size:14px;margin-left:5px}
 .axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left;white-space:nowrap;transform:translate(-40px, -4px)}
-.axia-issuer-stats{display:flex;justify-content:flex-end}
+.axia-issuer-stats{display:flex;justify-content:flex-end;transform:translateY(-2px)}
 .axia-issuer-stat{padding:0 12px;border-left:1px solid #dce6f2;text-align:center;white-space:nowrap}
 .axia-issuer-stat:first-child{border-left:0}
 .axia-issuer-stat strong{display:block;font-size:17px;line-height:1.1;color:#142d4d}
-.axia-issuer-stat span{display:block;font-size:10px;color:#60758f;margin-top:4px}
+.axia-issuer-stat span{display:block;font-size:10px;color:#60758f;margin-top:2px}
 @media(max-width:1100px){.axia-issuer-quote,.axia-issuer-quote-note{transform:none}.axia-issuer-left{gap:10px}.axia-issuer-mark{width:65px;flex-basis:65px}.axia-issuer-quote{white-space:normal}.axia-issuer-stat{padding:0 6px}}
 @media(max-width:760px){.st-key-axia_fund_issuer{padding:10px}.axia-issuer-left{min-height:75px}.axia-issuer-mark{width:55px;height:65px;flex-basis:55px}.axia-issuer-mark img{max-height:65px}.axia-issuer-stats{justify-content:flex-start;flex-wrap:wrap}.axia-issuer-market{text-align:left}.st-key-axia_fund_issuer [data-testid="stButton"]{justify-content:flex-start}}
 </style>""",unsafe_allow_html=True)
