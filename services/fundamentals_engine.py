@@ -128,7 +128,7 @@ def load(ticker, frequency="Annual (5Y)"):
   for label,names in aliases.items():
    vals={}
    for col,period in zip(periods,labels):
-    if not isinstance(frame,pd.DataFrame) or frame.empty: vals[period]=None;continue
+    if not isinstance(frame,pd.DataFrame) or frame.empty or col not in frame.columns: vals[period]=None;continue
     if frequency=="TTM" and group!="Balance Sheet":
      if len(periods)<4: vals[period]=None;continue
      # TTM is a single aggregate column, not four individual columns.
@@ -159,6 +159,8 @@ def load(ticker, frequency="Annual (5Y)"):
  data["filing_url"]=meta.get("website") or ""
  derive_input={k:data["statements"][k] for k in data["statements"]}
  derive_input["periods"]=data["periods"]
+ derive_input["ratios"]={}
+ derive_input["derived"]={}
  derived=derive(derive_input)
- data["ratios"]=derived["ratios"];data["derived"]=derived["derived"]
+ data["ratios"]=derived.get("ratios",{});data["derived"]=derived.get("derived",{})
  return data
