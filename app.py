@@ -3695,9 +3695,10 @@ if st.session_state.get(_cc_sub_key) not in _cc_items:
 def overview_news_safe(ticker, limit=5):
     """V21.3.13 — dynamic ticker-driven company news preview."""
     try:
-        df,_=latest_company_news(ticker,limit)
-        if df is None or df.empty: return pd.DataFrame(columns=["Date","Headline","Source","URL"])
-        return df[["Date","Headline","Source","URL"]].head(limit).copy()
+        from services.company_news_preview import clean_company_news
+        df,ident=latest_company_news(ticker,max(limit*4,20))
+        if df is None or df.empty: return pd.DataFrame(columns=["Date","Headline","Source","URL","Related Coverage"])
+        return clean_company_news(df,ticker,ident.get("name",ticker),limit)[["Date","Headline","Source","URL","Related Coverage"]].copy()
     except Exception:
         return pd.DataFrame(columns=["Date","Headline","Source","URL"])
 
@@ -8442,9 +8443,11 @@ elif page=="Company Command Centre":
                 if _news is not None and not _news.empty:
                     for r in _news.itertuples():
                         _headline=html.escape(str(r.Headline)); _src=html.escape(str(r.Source)); _url=html.escape(str(getattr(r,"URL","") or ""),quote=True)
-                        _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
+                        _related=int(getattr(r,"_asdict",lambda:{})().get("Related_Coverage",0) or 0)
+                        _headline_html=(f'<a href="{_url}" target="_blank" rel="noopener noreferrer" title="{html.escape(str(r.Headline),quote=True)}">{_headline}</a>' if _url else _headline)
                         _rows.append(f'<div class="v21313-news-row"><span>{html.escape(str(r.Date))}</span><span class="main">{_headline_html}</span><span class="meta" title="{html.escape(str(r.Source),quote=True)}">{_src}</span></div>')
-                _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No recent company news is available from the configured provider.</div>'
+                _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No verified company-specific headlines available from the current news feed.</div>'
+                # V23.7.25: news and regulatory disclosures remain independent.
                 with st.container(border=True,key=f"v21313_news_card_{ticker}"):
                     _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
                     with _nh1: st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
