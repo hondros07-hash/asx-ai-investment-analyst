@@ -68,17 +68,19 @@ def _render_workspace(ticker):
    "Du Pont":["Net Margin","Asset Turnover","Equity Multiplier","Du Pont ROE"],
   }
   for group,keys in groups.items():
-   st.markdown(f"**{group}**")
-   rows=[]
-   for key in keys:
-    row={"Ratio":key}
-    for period in data["periods"]:
-     val=data["ratios"].get(period,{}).get(key)
-     row[period]="N/A (negative equity)" if period in negative_equity and key in ("ROE","Debt / Equity","Equity Multiplier","Du Pont ROE") else fmt(val,ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Du Pont ROE"))
-    rows.append(row)
-   df=pd.DataFrame(rows)
-   st.dataframe(df,hide_index=True,use_container_width=True)
-   st.download_button("Export "+group+" ratios CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_ratios.csv",mime="text/csv",key="axia_ratio_"+group)
+   # Keep the title, table and export control in one bordered card.
+   with st.container(border=True):
+    st.markdown(f"**{group}**")
+    rows=[]
+    for key in keys:
+     row={"Ratio":key}
+     for period in data["periods"]:
+      val=data["ratios"].get(period,{}).get(key)
+      row[period]="N/A (negative equity)" if period in negative_equity and key in ("ROE","Debt / Equity","Equity Multiplier","Du Pont ROE") else fmt(val,ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Du Pont ROE"))
+     rows.append(row)
+    df=pd.DataFrame(rows)
+    st.dataframe(df,hide_index=True,use_container_width=True)
+    st.download_button("Export "+group+" ratios CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_ratios.csv",mime="text/csv",key="axia_ratio_"+group)
   st.caption("ROE uses period-end equity where average equity is unavailable. Du Pont is an algebraic breakdown, not an independent audit.")
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
