@@ -8642,6 +8642,39 @@ elif page=="Company Command Centre":
         .st-key-v23841_scenario_card .v23848-source {
             font-size:7.5px;line-height:1.3;color:#7a90a7;margin-top:3px;
         }
+        /* V23.8.4.16 — fit every scenario line inside the paired card. */
+        .st-key-v23841_widget_row .v21290-bottom,
+        .st-key-v23841_widget_row .st-key-v23841_scenario_card {
+            min-height:112px !important;
+            padding:8px 11px !important;
+        }
+        .st-key-v23841_scenario_card > [data-testid="stVerticalBlock"] {
+            gap:0 !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stElementContainer"] {
+            margin:0 !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stHorizontalBlock"] {
+            min-height:20px !important;
+            margin:0 !important;
+        }
+        .st-key-v23841_scenario_card .v23848-title {
+            line-height:18px !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stButton"] button {
+            height:18px !important;min-height:18px !important;line-height:18px !important;
+        }
+        .st-key-v23841_scenario_card .v23848-metrics {
+            margin-top:3px !important;padding-top:5px !important;
+            gap:2px 12px !important;line-height:1.2 !important;
+        }
+        .st-key-v23841_scenario_card .v23848-summary {
+            margin-top:3px !important;line-height:1.2 !important;
+        }
+        .st-key-v23841_scenario_card .v23848-source {
+            margin-top:2px !important;line-height:1.2 !important;
+            padding-bottom:1px !important;
+        }
         </style>""",unsafe_allow_html=True)
 
         with st.container(key="v23841_widget_row"):
