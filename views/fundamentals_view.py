@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import streamlit as st
 from services.fundamentals_engine import load, SECTOR, category
+from services.sector_kpi_engine import kpi_rows, disclosure_destinations
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -81,7 +82,17 @@ def _render_workspace(ticker):
   st.caption("ROE uses period-end equity where average equity is unavailable. Du Pont is an algebraic breakdown, not an independent audit.")
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
-  st.caption("Specialized operational KPIs require issuer disclosures. AXÍA will not invent them from generic financial feeds.")
+  st.caption("Issuer-specific operating measures are separate from generic financial statement ratios.")
+  st.markdown("**Issuer operating KPIs · Evidence register**")
+  st.dataframe(pd.DataFrame(kpi_rows(sector)),hide_index=True,use_container_width=True)
+  destinations=disclosure_destinations(ticker)
+  if destinations:
+   st.markdown("**Official disclosure sources**")
+   for destination in destinations:
+    st.link_button(destination["label"]+" ↗",destination["url"])
+    st.caption(destination["status"])
+  else: st.caption("No validated official disclosure destination configured for this listing.")
+  st.caption("These links are research starting points, not verified citations for any individual KPI. Reporting dates, values and source pages remain unverified.")
   source=data
   fallback=False
   if not periods and frequency=="TTM":
@@ -103,7 +114,7 @@ def _render_workspace(ticker):
    standard["Return on Equity"]=source.get("ratios",{}).get(p,{}).get("ROE")
   if sector!="general":
    st.info("Issuer-specific operating KPIs require official disclosures; they are not inferred from generic statement fields.")
-   st.caption("Issuer KPIs to verify: "+", ".join(SECTOR[sector]))
+   st.caption("Definitions and required evidence are listed above; values will remain unavailable until verified against a dated filing.")
   if p:
    st.caption("Financial statement metrics · "+str(p)+" · "+str(source.get("currency","Unconfirmed"))+" · "+str(source.get("frequency","")))
    rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Provider statement / derived" if v is not None else "Unavailable from compatible components"} for k,v in standard.items()]
