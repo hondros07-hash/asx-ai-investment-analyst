@@ -84,7 +84,7 @@ def _issuer_header(data, ticker, currency):
      st.rerun()
     except Exception as exc: st.warning("Watchlist could not be updated: "+str(exc))
   st.markdown('<div class="axia-issuer-market"><div class="axia-issuer-quote-note">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div>',unsafe_allow_html=True)
- st.caption("Quote currency and financial-statement currency are separate provider fields. Unavailable values are not estimated.")
+
 
 def _financial_overview(data,ticker,currency):
  """Provider-based overview; no sample values or estimated missing inputs."""
