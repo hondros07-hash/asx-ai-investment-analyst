@@ -2,7 +2,7 @@
 import math
 import html
 import io
-from urllib.parse import urlparse, quote
+from urllib.parse import urlparse, quote as url_quote
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -38,7 +38,7 @@ def _issuer_header(data, ticker, currency):
  domain=domain or known.get(str(ticker).upper(),"")
  candidates=[str(m.get("logo_url") or m.get("logoUrl") or "")]
  if domain:
-  candidates.extend(["https://logo.clearbit.com/"+quote(domain)+"?size=256","https://www.google.com/s2/favicons?domain="+quote(domain)+"&sz=256"])
+  candidates.extend(["https://logo.clearbit.com/"+url_quote(domain)+"?size=256","https://www.google.com/s2/favicons?domain="+url_quote(domain)+"&sz=256"])
  candidates=[u for u in candidates if u.startswith("https://")]
  initials="".join(part[0] for part in str(name).split() if part)[:2].upper() or str(ticker)[:1].upper()
  mark='<span class="axia-issuer-fallback">'+safe(initials)+'</span>'
