@@ -189,7 +189,8 @@ def _render_workspace(ticker):
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
  is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
- with st.container(key="axia_fund_issuer"):\n  _issuer_header(data,ticker,currency)
+ with st.container(key="axia_fund_issuer"):
+  _issuer_header(data,ticker,currency)
  if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
  st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  quality_notes=list(data.get("quality",[]))
