@@ -144,7 +144,9 @@ def load(ticker, frequency="Annual (5Y)"):
    table[label]=vals
   data["statements"][group]=table
  if frequency=="TTM":
-  if len(periods)==4:
+  # A TTM aggregate is valid only when each flow statement has four matching quarters.
+  flow_complete=all(isinstance(frames[i],pd.DataFrame) and all(c in frames[i].columns for c in periods) for i in (0,2))
+  if len(periods)==4 and flow_complete:
    end=labels[0];data["periods"]=[end+" TTM"]
    for group,table in data["statements"].items():
     for label,values in table.items():
@@ -152,7 +154,7 @@ def load(ticker, frequency="Annual (5Y)"):
      table[label]={data["periods"][0]:(nums[0] if group=="Balance Sheet" else sum(nums) if all(v is not None for v in nums) else None)}
   else:
    data["periods"]=[]
-   data["quality"].append("TTM requires four complete quarterly reporting periods.")
+   data["quality"].append("TTM requires four aligned quarterly periods in both income and cash-flow statements.")
  # Drop wholly empty reporting periods, retaining partial years.
  if frequency!="TTM":
   usable=[p for p in data["periods"] if sum(values.get(p) is not None for table in data["statements"].values() for values in table.values()) >= 2]
