@@ -3998,6 +3998,35 @@ if page in _chr_company_pages:
     _chr_page_title="AXÍA | "+str(_title_company or "Company Command Centre")
 st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide")
 
+# V23.8.4.9 — Keep the browser tab branded, including after Streamlit reruns.
+# The title is resolved above from the active route and selected company.
+# A zero-height component updates the parent document (not the iframe title).
+# Observe title changes because Streamlit's frontend may restore its own suffix.
+components.html(
+    """<script>
+    (() => {
+      const desired = """ + json.dumps(_chr_page_title, ensure_ascii=False) + """;
+      try {
+        const doc = window.parent.document;
+        const apply = () => {
+          if (doc.title !== desired) doc.title = desired;
+        };
+        apply();
+        const titleNode = doc.querySelector("head > title");
+        if (titleNode) {
+          const observer = new MutationObserver(apply);
+          observer.observe(titleNode, {childList: true, characterData: true, subtree: true});
+        }
+      } catch (_) {
+        // Browser sandbox restrictions must not affect page rendering.
+      }
+    })();
+    </script>""",
+    height=0,
+    scrolling=False,
+)
+
+
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
 try:
     if str(st.query_params.get("chr_compare") or "").strip():
