@@ -28,49 +28,62 @@ def fmt(v,ratio=False,eps=False):
  return f"{v:,.2f}"
 
 def _issuer_header(data, ticker, currency):
- """Compact issuer identity, with browser-side logo fallback and native watchlist action."""
+ """Compact issuer header. Provider values are displayed without estimating missing data."""
  m=data.get("meta") or {}
- def safe(x): return html.escape(str(x),quote=True)
+ def safe(value): return html.escape(str(value), quote=True)
  name=m.get("longName") or m.get("shortName") or ticker
- domain=urlparse(str(m.get("website") or "")).hostname or ""
- domain=domain.removeprefix("www.")
  known={"KO":"coca-cola.com","NVDA":"nvidia.com","AAPL":"apple.com","MSFT":"microsoft.com","QAN.AX":"qantas.com","QAN.MU":"qantas.com","ZIP.AX":"zip.co"}
- domain=domain or known.get(str(ticker).upper(),"")
- candidates=[str(m.get("logo_url") or m.get("logoUrl") or "")]
- if domain:
-  candidates.extend(["https://logo.clearbit.com/"+url_quote(domain)+"?size=256","https://www.google.com/s2/favicons?domain="+url_quote(domain)+"&sz=256"])
- candidates=[u for u in candidates if u.startswith("https://")]
+ domain=urlparse(str(m.get("website") or "")).hostname or known.get(str(ticker).upper(),"")
+ domain=domain.removeprefix("www.")
+ # Use a plain image URL: Streamlit's markdown sanitizer does not reliably preserve onerror JavaScript.
+ logo=str(m.get("logo_url") or m.get("logoUrl") or "")
+ if not logo.startswith("https://") and domain:
+  logo="https://www.google.com/s2/favicons?domain="+url_quote(domain)+"&sz=256"
  initials="".join(part[0] for part in str(name).split() if part)[:2].upper() or str(ticker)[:1].upper()
  mark='<span class="axia-issuer-fallback">'+safe(initials)+'</span>'
- if candidates:
-  urls=",".join(repr(safe(u)) for u in candidates)
-  mark='<img alt="'+safe(name)+' logo" src="'+safe(candidates[0])+'" onerror="this.dataset.next=(Number(this.dataset.next||0)+1);var urls=['+urls+'];if(Number(this.dataset.next)<urls.length){this.src=urls[Number(this.dataset.next)]}else{this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'}"><span class="axia-issuer-fallback" style="display:none">'+safe(initials)+'</span>'
+ if logo.startswith("https://"):
+  mark='<span class="axia-issuer-fallback">'+safe(initials)+'</span><img alt="" loading="eager" src="'+safe(logo)+'">'
+ country=str(m.get("country") or "Country unconfirmed")
+ flags={"United States":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","Canada":"🇨🇦","Germany":"🇩🇪","Japan":"🇯🇵","Hong Kong":"🇭🇰","New Zealand":"🇳🇿"}
+ country_label=(flags.get(country,"")+" " if country in flags else "")+country
+ identity=' <span class="axia-issuer-separator">|</span> '.join(safe(v) for v in (str(ticker).upper(),m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed",country_label,m.get("sector") or "Sector unconfirmed",m.get("industry") or "Industry unconfirmed"))
+ slogan=m.get("slogan") or m.get("tagline") or ""
+ if not slogan:
+  slogan={"KO":"Refresh the world. Make a difference.","NVDA":"Accelerated computing for a better tomorrow."}.get(str(ticker).upper(),"")
+ if not slogan: slogan=m.get("longBusinessSummary") or ""
+ if slogan and len(str(slogan))>115: slogan=str(slogan).split(". ")[0][:112].rstrip()+"…"
  price=m.get("currentPrice")
  if not isinstance(price,(int,float)) or not math.isfinite(price): price=m.get("regularMarketPrice")
- quote=(f"{price:,.2f} "+safe(m.get("currency") or "")) if isinstance(price,(int,float)) and math.isfinite(price) else "Quote unavailable"
+ quote_text=(f"{price:,.2f} "+safe(m.get("currency") or "")) if isinstance(price,(int,float)) and math.isfinite(price) else "Quote unavailable"
  change=m.get("regularMarketChangePercent")
  delta=f"{change:+.2f}%" if isinstance(change,(int,float)) and math.isfinite(change) else "Change unavailable"
  delta_color="#168b62" if isinstance(change,(int,float)) and change>=0 else "#c54450" if isinstance(change,(int,float)) else "#60758f"
  def stat(label,v,kind="number"):
-  display=("—" if not isinstance(v,(int,float)) or not math.isfinite(v) else f"{v:.2%}" if kind=="yield" else f"{v:.1f}×" if kind=="multiple" else fmt(v))
+  if not isinstance(v,(int,float)) or not math.isfinite(v): display="—"
+  elif kind=="yield":
+   # yfinance commonly reports dividendYield as percentage points (2.41, not .0241).
+   display=f"{v if abs(v)>1 else v*100:.2f}%"
+  elif kind=="multiple": display=f"{v:.1f}×"
+  else: display=fmt(v)
   return '<div class="axia-issuer-stat"><strong>'+display+'</strong><span>'+label+'</span></div>'
  stats=stat("Market Cap",m.get("marketCap"))+stat("P/E (TTM)",m.get("trailingPE"),"multiple")+stat("Dividend Yield",m.get("dividendYield"),"yield")+stat("Beta (5Y)",m.get("beta"))
- identity=' <span class="axia-issuer-separator">|</span> '.join(safe(v) for v in (str(ticker).upper(),m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed",m.get("country") or "Country unconfirmed",m.get("sector") or "Sector unconfirmed",m.get("industry") or "Industry unconfirmed"))
- left,right=st.columns([5,4],gap="small",vertical_alignment="top")
+ left,right=st.columns([5,4],gap="small",vertical_alignment="center")
  with left:
-  st.markdown('<div class="axia-issuer-left"><div class="axia-issuer-mark">'+mark+'</div><div class="axia-issuer-identity"><h2>'+safe(name)+'</h2><div class="axia-issuer-details">'+identity+'</div><div class="axia-issuer-tagline">Financial statements · '+safe(currency)+'</div></div></div>',unsafe_allow_html=True)
+  st.markdown('<div class="axia-issuer-left"><div class="axia-issuer-mark">'+mark+'</div><div class="axia-issuer-identity"><h2>'+safe(name)+'</h2><div class="axia-issuer-details">'+identity+'</div><div class="axia-issuer-tagline">'+safe(slogan)+'</div></div></div>',unsafe_allow_html=True)
  with right:
-  actions=st.columns([1,0.15],vertical_alignment="center",gap="small")
-  with actions[0]:
+  quote_col,action_col=st.columns([3,2],vertical_alignment="center",gap="small")
+  with quote_col:
+   st.markdown('<div class="axia-issuer-quote">'+quote_text+' <span style="color:'+delta_color+'">'+delta+'</span></div>',unsafe_allow_html=True)
+  with action_col:
    try: saved=str(ticker).upper() in set(watch_get()["ticker"].astype(str).str.upper())
    except Exception: saved=False
-   if st.button("✓ In Watchlist" if saved else "＋ Add to Watchlist",key="axia_fund_watch_"+str(ticker),use_container_width=False):
+   if st.button("✓ In Watchlist" if saved else "＋ Add to Watchlist",key="axia_fund_watch_"+str(ticker),use_container_width=True):
     try:
      if saved: watch_remove(ticker); st.toast(str(ticker)+" removed from Watchlist.")
      else: watch_add(ticker,""); st.toast(str(ticker)+" added to Watchlist.")
      st.rerun()
     except Exception as exc: st.warning("Watchlist could not be updated: "+str(exc))
-  st.markdown('<div class="axia-issuer-market"><div class="axia-issuer-quote">'+quote+' <span style="color:'+delta_color+'">'+delta+'</span></div><div class="axia-issuer-quote-note">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div>',unsafe_allow_html=True)
+  st.markdown('<div class="axia-issuer-market"><div class="axia-issuer-quote-note">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div>',unsafe_allow_html=True)
  st.caption("Quote currency and financial-statement currency are separate provider fields. Unavailable values are not estimated.")
 
 def _financial_overview(data,ticker,currency):
@@ -152,21 +165,21 @@ def render(ticker):
 .st-key-axia_fund_issuer [data-testid="stHorizontalBlock"]{align-items:center}
 .st-key-axia_fund_issuer [data-testid="stVerticalBlock"]{gap:0!important}
 .st-key-axia_fund_issuer [data-testid="stMarkdownContainer"] p{margin:0}
-.axia-issuer-left{display:flex;align-items:center;gap:18px;min-height:100px}
-.axia-issuer-mark{width:100px;height:94px;flex:0 0 100px;display:flex;align-items:center;justify-content:center;background:#fff}
-.axia-issuer-mark img{width:100%;max-height:94px;object-fit:contain}
+.axia-issuer-left{display:flex;align-items:center;gap:13px;min-height:76px}
+.axia-issuer-mark{width:88px;height:78px;flex:0 0 88px;display:flex;align-items:center;justify-content:center;background:#fff;position:relative;overflow:hidden}
+.axia-issuer-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;font-size:0;color:transparent}
 .axia-issuer-fallback{width:80px;height:72px;align-items:center;justify-content:center;background:#f5f9ff;color:#0868d8;font-size:29px;font-weight:800;border-radius:7px}
 .axia-issuer-identity{min-width:0}
-.axia-issuer-identity h2{font-size:clamp(20px,1.75vw,29px)!important;font-weight:800;line-height:1.1;margin:0 0 8px!important;color:#142d4d}
+.axia-issuer-identity h2{font-size:clamp(20px,1.75vw,29px)!important;font-weight:800;line-height:1.1;margin:0 0 4px!important;color:#142d4d}
 .axia-issuer-details{font-size:12px;color:#60758f;line-height:1.35;white-space:normal}
 .axia-issuer-separator{color:#b4c5d9;margin:0 6px}
-.axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:7px}
+.axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:4px}
 .st-key-axia_fund_issuer [data-testid="stButton"]{display:flex;justify-content:flex-end}
 .st-key-axia_fund_issuer [data-testid="stButton"] button{height:32px;min-height:32px;padding:0 12px;border:1px solid #1670eb;border-radius:5px;background:#fff;color:#0868d8;font-size:12px;font-weight:700}
 .axia-issuer-market{text-align:right}
-.axia-issuer-quote{font-size:clamp(21px,2vw,30px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap}
-.axia-issuer-quote span{font-size:15px;margin-left:8px}
-.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:3px 0 9px}
+.axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:right}
+.axia-issuer-quote span{font-size:14px;margin-left:5px}
+.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:2px 0 7px}
 .axia-issuer-stats{display:flex;justify-content:flex-end}
 .axia-issuer-stat{padding:0 12px;border-left:1px solid #dce6f2;text-align:center;white-space:nowrap}
 .axia-issuer-stat:first-child{border-left:0}
