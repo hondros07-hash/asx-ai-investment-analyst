@@ -315,10 +315,17 @@ def _render_workspace(ticker):
   counts=summary(checks)
   st.markdown("**Statement integrity diagnostics**")
   st.caption("Automated checks assess internal consistency only; a pass is not an audit or issuer-filing verification.")
-  st.dataframe(pd.DataFrame(checks),hide_index=True,use_container_width=True)
   st.caption(" · ".join(k+": "+str(v) for k,v in counts.items() if v))
+  flagged=[r for r in checks if r["Status"] in ("Mismatch","Definition differs","Invalid","Unconfirmed","Provisional")]
+  if flagged:
+   st.warning(str(len(flagged))+" diagnostic item(s) need review. A mismatch does not necessarily indicate an error in issuer filings.")
+   with st.expander("Review flagged checks and compared values",expanded=True):
+    st.dataframe(pd.DataFrame(flagged),hide_index=True,use_container_width=True)
+    st.caption("Difference = reported minus expected. Tolerance is shown for numerical comparisons; unavailable inputs remain blank.")
+  with st.expander("All integrity checks",expanded=False):
+   st.dataframe(pd.DataFrame(checks),hide_index=True,use_container_width=True)
   st.download_button("Export integrity diagnostics CSV",pd.DataFrame(checks).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_integrity.csv",mime="text/csv",key="axia_integrity_export")
-  st.warning("Provider-transcribed figures have not been reconciled to audited issuer filings. No filing-page verification is claimed.")
+  st.info("Source status: provider-transcribed figures; issuer-filing reconciliation is pending. Internal checks do not establish audit verification.")
   metadata={"Provider":data.get("provider","Unavailable"),"Reporting currency":currency,"Period basis":data.get("frequency",frequency),"Audit status":"Provider-transcribed; unverified","Restatement status":"Not established","Issuer filing reference":"Not linked to a specific reporting period"}
   st.dataframe(pd.DataFrame([{"Field":k,"Value":v} for k,v in metadata.items()]),hide_index=True,use_container_width=True)
   st.caption("A company website is not evidence of an individual financial statement value. Official filing links must be matched to the selected period before verification badges are shown.")
