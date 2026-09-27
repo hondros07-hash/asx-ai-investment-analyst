@@ -186,18 +186,18 @@ def render(ticker):
 .axia-issuer-mark{width:88px;height:78px;flex:0 0 88px;display:flex;align-items:center;justify-content:center;background:#fff;position:relative;overflow:hidden}
 .axia-issuer-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;font-size:0;color:transparent}
 .axia-issuer-fallback{width:80px;height:72px;align-items:center;justify-content:center;background:#f5f9ff;color:#0868d8;font-size:29px;font-weight:800;border-radius:7px}
-.axia-issuer-identity{min-width:0}
-.axia-issuer-identity h2{font-size:clamp(20px,1.75vw,29px)!important;font-weight:800;line-height:1.1;margin:0 0 4px!important;color:#142d4d}
+.axia-issuer-identity{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.axia-issuer-identity h2{font-size:clamp(20px,1.75vw,29px)!important;font-weight:800;line-height:1.1;margin:0!important;color:#142d4d}
 .axia-issuer-details{font-size:12px;color:#60758f;line-height:1.35;white-space:normal}
 .axia-issuer-separator{color:#b4c5d9;margin:0 6px}
 .axia-issuer-flag{display:inline-block;width:20px;height:15px;object-fit:cover;vertical-align:-2px;margin-right:4px;border-radius:1px}
-.axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:4px}
+.axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:1px}
 .st-key-axia_fund_issuer [data-testid="stButton"]{display:flex;justify-content:flex-end}
 .st-key-axia_fund_issuer [data-testid="stButton"] button{height:32px;min-height:32px;padding:0 12px;border:1px solid #1670eb;border-radius:5px;background:#fff;color:#0868d8;font-size:12px;font-weight:700}
 .axia-issuer-market{text-align:right}
-.axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:right}
+.axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:left}
 .axia-issuer-quote span{font-size:14px;margin-left:5px}
-.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left}
+.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left;white-space:nowrap}
 .axia-issuer-stats{display:flex;justify-content:flex-end}
 .axia-issuer-stat{padding:0 12px;border-left:1px solid #dce6f2;text-align:center;white-space:nowrap}
 .axia-issuer-stat:first-child{border-left:0}
