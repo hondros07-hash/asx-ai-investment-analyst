@@ -10,7 +10,7 @@ from services.fundamentals_engine import load, SECTOR, category
 from services.sector_kpi_engine import kpi_rows, disclosure_destinations
 from services.fundamental_health_engine import assess
 from services.fundamentals_integrity_engine import validate, summary
-from services.fundamentals_statement_view_engine import display_frame, row_trend
+from services.fundamentals_statement_view_engine import display_frame, row_trend, statement_table
 from services.advanced_fundamental_ratios_engine import compute as advanced_ratios, METRICS as ADVANCED_GROUPS, PERCENT as ADVANCED_PERCENT, DAYS as ADVANCED_DAYS
 from services.earnings_quality_engine import calculate as earnings_quality, export_rows as earnings_export
 
@@ -106,23 +106,19 @@ def _render_workspace(ticker):
    st.caption("Change against the preceding available reporting period. Annual = annual change; quarterly = sequential quarter change, not year-on-year. Non-positive or missing bases are withheld.")
   elif mode=="Common size":
    st.caption("Income statement: % of revenue · Balance sheet: % of total assets · Cash flow: % of operating cash flow. Non-positive or missing denominators are withheld; EPS and share counts are excluded.")
+  col_a,col_b=st.columns(2)
+  with col_a: show_sparks=st.checkbox("Show inline sparklines",value=True,key="axia_statement_inline_sparks")
+  with col_b: reverse_order=st.checkbox("Oldest period first",value=False,key="axia_statement_reverse")
   for group,table in data["statements"].items():
    with st.expander(group,expanded=True):
     if not data["periods"]: st.info("No complete periods available.");continue
-    df=display_frame(data,group,mode,fmt)
-    st.dataframe(df,hide_index=True,use_container_width=True)
-    st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
-    if mode=="Reported values":
-     st.caption("† Derived from provider statement components; not directly reported.")
-     featured=[name for name in ("Revenue","EBITDA","Net Income","Total Assets","Net Debt","Operating Cash Flow","Free Cash Flow") if name in table]
-     for label in featured:
-      points=row_trend(data,group,label)
-      if len(points)>=2:
-       fig=go.Figure(go.Scatter(y=points,mode="lines+markers",line=dict(color="#0868d8",width=2),marker=dict(size=4),showlegend=False))
-       fig.update_layout(height=75,margin=dict(l=4,r=4,t=3,b=3),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(visible=False),yaxis=dict(visible=False))
-       col1,col2=st.columns([2,5])
-       with col1: st.caption(label+" · oldest → newest")
-       with col2: st.plotly_chart(fig,use_container_width=True,key="axia_statement_spark_"+group+"_"+label)
+    df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
+    config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
+    st.dataframe(df,hide_index=True,use_container_width=True,column_config=config)
+    export=df.drop(columns=["10Y Trend"],errors="ignore")
+    st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
+    if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
+    if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
  with tabs[1]:
   st.subheader("Profitability, liquidity and efficiency")
   groups={
