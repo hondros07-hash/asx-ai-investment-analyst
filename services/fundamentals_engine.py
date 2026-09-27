@@ -39,6 +39,7 @@ SECTOR = {
  "bank": ["Net Interest Margin", "Non-performing Loans Ratio", "Tier 1 Capital Ratio", "Provision for Credit Losses", "Efficiency Ratio"],
  "bnpl": ["Total Payment Volume", "Net Transaction Margin", "Bad Debt / TPV", "Cash EBITDA", "Cash Burn Rate"],
  "resources": ["Realized Commodity Price", "Cash Cost per Unit", "All-in Sustaining Cost", "Reserve Life"],
+ "airline": ["Revenue Passenger Kilometres", "Available Seat Kilometres", "Passenger Load Factor", "Unit Revenue", "Unit Cost", "Net Capital Expenditure"],
  "general": ["Revenue Growth", "Operating Margin", "Free Cash Flow", "Return on Equity"],
 }
 
@@ -56,9 +57,11 @@ def pick(frame, aliases, col):
  return None
 
 def category(meta, ticker=""):
+ if str(ticker).upper() in ("QAN.AX","QAN.MU"): return "airline"
  if str(ticker).upper() in ("ZIP.AX",): return "bnpl"
  if str(ticker).upper() in ("ZIP",): return "general"
  s=" ".join(str(meta.get(k) or "") for k in ("sector","industry","longName")).lower()
+ if any(x in s for x in ("airline","air transport","airways","air carrier","aviation","qantas")): return "airline"
  if any(x in s for x in ("bank","bancorp","banking")): return "bank"
  if any(x in s for x in ("buy now pay later","bnpl","payment services","consumer finance", "credit services", "zip co")): return "bnpl"
  if any(x in s for x in ("mining","metals","gold","oil & gas","energy minerals")): return "resources"
