@@ -3642,7 +3642,7 @@ def _chr_nav_svg(name):
 # Streamlit button callbacks run before the script body on the interaction rerun.
 # Updating the single authoritative route in the callback means the sidebar
 # highlight and page router read the SAME state during the SAME render.
-_CHR_LEGAL_PAGES={"About","Privacy","Disclaimer","Terms","Data Sources","Contact"}
+_CHR_LEGAL_PAGES={"About","Our Mission","Privacy","Disclaimer","Terms","Data Sources","Contact"}
 
 def _chr_clear_legal_route_v21300():
     st.session_state.pop("chr_legal_page", None)
@@ -9045,6 +9045,48 @@ elif page=="About":
     from views.about_us import render_about_us
     render_about_us()
 
+elif page=="Our Mission":
+    st.markdown("""
+    <style>
+    .axia-mission{max-width:1060px;margin:12px auto 30px;color:#243b59}
+    .axia-mission-hero{background:#fff;border:1px solid #d8e5f2;border-radius:16px;padding:38px 42px;text-align:center}
+    .axia-mission-eyebrow{color:#086ee8;font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+    .axia-mission h1{font-size:38px;color:#086ee8;margin:12px 0}
+    .axia-mission h2{font-size:22px;color:#183b68;margin:32px 0 12px}
+    .axia-mission-lead{font-size:18px;line-height:1.65;max-width:800px;margin:12px auto;color:#385777}
+    .axia-mission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+    .axia-mission-tile{background:#fff;border:1px solid #d8e5f2;border-radius:12px;padding:20px}
+    .axia-mission-tile h3{font-size:16px;color:#086ee8;margin:0 0 9px}
+    .axia-mission-tile p,.axia-mission-copy{font-size:14px;line-height:1.75;color:#4b6480;margin:0}
+    .axia-mission-path{background:#f1f7ff;border:1px solid #d8e5f2;border-radius:12px;padding:22px;line-height:2;color:#24496f}
+    .axia-mission-close{margin-top:24px;border:1px solid #bdd5f5;background:#f1f7ff;border-radius:12px;padding:22px;text-align:center;font-weight:800;color:#086ee8;font-size:19px}
+    @media(max-width:700px){.axia-mission-hero{padding:25px 17px}.axia-mission h1{font-size:30px}.axia-mission-grid{grid-template-columns:1fr}}
+    </style>
+    <div class="axia-mission">
+      <section class="axia-mission-hero">
+        <div class="axia-mission-eyebrow">Our Mission</div>
+        <h1>All the evidence. A clearer perspective.</h1>
+        <p class="axia-mission-lead">To bring fragmented financial information together into one trusted investment research platform, helping investors understand what matters, evaluate the evidence and make informed decisions with greater clarity and confidence.</p>
+        <p class="axia-mission-copy">One platform. Complete perspective. Less searching. Less noise. More understanding.</p>
+      </section>
+      <h2>Why AXÍA exists</h2>
+      <p class="axia-mission-copy">Investment research is spread across market-data services, company filings, financial news, charting tools, valuation models and portfolio trackers. Moving between disconnected sources creates distraction and makes it harder to understand how new information affects an investment. AXÍA is being built to bring that research together in one connected environment—not to overwhelm investors with more information, but to help them understand it.</p>
+      <h2>Our five principles</h2>
+      <div class="axia-mission-grid">
+        <div class="axia-mission-tile"><h3>One connected research hub</h3><p>Bring market data, financial statements, official announcements, news, valuations, technical analysis and portfolio context into a coherent workflow.</p></div>
+        <div class="axia-mission-tile"><h3>Evidence before opinion</h3><p>Make important figures traceable to their source, reporting period and methodology. Distinguish verified facts from forecasts, model assumptions and AI interpretation.</p></div>
+        <div class="axia-mission-tile"><h3>Clarity over information overload</h3><p>Surface what matters first, while keeping the underlying documents, calculations and detailed research accessible.</p></div>
+        <div class="axia-mission-tile"><h3>Analysis, not just aggregation</h3><p>Connect business performance, market conditions, valuation, risks and portfolio exposure so investors can understand the relationships.</p></div>
+        <div class="axia-mission-tile"><h3>Continuous accountability</h3><p>Monitor whether new financial results and company developments continue to support the assumptions behind an investment thesis.</p></div>
+      </div>
+      <h2>From information to understanding</h2>
+      <div class="axia-mission-path">Discover a company &rarr; Gather verified evidence &rarr; Analyse the business &rarr; Understand valuation &rarr; Establish a thesis &rarr; Monitor what changes.</div>
+      <h2>How we earn trust</h2>
+      <p class="axia-mission-copy">AXÍA aims to show where important information comes from, when it was updated and how analytical outputs were calculated. Reported figures, modelled valuations, forecasts, stale information and missing data should be clearly distinguished. Where evidence is unavailable or uncertain, the platform should say so rather than inventing a result or presenting an estimate as a fact. These are our design commitments, not a claim that every feature or data source is already complete.</p>
+      <div class="axia-mission-close">AXÍA helps investors make their own decisions. It does not make decisions for them.</div>
+    </div>
+    """,unsafe_allow_html=True)
+
 elif page in {"Privacy","Disclaimer","Terms","Data Sources","Contact"}:
     st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
     st.header(page)
@@ -9135,12 +9177,12 @@ def render_chrimata_global_legal_footer():
     """, unsafe_allow_html=True)
 
     # One aligned header row: brand left, compact navigation group right.
-    head=st.columns([5.6, 4.4], gap="small", vertical_alignment="center")
+    head=st.columns([4.7, 5.3], gap="small", vertical_alignment="center")
     with head[0]:
         st.markdown('<div class="chr-legal-brand">Axía · Market Investment Analyst</div>', unsafe_allow_html=True)
-    labels=["About","Privacy","Disclaimer","Terms","Data Sources","Contact"]
+    labels=["About","Our Mission","Privacy","Disclaimer","Terms","Data Sources","Contact"]
     with head[1]:
-        nav=st.columns([.68,.76,.96,.66,1.08,.72], gap="small", vertical_alignment="center")
+        nav=st.columns([.62,1.15,.70,.88,.60,1.02,.68], gap="small", vertical_alignment="center")
         for i,label in enumerate(labels):
             with nav[i]:
                 st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
