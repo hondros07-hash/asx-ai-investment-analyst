@@ -8202,6 +8202,9 @@ elif page=="Company Command Centre":
         [class*="st-key-v2373_cat_card_"] .stButton>button{width:auto!important;min-height:22px!important;height:22px!important;padding:0 2px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important;font-size:8.5px!important;font-weight:900!important}
         .v2373-cat-body{margin-top:2px;border-top:1px solid #dfe8f2;min-width:0;overflow:hidden}
         .v2373-cat-body .v21290-row{grid-template-columns:57px minmax(0,1fr) 15px;min-width:0}
+        /* V23.8.1: scoped footer link; other cards retain their original layout. */
+        [class*="st-key-v21313_news_card_"]{position:relative!important;padding-bottom:35px!important}
+        [class*="st-key-v21313_news_card_"] [class*="st-key-v21313_nav_news_"]{position:absolute!important;right:12px!important;bottom:8px!important;z-index:2!important}
         .v21313-news-title{font-size:10.5px;font-weight:950;color:#10264b;white-space:nowrap}.v21313-news-title span{color:#086ee8;margin-right:4px}
         .v21313-news-body{margin-top:2px;border-top:1px solid #dfe8f2}.v21313-news-row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:3px 6px;min-width:0;width:100%;overflow:hidden;align-items:start;border-bottom:1px solid #dfe8f2;padding:4px 1px;font-size:8.4px;color:#45688f;line-height:1.15}
         .v21313-news-row .main{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-row .main a{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#29476f;text-decoration:none}.v21313-news-row .main a:hover{text-decoration:underline}.v21313-news-row .meta{grid-column:2;display:block;min-width:0;text-align:left;color:#66809c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v21313-news-empty{font-size:8.3px;color:#6b8198;padding:10px 2px}
@@ -8449,12 +8452,11 @@ elif page=="Company Command Centre":
                 _body="".join(_rows) if _rows else '<div class="v21313-news-empty">No verified company-specific headlines available from the current news feed.</div>'
                 # V23.7.25: news and regulatory disclosures remain independent.
                 with st.container(border=True,key=f"v21313_news_card_{ticker}"):
-                    _nh1,_nh2=st.columns([5.2,1.0],gap="small",vertical_alignment="center")
-                    with _nh1: st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
-                    with _nh2:
-                        if st.button("View all →",key=f"v21313_nav_news_{ticker}",use_container_width=False):
-                            _chr_set_cc_sub_v2111("News & Events"); st.rerun()
+                    st.markdown('<div class="v21313-news-title"><span>▣</span> Recent News</div>',unsafe_allow_html=True)
                     st.markdown(f'<div class="v21313-news-body">{_body}</div>',unsafe_allow_html=True)
+                    # V23.8.1: preserve the existing News navigation in a fixed card footer.
+                    if st.button("View all →",key=f"v21313_nav_news_{ticker}",use_container_width=False):
+                        _chr_set_cc_sub_v2111("News & Events"); st.rerun()
             with _m3:
                 _rows=[]
                 if not _cat_df.empty:
