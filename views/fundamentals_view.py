@@ -107,9 +107,8 @@ def _render_workspace(ticker):
    "Du Pont":["Net Margin","Asset Turnover","Equity Multiplier","Du Pont ROE"],
   }
   for group,keys in groups.items():
-   # Keep the title, table and export control in one bordered card.
-   with st.container(border=True):
-    st.markdown(f"**{group}**")
+   # Match Financial Statements: title, table and export belong to one expander widget.
+   with st.expander(group,expanded=True):
     rows=[]
     for key in keys:
      row={"Ratio":key}
