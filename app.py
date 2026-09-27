@@ -8675,6 +8675,24 @@ elif page=="Company Command Centre":
             margin-top:2px !important;line-height:1.2 !important;
             padding-bottom:1px !important;
         }
+        /* V23.8.4.17 — anchor scenario action to the right card edge. */
+        .st-key-v23841_scenario_card [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
+            justify-content:flex-end !important;
+            align-items:stretch !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child > [data-testid="stVerticalBlock"] {
+            width:100% !important;
+            align-items:flex-end !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stButton"] {
+            width:100% !important;
+            display:flex !important;
+            justify-content:flex-end !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stButton"] button {
+            margin-left:auto !important;margin-right:0 !important;
+            white-space:nowrap !important;
+        }
         </style>""",unsafe_allow_html=True)
 
         with st.container(key="v23841_widget_row"):
