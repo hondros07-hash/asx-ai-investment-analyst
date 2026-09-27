@@ -197,7 +197,7 @@ def render(ticker):
 .axia-issuer-market{text-align:right}
 .axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:left;transform:translate(-40px, 6px)}
 .axia-issuer-quote span{font-size:14px;margin-left:5px}
-.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left;white-space:nowrap;transform:translate(-40px, 6px)}
+.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left;white-space:nowrap;transform:translate(-40px, -4px)}
 .axia-issuer-stats{display:flex;justify-content:flex-end}
 .axia-issuer-stat{padding:0 12px;border-left:1px solid #dce6f2;text-align:center;white-space:nowrap}
 .axia-issuer-stat:first-child{border-left:0}
