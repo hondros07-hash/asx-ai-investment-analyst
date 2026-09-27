@@ -7347,7 +7347,10 @@ elif page=="Company Command Centre":
         # V21.2.35 — resolve every candidate server-side. Browser hot-link/CSP failures
         # can no longer leave a broken-image icon in the Command Centre.
         _resolved_logo=_chr_resolved_logo_data_uri(ticker,_ccname,tuple(_logo_candidates)) if _logo_candidates else ""
-        if _resolved_logo:
+        # Match the working Fundamentals Coca-Cola wordmark, not a dark provider tile.
+        if str(ticker).upper()=="KO" and "coca-cola" in str(_ccname).lower():
+            _logo_html='<img src="https://commons.wikimedia.org/wiki/Special:FilePath/Coca-Cola_logo.svg" alt="Coca-Cola logo">'
+        elif _resolved_logo:
             _logo_html=f'<img src="{html.escape(_resolved_logo,quote=True)}" alt="{html.escape(str(_ccname),quote=True)} logo">'
         else:
             _logo_html=f'<div class="v2121-fallback">{html.escape(_initials)}</div>'
