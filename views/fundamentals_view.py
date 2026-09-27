@@ -113,9 +113,32 @@ def _financial_overview(data,ticker,currency):
  def v(group,key,period):return group.get(key,{}).get(period)
  st.markdown("### Financial Overview")
  st.caption("Latest reporting period: "+str(p)+" · "+currency+" · Provider-transcribed; not issuer-verified.")
- cols=st.columns(5)
- for col,label,group,key in zip(cols,("Revenue","Operating income","Net income","Free cash flow","Operating margin"),(inc,inc,inc,cf,None),("Revenue","Operating Income (EBIT)","Net Income","Free Cash Flow","Operating Margin")):
-  with col:st.metric(label,fmt(ratios.get(p,{}).get(key),ratio=True) if group is None else fmt(v(group,key,p)))
+ # Reference-inspired cards: values and growth are drawn exclusively from comparable provider periods.
+ def _card_value(value,percent=False):
+  if value is None or not isinstance(value,(int,float)) or not math.isfinite(value): return "—"
+  if percent: return f"{value*100:,.1f}%"
+  return fmt(value)
+ def _spark(values):
+  points=[x for x in values if isinstance(x,(int,float)) and math.isfinite(x)]
+  if len(points)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
+  maximum=max(abs(x) for x in points) or 1
+  return '<span class="axia-kpi-spark" aria-label="Historical reported values, oldest to newest">'+''.join('<i style="height:'+str(max(3,round(abs(x)/maximum*32)))+'px;background:'+('#cf5260' if x<0 else '#14a57d')+'"></i>' for x in points)+'</span>'
+ metrics=(("Revenue","▤",inc,"Revenue",False),("Operating Income","▣",inc,"Operating Income (EBIT)",False),("Net Income","♧",inc,"Net Income",False),("Free Cash Flow","▢",cf,"Free Cash Flow",False),("Operating Margin","◉",None,"Operating Margin",True))
+ cards=[]
+ for label,icon,group,key,percent in metrics:
+  def read(period):
+   return ratios.get(period,{}).get(key) if group is None else v(group,key,period)
+  current=read(p)
+  previous=read(periods[1]) if len(periods)>1 and data.get("frequency")!="TTM" else None
+  delta=None
+  if current is not None and previous is not None and all(isinstance(x,(int,float)) and math.isfinite(x) for x in (current,previous)):
+   if percent: delta=f"{(current-previous)*100:+.1f} pp"
+   elif previous>0: delta=f"{(current/previous-1)*100:+.1f}%"
+  history=[read(period) for period in reversed(periods)]
+  change_class="up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral"
+  cards.append('<div class="axia-kpi-card"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+("TTM" if data.get("frequency")=="TTM" else "latest") +')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
+ st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
+ st.caption("Comparisons use the preceding available reported period (not necessarily year-on-year). TTM comparisons are withheld without a comparable prior TTM; sparklines show available periods, oldest to newest.")
  rows=financial_performance(data);labels=[r["Period"] for r in rows]
  a,b=st.columns([1.35,1])
  with a:
@@ -160,6 +183,18 @@ def render(ticker):
  st.markdown("<style>\n.st-key-axia_fund_workspace [data-testid=\"stVerticalBlock\"]{gap:.55rem}\n.st-key-axia_fund_workspace [data-baseweb=\"tab-list\"]{border-bottom:1px solid #d9e5f3;gap:10px}\n.st-key-axia_fund_workspace [data-baseweb=\"tab\"]{color:#47617d;font-weight:650;padding:8px}\n.st-key-axia_fund_workspace [aria-selected=\"true\"]{color:#0868d8!important;border-bottom-color:#0868d8!important}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"]{background:#fff;border:1px solid #d9e5f3;border-radius:10px;overflow:hidden;margin-bottom:8px}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"] summary{background:#f6f9fe;color:#173b63;font-weight:750;padding:10px 14px}\n.st-key-axia_fund_workspace [data-testid=\"stDataFrame\"]{border:1px solid #e0e9f3;border-radius:8px;overflow:hidden}\n.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-checked=\"true\"],.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-pressed=\"true\"]{background:#0868d8!important;color:white!important;border-color:#0868d8!important}\n</style>",unsafe_allow_html=True)
  st.markdown("""<style>
 /* Scoped AXÍA Fundamentals presentation: no changes to global navigation. */
+.axia-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:13px 0 17px}
+.axia-kpi-card{display:flex;align-items:flex-start;gap:10px;min-width:0;position:relative;background:#fff;border:1px solid #dce7f2;border-radius:9px;padding:15px 12px;min-height:116px;box-shadow:0 2px 9px rgba(20,45,77,.04)}
+.axia-kpi-icon{flex:0 0 29px;height:29px;border-radius:5px;background:#174b82;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700}
+.axia-kpi-body{min-width:0;flex:1}.axia-kpi-label{font-size:12px;font-weight:700;color:#49617d;white-space:nowrap}.axia-kpi-label small{font-size:10px;font-weight:500}
+.axia-kpi-number{font-size:clamp(17px,1.5vw,24px);font-weight:800;color:#142d4d;white-space:nowrap;margin:6px 0 2px}
+.axia-kpi-change{font-size:12px;font-weight:750}.axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
+.axia-kpi-spark{position:absolute;right:10px;bottom:12px;height:33px;display:flex;align-items:flex-end;gap:3px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px}
+.axia-kpi-no-trend{position:absolute;right:10px;bottom:10px;font-size:9px;color:#8190a4}
+@media(max-width:1250px){.axia-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.axia-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.axia-kpi-grid{grid-template-columns:1fr}}
+
 .st-key-axia_fund_workspace {color:#173b63}
 .st-key-axia_fund_workspace [data-testid="stMetric"]{background:linear-gradient(145deg,#fff,#f7faff);border:1px solid #dce7f2;border-radius:13px;padding:14px 16px;box-shadow:0 3px 12px rgba(20,45,77,.035)}
 .st-key-axia_fund_workspace [data-testid="stMetricLabel"]{color:#60758f;font-size:.8rem;font-weight:650}
