@@ -52,7 +52,7 @@ def _render_workspace(ticker):
    st.metric("Health score",str(health["score"])+"/100" if health["score"] is not None else "Insufficient data")
   if health["score"] is not None:
    score=health["score"]
-   st.markdown('<div style="position:relative;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div><div style="display:flex;justify-content:space-between;color:#60758f;font-size:11px;margin-top:5px"><span>0 · Financial weakness</span><span>100 · Financial strength</span></div>',unsafe_allow_html=True)
+   st.markdown('<div style="width:100%;padding:0 0 16px;box-sizing:border-box"><div style="position:relative;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;color:#60758f;font-size:11px;line-height:1.5;margin-top:9px;min-height:18px"><span style="flex:1;text-align:left">0 · Financial weakness</span><span style="flex:1;text-align:right">100 · Financial strength</span></div></div>',unsafe_allow_html=True)
   else:
    st.info("Composite indicator withheld until at least 60% of the weighted evidence is available.")
   c1,c2=st.columns(2)
