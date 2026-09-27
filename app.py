@@ -9060,84 +9060,49 @@ elif page=="About":
     render_about_us()
 
 elif page=="Our Mission":
-    # AXÍA mission: the experience communicates; the intelligence solves.
     st.markdown("""
     <style>
-    .axm{max-width:1120px;margin:10px auto 38px;color:#193657;font-family:inherit}
-    .axm *{box-sizing:border-box}
-    .axm-hero{position:relative;overflow:hidden;border-radius:19px;background:linear-gradient(118deg,#082b65 0%,#0758ba 65%,#167de6 100%);color:#fff;padding:48px 52px 44px}
-    .axm-hero:after{content:"";position:absolute;width:350px;height:350px;border:1px solid rgba(255,255,255,.18);border-radius:50%;right:-105px;top:-155px;box-shadow:0 0 0 70px rgba(255,255,255,.035),0 0 0 145px rgba(255,255,255,.025);pointer-events:none}
-    .axm-kicker{font-size:11px;letter-spacing:.19em;font-weight:850;text-transform:uppercase;color:#b9dcff}
-    .axm h1{font-size:clamp(32px,3.5vw,49px);line-height:1.12;letter-spacing:-.035em;color:#fff;margin:16px 0 18px;max-width:760px}
-    .axm-hero p{font-size:16px;line-height:1.7;color:#e1efff;max-width:790px;margin:0}
-    .axm-hero-foot{margin-top:28px;font-weight:800;font-size:12px;letter-spacing:.05em;color:#fff}
-    .axm-section{margin-top:34px}.axm-eyebrow{font-size:11px;letter-spacing:.13em;color:#0965c8;text-transform:uppercase;font-weight:850}
-    .axm h2{font-size:26px;letter-spacing:-.025em;color:#173a68;margin:8px 0 12px}
-    .axm-copy{font-size:14px;line-height:1.8;color:#4a6581;max-width:930px;margin:0}
-    .axm-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
-    .axm-panel{background:#fff;border:1px solid #dbe6f3;border-radius:14px;padding:25px;min-width:0}
-    .axm-panel h3{font-size:17px;color:#173d73;margin:0 0 9px}.axm-panel p{font-size:13px;color:#54708e;line-height:1.7;margin:0}
-    .axm-share{display:flex;align-items:center;gap:13px;margin-bottom:17px}
-    .axm-percent{font-size:40px;font-weight:900;letter-spacing:-.06em;color:#0b65ce;line-height:1}
-    .axm-bar{height:10px;border-radius:20px;overflow:hidden;background:#e8f0fa;margin:16px 0}
-    .axm-bar span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#0c62cb,#2695f0)}
-    .axm-panel-strong{border-color:#9bc6f5;background:linear-gradient(145deg,#f2f8ff,#fff)}
-    .axm-principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:17px}
-    .axm-principle{border:1px solid #dbe6f3;background:#fff;border-radius:13px;padding:21px}
-    .axm-num{display:inline-flex;align-items:center;justify-content:center;width:31px;height:31px;background:#eaf4ff;color:#0965c8;border-radius:9px;font-size:12px;font-weight:900;margin-bottom:15px}
-    .axm-principle h3{font-size:15px;color:#183c6c;margin:0 0 9px}.axm-principle p{font-size:12.5px;line-height:1.7;color:#56718d;margin:0}
-    .axm-flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin-top:17px}
-    .axm-step{border:1px solid #d7e6f7;background:#f4f9ff;border-radius:10px;padding:15px 10px;text-align:center;font-size:12px;font-weight:800;color:#215485;line-height:1.5}
-    .axm-step span{display:block;color:#0b70d6;font-size:11px;margin-bottom:7px}
-    .axm-trust{background:#fff;border:1px solid #dbe6f3;border-radius:14px;padding:25px;margin-top:16px}
-    .axm-tags{display:flex;flex-wrap:wrap;gap:9px;margin:17px 0}.axm-tag{padding:7px 11px;background:#edf6ff;border:1px solid #d4e8ff;border-radius:8px;font-size:11px;color:#135aa5;font-weight:800}
-    .axm-close{margin-top:30px;padding:26px;border-radius:14px;background:#eaf4ff;border:1px solid #b9d8fa;text-align:center}
-    .axm-close strong{display:block;font-size:21px;color:#095bb7;margin-bottom:8px}.axm-close span{font-size:13px;color:#486b90}
-    @media(max-width:800px){.axm-hero{padding:34px 25px}.axm-split{grid-template-columns:1fr}.axm-principles{grid-template-columns:repeat(2,minmax(0,1fr))}.axm-flow{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media(max-width:500px){.axm-principles{grid-template-columns:1fr}.axm-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.axm h2{font-size:23px}}
+    .axia-mission{max-width:1060px;margin:12px auto 30px;color:#243b59}
+    .axia-mission-hero{background:#fff;border:1px solid #d8e5f2;border-radius:16px;padding:38px 42px;text-align:center}
+    .axia-mission-eyebrow{color:#086ee8;font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+    .axia-mission h1{font-size:38px;color:#086ee8;margin:12px 0}
+    .axia-mission h2{font-size:22px;color:#183b68;margin:32px 0 12px}
+    .axia-mission-lead{font-size:18px;line-height:1.65;max-width:800px;margin:12px auto;color:#385777}
+    .axia-mission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+    .axia-mission-tile{background:#fff;border:1px solid #d8e5f2;border-radius:12px;padding:20px}
+    .axia-mission-tile h3{font-size:16px;color:#086ee8;margin:0 0 9px}
+    .axia-mission-tile p,.axia-mission-copy{font-size:14px;line-height:1.75;color:#4b6480;margin:0}
+    .axia-mission-path{background:#f1f7ff;border:1px solid #d8e5f2;border-radius:12px;padding:22px;line-height:2;color:#24496f}
+    .axia-mission-close{margin-top:24px;border:1px solid #bdd5f5;background:#f1f7ff;border-radius:12px;padding:22px;text-align:center;font-weight:800;color:#086ee8;font-size:19px}
+    @media(max-width:700px){.axia-mission-hero{padding:25px 17px}.axia-mission h1{font-size:30px}.axia-mission-grid{grid-template-columns:1fr}}
     </style>
-    <main class="axm">
-      <header class="axm-hero">
-        <div class="axm-kicker">AXÍA / Our Mission</div>
-        <h1>All the evidence.<br>A clearer perspective.</h1>
-        <p>To bring fragmented financial information together into one trusted investment research platform, helping investors understand what matters, evaluate the evidence and make informed decisions with greater clarity and confidence.</p>
-        <div class="axm-hero-foot">ONE PLATFORM. COMPLETE PERSPECTIVE.</div>
-      </header>
-      <section class="axm-section">
-        <div class="axm-eyebrow">Our philosophy</div>
-        <h2>20% experience. 80% intelligence.</h2>
-        <p class="axm-copy">The interface makes research accessible. The real value lies in the engines behind it: verifying information, connecting evidence, testing assumptions and identifying meaningful changes. We build the intelligence first, then design the experience that communicates it.</p>
-        <div class="axm-split">
-          <div class="axm-panel"><div class="axm-share"><span class="axm-percent">20%</span><h3>The experience</h3></div><p>Clear navigation, purposeful dashboards, accessible visualisations and less distraction.</p><div class="axm-bar"><span style="width:20%"></span></div></div>
-          <div class="axm-panel axm-panel-strong"><div class="axm-share"><span class="axm-percent">80%</span><h3>The problem-solving intelligence</h3></div><p>Source verification, financial modelling, reverse valuation, scenario analysis, risk assessment and continuous thesis monitoring.</p><div class="axm-bar"><span style="width:80%"></span></div></div>
-        </div>
+    <div class="axia-mission">
+      <section class="axia-mission-hero">
+        <div class="axia-mission-eyebrow">Our Mission</div>
+        <h1>All the evidence. A clearer perspective.</h1>
+        <p class="axia-mission-lead">To bring fragmented financial information together into one trusted investment research platform, helping investors understand what matters, evaluate the evidence and make informed decisions with greater clarity and confidence.</p>
+        <p class="axia-mission-copy">One platform. Complete perspective. Less searching. Less noise. More understanding.</p>
       </section>
-      <section class="axm-section">
-        <div class="axm-eyebrow">Why we exist</div><h2>Less searching. More understanding.</h2>
-        <p class="axm-copy">Investment research is scattered across market-data services, company reports, financial news, charting tools, valuation models and portfolio trackers. AXÍA is being built as one connected research environment so investors can understand how new information affects a company, its valuation and the assumptions behind their investment thesis.</p>
-      </section>
-      <section class="axm-section">
-        <div class="axm-eyebrow">What guides us</div><h2>Five principles. One standard.</h2>
-        <div class="axm-principles">
-          <div class="axm-principle"><span class="axm-num">01</span><h3>One connected research hub</h3><p>Bring financial statements, filings, market data, news, valuation and portfolio context into one coherent workflow.</p></div>
-          <div class="axm-principle"><span class="axm-num">02</span><h3>Evidence before opinion</h3><p>Trace material figures to sources and distinguish reported facts from estimates, assumptions and AI interpretation.</p></div>
-          <div class="axm-principle"><span class="axm-num">03</span><h3>Clarity over overload</h3><p>Show what matters first while keeping documents, calculations and detailed research accessible.</p></div>
-          <div class="axm-principle"><span class="axm-num">04</span><h3>Analysis, not aggregation</h3><p>Connect operating performance, valuation, market conditions, risks and portfolio exposure.</p></div>
-          <div class="axm-principle"><span class="axm-num">05</span><h3>Continuous accountability</h3><p>Track whether new evidence supports or challenges the assumptions behind an investment thesis.</p></div>
-        </div>
-      </section>
-      <section class="axm-section">
-        <div class="axm-eyebrow">The research journey</div><h2>From fragmented data to connected insight.</h2>
-        <div class="axm-flow"><div class="axm-step"><span>01</span>Discover</div><div class="axm-step"><span>02</span>Verify evidence</div><div class="axm-step"><span>03</span>Analyse</div><div class="axm-step"><span>04</span>Value</div><div class="axm-step"><span>05</span>Establish thesis</div><div class="axm-step"><span>06</span>Monitor change</div></div>
-      </section>
-      <section class="axm-section">
-        <div class="axm-eyebrow">Our commitment</div><h2>Trust must be earned through transparency.</h2>
-        <div class="axm-trust"><p class="axm-copy">Our aim is to make important numbers inspectable: where they came from, when they were updated and how they were calculated. Where information is stale, conflicting or unavailable, AXÍA should make that clear rather than inventing certainty. These are our development commitments, not a claim that every feature or data source is already complete.</p>
-          <div class="axm-tags"><span class="axm-tag">Verified source</span><span class="axm-tag">Modelled assumption</span><span class="axm-tag">Forecast</span><span class="axm-tag">Stale data</span><span class="axm-tag">Review required</span></div>
-        </div>
-      </section>
-      <footer class="axm-close"><strong>Built to inform your judgment. Not replace it.</strong><span>AXÍA helps investors make their own decisions.</span></footer>
-    </main>
+      <h2>Why AXÍA exists</h2>
+      <p class="axia-mission-copy">Investment research is spread across market-data services, company filings, financial news, charting tools, valuation models and portfolio trackers. Moving between disconnected sources creates distraction and makes it harder to understand how new information affects an investment. AXÍA is being built to bring that research together in one connected environment—not to overwhelm investors with more information, but to help them understand it.</p>
+      <div class="axia-mission-tile" style="margin-top:22px;background:#f1f7ff;border-color:#bdd5f5">
+        <h3>20% Experience. 80% Intelligence.</h3>
+        <p>The website makes research accessible. The intelligence behind it does the problem-solving: verifying data, connecting evidence, analysing companies, testing valuations and monitoring the assumptions behind investment decisions. We build the intelligence first, then design the interface that communicates it.</p>
+      </div>
+      <h2>Our five principles</h2>
+      <div class="axia-mission-grid">
+        <div class="axia-mission-tile"><h3>One connected research hub</h3><p>Bring market data, financial statements, official announcements, news, valuations, technical analysis and portfolio context into a coherent workflow.</p></div>
+        <div class="axia-mission-tile"><h3>Evidence before opinion</h3><p>Make important figures traceable to their source, reporting period and methodology. Distinguish verified facts from forecasts, model assumptions and AI interpretation.</p></div>
+        <div class="axia-mission-tile"><h3>Clarity over information overload</h3><p>Surface what matters first, while keeping the underlying documents, calculations and detailed research accessible.</p></div>
+        <div class="axia-mission-tile"><h3>Analysis, not just aggregation</h3><p>Connect business performance, market conditions, valuation, risks and portfolio exposure so investors can understand the relationships.</p></div>
+        <div class="axia-mission-tile"><h3>Continuous accountability</h3><p>Monitor whether new financial results and company developments continue to support the assumptions behind an investment thesis.</p></div>
+      </div>
+      <h2>From information to understanding</h2>
+      <div class="axia-mission-path">Discover a company &rarr; Gather verified evidence &rarr; Analyse the business &rarr; Understand valuation &rarr; Establish a thesis &rarr; Monitor what changes.</div>
+      <h2>How we earn trust</h2>
+      <p class="axia-mission-copy">AXÍA aims to show where important information comes from, when it was updated and how analytical outputs were calculated. Reported figures, modelled valuations, forecasts, stale information and missing data should be clearly distinguished. Where evidence is unavailable or uncertain, the platform should say so rather than inventing a result or presenting an estimate as a fact. These are our design commitments, not a claim that every feature or data source is already complete.</p>
+      <div class="axia-mission-close">AXÍA helps investors make their own decisions. It does not make decisions for them.</div>
+    </div>
     """,unsafe_allow_html=True)
 
 elif page in {"Privacy","Disclaimer","Terms","Data Sources","Contact"}:
