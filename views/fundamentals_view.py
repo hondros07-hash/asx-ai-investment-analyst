@@ -37,9 +37,17 @@ def _render_workspace(ticker):
  sector=data.get("category") or category(data.get("meta") or {},ticker)
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
- st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Trading ticker: {ticker} · Provider financial currency: {currency} · Provider-transcribed; not independently audited")
- if str(ticker).upper()=="QAN.MU": st.info("QAN.MU is a secondary Munich trading listing of Qantas. Issuer disclosures are routed to primary ASX listing QAN.AX; provider financial figures below are not filing-reconciled.")
- if currency=="Unconfirmed": st.warning("Financial reporting currency is unconfirmed by the current provider response. Monetary values are shown in provider units; do not assume AUD or EUR until reconciled to a dated filing.")
+ is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
+ if is_qantas:
+  st.markdown("**Qantas Airways Limited**")
+  st.caption("Trading listing: "+str(ticker).upper()+(" (Munich)" if str(ticker).upper()=="QAN.MU" else " (ASX)")+" · Primary issuer listing: QAN.AX (ASX) · Issuer reporting currency: AUD")
+  st.caption("Provider financial-statement currency: "+currency+" · Provider-transcribed data; not independently reconciled to issuer filings.")
+ else:
+  st.markdown("**"+html.escape(str(data.get("meta",{}).get("longName") or ticker))+"**")
+  st.caption("Trading ticker: "+str(ticker)+" · Provider financial-statement currency: "+currency)
+  st.caption("Provider-transcribed data; not independently reconciled to issuer filings.")
+ if currency=="Unconfirmed":
+  st.warning("The provider has not confirmed the currency of these financial-statement values. "+("Qantas reports in AUD, but that does not establish the units returned for QAN.MU. " if is_qantas else "")+"Do not interpret or convert displayed monetary amounts until the provider units are reconciled to a dated issuer filing.")
  for issue in data.get("quality",[]): st.warning(issue)
  periods=data.get("periods",[])
  negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
