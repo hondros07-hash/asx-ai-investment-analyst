@@ -4226,7 +4226,7 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Axía research workspace")
-if page not in {"Dashboard","Company Search","Company Command Centre"} and page not in _CHR_LEGAL_PAGES and page not in _CHR_AUTH_PAGES:
+if page not in {"Dashboard","Company Search","Company Command Centre","Fundamentals"} and page not in _CHR_LEGAL_PAGES and page not in _CHR_AUTH_PAGES:
     st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Axía / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
@@ -4255,7 +4255,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 # Browser-tab branding is intentionally static in V19.8: Axía + Parthenon icon.
 
-if page not in {"Dashboard","Company Search","Company Command Centre","About","Our Mission"}:
+if page not in {"Dashboard","Company Search","Company Command Centre","Fundamentals","About","Our Mission"}:
     st.title("Axía")
     st.caption("V20.7.3.1 • Axía • Company Search Header & Button Fix")
 
