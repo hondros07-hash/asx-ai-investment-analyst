@@ -32,7 +32,8 @@ def transform(data,group,mode="Reported values"):
 
 def display_frame(data,group,mode,formatter):
     raw=transform(data,group,mode)
-    # String-formatted values must never be assigned into numeric pandas blocks.\n    result=raw.astype(object).copy()
+    # Format into object-typed columns, never into numeric pandas blocks.
+    result=raw.astype(object).copy()
     for index,row in raw.iterrows():
         label=row["Line item"]
         for period in data.get("periods") or []:
