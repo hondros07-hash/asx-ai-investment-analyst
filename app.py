@@ -4188,14 +4188,16 @@ if page not in {"Dashboard","Company Search","Company Command Centre","About"}:
 # V20.7.4.19 — Route-aware data loading. Home and Company Search do not need
 # the active company's 5Y history/info just to render their own workspace.
 # Skipping these provider calls materially reduces cross-page navigation latency.
-if page in {"Dashboard","Company Search"}:
+if page in {"Dashboard","Company Search"} or page in _CHR_LEGAL_PAGES or page in _CHR_AUTH_PAGES:
+    # Lightweight routes must not wait for unrelated company quote/profile requests.
     h=pd.DataFrame(); meta={}
 else:
-    h=history(ticker); meta=info(ticker)
-if h.empty and page not in {"Dashboard","Company Search"}:
+    from services.navigation_performance import company_navigation_snapshot
+    h, meta = company_navigation_snapshot(ticker, history, info, st.session_state)
+if h.empty and page not in {"Dashboard","Company Search"} and page not in _CHR_LEGAL_PAGES and page not in _CHR_AUTH_PAGES:
     st.error(f"No market data returned for {ticker}. Try another matching listing or enter the exchange ticker directly.")
     st.stop()
-if h.empty and page!="Company Search":
+if h.empty and page=="Dashboard":
     h=history("^AXJO","1mo")
     meta={}
 close=h["Close"] if not h.empty and "Close" in h else pd.Series(dtype=float)
