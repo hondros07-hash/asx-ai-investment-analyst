@@ -13,6 +13,17 @@ class FundamentalsRegressionTests(unittest.TestCase):
   self.assertGreaterEqual(len(encoder_calls),2)
   self.assertFalse(any(isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=="quote" for node in ast.walk(header)))
 
+ def test_issuer_header_reference_layout_guards(self):
+  source=Path(__file__).resolve().parents[1].joinpath("views/fundamentals_view.py").read_text(encoding="utf-8")
+  tree=ast.parse(source)
+  header=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=="_issuer_header")
+  body=ast.get_source_segment(source,header)
+  self.assertIn("country_label",body)
+  self.assertIn("axia-issuer-tagline",body)
+  self.assertIn("quote_col,action_col",body)
+  self.assertIn("v if abs(v)>1 else v*100",body)
+  self.assertNotIn("onerror=",body)
+
  def test_exchange_aware_zip(self):
   self.assertEqual(category({"longName":"Zip Co Limited"},"ZIP.AX"),"bnpl")
   self.assertEqual(category({"longName":"ZipRecruiter, Inc."},"ZIP"),"general")
