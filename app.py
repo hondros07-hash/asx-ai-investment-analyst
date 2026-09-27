@@ -5520,7 +5520,7 @@ def _chr_identity_logo_candidates(symbol, meta, company="", size=96):
                 "https://upload.wikimedia.org/wikipedia/commons/9/9d/Zip_Logo.svg",
                 "https://zip.co/nz/wp-content/uploads/2021/08/logo-dark.svg",
             ],
-            "coca-colacompany.com":["https://www.coca-colacompany.com/content/dam/corporate/us/en/header-footer/Footer%20Icon.svg"],
+            "coca-colacompany.com":["https://commons.wikimedia.org/wiki/Special:FilePath/Coca-Cola_logo.svg"],
         }
         branded=list(official_assets.get(dom,[])) + [
             f"https://logo.clearbit.com/{quote(dom)}?size={max(256,int(size)*2)}",
