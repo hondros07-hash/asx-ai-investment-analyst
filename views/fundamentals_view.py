@@ -327,14 +327,14 @@ def _render_workspace(ticker):
     for group,table in data["statements"].items():
       if group != statement_group: continue
       with st.expander(group,expanded=True):
-      if not data["periods"]: st.info("No complete periods available.");continue
-      df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
-      config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
-      st.dataframe(df,hide_index=True,use_container_width=True,column_config=config)
-      export=df.drop(columns=["10Y Trend"],errors="ignore")
-      st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
-      if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
-      if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
+       if not data["periods"]: st.info("No complete periods available.");continue
+       df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
+       config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
+       st.dataframe(df,hide_index=True,use_container_width=True,column_config=config)
+       export=df.drop(columns=["10Y Trend"],errors="ignore")
+       st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
+       if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
+       if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
  with tabs[4]:
   st.subheader("Profitability, liquidity and efficiency")
   groups={
