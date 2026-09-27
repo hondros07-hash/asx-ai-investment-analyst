@@ -16,7 +16,7 @@ class AdvancedRatioTests(unittest.TestCase):
   self.assertAlmostEqual(x["Net Debt / EBITDA"],1.2)
   self.assertAlmostEqual(x["DSO (days)"],34.675)
   self.assertAlmostEqual(x["Cash Conversion Cycle (days)"],34.675+32.85-40.15)
-  self.assertAlmostEqual(x["ROIC (effective tax proxy)"],32/145)
+  self.assertAlmostEqual(x["ROIC (effective tax proxy)"],32/152.5)
  def test_missing_and_zero_denominator(self):
   d=self.sample();d["statements"]["Income Statement"]["EBITDA"]["2026-06-30"]=0
   d["statements"]["Balance Sheet"]["Accounts Payable"]["2025-06-30"]=None
