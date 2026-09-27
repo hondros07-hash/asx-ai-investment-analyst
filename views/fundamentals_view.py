@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from services.fundamentals_engine import load, SECTOR, category
 from services.sector_kpi_engine import kpi_rows, disclosure_destinations
+from services.fundamental_health_engine import assess
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -41,6 +42,35 @@ def _render_workspace(ticker):
  periods=data.get("periods",[])
  negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
  if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
+ health=assess(data)
+ with st.container(border=True):
+  left,right=st.columns([3,1])
+  with left:
+   st.markdown("**Fundamental Health · Financial Strength Indicator**")
+   st.caption("A transparent, provisional statement-based assessment — not a stock recommendation.")
+  with right:
+   st.metric("Health score",str(health["score"])+"/100" if health["score"] is not None else "Insufficient data")
+  if health["score"] is not None:
+   score=health["score"]
+   st.markdown('<div style="position:relative;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div><div style="display:flex;justify-content:space-between;color:#60758f;font-size:11px;margin-top:5px"><span>0 · Financial weakness</span><span>100 · Financial strength</span></div>',unsafe_allow_html=True)
+  else:
+   st.info("Composite indicator withheld until at least 60% of the weighted evidence is available.")
+  c1,c2=st.columns(2)
+  c1.metric("Data coverage",str(health["coverage"])+"%")
+  c2.metric("Data confidence",str(health["confidence"])+"%")
+  st.caption("Confidence is capped because the source data has not been reconciled to official filings.")
+  for component in health["components"]:
+   value=component["score"]
+   st.markdown("**"+component["name"]+"** · "+(str(value)+"/100" if value is not None else "Unavailable")+" · Evidence coverage "+str(component["coverage"])+"%")
+   if value is not None: st.progress(int(value)/100)
+   if component["missing"]: st.caption("Missing: "+", ".join(component["missing"]))
+  with st.expander("Methodology, evidence and limitations"):
+   st.caption("Latest period: "+str(health["period"])+" · Sector classification: "+str(health["sector"]))
+   for component in health["components"]:
+    st.markdown("**"+component["name"]+"** · Weight "+str(component["weight"])+"%")
+    for evidence in component["evidence"]:
+     st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
+   for note in health["notes"]: st.caption("• "+note)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
   st.caption("Amounts in reporting currency unless otherwise indicated. EPS is per share. Missing values are not estimated.")
