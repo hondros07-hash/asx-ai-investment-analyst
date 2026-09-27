@@ -4007,36 +4007,28 @@ st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide
 # Observe <head>, not just the original <title> node: Streamlit may replace it.
 # Keep one controller so the enriched company name can supersede the early title.
 def _axia_browser_title(title):
-    """Use a same-origin srcdoc iframe; components.html runs in a sandboxed
-    component iframe and cannot reliably reach the app document."""
+    """Run the title controller in the app DOM, not in a sandboxed iframe.
+
+    Streamlit Community Cloud may append a platform suffix after page config.
+    st.html with JavaScript enabled executes in the app document on recent
+    Streamlit versions; the observer also handles later head/title rewrites.
+    """
     _script = """
     (() => {
       const desired = TITLE_JSON;
-      try {
-        const host = window.parent;
-        const doc = host.document;
-        host.__axiaDesiredTitle = desired;
-        if (host.__axiaTitleObserver) host.__axiaTitleObserver.disconnect();
-        const apply = () => {
-          const next = host.__axiaDesiredTitle;
-          if (next && doc.title !== next) doc.title = next;
-        };
-        apply();
-        const observer = new MutationObserver(apply);
-        observer.observe(doc.head, {childList: true, characterData: true, subtree: true});
-        host.__axiaTitleObserver = observer;
-      } catch (_) {
-        // Native Streamlit page config remains the fallback.
-      }
+      window.__axiaDesiredTitle = desired;
+      if (window.__axiaTitleObserver) window.__axiaTitleObserver.disconnect();
+      const apply = () => {
+        const next = window.__axiaDesiredTitle;
+        if (next && document.title !== next) document.title = next;
+      };
+      apply();
+      const observer = new MutationObserver(apply);
+      observer.observe(document.head, {childList: true, characterData: true, subtree: true});
+      window.__axiaTitleObserver = observer;
     })();
     """.replace("TITLE_JSON", json.dumps(str(title), ensure_ascii=False))
-    _srcdoc = html_lib.escape("<script>" + _script + "</script>", quote=True)
-    st.markdown(
-        '<iframe title="AXÍA browser title" aria-hidden="true" '
-        'style="position:absolute;width:0;height:0;border:0;visibility:hidden" '
-        'srcdoc="' + _srcdoc + '"></iframe>',
-        unsafe_allow_html=True,
-    )
+    st.html("<script>" + _script + "</script>", unsafe_allow_javascript=True)
 
 _axia_browser_title(_chr_page_title)
 
