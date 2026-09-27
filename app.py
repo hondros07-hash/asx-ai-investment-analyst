@@ -4007,6 +4007,8 @@ st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide
 # Observe <head>, not just the original <title> node: Streamlit may replace it.
 # Keep one controller so the enriched company name can supersede the early title.
 def _axia_browser_title(title):
+    """Use a same-origin srcdoc iframe; components.html runs in a sandboxed
+    component iframe and cannot reliably reach the app document."""
     _script = """
     (() => {
       const desired = TITLE_JSON;
@@ -4024,11 +4026,17 @@ def _axia_browser_title(title):
         observer.observe(doc.head, {childList: true, characterData: true, subtree: true});
         host.__axiaTitleObserver = observer;
       } catch (_) {
-        // The native st.set_page_config title remains the fallback.
+        // Native Streamlit page config remains the fallback.
       }
     })();
     """.replace("TITLE_JSON", json.dumps(str(title), ensure_ascii=False))
-    components.html("<script>" + _script + "</script>", height=0, scrolling=False)
+    _srcdoc = html_lib.escape("<script>" + _script + "</script>", quote=True)
+    st.markdown(
+        '<iframe title="AXÍA browser title" aria-hidden="true" '
+        'style="position:absolute;width:0;height:0;border:0;visibility:hidden" '
+        'srcdoc="' + _srcdoc + '"></iframe>',
+        unsafe_allow_html=True,
+    )
 
 _axia_browser_title(_chr_page_title)
 
