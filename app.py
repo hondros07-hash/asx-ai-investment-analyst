@@ -3994,7 +3994,12 @@ _chr_page_title="AXÍA | "+("Home" if page=="Dashboard" else page)
 if page in _chr_company_pages:
     _title_ticker=str(st.session_state.get("chr_active_ticker") or ticker or "").strip().upper()
     _saved_identity=st.session_state.get("chr_page_company_identity_v23847") or {}
-    _title_company=(_saved_identity.get("name") if _saved_identity.get("ticker")==_title_ticker else None) or _title_ticker
+    _selected_title=st.session_state.get("chr_company_search_selected") or {}
+    _selected_symbol=str(_selected_title.get("_resolved") or _selected_title.get("Ticker") or "").strip().upper()
+    _selected_name=str(_selected_title.get("Company") or "").strip()
+    _title_company=(_saved_identity.get("name") if _saved_identity.get("ticker")==_title_ticker else None)
+    if not _title_company and _selected_symbol==_title_ticker and _selected_name.upper() not in {_title_ticker, _title_ticker.split(".")[0]}:
+        _title_company=_selected_name
     _chr_page_title="AXÍA | "+str(_title_company or "Company Command Centre")
 st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide")
 
@@ -7256,6 +7261,18 @@ elif page=="Company Command Centre":
                 if _rn and str(_rn).strip().upper() not in _invalid_names: _ccname=_rn
             except Exception: pass
         st.session_state["chr_page_company_identity_v23847"]={"ticker":str(ticker).upper(),"name":str(_ccname).strip()}
+        # V23.8.4.10 — The authoritative company name is only available after
+        # metadata enrichment. Refresh the browser title in this same run.
+        _resolved_company_name=str(_ccname or "").strip()
+        if _resolved_company_name.upper() not in _invalid_names and _resolved_company_name:
+            _resolved_tab_title="AXÍA | "+_resolved_company_name
+            components.html(
+                "<script>try { window.parent.document.title = " +
+                json.dumps(_resolved_tab_title, ensure_ascii=False) +
+                "; } catch (_) {}</script>",
+                height=0,
+                scrolling=False,
+            )
         # V21.2.15 — always query the exact Yahoo listing once for current identity, logo and market-session metadata.
         # Search quote payloads can expose logoUrl/marketState even when Ticker.info is otherwise complete.
         _quote_probe_ok=False
