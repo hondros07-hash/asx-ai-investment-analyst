@@ -14,7 +14,8 @@ ROWS = {
   "Operating Income (EBIT)": ["Operating Income", "EBIT"],
   "EBITDA": ["EBITDA", "Normalized EBITDA"],
   "Net Income": ["Net Income", "Net Income Common Stockholders"],
-  "Diluted EPS": ["Diluted EPS", "Basic EPS"],
+  "Diluted EPS": ["Diluted EPS"],
+  "Diluted Shares": ["Diluted Average Shares", "Diluted Average Shares Outstanding"],
  },
  "Balance Sheet": {
   "Cash & Equivalents": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"],
@@ -81,19 +82,25 @@ def derive(data):
   if get(inc,"Gross Profit") is None and revenue is not None and get(inc,"Cost of Revenue") is not None:
    inc["Gross Profit"][period]=revenue-abs(get(inc,"Cost of Revenue"))
    out[("Gross Profit",period)]="Derived: revenue − cost of revenue"
+  if get(inc,"Diluted EPS") is None and net is not None:
+   shares=get(inc,"Diluted Shares")
+   if shares is not None and shares>0:
+    inc["Diluted EPS"][period]=net/shares
+    out[("Diluted EPS",period)]="Derived: net income / diluted weighted-average shares"
   if get(inc,"EBITDA") is None and op is not None:
    # Never substitute EBIT for EBITDA without depreciation and amortisation.
    pass
   data.setdefault("ratios",{})[period]={
    "Gross Margin":ratio(get(inc,"Gross Profit"),revenue),
    "Operating Margin":ratio(op,revenue),"Net Margin":ratio(net,revenue),
-   "ROE":ratio(net,equity),"ROA":ratio(net,assets),
+   "ROE":ratio(net,equity) if equity is not None and equity>0 else None,"ROA":ratio(net,assets),
    "Asset Turnover":ratio(revenue,assets),
-   "Equity Multiplier":ratio(assets,equity),
+   "Equity Multiplier":ratio(assets,equity) if equity is not None and equity>0 else None,
    "Current Ratio":ratio(current,liabilities),
-   "Quick Ratio":ratio(current-inventory,liabilities) if current is not None and inventory is not None else None,
-   "Debt / Equity":ratio(debt,equity),
+   "Quick Ratio":ratio(current-inventory,liabilities) if current is not None and inventory is not None else ratio(cash+get(bal,"Receivables"),liabilities) if cash is not None and get(bal,"Receivables") is not None else None,
+   "Debt / Equity":ratio(debt,equity) if equity is not None and equity>0 else None,
   }
+  if equity is not None and equity<=0: out[("Equity warning",period)]="ROE, debt/equity and equity multiplier are not meaningful with non-positive equity."
   r=data["ratios"][period]
   r["Du Pont ROE"]=r["Net Margin"]*r["Asset Turnover"]*r["Equity Multiplier"] if all(r[k] is not None for k in ("Net Margin","Asset Turnover","Equity Multiplier")) else None
  data["derived"]=out
@@ -137,7 +144,9 @@ def load(ticker, frequency="Annual (5Y)"):
    table[label]=vals
   data["statements"][group]=table
  if frequency=="TTM":
-  if len(periods)==4:
+  # A TTM aggregate is valid only when each flow statement has four matching quarters.
+  flow_complete=all(isinstance(frames[i],pd.DataFrame) and all(c in frames[i].columns for c in periods) for i in (0,2))
+  if len(periods)==4 and flow_complete:
    end=labels[0];data["periods"]=[end+" TTM"]
    for group,table in data["statements"].items():
     for label,values in table.items():
@@ -145,10 +154,10 @@ def load(ticker, frequency="Annual (5Y)"):
      table[label]={data["periods"][0]:(nums[0] if group=="Balance Sheet" else sum(nums) if all(v is not None for v in nums) else None)}
   else:
    data["periods"]=[]
-   data["quality"].append("TTM requires four complete quarterly reporting periods.")
+   data["quality"].append("TTM requires four aligned quarterly periods in both income and cash-flow statements.")
  # Drop wholly empty reporting periods, retaining partial years.
  if frequency!="TTM":
-  usable=[p for p in data["periods"] if any(values.get(p) is not None for table in data["statements"].values() for values in table.values())]
+  usable=[p for p in data["periods"] if sum(values.get(p) is not None for table in data["statements"].values() for values in table.values()) >= 2]
   data["periods"]=usable
   for table in data["statements"].values():
    for values in table.values():
@@ -156,7 +165,7 @@ def load(ticker, frequency="Annual (5Y)"):
      if p not in usable: del values[p]
  data["category"]=category(meta)
  data["provider"]="Yahoo Finance via yfinance; provider-transcribed figures, not independently audited."
- data["filing_url"]=meta.get("website") or ""
+ data["filing_url"]="" # A company homepage is not a filing citation.
  derive_input={k:data["statements"][k] for k in data["statements"]}
  derive_input["periods"]=data["periods"]
  derive_input["ratios"]={}
