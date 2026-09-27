@@ -13,6 +13,9 @@ ROWS = {
   "SG&A": ["Selling General And Administration", "Selling General Administrative"],
   "Operating Income (EBIT)": ["Operating Income", "EBIT"],
   "EBITDA": ["EBITDA", "Normalized EBITDA"],
+  "Interest Expense": ["Interest Expense", "Interest Expense Non Operating"],
+  "Pretax Income": ["Pretax Income"],
+  "Tax Provision": ["Tax Provision"],
   "Net Income": ["Net Income", "Net Income Common Stockholders"],
   "Diluted EPS": ["Diluted EPS"],
   "Diluted Shares": ["Diluted Average Shares", "Diluted Average Shares Outstanding"],
@@ -20,6 +23,7 @@ ROWS = {
  "Balance Sheet": {
   "Cash & Equivalents": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"],
   "Receivables": ["Accounts Receivable", "Net Receivables"],
+  "Accounts Payable": ["Accounts Payable"],
   "Current Assets": ["Current Assets"],
   "Current Liabilities": ["Current Liabilities"],
   "Inventory": ["Inventory"],
