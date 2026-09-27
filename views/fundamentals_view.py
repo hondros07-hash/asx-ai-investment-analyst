@@ -14,6 +14,7 @@ from services.fundamentals_statement_view_engine import display_frame, row_trend
 from services.advanced_fundamental_ratios_engine import compute as advanced_ratios, METRICS as ADVANCED_GROUPS, PERCENT as ADVANCED_PERCENT, DAYS as ADVANCED_DAYS
 from services.earnings_quality_engine import calculate as earnings_quality, export_rows as earnings_export
 from services.fundamentals_performance_chart_engine import performance as financial_performance
+from services.capital_allocation_engine import build as capital_allocation
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -98,7 +99,7 @@ def _render_workspace(ticker):
     for evidence in component["evidence"]:
      st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
    for note in health["notes"]: st.caption("• "+note)
- tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
+ tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Capital Allocation","Sources & Verification"])
  with tabs[0]:
   st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
   mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
@@ -310,6 +311,32 @@ def _render_workspace(ticker):
     st.caption("Receivables and inventory ratios use reported revenue, and may not be comparable for banks, BNPL companies or issuers with different business models.")
     st.caption("No official filing reconciliation, segment-level cash-flow bridge or issuer-specific accounting adjustments are claimed. Missing values remain unavailable.")
  with tabs[5]:
+  st.subheader("Capital Allocation & Cash Flow")
+  st.caption("Reported cash-flow components only · Not a complete capital-allocation reconciliation or management target.")
+  rows=capital_allocation(data)
+  if not rows: st.info("No cash-flow reporting periods available.")
+  else:
+   latest=rows[-1]
+   cols=st.columns(3)
+   for col,key in zip(cols,("Operating cash flow","Capital expenditure (absolute)","Free cash flow")):
+    with col: st.metric(key,fmt(latest[key]))
+   st.markdown("**Operating cash flow → capital expenditure → free cash flow**")
+   fig=go.Figure()
+   for key,color in (("Operating cash flow","#173b63"),("Capital expenditure (absolute)","#d6a33c"),("Free cash flow","#178d67")):
+    fig.add_trace(go.Bar(name=key,x=[r["Period"] for r in rows],y=[r[key] for r in rows],marker_color=color))
+   fig.update_layout(barmode="group",height=340,margin=dict(l=8,r=8,t=12,b=42),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.15),xaxis=dict(type="category",tickangle=-25))
+   st.plotly_chart(fig,use_container_width=True,key="axia_capital_cash_bridge")
+   st.caption("CapEx is shown as a positive use of cash. FCF may be derived from OCF and absolute CapEx. Provider currency: "+currency+".")
+   st.markdown("**Net financing cash flow**")
+   fig=go.Figure(go.Bar(x=[r["Period"] for r in rows],y=[r["Financing cash flow (net)"] for r in rows],marker_color="#0868d8"))
+   fig.update_layout(height=240,margin=dict(l=8,r=8,t=10,b=35),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(type="category",tickangle=-25))
+   st.plotly_chart(fig,use_container_width=True,key="axia_capital_financing")
+   st.info("Dividends, buybacks, debt repayments, acquisitions and management allocation targets are not separately verified by this feed. Net financing cash flow must not be labelled as any one of those components.")
+   with st.expander("Cash-flow evidence and reconciliation",expanded=False):
+    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
+    st.caption("A zero FCF bridge difference is an arithmetic consistency check, not proof of issuer verification.")
+   st.download_button("Export capital allocation CSV",pd.DataFrame(rows).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_capital_allocation.csv",mime="text/csv",key="axia_capital_export")
+ with tabs[6]:
   st.subheader("Data lineage & verification")
   checks=validate(data)
   counts=summary(checks)
