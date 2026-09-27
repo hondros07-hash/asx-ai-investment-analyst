@@ -25,6 +25,58 @@ def fmt(v,ratio=False,eps=False):
  if abs(v)>=1e3: return f"{v/1e3:,.2f}K"
  return f"{v:,.2f}"
 
+def _financial_overview(data,ticker,currency):
+ """Provider-based overview; no sample values or estimated missing inputs."""
+ periods=data.get("periods") or []
+ if not periods:
+  st.info("No financial periods available.");return
+ inc=data["statements"]["Income Statement"];cf=data["statements"]["Cash Flow"];ratios=data.get("ratios",{})
+ p=periods[0]
+ def v(group,key,period):return group.get(key,{}).get(period)
+ st.caption("Latest reporting period: "+str(p)+" · "+currency+" · Provider-transcribed; not issuer-verified.")
+ cols=st.columns(5)
+ for col,label,group,key in zip(cols,("Revenue","Operating income","Net income","Free cash flow","Operating margin"),(inc,inc,inc,cf,None),("Revenue","Operating Income (EBIT)","Net Income","Free Cash Flow","Operating Margin")):
+  with col:st.metric(label,fmt(ratios.get(p,{}).get(key),ratio=True) if group is None else fmt(v(group,key,p)))
+ rows=financial_performance(data);labels=[r["Period"] for r in rows]
+ a,b=st.columns([1.35,1])
+ with a:
+  st.markdown("### Financial Performance")
+  fig=go.Figure()
+  for key,color in (("Revenue","#173b63"),("Operating income","#0868d8"),("Net income","#80b8ec"),("Free cash flow","#159b72")):fig.add_trace(go.Bar(name=key,x=labels,y=[r[key] for r in rows],marker_color=color))
+  fig.update_layout(barmode="group",height=320,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.17),xaxis=dict(type="category"))
+  st.plotly_chart(fig,use_container_width=True,key="axia_overview_performance")
+ with b:
+  st.markdown("### Margins & Profitability")
+  fig=go.Figure()
+  for key,color in (("Operating margin","#168b62"),("Net income margin","#a3c931")):fig.add_trace(go.Scatter(name=key,x=labels,y=[r[key] for r in rows],mode="lines+markers",connectgaps=False,line=dict(color=color,width=3)))
+  fig.update_layout(height=320,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.17),xaxis=dict(type="category"),yaxis=dict(ticksuffix="%"))
+  st.plotly_chart(fig,use_container_width=True,key="axia_overview_margins")
+ a,b=st.columns([1.35,1])
+ with a:
+  st.markdown("### Latest Financial Statements")
+  records=[{"Period":period,"Revenue":v(inc,"Revenue",period),"Gross profit":v(inc,"Gross Profit",period),"Operating income":v(inc,"Operating Income (EBIT)",period),"Net income":v(inc,"Net Income",period),"Diluted EPS":v(inc,"Diluted EPS",period),"Free cash flow":v(cf,"Free Cash Flow",period)} for period in periods]
+  st.dataframe(pd.DataFrame(records),hide_index=True,use_container_width=True)
+  st.download_button("Download summary CSV",pd.DataFrame(records).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_overview.csv",mime="text/csv",key="axia_overview_export")
+ with b:
+  st.markdown("### Key Financial Ratios")
+  keys=("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Current Ratio","Debt / Equity")
+  st.dataframe(pd.DataFrame([dict({"Metric":key},**{period:fmt(ratios.get(period,{}).get(key),ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA")) for period in periods}) for key in keys]),hide_index=True,use_container_width=True)
+ a,b=st.columns([1.15,1])
+ with a:
+  st.markdown("### Capital Allocation · Cash Flow Bridge")
+  capex=v(cf,"Capital Expenditure",p)
+  fig=go.Figure(go.Bar(x=["Operating cash flow","Capital expenditure","Free cash flow"],y=[v(cf,"Operating Cash Flow",p),-abs(capex) if capex is not None else None,v(cf,"Free Cash Flow",p)],marker_color=["#173b63","#d7a044","#159b72"]))
+  fig.update_layout(height=230,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white")
+  st.plotly_chart(fig,use_container_width=True,key="axia_overview_cash_bridge")
+  st.caption("No unsupported dividend, buyback or debt-repayment allocation is inferred.")
+ with b:
+  st.markdown("### Data Confidence & Verification")
+  counts=summary(validate(data));c1,c2,c3=st.columns(3)
+  c1.metric("Passed",counts.get("Pass",0));c2.metric("Mismatches",counts.get("Mismatch",0));c3.metric("Provider-reported",counts.get("Provider-reported",0))
+  st.info("Internal consistency only. Issuer-filing reconciliation remains pending.")
+  st.caption("See Sources & Verification for affected periods and differences.")
+ st.caption("Unavailable values are not estimated; figures are in provider-reported monetary units.")
+
 def render(ticker):
  st.markdown("<style>\n.st-key-axia_fund_workspace [data-testid=\"stVerticalBlock\"]{gap:.55rem}\n.st-key-axia_fund_workspace [data-baseweb=\"tab-list\"]{border-bottom:1px solid #d9e5f3;gap:10px}\n.st-key-axia_fund_workspace [data-baseweb=\"tab\"]{color:#47617d;font-weight:650;padding:8px}\n.st-key-axia_fund_workspace [aria-selected=\"true\"]{color:#0868d8!important;border-bottom-color:#0868d8!important}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"]{background:#fff;border:1px solid #d9e5f3;border-radius:10px;overflow:hidden;margin-bottom:8px}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"] summary{background:#f6f9fe;color:#173b63;font-weight:750;padding:10px 14px}\n.st-key-axia_fund_workspace [data-testid=\"stDataFrame\"]{border:1px solid #e0e9f3;border-radius:8px;overflow:hidden}\n.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-checked=\"true\"],.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-pressed=\"true\"]{background:#0868d8!important;color:white!important;border-color:#0868d8!important}\n</style>",unsafe_allow_html=True)
  st.markdown("""<style>
@@ -116,8 +168,10 @@ def _render_workspace(ticker):
     for evidence in component["evidence"]:
      st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
    for note in health["notes"]: st.caption("• "+note)
- tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
+ tabs=st.tabs(["Financial Overview","Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
  with tabs[0]:
+  _financial_overview(data,ticker,currency)
+ with tabs[1]:
   st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
   mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
   mode=mode or "Reported values"
@@ -138,7 +192,7 @@ def _render_workspace(ticker):
     st.download_button("Export "+group+" CSV",export.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
     if mode=="Reported values": st.caption("† Derived from provider statement components; not directly reported.")
     if show_sparks: st.caption("Inline trends use raw available statement values, oldest to newest; no interpolation or estimates. TTM may have only one point.")
- with tabs[1]:
+ with tabs[2]:
   st.subheader("Profitability, liquidity and efficiency")
   groups={
    "Profitability":["Gross Margin","Operating Margin","Net Margin","ROE","ROA"],
@@ -182,7 +236,7 @@ def _render_workspace(ticker):
    st.caption("Annual calculations use 365 days; quarterly calculations require a preceding reporting date 70–110 days earlier. TTM working-capital cycle is withheld pending matching average balances.")
    st.caption("Bank and BNPL ROIC, net debt/EBITDA and conventional working-capital-cycle metrics are withheld pending sector-specific methods. All figures remain provider-transcribed, not filing-verified.")
 
- with tabs[2]:
+ with tabs[3]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Issuer-specific operating measures are separate from generic financial statement ratios.")
   st.markdown("**Issuer operating KPIs · Verification requirements (not a live filing feed)**")
@@ -223,7 +277,7 @@ def _render_workspace(ticker):
    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
   else: st.info("No compatible annual or quarterly statements are available from this provider. No values have been estimated.")
   st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs. Values may use different definitions from issuer-reported underlying metrics.")
- with tabs[3]:
+ with tabs[4]:
   st.subheader("Historical financial trends")
   chart_data=data
   if frequency=="TTM":
@@ -271,7 +325,7 @@ def _render_workspace(ticker):
      if chart_data["frequency"]=="Annual (5Y)" and len(points)>=2 and points[0][1]>0 and points[-1][1]>0:
       years=len(points)-1
       st.caption(f"{years}-year CAGR: {(points[-1][1]/points[0][1])**(1/years)-1:+.1%}")
- with tabs[4]:
+ with tabs[5]:
   st.subheader("Earnings Quality Intelligence")
   st.caption("Evidence-led diagnostics · Provider-transcribed statements · Not an accounting misconduct assessment or investment rating.")
   quality_data=data
@@ -327,7 +381,7 @@ def _render_workspace(ticker):
     st.caption("Dilution trend = change in diluted weighted-average shares from preceding reported period. Quarterly changes are sequential, not year-on-year.")
     st.caption("Receivables and inventory ratios use reported revenue, and may not be comparable for banks, BNPL companies or issuers with different business models.")
     st.caption("No official filing reconciliation, segment-level cash-flow bridge or issuer-specific accounting adjustments are claimed. Missing values remain unavailable.")
- with tabs[5]:
+ with tabs[6]:
   st.markdown('<div style="background:linear-gradient(110deg,#102f51,#1a507b);color:white;border-radius:14px;padding:21px 24px;margin:2px 0 17px;box-shadow:0 7px 20px rgba(16,47,81,.13)"><div style="font-size:11px;font-weight:800;letter-spacing:.13em;color:#9ed1f3">AXÍA · RESEARCH TRANSPARENCY</div><div style="font-size:23px;font-weight:750;letter-spacing:-.025em;margin-top:5px">Data Confidence &amp; Verification</div><div style="font-size:12px;color:#d4e5f4;margin-top:5px">Traceable financial inputs · Internal consistency · Source limitations</div></div>',unsafe_allow_html=True)
   checks=validate(data)
   counts=summary(checks)
