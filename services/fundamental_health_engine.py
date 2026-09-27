@@ -82,9 +82,9 @@ def assess(data):
         notes.append("Sector-specific operating or regulatory metrics are not verified; generic ratios cannot establish complete sector financial health.")
     if data.get("frequency")=="TTM":
         notes.append("TTM flows and latest balance-sheet stocks use different measurement bases.")
-    score=round(earned/covered) if covered>=60 and sector!="airline" else None
-    if sector=="airline": notes.append("Airline composite withheld: sector-specific operating, fleet and financing evidence is not integrated; component ratios remain illustrative.")
-    if score is None and sector!="airline": notes.append("Insufficient coverage (minimum 60%) to publish a composite score.")
+    score=round(earned/covered) if covered>=60 else None
+    if sector=="airline": notes.append("Provisional generic statement-ratio score only; airline-specific operating, fleet and financing evidence is not integrated or verified.")
+    if score is None: notes.append("Insufficient coverage (minimum 60%) to publish a composite score.")
     # Confidence reflects coverage and provenance; never equate provider coverage with audit verification.
     confidence=round(coverage*.65)
     return {"score":score,"confidence":confidence,"coverage":coverage,"components":components,
