@@ -1,8 +1,18 @@
 """Regression coverage for Fundamentals financial calculations."""
 import unittest
+import ast
+from pathlib import Path
 from services.fundamentals_engine import category, derive
 
 class FundamentalsRegressionTests(unittest.TestCase):
+ def test_issuer_logo_url_uses_unshadowed_url_encoder(self):
+  source=Path(__file__).resolve().parents[1].joinpath("views/fundamentals_view.py").read_text(encoding="utf-8")
+  tree=ast.parse(source)
+  header=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=="_issuer_header")
+  encoder_calls=[node for node in ast.walk(header) if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=="url_quote"]
+  self.assertGreaterEqual(len(encoder_calls),2)
+  self.assertFalse(any(isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=="quote" for node in ast.walk(header)))
+
  def test_exchange_aware_zip(self):
   self.assertEqual(category({"longName":"Zip Co Limited"},"ZIP.AX"),"bnpl")
   self.assertEqual(category({"longName":"ZipRecruiter, Inc."},"ZIP"),"general")
