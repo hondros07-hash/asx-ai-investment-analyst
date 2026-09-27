@@ -1,16 +1,21 @@
 """AXÍA Fundamentals workspace — independent from Overview rendering."""
 import math
+import html
+import io
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import streamlit as st
 from services.fundamentals_engine import load, SECTOR, category
 
 def fmt(v,ratio=False,eps=False):
- if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "Not reported"
+ if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
  if ratio: return f"{v:.2%}"
  if eps: return f"{v:,.2f}"
  if abs(v)>=1e12: return f"{v/1e12:,.2f}T"
  if abs(v)>=1e9: return f"{v/1e9:,.2f}B"
  if abs(v)>=1e6: return f"{v/1e6:,.2f}M"
+ if abs(v)>=1e3: return f"{v/1e3:,.2f}K"
  return f"{v:,.2f}"
 
 def render(ticker):
@@ -20,7 +25,7 @@ def render(ticker):
 
 def _render_workspace(ticker):
  st.markdown("<div style=\"background:white;border:1px solid #d9e5f3;border-radius:12px;padding:16px 20px;margin-bottom:12px\"><div style=\"color:#0868d8;font-size:11px;font-weight:800;letter-spacing:.1em\">AXÍA / COMPANY COMMAND CENTRE / FUNDAMENTALS</div><h2 style=\"margin:5px 0;color:#142d4d\">Financial Intelligence</h2><p style=\"margin:0;color:#60758f;font-size:12px\">Three-statement history, ratios and sector-adaptive research.</p></div>",unsafe_allow_html=True)
- st.caption("Historical financial statements, derived ratios and sector-specific disclosures. Provider data is not an audited filing.")
+
  frequency=st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  try: data=load(ticker,frequency or "Annual (5Y)")
  except Exception as exc:
@@ -32,6 +37,9 @@ def _render_workspace(ticker):
  currency=data.get("currency") or "Unconfirmed"
  st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
  for issue in data.get("quality",[]): st.warning(issue)
+ periods=data.get("periods",[])
+ negative_equity={p for p in periods if (data["statements"]["Balance Sheet"]["Stockholders Equity"].get(p) or 0)<0}
+ if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
   st.caption("Amounts in reporting currency unless otherwise indicated. EPS is per share. Missing values are not estimated.")
@@ -46,7 +54,9 @@ def _render_workspace(ticker):
       row[period]=fmt(value,eps=label=="Diluted EPS")
       if (label,period) in data.get("derived",{}): row[period]+=" †"
      rows.append(row)
-    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
+    df=pd.DataFrame(rows)
+    st.dataframe(df.style.applymap(lambda x:"color:#b42332" if isinstance(x,str) and x.startswith("-") else "color:#8a99ac" if x=="—" else "",subset=data["periods"]).apply(lambda row:["font-weight:700;background-color:#f1f6fc" if row["Line item"] in ("Gross Profit","Operating Income (EBIT)","Net Income","Free Cash Flow","Total Assets","Stockholders Equity") else "" for _ in row],axis=1),hide_index=True,use_container_width=True)
+    st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
   st.caption("† Derived from reported statement components; not directly reported.")
  with tabs[1]:
   st.subheader("Profitability, liquidity and efficiency")
@@ -63,34 +73,60 @@ def _render_workspace(ticker):
     row={"Ratio":key}
     for period in data["periods"]:
      val=data["ratios"].get(period,{}).get(key)
-     row[period]=fmt(val,ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Du Pont ROE"))
+     row[period]="N/A (negative equity)" if period in negative_equity and key in ("ROE","Debt / Equity","Equity Multiplier","Du Pont ROE") else fmt(val,ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Du Pont ROE"))
     rows.append(row)
-   st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
+   df=pd.DataFrame(rows)
+   st.dataframe(df,hide_index=True,use_container_width=True)
+   st.download_button("Export "+group+" ratios CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_ratios.csv",mime="text/csv",key="axia_ratio_"+group)
   st.caption("ROE uses period-end equity where average equity is unavailable. Du Pont is an algebraic breakdown, not an independent audit.")
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Specialized operational KPIs require issuer disclosures. AXÍA will not invent them from generic financial feeds.")
-  st.dataframe(pd.DataFrame([{"Metric":k,"Value":"Not verified","Evidence":"Issuer report required"} for k in SECTOR[sector]]),hide_index=True,use_container_width=True)
+  standard={"Revenue Growth":None,"Operating Margin":None,"Free Cash Flow":None,"Return on Equity":None}
+  p=periods[0] if periods else None
+  if p:
+   inc=data["statements"]["Income Statement"];cf=data["statements"]["Cash Flow"]
+   revenue=inc["Revenue"].get(p)
+   prev=inc["Revenue"].get(periods[1]) if len(periods)>1 else None
+   standard["Revenue Growth"]=(revenue/prev-1) if revenue is not None and prev is not None and prev>0 and frequency!="TTM" else None
+   standard["Operating Margin"]=data["ratios"].get(p,{}).get("Operating Margin")
+   standard["Free Cash Flow"]=cf["Free Cash Flow"].get(p)
+   standard["Return on Equity"]=data["ratios"].get(p,{}).get("ROE")
+  if sector=="general":
+   rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Statement-derived" if v is not None else "Not available from reported components"} for k,v in standard.items()]
+   st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
+  else:
+   st.info("Issuer-specific operating metrics require an official filing. Generic provider statements cannot verify these metrics.")
+   st.caption("Metrics to source: "+", ".join(SECTOR[sector]))
+  st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs.")
  with tabs[3]:
   st.subheader("Historical financial trends")
-  for group,key in (("Income Statement","Revenue"),("Income Statement","Net Income"),("Cash Flow","Operating Cash Flow"),("Cash Flow","Free Cash Flow")):
-   series=data["statements"][group].get(key,{})
-   points={p:v for p,v in series.items() if v is not None}
-   st.markdown(f"**{key}**")
-   if len(points)>=2:
-    st.line_chart(pd.Series(points).iloc[::-1],height=140)
-    values=list(points.values())
-    if frequency=="Annual (5Y)" and len(values)>=2 and values[-1]>0 and values[0]>0:
-     years=len(values)-1
-     st.caption(f"{years}-year CAGR: {(values[0]/values[-1])**(1/years)-1:+.1%} (positive endpoints only)")
-   else: st.caption("Insufficient comparable reported periods.")
+  chart_data=data
+  if frequency=="TTM":
+   try: chart_data=load(ticker,"Quarterly (8Q)")
+   except Exception: chart_data=data
+   st.caption("TTM selected: trends show reported quarterly history; summary tables remain TTM.")
+  pairs=(("Income Statement","Revenue"),("Income Statement","Net Income"),("Cash Flow","Operating Cash Flow"),("Cash Flow","Free Cash Flow"))
+  for i in range(0,4,2):
+   cols=st.columns(2)
+   for col,(group,key) in zip(cols,pairs[i:i+2]):
+    with col:
+     st.markdown("**"+key+"**")
+     series=chart_data["statements"][group].get(key,{})
+     points=[(p,series.get(p)) for p in reversed(chart_data["periods"]) if series.get(p) is not None]
+     if len(points)<2: st.caption("Insufficient comparable reported periods.");continue
+     labels=[p[:7] if "Quarterly" in chart_data["frequency"] else p[:4] for p,v in points]
+     fig=go.Figure(go.Bar(x=labels,y=[v for p,v in points],marker_color="#0868d8"))
+     fig.update_layout(height=215,margin=dict(l=5,r=5,t=5,b=10),showlegend=False,plot_bgcolor="white",paper_bgcolor="white",xaxis=dict(type="category",tickangle=0),yaxis=dict(automargin=True,zeroline=True))
+     st.plotly_chart(fig,use_container_width=True,key="axia_trend_"+key)
+     if chart_data["frequency"]=="Annual (5Y)" and len(points)>=2 and points[0][1]>0 and points[-1][1]>0:
+      years=len(points)-1
+      st.caption(f"{years}-year CAGR: {(points[-1][1]/points[0][1])**(1/years)-1:+.1%}")
  with tabs[4]:
   st.subheader("Data lineage & verification")
-  st.info("Provider-transcribed is not equivalent to audited. Filing-page verification is not available in this build.")
-  st.write("Provider:",data.get("provider","Provider information unavailable"))
-  st.write("Reporting currency:",currency)
-  st.write("Period basis:",data.get("frequency",frequency))
-  st.write("Restatement status: Not independently established")
-  st.write("Issuer filing/page references: Not linked; verify against official filings.")
+  st.warning("Provider-transcribed figures have not been reconciled to audited issuer filings. No filing-page verification is claimed.")
+  metadata={"Provider":data.get("provider","Unavailable"),"Reporting currency":currency,"Period basis":data.get("frequency",frequency),"Audit status":"Provider-transcribed; unverified","Restatement status":"Not established","Issuer filing reference":"Not linked to a specific reporting period"}
+  st.dataframe(pd.DataFrame([{"Field":k,"Value":v} for k,v in metadata.items()]),hide_index=True,use_container_width=True)
+  st.caption("A company website is not evidence of an individual financial statement value. Official filing links must be matched to the selected period before verification badges are shown.")
   if data.get("derived"):
    st.dataframe(pd.DataFrame([{"Metric":k[0],"Period":k[1],"Method":v} for k,v in data["derived"].items()]),hide_index=True,use_container_width=True)
