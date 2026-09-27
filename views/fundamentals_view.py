@@ -55,7 +55,7 @@ def _render_workspace(ticker):
       if (label,period) in data.get("derived",{}): row[period]+=" †"
      rows.append(row)
     df=pd.DataFrame(rows)
-    st.dataframe(df.style.applymap(lambda x:"color:#b42332" if isinstance(x,str) and x.startswith("-") else "color:#8a99ac" if x=="—" else "",subset=data["periods"]).apply(lambda row:["font-weight:700;background-color:#f1f6fc" if row["Line item"] in ("Gross Profit","Operating Income (EBIT)","Net Income","Free Cash Flow","Total Assets","Stockholders Equity") else "" for _ in row],axis=1),hide_index=True,use_container_width=True)
+    st.dataframe(df.style.map(lambda x:"color:#b42332" if isinstance(x,str) and x.startswith("-") else "color:#8a99ac" if x=="—" else "",subset=data["periods"]).apply(lambda row:["font-weight:700;background-color:#f1f6fc" if row["Line item"] in ("Gross Profit","Operating Income (EBIT)","Net Income","Free Cash Flow","Total Assets","Stockholders Equity") else "" for _ in row],axis=1),hide_index=True,use_container_width=True)
     st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
   st.caption("† Derived from reported statement components; not directly reported.")
  with tabs[1]:
