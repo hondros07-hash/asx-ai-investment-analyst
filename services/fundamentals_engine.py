@@ -55,10 +55,12 @@ def pick(frame, aliases, col):
    if v is not None: return v
  return None
 
-def category(meta):
+def category(meta, ticker=""):
+ if str(ticker).upper() in ("ZIP.AX",): return "bnpl"
+ if str(ticker).upper() in ("ZIP",): return "general"
  s=" ".join(str(meta.get(k) or "") for k in ("sector","industry","longName")).lower()
  if any(x in s for x in ("bank","bancorp","banking")): return "bank"
- if any(x in s for x in ("buy now pay later","bnpl","payment services","consumer finance")): return "bnpl"
+ if any(x in s for x in ("buy now pay later","bnpl","payment services","consumer finance", "credit services", "zip co")): return "bnpl"
  if any(x in s for x in ("mining","metals","gold","oil & gas","energy minerals")): return "resources"
  return "general"
 
@@ -72,7 +74,7 @@ def derive(data):
   cash=get(bal,"Cash & Equivalents"); debt=get(bal,"Total Debt")
   current=get(bal,"Current Assets"); liabilities=get(bal,"Current Liabilities")
   inventory=get(bal,"Inventory"); ocf=get(cf,"Operating Cash Flow"); capex=get(cf,"Capital Expenditure")
-  def ratio(a,b): return a/b if a is not None and b not in (None,0) else None
+  def ratio(a,b): return a/b if a is not None and b is not None and b>0 else None
   if get(cf,"Free Cash Flow") is None and ocf is not None and capex is not None:
    cf["Free Cash Flow"][period]=ocf-abs(capex)
    out[("Free Cash Flow",period)]="Derived: OCF − absolute CapEx"
@@ -82,14 +84,11 @@ def derive(data):
   if get(inc,"Gross Profit") is None and revenue is not None and get(inc,"Cost of Revenue") is not None:
    inc["Gross Profit"][period]=revenue-abs(get(inc,"Cost of Revenue"))
    out[("Gross Profit",period)]="Derived: revenue − cost of revenue"
-  if get(inc,"Diluted EPS") is None and net is not None:
+  if get(inc,"Diluted EPS") is None and net is not None and not str(period).endswith(" TTM"):
    shares=get(inc,"Diluted Shares")
    if shares is not None and shares>0:
     inc["Diluted EPS"][period]=net/shares
     out[("Diluted EPS",period)]="Derived: net income / diluted weighted-average shares"
-  if get(inc,"EBITDA") is None and op is not None:
-   # Never substitute EBIT for EBITDA without depreciation and amortisation.
-   pass
   data.setdefault("ratios",{})[period]={
    "Gross Margin":ratio(get(inc,"Gross Profit"),revenue),
    "Operating Margin":ratio(op,revenue),"Net Margin":ratio(net,revenue),
@@ -109,7 +108,8 @@ def derive(data):
 @lru_cache(maxsize=128)
 def load(ticker, frequency="Annual (5Y)"):
  stock=yf.Ticker(ticker)
- meta=stock.info or {}
+ try: meta=stock.info or {}
+ except Exception: meta={}
  quarterly=frequency=="Quarterly (8Q)"
  attrs=("quarterly_income_stmt","quarterly_balance_sheet","quarterly_cashflow") if quarterly else ("income_stmt","balance_sheet","cashflow")
  frames=[]
@@ -120,11 +120,14 @@ def load(ticker, frequency="Annual (5Y)"):
   except Exception: frames.append(pd.DataFrame())
  if frequency=="TTM":
   # TTM flows require four distinct quarters; balance sheet is latest quarter.
-  try:
-   frames=[getattr(stock,a) for a in ("quarterly_income_stmt","quarterly_balance_sheet","quarterly_cashflow")]
-  except Exception: frames=[pd.DataFrame() for _ in range(3)]
+  frames=[]
+  for attr in ("quarterly_income_stmt","quarterly_balance_sheet","quarterly_cashflow"):
+   try:
+    frame=getattr(stock,attr)
+    frames.append(frame if isinstance(frame,pd.DataFrame) else pd.DataFrame())
+   except Exception: frames.append(pd.DataFrame())
  limit=8 if quarterly else 5
- if frequency=="TTM": limit=4
+ if frequency=="TTM": limit=8
  periods=sorted(set(c for f in frames if isinstance(f,pd.DataFrame) for c in f.columns),reverse=True)[:limit]
  labels=[str(pd.Timestamp(c).date()) for c in periods]
  data={"ticker":ticker,"meta":meta,"currency":meta.get("financialCurrency") or "Unconfirmed","frequency":frequency,
@@ -144,17 +147,28 @@ def load(ticker, frequency="Annual (5Y)"):
    table[label]=vals
   data["statements"][group]=table
  if frequency=="TTM":
-  # A TTM aggregate is valid only when each flow statement has four matching quarters.
-  flow_complete=all(isinstance(frames[i],pd.DataFrame) and all(c in frames[i].columns for c in periods) for i in (0,2))
-  if len(periods)==4 and flow_complete:
-   end=labels[0];data["periods"]=[end+" TTM"]
+  # Align the four most recent income-statement quarters. Never sum balance-sheet stocks.
+  income, balance, cashflow=frames
+  aligned=sorted(set(income.columns).intersection(cashflow.columns),reverse=True)[:4] if all(isinstance(x,pd.DataFrame) and not x.empty for x in (income,cashflow)) else []
+  if len(aligned)==4:
+   end=str(pd.Timestamp(aligned[0]).date()); label=end+" TTM"
+   aligned_labels=[str(pd.Timestamp(c).date()) for c in aligned]
+   latest_balance=sorted(balance.columns,reverse=True)[0] if isinstance(balance,pd.DataFrame) and not balance.empty else None
+   latest_balance_label=str(pd.Timestamp(latest_balance).date()) if latest_balance is not None else None
+   data["periods"]=[label]
    for group,table in data["statements"].items():
-    for label,values in table.items():
-     nums=list(values.values())
-     table[label]={data["periods"][0]:(nums[0] if group=="Balance Sheet" else sum(nums) if all(v is not None for v in nums) else None)}
+    for item,values in table.items():
+     if group=="Balance Sheet":
+      value=pick(balance,ROWS[group][item],latest_balance) if latest_balance is not None else None
+     else:
+      numbers=[pick(income if group=="Income Statement" else cashflow,ROWS[group][item],c) for c in aligned]
+      value=sum(numbers) if all(v is not None for v in numbers) else None
+      if item in ("Diluted EPS","Diluted Shares"): value=None
+     table[item]={label:value}
+   data["quality"].append("TTM flow metrics use four aligned reported quarters; balance sheet uses latest available quarter.")
   else:
    data["periods"]=[]
-   data["quality"].append("TTM requires four aligned quarterly periods in both income and cash-flow statements.")
+   data["quality"].append("TTM unavailable: four aligned quarterly income and cash-flow periods were not returned. Select Annual or Quarterly for reported figures.")
  # Drop wholly empty reporting periods, retaining partial years.
  if frequency!="TTM":
   usable=[p for p in data["periods"] if sum(values.get(p) is not None for table in data["statements"].values() for values in table.values()) >= 2]
@@ -163,7 +177,7 @@ def load(ticker, frequency="Annual (5Y)"):
    for values in table.values():
     for p in list(values):
      if p not in usable: del values[p]
- data["category"]=category(meta)
+ data["category"]=category(meta,ticker)
  data["provider"]="Yahoo Finance via yfinance; provider-transcribed figures, not independently audited."
  data["filing_url"]="" # A company homepage is not a filing citation.
  derive_input={k:data["statements"][k] for k in data["statements"]}

@@ -32,13 +32,13 @@ def _render_workspace(ticker):
   st.error("Financial statements could not be loaded. Try again or inspect the issuer's filings.")
   st.caption(f"Provider error: {type(exc).__name__}")
   return
- sector=data.get("category") or category(data.get("meta") or {})
+ sector=data.get("category") or category(data.get("meta") or {},ticker)
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
  st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
  for issue in data.get("quality",[]): st.warning(issue)
  periods=data.get("periods",[])
- negative_equity={p for p in periods if (data["statements"]["Balance Sheet"]["Stockholders Equity"].get(p) or 0)<0}
+ negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
  if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
@@ -55,7 +55,7 @@ def _render_workspace(ticker):
       if (label,period) in data.get("derived",{}): row[period]+=" †"
      rows.append(row)
     df=pd.DataFrame(rows)
-    st.dataframe(df.style.map(lambda x:"color:#b42332" if isinstance(x,str) and x.startswith("-") else "color:#8a99ac" if x=="—" else "",subset=data["periods"]).apply(lambda row:["font-weight:700;background-color:#f1f6fc" if row["Line item"] in ("Gross Profit","Operating Income (EBIT)","Net Income","Free Cash Flow","Total Assets","Stockholders Equity") else "" for _ in row],axis=1),hide_index=True,use_container_width=True)
+    st.dataframe(df,hide_index=True,use_container_width=True)
     st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
   st.caption("† Derived from reported statement components; not directly reported.")
  with tabs[1]:
@@ -82,22 +82,33 @@ def _render_workspace(ticker):
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Specialized operational KPIs require issuer disclosures. AXÍA will not invent them from generic financial feeds.")
+  source=data
+  fallback=False
+  if not periods and frequency=="TTM":
+   try:
+    source=load(ticker,"Annual (5Y)")
+    fallback=bool(source.get("periods"))
+   except Exception: source=data
+  source_periods=source.get("periods",[])
+  if fallback: st.info("TTM unavailable. Showing latest reported annual figures below, not TTM estimates.")
   standard={"Revenue Growth":None,"Operating Margin":None,"Free Cash Flow":None,"Return on Equity":None}
-  p=periods[0] if periods else None
+  p=source_periods[0] if source_periods else None
   if p:
-   inc=data["statements"]["Income Statement"];cf=data["statements"]["Cash Flow"]
+   inc=source["statements"]["Income Statement"];cf=source["statements"]["Cash Flow"]
    revenue=inc["Revenue"].get(p)
-   prev=inc["Revenue"].get(periods[1]) if len(periods)>1 else None
-   standard["Revenue Growth"]=(revenue/prev-1) if revenue is not None and prev is not None and prev>0 and frequency!="TTM" else None
-   standard["Operating Margin"]=data["ratios"].get(p,{}).get("Operating Margin")
+   prev=inc["Revenue"].get(source_periods[1]) if len(source_periods)>1 else None
+   standard["Revenue Growth"]=(revenue/prev-1) if revenue is not None and prev is not None and prev>0 and source.get("frequency")!="TTM" else None
+   standard["Operating Margin"]=source.get("ratios",{}).get(p,{}).get("Operating Margin")
    standard["Free Cash Flow"]=cf["Free Cash Flow"].get(p)
-   standard["Return on Equity"]=data["ratios"].get(p,{}).get("ROE")
-  if sector=="general":
-   rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Statement-derived" if v is not None else "Not available from reported components"} for k,v in standard.items()]
+   standard["Return on Equity"]=source.get("ratios",{}).get(p,{}).get("ROE")
+  if sector!="general":
+   st.info("Issuer-specific operating KPIs require official disclosures; they are not inferred from generic statement fields.")
+   st.caption("Issuer KPIs to verify: "+", ".join(SECTOR[sector]))
+  if p:
+   st.caption("Financial statement metrics · "+str(p)+" · "+str(source.get("currency","Unconfirmed"))+" · "+str(source.get("frequency","")))
+   rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Provider statement / derived" if v is not None else "Unavailable from compatible components"} for k,v in standard.items()]
    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
-  else:
-   st.info("Issuer-specific operating metrics require an official filing. Generic provider statements cannot verify these metrics.")
-   st.caption("Metrics to source: "+", ".join(SECTOR[sector]))
+  else: st.info("No compatible annual or quarterly statements are available from this provider. No values have been estimated.")
   st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs.")
  with tabs[3]:
   st.subheader("Historical financial trends")
@@ -105,7 +116,7 @@ def _render_workspace(ticker):
   if frequency=="TTM":
    try: chart_data=load(ticker,"Quarterly (8Q)")
    except Exception: chart_data=data
-   st.caption("TTM selected: trends show reported quarterly history; summary tables remain TTM.")
+   st.caption("TTM selected: charts show reported quarterly history where available; this is not a TTM trend.")
   pairs=(("Income Statement","Revenue"),("Income Statement","Net Income"),("Cash Flow","Operating Cash Flow"),("Cash Flow","Free Cash Flow"))
   for i in range(0,4,2):
    cols=st.columns(2)
