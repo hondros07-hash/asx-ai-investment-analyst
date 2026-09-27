@@ -2,7 +2,7 @@
 import math
 import pandas as pd
 import streamlit as st
-from services.fundamentals_engine import load, SECTOR
+from services.fundamentals_engine import load, SECTOR, category
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "Not reported"
@@ -27,7 +27,9 @@ def _render_workspace(ticker):
   st.error("Financial statements could not be loaded. Try again or inspect the issuer's filings.")
   st.caption(f"Provider error: {type(exc).__name__}")
   return
- currency=data["currency"]
+ sector=data.get("category") or category(data.get("meta") or {})
+ if sector not in SECTOR: sector="general"
+ currency=data.get("currency") or "Unconfirmed"
  st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
  for issue in data["quality"]: st.warning(issue)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
@@ -42,7 +44,7 @@ def _render_workspace(ticker):
      for period in data["periods"]:
       value=values.get(period)
       row[period]=fmt(value,eps=label=="Diluted EPS")
-      if (label,period) in data["derived"]: row[period]+=" †"
+      if (label,period) in data.get("derived",{}): row[period]+=" †"
      rows.append(row)
     st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
   st.caption("† Derived from reported statement components; not directly reported.")
@@ -66,9 +68,9 @@ def _render_workspace(ticker):
    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
   st.caption("ROE uses period-end equity where average equity is unavailable. Du Pont is an algebraic breakdown, not an independent audit.")
  with tabs[2]:
-  st.subheader(data["category"].upper()+" | Sector-adaptive KPIs")
+  st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Specialized operational KPIs require issuer disclosures. AXÍA will not invent them from generic financial feeds.")
-  st.dataframe(pd.DataFrame([{"Metric":k,"Value":"Not verified","Evidence":"Issuer report required"} for k in SECTOR[data["category"]]]),hide_index=True,use_container_width=True)
+  st.dataframe(pd.DataFrame([{"Metric":k,"Value":"Not verified","Evidence":"Issuer report required"} for k in SECTOR[sector]]),hide_index=True,use_container_width=True)
  with tabs[3]:
   st.subheader("Historical financial trends")
   for group,key in (("Income Statement","Revenue"),("Income Statement","Net Income"),("Cash Flow","Operating Cash Flow"),("Cash Flow","Free Cash Flow")):
@@ -85,9 +87,9 @@ def _render_workspace(ticker):
  with tabs[4]:
   st.subheader("Data lineage & verification")
   st.info("Provider-transcribed is not equivalent to audited. Filing-page verification is not available in this build.")
-  st.write("Provider:",data["provider"])
+  st.write("Provider:",data.get("provider","Provider information unavailable"))
   st.write("Reporting currency:",currency)
-  st.write("Period basis:",data["frequency"])
+  st.write("Period basis:",data.get("frequency",frequency))
   st.write("Restatement status: Not independently established")
   st.write("Issuer filing/page references: Not linked; verify against official filings.")
   if data["derived"]:
