@@ -135,44 +135,44 @@ def _render_workspace(ticker):
  with tabs[0]:
   _financial_overview(data,ticker,currency)
   with st.expander("Financial health methodology & detailed scorecard",expanded=False):
-  health=assess(data)
-  with st.container(border=True):
-   left,right=st.columns([3,1])
-   with left:
-    st.markdown("**Fundamental Health · Financial Strength Indicator**")
-    st.caption("Provisional generic statement-ratio assessment"+(" · Airline operating KPIs not yet integrated" if sector=="airline" else "")+" · Not a stock recommendation.")
-   with right:
-    st.metric("Provisional ratio score" if sector=="airline" else "Health score",str(health["score"])+"/100" if health["score"] is not None else "Not assessed")
-   if health["score"] is not None:
-    score=health["score"]
-    # The gradient and endpoint labels must occupy separate native Streamlit blocks.
-    # A combined HTML block can collapse its measured height and overlap the next cards.
-    st.markdown('<div style="position:relative;width:100%;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div>',unsafe_allow_html=True)
-    # Reserve a visible vertical gap so the gradient never touches the endpoint labels.
-    st.markdown('<div aria-hidden="true" style="display:block;height:18px;min-height:18px;line-height:18px">&nbsp;</div>',unsafe_allow_html=True)
-    weak_label,strong_label=st.columns(2)
-    with weak_label:
-     st.caption("0 · Financial weakness")
-    with strong_label:
-     st.markdown('<p style="margin:0;text-align:right;color:#60758f;font-size:12px;line-height:1.6">100 · Financial strength</p>',unsafe_allow_html=True)
-   else:
-    st.caption("Composite unavailable: less than 60% of weighted statement-ratio evidence is available.")
-   c1,c2=st.columns(2)
-   c1.metric("Statement-ratio coverage" if sector=="airline" else "Data coverage",str(health["coverage"])+"%")
-   c2.metric("Provider-data confidence" if sector=="airline" else "Data confidence",str(health["confidence"])+"%")
-   st.caption("This is not an airline-specific health assessment. Confidence is capped because provider statements have not been reconciled to official filings." if sector=="airline" else "Confidence is capped because the source data has not been reconciled to official filings.")
-   for component in health["components"]:
-    value=component["score"]
-    st.markdown("**"+component["name"]+"** · "+(str(value)+"/100" if value is not None else "Unavailable")+" · Evidence coverage "+str(component["coverage"])+"%")
-    if value is not None: st.progress(int(value)/100)
-    if component["missing"]: st.caption("Missing: "+", ".join(component["missing"]))
-   with st.expander("Methodology, evidence and limitations"):
-    st.caption("Latest period: "+str(health["period"])+" · Sector classification: "+str(health["sector"]))
+   health=assess(data)
+   with st.container(border=True):
+    left,right=st.columns([3,1])
+    with left:
+     st.markdown("**Fundamental Health · Financial Strength Indicator**")
+     st.caption("Provisional generic statement-ratio assessment"+(" · Airline operating KPIs not yet integrated" if sector=="airline" else "")+" · Not a stock recommendation.")
+    with right:
+     st.metric("Provisional ratio score" if sector=="airline" else "Health score",str(health["score"])+"/100" if health["score"] is not None else "Not assessed")
+    if health["score"] is not None:
+     score=health["score"]
+     # The gradient and endpoint labels must occupy separate native Streamlit blocks.
+     # A combined HTML block can collapse its measured height and overlap the next cards.
+     st.markdown('<div style="position:relative;width:100%;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div>',unsafe_allow_html=True)
+     # Reserve a visible vertical gap so the gradient never touches the endpoint labels.
+     st.markdown('<div aria-hidden="true" style="display:block;height:18px;min-height:18px;line-height:18px">&nbsp;</div>',unsafe_allow_html=True)
+     weak_label,strong_label=st.columns(2)
+     with weak_label:
+      st.caption("0 · Financial weakness")
+     with strong_label:
+      st.markdown('<p style="margin:0;text-align:right;color:#60758f;font-size:12px;line-height:1.6">100 · Financial strength</p>',unsafe_allow_html=True)
+    else:
+     st.caption("Composite unavailable: less than 60% of weighted statement-ratio evidence is available.")
+    c1,c2=st.columns(2)
+    c1.metric("Statement-ratio coverage" if sector=="airline" else "Data coverage",str(health["coverage"])+"%")
+    c2.metric("Provider-data confidence" if sector=="airline" else "Data confidence",str(health["confidence"])+"%")
+    st.caption("This is not an airline-specific health assessment. Confidence is capped because provider statements have not been reconciled to official filings." if sector=="airline" else "Confidence is capped because the source data has not been reconciled to official filings.")
     for component in health["components"]:
-     st.markdown("**"+component["name"]+"** · Weight "+str(component["weight"])+"%")
-     for evidence in component["evidence"]:
-      st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
-    for note in health["notes"]: st.caption("• "+note)
+     value=component["score"]
+     st.markdown("**"+component["name"]+"** · "+(str(value)+"/100" if value is not None else "Unavailable")+" · Evidence coverage "+str(component["coverage"])+"%")
+     if value is not None: st.progress(int(value)/100)
+     if component["missing"]: st.caption("Missing: "+", ".join(component["missing"]))
+    with st.expander("Methodology, evidence and limitations"):
+     st.caption("Latest period: "+str(health["period"])+" · Sector classification: "+str(health["sector"]))
+     for component in health["components"]:
+      st.markdown("**"+component["name"]+"** · Weight "+str(component["weight"])+"%")
+      for evidence in component["evidence"]:
+       st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
+     for note in health["notes"]: st.caption("• "+note)
  with tabs[1]:
   st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
   mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
