@@ -2,6 +2,8 @@
 import math
 import html
 import io
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse, quote as url_quote
 from watchlist_engine import add as watch_add, remove as watch_remove, get as watch_get
 import plotly.graph_objects as go
@@ -37,7 +39,9 @@ def _issuer_header(data, ticker, currency):
  domain=domain.removeprefix("www.")
  # Use a plain image URL: Streamlit's markdown sanitizer does not reliably preserve onerror JavaScript.
  logo=str(m.get("logo_url") or m.get("logoUrl") or "")
- if not logo.startswith("https://") and domain:
+ if str(ticker).upper()=="KO":
+  logo="https://commons.wikimedia.org/wiki/Special:FilePath/Coca-Cola_logo.svg"
+ elif not logo.startswith("https://") and domain:
   logo="https://www.google.com/s2/favicons?domain="+url_quote(domain)+"&sz=256"
  initials="".join(part[0] for part in str(name).split() if part)[:2].upper() or str(ticker)[:1].upper()
  mark='<span class="axia-issuer-fallback">'+safe(initials)+'</span>'
@@ -45,8 +49,10 @@ def _issuer_header(data, ticker, currency):
   mark='<span class="axia-issuer-fallback">'+safe(initials)+'</span><img alt="" loading="eager" src="'+safe(logo)+'">'
  country=str(m.get("country") or "Country unconfirmed")
  flags={"United States":"🇺🇸","Australia":"🇦🇺","United Kingdom":"🇬🇧","Canada":"🇨🇦","Germany":"🇩🇪","Japan":"🇯🇵","Hong Kong":"🇭🇰","New Zealand":"🇳🇿"}
- country_label=(flags.get(country,"")+" " if country in flags else "")+country
- identity=' <span class="axia-issuer-separator">|</span> '.join(safe(v) for v in (str(ticker).upper(),m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed",country_label,m.get("sector") or "Sector unconfirmed",m.get("industry") or "Industry unconfirmed"))
+ country_codes={"United States":"us","Australia":"au","United Kingdom":"gb","Canada":"ca","Germany":"de","Japan":"jp","Hong Kong":"hk","New Zealand":"nz"}
+ flag_code=country_codes.get(country)
+ country_label=('<img class="axia-issuer-flag" alt="" src="https://flagcdn.com/24x18/'+flag_code+'.png"> ' if flag_code else "")+safe(country)
+ identity=' <span class="axia-issuer-separator">|</span> '.join((safe(str(ticker).upper()),safe(m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed"),country_label,safe(m.get("sector") or "Sector unconfirmed"),safe(m.get("industry") or "Industry unconfirmed")))
  slogan=m.get("slogan") or m.get("tagline") or ""
  if not slogan:
   slogan={"KO":"Refresh the world. Make a difference.","NVDA":"Accelerated computing for a better tomorrow."}.get(str(ticker).upper(),"")
@@ -67,13 +73,24 @@ def _issuer_header(data, ticker, currency):
   else: display=fmt(v)
   return '<div class="axia-issuer-stat"><strong>'+display+'</strong><span>'+label+'</span></div>'
  stats=stat("Market Cap",m.get("marketCap"))+stat("P/E (TTM)",m.get("trailingPE"),"multiple")+stat("Dividend Yield",m.get("dividendYield"),"yield")+stat("Beta (5Y)",m.get("beta"))
+ exchange=str(m.get("exchange") or m.get("fullExchangeName") or "").upper()
+ market_zone=None
+ if exchange in ("NMS","NGM","NCM","NYQ","NYSE","NASDAQ","ASE","AMEX") or str(ticker).upper() in ("KO","NVDA","AAPL","MSFT"): market_zone="America/New_York"
+ elif str(ticker).upper().endswith(".AX"): market_zone="Australia/Sydney"
+ elif str(ticker).upper().endswith(".L"): market_zone="Europe/London"
+ market_open=False
+ if market_zone:
+  local_now=datetime.now(ZoneInfo(market_zone))
+  market_open=local_now.weekday()<5 and time(9,30)<=local_now.time()<time(16,0) if market_zone=="America/New_York" else local_now.weekday()<5 and time(10,0)<=local_now.time()<time(16,0)
+ session_note=("Market session open · provider quote may be delayed" if market_open else "Market session closed · provider quote snapshot") if market_zone else "Market hours unconfirmed · provider quote snapshot"
+ session_color="#168b62" if market_open else "#60758f"
  left,right=st.columns([5,4],gap="small",vertical_alignment="center")
  with left:
   st.markdown('<div class="axia-issuer-left"><div class="axia-issuer-mark">'+mark+'</div><div class="axia-issuer-identity"><h2>'+safe(name)+'</h2><div class="axia-issuer-details">'+identity+'</div><div class="axia-issuer-tagline">'+safe(slogan)+'</div></div></div>',unsafe_allow_html=True)
  with right:
   quote_col,action_col=st.columns([3,2],vertical_alignment="center",gap="small")
   with quote_col:
-   st.markdown('<div class="axia-issuer-quote">'+quote_text+' <span style="color:'+delta_color+'">'+delta+'</span></div>',unsafe_allow_html=True)
+   st.markdown('<div class="axia-issuer-quote">'+quote_text+' <span style="color:'+delta_color+'">'+delta+'</span></div><div class="axia-issuer-quote-note" style="color:'+session_color+'">'+session_note+'</div>',unsafe_allow_html=True)
   with action_col:
    try: saved=str(ticker).upper() in set(watch_get()["ticker"].astype(str).str.upper())
    except Exception: saved=False
@@ -83,7 +100,7 @@ def _issuer_header(data, ticker, currency):
      else: watch_add(ticker,""); st.toast(str(ticker)+" added to Watchlist.")
      st.rerun()
     except Exception as exc: st.warning("Watchlist could not be updated: "+str(exc))
-  st.markdown('<div class="axia-issuer-market"><div class="axia-issuer-quote-note">Provider quote snapshot · not a live feed</div><div class="axia-issuer-stats">'+stats+'</div></div>',unsafe_allow_html=True)
+  st.markdown('<div class="axia-issuer-market"><div class="axia-issuer-stats">'+stats+'</div></div>',unsafe_allow_html=True)
 
 
 def _financial_overview(data,ticker,currency):
@@ -161,7 +178,7 @@ def render(ticker):
 </style>""",unsafe_allow_html=True)
  st.markdown("""<style>
 /* Fundamentals-only issuer header; global banner/sidebar untouched. */
-.st-key-axia_fund_issuer{background:#fff;border:1px solid #d9e5f3;border-top:3px solid #12365d;border-radius:6px;padding:10px 17px 9px;margin-bottom:6px}
+.st-key-axia_fund_issuer{background:#fff;border:1px solid #d9e5f3;border-radius:9px;padding:12px 17px 19px;margin-bottom:6px}
 .st-key-axia_fund_issuer [data-testid="stHorizontalBlock"]{align-items:center}
 .st-key-axia_fund_issuer [data-testid="stVerticalBlock"]{gap:0!important}
 .st-key-axia_fund_issuer [data-testid="stMarkdownContainer"] p{margin:0}
@@ -173,13 +190,14 @@ def render(ticker):
 .axia-issuer-identity h2{font-size:clamp(20px,1.75vw,29px)!important;font-weight:800;line-height:1.1;margin:0 0 4px!important;color:#142d4d}
 .axia-issuer-details{font-size:12px;color:#60758f;line-height:1.35;white-space:normal}
 .axia-issuer-separator{color:#b4c5d9;margin:0 6px}
+.axia-issuer-flag{display:inline-block;width:20px;height:15px;object-fit:cover;vertical-align:-2px;margin-right:4px;border-radius:1px}
 .axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:4px}
 .st-key-axia_fund_issuer [data-testid="stButton"]{display:flex;justify-content:flex-end}
 .st-key-axia_fund_issuer [data-testid="stButton"] button{height:32px;min-height:32px;padding:0 12px;border:1px solid #1670eb;border-radius:5px;background:#fff;color:#0868d8;font-size:12px;font-weight:700}
 .axia-issuer-market{text-align:right}
 .axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:right}
 .axia-issuer-quote span{font-size:14px;margin-left:5px}
-.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:2px 0 7px}
+.axia-issuer-quote-note{font-size:11px;color:#60758f;margin:5px 0 7px;text-align:left}
 .axia-issuer-stats{display:flex;justify-content:flex-end}
 .axia-issuer-stat{padding:0 12px;border-left:1px solid #dce6f2;text-align:center;white-space:nowrap}
 .axia-issuer-stat:first-child{border-left:0}
