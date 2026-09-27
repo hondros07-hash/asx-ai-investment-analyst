@@ -32,7 +32,7 @@ def transform(data,group,mode="Reported values"):
 
 def display_frame(data,group,mode,formatter):
     raw=transform(data,group,mode)
-    # Formatted strings require object dtype; avoid Pandas LossySetitemError.
+    # Format into object-typed columns, never into numeric pandas blocks.
     result=raw.astype(object).copy()
     for index,row in raw.iterrows():
         label=row["Line item"]
