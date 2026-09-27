@@ -46,9 +46,12 @@ def _render_workspace(ticker):
   st.markdown("**"+html.escape(str(data.get("meta",{}).get("longName") or ticker))+"**")
   st.caption("Trading ticker: "+str(ticker)+" · Provider financial-statement currency: "+currency)
   st.caption("Provider-transcribed data; not independently reconciled to issuer filings.")
+ quality_notes=list(data.get("quality",[]))
  if currency=="Unconfirmed":
-  st.warning("The provider has not confirmed the currency of these financial-statement values. "+("Qantas reports in AUD, but that does not establish the units returned for QAN.MU. " if is_qantas else "")+"Do not interpret or convert displayed monetary amounts until the provider units are reconciled to a dated issuer filing.")
- for issue in data.get("quality",[]): st.warning(issue)
+  quality_notes.insert(0,"Provider statement currency is unconfirmed. "+("Qantas issuer reports in AUD, but QAN.MU provider monetary units are not verified. " if is_qantas else "")+"Do not interpret or convert monetary values until reconciled to a dated issuer filing.")
+ if quality_notes:
+  with st.expander("Data quality and source limitations · "+str(len(quality_notes))+" notice(s)",expanded=False):
+   for issue in quality_notes: st.caption("• "+str(issue))
  periods=data.get("periods",[])
  negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
  if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
@@ -57,9 +60,9 @@ def _render_workspace(ticker):
   left,right=st.columns([3,1])
   with left:
    st.markdown("**Fundamental Health · Financial Strength Indicator**")
-   st.caption("A transparent, provisional statement-based assessment — not a stock recommendation.")
+   st.caption("Provisional generic statement-ratio assessment"+(" · Airline operating KPIs not yet integrated" if sector=="airline" else "")+" · Not a stock recommendation.")
   with right:
-   st.metric("Health score",str(health["score"])+"/100" if health["score"] is not None else "Insufficient data")
+   st.metric("Provisional ratio score" if sector=="airline" else "Health score",str(health["score"])+"/100" if health["score"] is not None else "Not assessed")
   if health["score"] is not None:
    score=health["score"]
    # The gradient and endpoint labels must occupy separate native Streamlit blocks.
@@ -73,11 +76,11 @@ def _render_workspace(ticker):
    with strong_label:
     st.markdown('<p style="margin:0;text-align:right;color:#60758f;font-size:12px;line-height:1.6">100 · Financial strength</p>',unsafe_allow_html=True)
   else:
-   st.info("Composite indicator unavailable: "+("airline-specific evidence has not been integrated and verified." if sector=="airline" else "at least 60% of weighted evidence is required."))
+   st.caption("Composite unavailable: less than 60% of weighted statement-ratio evidence is available.")
   c1,c2=st.columns(2)
-  c1.metric("Data coverage",str(health["coverage"])+"%")
-  c2.metric("Data confidence",str(health["confidence"])+"%")
-  st.caption("Confidence is capped because the source data has not been reconciled to official filings.")
+  c1.metric("Statement-ratio coverage" if sector=="airline" else "Data coverage",str(health["coverage"])+"%")
+  c2.metric("Provider-data confidence" if sector=="airline" else "Data confidence",str(health["confidence"])+"%")
+  st.caption("This is not an airline-specific health assessment. Confidence is capped because provider statements have not been reconciled to official filings." if sector=="airline" else "Confidence is capped because the source data has not been reconciled to official filings.")
   for component in health["components"]:
    value=component["score"]
    st.markdown("**"+component["name"]+"** · "+(str(value)+"/100" if value is not None else "Unavailable")+" · Evidence coverage "+str(component["coverage"])+"%")
