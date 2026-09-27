@@ -10,6 +10,7 @@ from services.fundamentals_engine import load, SECTOR, category
 from services.sector_kpi_engine import kpi_rows, disclosure_destinations
 from services.fundamental_health_engine import assess
 from services.fundamentals_integrity_engine import validate, summary
+from services.fundamentals_statement_view_engine import display_frame, row_trend
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -96,22 +97,30 @@ def _render_workspace(ticker):
    for note in health["notes"]: st.caption("• "+note)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
-  st.caption("Amounts in provider statement units (currency unconfirmed where indicated). EPS is per share. Missing values are not estimated.")
+  st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
+  mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
+  mode=mode or "Reported values"
+  if mode=="Period growth":
+   st.caption("Change against the preceding available reporting period. Annual = annual change; quarterly = sequential quarter change, not year-on-year. Non-positive or missing bases are withheld.")
+  elif mode=="Common size":
+   st.caption("Income statement: % of revenue · Balance sheet: % of total assets · Cash flow: % of operating cash flow. Non-positive or missing denominators are withheld; EPS and share counts are excluded.")
   for group,table in data["statements"].items():
    with st.expander(group,expanded=True):
     if not data["periods"]: st.info("No complete periods available.");continue
-    rows=[]
-    for label,values in table.items():
-     row={"Line item":label}
-     for period in data["periods"]:
-      value=values.get(period)
-      row[period]=fmt(value,eps=label=="Diluted EPS")
-      if (label,period) in data.get("derived",{}): row[period]+=" †"
-     rows.append(row)
-    df=pd.DataFrame(rows)
+    df=display_frame(data,group,mode,fmt)
     st.dataframe(df,hide_index=True,use_container_width=True)
-    st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
-  st.caption("† Derived from reported statement components; not directly reported.")
+    st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_"+mode.replace(" ","_")+".csv",mime="text/csv",key="axia_export_"+group)
+    if mode=="Reported values":
+     st.caption("† Derived from provider statement components; not directly reported.")
+     featured=[name for name in ("Revenue","EBITDA","Net Income","Total Assets","Net Debt","Operating Cash Flow","Free Cash Flow") if name in table]
+     for label in featured:
+      points=row_trend(data,group,label)
+      if len(points)>=2:
+       fig=go.Figure(go.Scatter(y=points,mode="lines+markers",line=dict(color="#0868d8",width=2),marker=dict(size=4),showlegend=False))
+       fig.update_layout(height=75,margin=dict(l=4,r=4,t=3,b=3),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(visible=False),yaxis=dict(visible=False))
+       col1,col2=st.columns([2,5])
+       with col1: st.caption(label+" · oldest → newest")
+       with col2: st.plotly_chart(fig,use_container_width=True,key="axia_statement_spark_"+group+"_"+label)
  with tabs[1]:
   st.subheader("Profitability, liquidity and efficiency")
   groups={
