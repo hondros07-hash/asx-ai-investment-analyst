@@ -4729,7 +4729,6 @@ def _home_live_search_fragment():
         clear_on_submit=True,
         rerun_on_update=False,
         debounce=300,
-        min_execution_time=0,
         # V20.7.4.17.2 — Home Search Border Continuity Fix. Keep the exact
         # V20.7.4.17.1 geometry, but paint the outline INSIDE the visible control.
         # This prevents the component frame from clipping the bottom edge. Scoped
