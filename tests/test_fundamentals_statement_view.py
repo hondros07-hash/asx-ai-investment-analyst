@@ -1,6 +1,6 @@
 """Regression tests: python -m unittest tests.test_fundamentals_statement_view"""
 import unittest
-from services.fundamentals_statement_view_engine import transform,row_trend
+from services.fundamentals_statement_view_engine import transform,row_trend,display_frame
 
 class StatementViewTests(unittest.TestCase):
  def sample(self):
@@ -20,6 +20,14 @@ class StatementViewTests(unittest.TestCase):
  def test_ttm_growth_withheld(self):
   d=self.sample();d["frequency"]="TTM"
   self.assertIsNone(transform(d,"Income Statement","Period growth").loc[0,"2026-06-30"])
+ def test_formatted_numeric_columns_do_not_raise_lossy_setitem(self):
+  d=self.sample()
+  def fmt(v,ratio=False,eps=False): return "—" if v is None else f"{v:,.2f}"
+  for mode in ("Reported values","Period growth","Common size"):
+   frame=display_frame(d,"Income Statement",mode,fmt)
+   self.assertTrue(all(frame[p].dtype==object for p in d["periods"]))
+   self.assertIsInstance(frame.loc[0,"2026-06-30"],str)
+  self.assertIn("†",display_frame(d,"Income Statement","Reported values",fmt).loc[0,"2026-06-30"])
  def test_original_unchanged(self):
   d=self.sample();transform(d,"Income Statement","Common size")
   self.assertEqual(d["statements"]["Income Statement"]["Revenue"]["2026-06-30"],120)
