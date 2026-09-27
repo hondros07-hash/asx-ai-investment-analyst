@@ -12,6 +12,7 @@ from services.fundamental_health_engine import assess
 from services.fundamentals_integrity_engine import validate, summary
 from services.fundamentals_statement_view_engine import display_frame, row_trend
 from services.advanced_fundamental_ratios_engine import compute as advanced_ratios, METRICS as ADVANCED_GROUPS, PERCENT as ADVANCED_PERCENT, DAYS as ADVANCED_DAYS
+from services.earnings_quality_engine import calculate as earnings_quality, export_rows as earnings_export
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -96,7 +97,7 @@ def _render_workspace(ticker):
     for evidence in component["evidence"]:
      st.caption(evidence["metric"]+": "+fmt(evidence["value"])+" · Normalised "+str(evidence["score"])+"/100")
    for note in health["notes"]: st.caption("• "+note)
- tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
+ tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Earnings Quality","Sources & Verification"])
  with tabs[0]:
   st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
   mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
@@ -231,6 +232,62 @@ def _render_workspace(ticker):
       years=len(points)-1
       st.caption(f"{years}-year CAGR: {(points[-1][1]/points[0][1])**(1/years)-1:+.1%}")
  with tabs[4]:
+  st.subheader("Earnings Quality Intelligence")
+  st.caption("Evidence-led diagnostics · Provider-transcribed statements · Not an accounting misconduct assessment or investment rating.")
+  quality_data=data
+  if frequency=="TTM":
+   st.info("TTM uses aggregated flow figures without matched average balance sheets or diluted-share series. Select Annual or Quarterly for multi-period diagnostics.")
+  records=earnings_quality(quality_data)
+  if not records: st.info("No comparable statement periods available; no earnings-quality figures are estimated.")
+  else:
+   latest=records[0]
+   metric_cards=[("Operating cash conversion","Operating cash conversion"),("Free cash flow conversion","Free cash flow conversion"),("Accruals / average assets","Accruals / average assets"),("Diluted share count change","Diluted share count change")]
+   cols=st.columns(4)
+   for col,(label,key) in zip(cols,metric_cards):
+    value=latest["metrics"][key]
+    with col: st.metric(label,fmt(value,ratio=True))
+   st.caption("Latest period: "+str(latest["period"])+" · Cash conversion = cash flow / positive net income; accruals = (net income − operating cash flow) / average assets.")
+   st.markdown("**Earnings versus cash generation**")
+   chart_rows=list(reversed(records))
+   labels=[r["period"] for r in chart_rows]
+   fig=go.Figure()
+   for key,color in (("Net income","#173b63"),("Operating cash flow","#0868d8"),("Free cash flow","#169a76")):
+    fig.add_trace(go.Bar(name=key,x=labels,y=[r["inputs"].get(key) for r in chart_rows],marker_color=color))
+   fig.update_layout(barmode="group",height=315,margin=dict(l=8,r=8,t=10,b=35),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.15),xaxis=dict(type="category"),yaxis=dict(automargin=True))
+   st.plotly_chart(fig,use_container_width=True,key="axia_earnings_cash_chart")
+   st.caption("Amounts in provider statement units: "+currency+". Derived FCF may equal OCF less absolute CapEx; not an independent source.")
+   c1,c2=st.columns(2)
+   with c1:
+    st.markdown("**Cash conversion trend**")
+    fig=go.Figure()
+    for key,color in (("Operating cash conversion","#0868d8"),("Free cash flow conversion","#169a76")):
+     fig.add_trace(go.Scatter(x=labels,y=[r["metrics"][key]*100 if r["metrics"][key] is not None else None for r in chart_rows],mode="lines+markers",name=key,line=dict(color=color),connectgaps=False))
+    fig.update_layout(height=270,margin=dict(l=8,r=8,t=12,b=35),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.2),xaxis=dict(type="category"),yaxis=dict(title="%",automargin=True))
+    st.plotly_chart(fig,use_container_width=True,key="axia_earnings_conversion_chart")
+   with c2:
+    st.markdown("**Accruals / average assets**")
+    fig=go.Figure(go.Bar(x=labels,y=[r["metrics"]["Accruals / average assets"]*100 if r["metrics"]["Accruals / average assets"] is not None else None for r in chart_rows],marker_color="#0868d8"))
+    fig.update_layout(height=270,margin=dict(l=8,r=8,t=12,b=35),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(type="category"),yaxis=dict(title="%",automargin=True))
+    st.plotly_chart(fig,use_container_width=True,key="axia_earnings_accrual_chart")
+   st.markdown("**Diluted share count history**")
+   fig=go.Figure(go.Bar(x=labels,y=[r["inputs"]["Diluted shares"] for r in chart_rows],marker_color="#173b63"))
+   fig.update_layout(height=225,margin=dict(l=8,r=8,t=8,b=30),paper_bgcolor="white",plot_bgcolor="white",xaxis=dict(type="category"),yaxis=dict(automargin=True))
+   st.plotly_chart(fig,use_container_width=True,key="axia_earnings_shares_chart")
+   st.caption("Diluted weighted-average shares are not the same as end-of-period shares outstanding. Changes may reflect several causes.")
+   st.markdown("**Diagnostic observations**")
+   for r in records:
+    with st.expander(str(r["period"])+" · Evidence and observations",expanded=r is latest):
+     for note in r["notes"]: st.caption("• "+note)
+     if r["derived_fcf"]: st.caption("FCF is derived from OCF and CapEx, not independently reported.")
+     st.dataframe(pd.DataFrame([{"Input":k,"Value":fmt(v)} for k,v in r["inputs"].items()]),hide_index=True,use_container_width=True)
+   st.download_button("Export earnings quality CSV",pd.DataFrame(earnings_export(records)).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_earnings_quality.csv",mime="text/csv",key="axia_earnings_export")
+   with st.expander("Calculation methods and limitations"):
+    st.caption("Operating cash conversion = OCF / net income; FCF conversion = FCF / net income. Both require positive net income.")
+    st.caption("Accruals / average assets = (net income − OCF) / average of current and preceding period-end assets. Requires positive balances and comparable reporting periods.")
+    st.caption("Dilution trend = change in diluted weighted-average shares from preceding reported period. Quarterly changes are sequential, not year-on-year.")
+    st.caption("Receivables and inventory ratios use reported revenue, and may not be comparable for banks, BNPL companies or issuers with different business models.")
+    st.caption("No official filing reconciliation, segment-level cash-flow bridge or issuer-specific accounting adjustments are claimed. Missing values remain unavailable.")
+ with tabs[5]:
   st.subheader("Data lineage & verification")
   checks=validate(data)
   counts=summary(checks)
