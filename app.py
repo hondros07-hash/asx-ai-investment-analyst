@@ -8523,8 +8523,15 @@ elif page=="Company Command Centre":
                     if str(r.get("status") or "").lower() in {"met","on track","pass","passed","true"}: _met.append(str(r.get("metric") or r.get("condition") or "thesis condition"))
             if _met: _needs.append("keep evidenced thesis conditions on track")
             _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions before a stronger scenario is supported.")
+            # V23.8.4: separate observed market price from model-derived scenario.
+            _market_reference=display_price(price,ticker) if np.isfinite(price) and price>0 else "Unavailable"
+            _base_reference=display_price(_ccbase,ticker) if np.isfinite(_ccbase) else "Unavailable"
+            _sc=(f"Market price: {_market_reference} · AXÍA model base case: {_base_reference}. "
+                 + _sc + " Reverse expectations require a validated model and explicit assumptions.")
             st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
-            st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+            _scenario_footer_left,_scenario_footer_right=st.columns([3,1.4],gap="small")
+            with _scenario_footer_right:
+                st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
 
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
