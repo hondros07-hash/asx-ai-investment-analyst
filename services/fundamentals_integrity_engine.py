@@ -24,14 +24,18 @@ def validate(data):
                 "Tolerance: 0.1% of assets or 1 reporting unit, whichever is greater.",difference)
         else: add(p,"Assets = liabilities + equity","Not testable","Total assets, total liabilities and equity are all required.")
         revenue=value(inc,"Revenue",p); cost=value(inc,"Cost of Revenue",p); gross=value(inc,"Gross Profit",p)
-        if ("Gross Profit",p) in (data.get("derived") or {}):\n            add(p,"Gross profit reconciliation","Not testable","Gross profit is derived from the same inputs; not independent evidence.")\n        elif all(finite(x) for x in (revenue,cost,gross)):
+        if ("Gross Profit",p) in (data.get("derived") or {}):
+            add(p,"Gross profit reconciliation","Not testable","Gross profit is derived from the same inputs; not independent evidence.")
+        elif all(finite(x) for x in (revenue,cost,gross)):
             difference=gross-(revenue-abs(cost))
             tolerance=max(1.0,abs(revenue)*.001)
             add(p,"Gross profit reconciliation","Pass" if abs(difference)<=tolerance else "Mismatch",
                 "Reported gross profit compared with revenue less absolute cost of revenue.",difference)
         else: add(p,"Gross profit reconciliation","Not testable","Revenue, cost of revenue and gross profit are required.")
         ocf=value(cf,"Operating Cash Flow",p); capex=value(cf,"Capital Expenditure",p); fcf=value(cf,"Free Cash Flow",p)
-        if ("Free Cash Flow",p) in (data.get("derived") or {}):\n            add(p,"FCF definition consistency","Not testable","FCF is derived from OCF and CapEx; not independent evidence.")\n        elif all(finite(x) for x in (ocf,capex,fcf)):
+        if ("Free Cash Flow",p) in (data.get("derived") or {}):
+            add(p,"FCF definition consistency","Not testable","FCF is derived from OCF and CapEx; not independent evidence.")
+        elif all(finite(x) for x in (ocf,capex,fcf)):
             difference=fcf-(ocf-abs(capex))
             tolerance=max(1.0,abs(ocf)*.001)
             add(p,"FCF definition consistency","Pass" if abs(difference)<=tolerance else "Definition differs",
