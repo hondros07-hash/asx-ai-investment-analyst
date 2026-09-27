@@ -8523,42 +8523,40 @@ elif page=="Company Command Centre":
                 st.markdown(f'<div class="v21290-card v21290-attn"><div class="v21290-title"><span class="v21290-icon">▲</span>What Requires My Attention?</div>{_ah}</div>',unsafe_allow_html=True)
 
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
-        # V23.8.4.6 — compact scenario card, with the action in the header.
+        # V23.8.4.8 — compact card: one header row and one content block.
         st.markdown("""<style>
         .st-key-v23841_widget_row { margin-top:22px !important; }
         .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
-        .st-key-v23841_widget_row [data-testid="column"]:first-child .v21290-bottom {
-            min-height:112px !important; height:auto !important; max-height:none !important;
-            overflow:visible !important;
-        }
         .st-key-v23841_scenario_card {
             background:#fff; border:1px solid #d8e5f2; border-radius:8px;
-            padding:9px 12px 10px; height:auto !important; min-height:112px !important;
-            max-height:none !important; box-sizing:border-box; overflow:visible !important;
+            padding:7px 11px 9px !important; min-height:112px !important;
+            height:auto !important; max-height:none !important; box-sizing:border-box;
+            overflow:visible !important;
         }
         .st-key-v23841_scenario_card > [data-testid="stVerticalBlock"] {
             gap:0 !important; height:auto !important;
         }
-        .st-key-v23841_scenario_card .v23846-title {
-            color:#086ee8; font-size:10.5px; font-weight:950; padding-top:4px;
+        .st-key-v23841_scenario_card [data-testid="stMarkdownContainer"] p {margin:0 !important;}
+        .st-key-v23841_scenario_card [data-testid="stHorizontalBlock"] {
+            align-items:center !important; min-height:25px !important;
         }
-        .st-key-v23841_scenario_card [data-testid="stButton"] { text-align:right; }
+        .st-key-v23841_scenario_card .v23848-title {
+            color:#086ee8;font-size:10.5px;font-weight:950;line-height:22px;
+        }
+        .st-key-v23841_scenario_card [data-testid="stButton"] {text-align:right;margin:0 !important;}
         .st-key-v23841_scenario_card [data-testid="stButton"] button {
-            width:auto !important; min-height:24px !important; height:24px !important;
-            padding:0 5px !important; border:0 !important; background:transparent !important;
-            color:#086ee8 !important; font-size:10px !important; font-weight:750 !important;
-            box-shadow:none !important;
+            width:auto !important;min-height:22px !important;height:22px !important;
+            padding:0 4px !important;border:0 !important;background:transparent !important;
+            color:#086ee8 !important;font-size:10px !important;font-weight:750 !important;
+            box-shadow:none !important;margin:0 0 0 auto !important;
         }
-        .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {
-            background:#edf5ff !important; color:#0754b6 !important;
-        }
-        .v23846-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
-            gap:8px; border-top:1px solid #e4edf7; padding-top:8px; margin-top:3px; }
-        .v23846-metric { min-width:0; }
-        .v23846-metric .k {font-size:7.5px; font-weight:800; color:#67809c;}
-        .v23846-metric .v {font-size:12px; font-weight:900; color:#10264b; margin-top:2px;}
-        .v23846-note {font-size:8.5px; line-height:1.35; color:#45688f; margin-top:7px;}
-        .v23846-source {font-size:7px; color:#7a90a7; margin-top:4px;}
+        .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {background:#edf5ff !important;}
+        .v23848-metrics{display:flex;flex-wrap:wrap;gap:6px 20px;border-top:1px solid #e4edf7;
+            padding-top:7px;margin-top:4px;align-items:baseline}
+        .v23848-metric{font-size:9px;color:#476381;white-space:nowrap}
+        .v23848-metric b{font-size:10px;color:#142f53;font-weight:850}
+        .v23848-summary{font-size:9px;line-height:1.4;color:#45688f;margin-top:6px}
+        .v23848-source{font-size:7.5px;line-height:1.35;color:#7a90a7;margin-top:4px}
         </style>""",unsafe_allow_html=True)
 
         with st.container(key="v23841_widget_row"):
@@ -8569,27 +8567,29 @@ elif page=="Company Command Centre":
                 with st.container(key="v23841_scenario_card"):
                     _head_title,_head_action=st.columns([2.2,1],gap="small",vertical_alignment="center")
                     with _head_title:
-                        st.markdown('<div class="v23846-title">◎ &nbsp;What Would Need to Happen?</div>',unsafe_allow_html=True)
+                        st.markdown('<div class="v23848-title">◎ &nbsp;What Would Need to Happen?</div>',unsafe_allow_html=True)
                     with _head_action:
-                        st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+                        st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=False,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+                    # Use only the canonical valuation summary, not an analyst target or stale prior quote.
+                    _summary_base=_mia_num((_ccval_summary or {}).get("base_price"))
+                    _base_value=_summary_base if np.isfinite(_summary_base) else _ccbase
                     _market_ok=np.isfinite(price) and price>0
-                    _base_ok=np.isfinite(_ccbase)
+                    _base_ok=np.isfinite(_base_value) and _base_value>0
                     _market_reference=display_price(price,ticker) if _market_ok else "Unavailable"
-                    _base_reference=display_price(_ccbase,ticker) if _base_ok else "Unavailable"
-                    _gap=(_ccbase/price-1)*100 if _market_ok and _base_ok else np.nan
+                    _base_reference=display_price(_base_value,ticker) if _base_ok else "Unavailable"
+                    _gap=(_base_value/price-1)*100 if _market_ok and _base_ok else np.nan
                     _gap_text=f"{_gap:+.1f}%" if np.isfinite(_gap) else "Unavailable"
                     _attention_count=len(_attention) if isinstance(_attention,(list,tuple,set)) else (1 if _attention else 0)
-                    _status=("Attention conditions require review" if _attention_count else "Review the assumptions behind the base case")
-                    if not _base_ok: _status="Base valuation unavailable; inspect model inputs"
+                    _status=("Review current attention conditions" if _attention_count else "Review base-case assumptions")
+                    if not _base_ok: _status="Verified base valuation unavailable; inspect model inputs"
                     st.markdown(
-                        '<div class="v23846-metrics">'
-                        f'<div class="v23846-metric"><div class="k">MARKET PRICE</div><div class="v">{html.escape(_market_reference)}</div></div>'
-                        f'<div class="v23846-metric"><div class="k">AXÍA BASE CASE</div><div class="v">{html.escape(_base_reference)}</div></div>'
-                        f'<div class="v23846-metric"><div class="k">VALUATION GAP</div><div class="v">{html.escape(_gap_text)}</div></div>'
+                        '<div class="v23848-metrics">'
+                        f'<span class="v23848-metric">MARKET PRICE &nbsp;<b>{html.escape(_market_reference)}</b></span>'
+                        f'<span class="v23848-metric">AXÍA BASE CASE &nbsp;<b>{html.escape(_base_reference)}</b></span>'
+                        f'<span class="v23848-metric">VALUATION GAP &nbsp;<b>{html.escape(_gap_text)}</b></span>'
                         '</div>'
-                        f'<div class="v23846-note"><b>Thesis focus:</b> {html.escape(_status)}. '
-                        'Primary valuation swing factor is not displayed until supported by model sensitivity calculations.</div>'
-                        '<div class="v23846-source">Model-derived valuation gap, not a price prediction. Market price and model assumptions may differ in timestamp.</div>',
+                        f'<div class="v23848-summary"><b>Thesis focus:</b> {html.escape(_status)}.</div>'
+                        '<div class="v23848-source">Model-derived valuation gap, not a price prediction. No swing factor shown without validated sensitivity data.</div>',
                         unsafe_allow_html=True
                     )
 
