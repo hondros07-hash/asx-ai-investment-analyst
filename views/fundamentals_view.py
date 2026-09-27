@@ -215,7 +215,7 @@ def render(ticker):
 /* Fundamentals-only issuer header; global banner/sidebar untouched. */
 .st-key-axia_fund_issuer{background:#fff;border:1px solid #d9e5f3;border-radius:9px;padding:12px 17px 19px;margin-bottom:0}
 /* Tighten only the gap between the issuer banner and Fundamentals navigation. */
-.st-key-axia_fund_workspace [data-testid="stTabs"]{margin-top:-36px!important}
+.st-key-axia_fund_workspace [data-testid="stTabs"]{margin-top:-31px!important}
 .st-key-axia_fund_workspace [data-testid="stTabs"] [data-baseweb="tab-list"]{margin-top:0!important}
 .st-key-axia_fund_issuer [data-testid="stHorizontalBlock"]{align-items:center}
 .st-key-axia_fund_issuer [data-testid="stVerticalBlock"]{gap:0!important}
