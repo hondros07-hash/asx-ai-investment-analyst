@@ -13,6 +13,7 @@ from services.fundamentals_integrity_engine import validate, summary
 from services.fundamentals_statement_view_engine import display_frame, row_trend, statement_table
 from services.advanced_fundamental_ratios_engine import compute as advanced_ratios, METRICS as ADVANCED_GROUPS, PERCENT as ADVANCED_PERCENT, DAYS as ADVANCED_DAYS
 from services.earnings_quality_engine import calculate as earnings_quality, export_rows as earnings_export
+from services.fundamentals_performance_chart_engine import performance as financial_performance
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -211,6 +212,31 @@ def _render_workspace(ticker):
    try: chart_data=load(ticker,"Quarterly (8Q)")
    except Exception: chart_data=data
    st.caption("TTM selected: charts show reported quarterly history where available; this is not a TTM trend.")
+  performance_rows=financial_performance(chart_data)
+  st.markdown("### Financial Performance Intelligence")
+  st.caption("Grouped reported financial metrics and separate percentage-margin trends. No interpolation; unavailable inputs remain blank.")
+  if len(performance_rows)<2:
+   st.info("At least two comparable periods are required for the combined performance charts.")
+  else:
+   labels=[r["Period"] for r in performance_rows]
+   st.markdown("**Revenue, operating income, net income & free cash flow**")
+   fig=go.Figure()
+   for metric,color in (("Revenue","#173b63"),("Operating income","#178d67"),("Net income","#a7cb2b"),("Free cash flow","#35465d")):
+    fig.add_trace(go.Bar(name=metric,x=labels,y=[r[metric] for r in performance_rows],marker_color=color,hovertemplate="%{x}<br>%{y:,.2f}<extra>"+metric+"</extra>"))
+   fig.update_layout(barmode="group",height=365,margin=dict(l=8,r=8,t=16,b=42),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.15),xaxis=dict(type="category",tickangle=-25),yaxis=dict(automargin=True,zeroline=True))
+   st.plotly_chart(fig,use_container_width=True,key="axia_fund_combined_performance")
+   st.caption("Monetary units: "+str(chart_data.get("currency") or "Unconfirmed")+" · Financial-statement values are provider-transcribed, not filing-verified.")
+   st.markdown("**Operating and net income margins**")
+   fig=go.Figure()
+   for metric,color in (("Operating margin","#178d67"),("Net income margin","#a7cb2b")):
+    fig.add_trace(go.Scatter(name=metric,x=labels,y=[r[metric] for r in performance_rows],mode="lines+markers",line=dict(color=color,width=3),marker=dict(size=7),connectgaps=False,hovertemplate="%{x}<br>%{y:.2f}%<extra>"+metric+"</extra>"))
+   fig.update_layout(height=315,margin=dict(l=8,r=8,t=16,b=42),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.15),xaxis=dict(type="category",tickangle=-25),yaxis=dict(title="Margin (%)",ticksuffix="%",automargin=True,zeroline=True))
+   st.plotly_chart(fig,use_container_width=True,key="axia_fund_margin_performance")
+   with st.expander("Performance data table and export",expanded=False):
+    df=pd.DataFrame(performance_rows)
+    st.dataframe(df,hide_index=True,use_container_width=True)
+    st.download_button("Export financial performance CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_financial_performance.csv",mime="text/csv",key="axia_fund_performance_export")
+  st.markdown("### Individual financial trends")
   pairs=(("Income Statement","Revenue"),("Income Statement","Net Income"),("Cash Flow","Operating Cash Flow"),("Cash Flow","Free Cash Flow"))
   for i in range(0,4,2):
    cols=st.columns(2)
