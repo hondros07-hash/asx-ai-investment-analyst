@@ -4208,7 +4208,7 @@ rv=rsi(close); rv=float(rv.iloc[-1]) if len(rv) and pd.notna(rv.iloc[-1]) else n
 
 # Browser-tab branding is intentionally static in V19.8: Axía + Parthenon icon.
 
-if page not in {"Dashboard","Company Search","Company Command Centre","About"}:
+if page not in {"Dashboard","Company Search","Company Command Centre","About","Our Mission"}:
     st.title("Axía")
     st.caption("V20.7.3.1 • Axía • Company Search Header & Button Fix")
 
