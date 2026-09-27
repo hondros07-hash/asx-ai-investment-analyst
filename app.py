@@ -8554,7 +8554,7 @@ elif page=="Company Command Centre":
                     _sc=(f"Market price: {_market_reference} · AXÍA model base case: {_base_reference}. "
                          + _sc + " Reverse expectations require a validated model and explicit assumptions.")
                     st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
-                        st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+                    st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
 
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
