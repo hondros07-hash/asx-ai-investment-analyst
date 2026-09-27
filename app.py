@@ -8567,12 +8567,49 @@ elif page=="Company Command Centre":
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
         # V23.8.4.8 — compact card: one header row and one content block.
         st.markdown("""<style>
+        /* V23.8.4.14 — equal-height paired cards, scoped to this row only. */
         .st-key-v23841_widget_row { margin-top:22px !important; }
-        .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
+        .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] {
+            align-items:stretch !important;
+        }
+        .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            display:flex !important; flex-direction:column !important;
+            align-self:stretch !important;
+        }
+        .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            flex:1 !important; height:100% !important;
+        }
+        .st-key-v23841_widget_row .v21290-bottom,
+        .st-key-v23841_widget_row .st-key-v23841_scenario_card {
+            min-height:128px !important; height:100% !important;
+            max-height:none !important; box-sizing:border-box !important;
+            border:1px solid #d8e5f2 !important; border-radius:8px !important;
+            background:#fff !important; padding:10px 12px !important;
+            overflow:visible !important;
+        }
+        .st-key-v23841_widget_row .v21290-bottom {
+            display:flex !important; flex-direction:column !important;
+        }
+        .st-key-v23841_widget_row .v21290-stats {
+            flex:1; align-items:center;
+        }
+        .st-key-v23841_widget_row .v21290-bottom-title {
+            margin-bottom:8px !important;
+        }
+        .st-key-v23841_widget_row .v23848-metrics {
+            gap:5px 14px !important;
+        }
+        .st-key-v23841_widget_row .v23848-summary {
+            margin-top:5px !important;
+        }
+        .st-key-v23841_widget_row .v23848-source {
+            margin-top:3px !important;
+        }
+        .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:center !important; }
         .st-key-v23841_scenario_card {
             background:#fff; border:1px solid #d8e5f2; border-radius:8px;
-            padding:7px 11px 9px !important; min-height:112px !important;
-            height:auto !important; max-height:none !important; box-sizing:border-box;
+            padding:10px 12px !important; min-height:128px !important;
+            height:100% !important; max-height:none !important; box-sizing:border-box;
             overflow:visible !important;
         }
         .st-key-v23841_scenario_card > [data-testid="stVerticalBlock"] {
