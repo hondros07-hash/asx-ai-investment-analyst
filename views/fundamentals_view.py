@@ -14,7 +14,12 @@ def fmt(v,ratio=False,eps=False):
  return f"{v:,.2f}"
 
 def render(ticker):
- st.header("Fundamentals | Financial Intelligence")
+ st.markdown("<style>\n.st-key-axia_fund_workspace [data-testid=\"stVerticalBlock\"]{gap:.55rem}\n.st-key-axia_fund_workspace [data-baseweb=\"tab-list\"]{border-bottom:1px solid #d9e5f3;gap:10px}\n.st-key-axia_fund_workspace [data-baseweb=\"tab\"]{color:#47617d;font-weight:650;padding:8px}\n.st-key-axia_fund_workspace [aria-selected=\"true\"]{color:#0868d8!important;border-bottom-color:#0868d8!important}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"]{background:#fff;border:1px solid #d9e5f3;border-radius:10px;overflow:hidden;margin-bottom:8px}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"] summary{background:#f6f9fe;color:#173b63;font-weight:750;padding:10px 14px}\n.st-key-axia_fund_workspace [data-testid=\"stDataFrame\"]{border:1px solid #e0e9f3;border-radius:8px;overflow:hidden}\n.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-checked=\"true\"],.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-pressed=\"true\"]{background:#0868d8!important;color:white!important;border-color:#0868d8!important}\n</style>",unsafe_allow_html=True)
+ with st.container(key="axia_fund_workspace"):
+  _render_workspace(ticker)
+
+def _render_workspace(ticker):
+ st.markdown("<div style=\"background:white;border:1px solid #d9e5f3;border-radius:12px;padding:16px 20px;margin-bottom:12px\"><div style=\"color:#0868d8;font-size:11px;font-weight:800;letter-spacing:.1em\">AXÍA / COMPANY COMMAND CENTRE / FUNDAMENTALS</div><h2 style=\"margin:5px 0;color:#142d4d\">Financial Intelligence</h2><p style=\"margin:0;color:#60758f;font-size:12px\">Three-statement history, ratios and sector-adaptive research.</p></div>",unsafe_allow_html=True)
  st.caption("Historical financial statements, derived ratios and sector-specific disclosures. Provider data is not an audited filing.")
  frequency=st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  try: data=load(ticker,frequency or "Annual (5Y)")
@@ -23,7 +28,7 @@ def render(ticker):
   st.caption(f"Provider error: {type(exc).__name__}")
   return
  currency=data["currency"]
- st.caption(f"Ticker: {ticker} · Reporting currency: {currency} · Source: {data['provider']}")
+ st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
  for issue in data["quality"]: st.warning(issue)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:

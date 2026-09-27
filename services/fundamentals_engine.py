@@ -146,7 +146,7 @@ def load(ticker, frequency="Annual (5Y)"):
   else:
    data["periods"]=[]
    data["quality"].append("TTM requires four complete quarterly reporting periods.")
- data["category"]=category(meta)
+ # Drop columns for which every statement line is unavailable; never show an empty year.\n if frequency!="TTM":\n  usable=[p for p in data["periods"] if any(values.get(p) is not None for table in data["statements"].values() for values in table.values())]\n  data["periods"]=usable\n  for table in data["statements"].values():\n   for values in table.values():\n    for p in list(values):\n     if p not in usable: del values[p]\n data["category"]=category(meta)
  data["provider"]="Yahoo Finance via yfinance; provider-transcribed figures, not independently audited."
  data["filing_url"]=meta.get("website") or ""
  derive_input={k:data["statements"][k] for k in data["statements"]}
