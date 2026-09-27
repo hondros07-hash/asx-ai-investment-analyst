@@ -43,7 +43,7 @@ def assess(data):
     growth = revenue/prev_revenue-1 if _finite(revenue) and _finite(prev_revenue) and prev_revenue>0 else None
     # Bank/credit models require regulatory and loan-book disclosures unavailable in generic statements.
     # Do not substitute conventional current ratios or debt/equity for bank capital adequacy.
-    special = sector in ("bank","bnpl","resources")
+    special = sector in ("bank","bnpl","resources","airline")
     evidence = {
       "Profitability":[("Operating margin",margin,lambda v:_scale(v,-.15,.25)),
                        ("Net margin",net_margin,lambda v:_scale(v,-.15,.20))],
@@ -82,8 +82,9 @@ def assess(data):
         notes.append("Sector-specific operating or regulatory metrics are not verified; generic ratios cannot establish complete sector financial health.")
     if data.get("frequency")=="TTM":
         notes.append("TTM flows and latest balance-sheet stocks use different measurement bases.")
-    score=round(earned/covered) if covered>=60 else None
-    if score is None: notes.append("Insufficient coverage (minimum 60%) to publish a composite score.")
+    score=round(earned/covered) if covered>=60 and sector!="airline" else None
+    if sector=="airline": notes.append("Airline composite withheld: sector-specific operating, fleet and financing evidence is not integrated; component ratios remain illustrative.")
+    if score is None and sector!="airline": notes.append("Insufficient coverage (minimum 60%) to publish a composite score.")
     # Confidence reflects coverage and provenance; never equate provider coverage with audit verification.
     confidence=round(coverage*.65)
     return {"score":score,"confidence":confidence,"coverage":coverage,"components":components,
