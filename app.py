@@ -8513,16 +8513,16 @@ elif page=="Company Command Centre":
         # V23.8.4.1 — explicit 22px separation and a true in-card action.
         st.markdown("""<style>
         .st-key-v23841_widget_row { margin-top:22px !important; }
-        /* Both cards use the same explicit box height; no percentage-height feedback. */
+        /* Compact, matching cards: fixed box dimensions without percent-height feedback. */
         .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
         .st-key-v23841_widget_row [data-testid="column"]:first-child .v21290-bottom {
-            height:176px !important; min-height:176px !important; max-height:176px !important;
+            height:112px !important; min-height:112px !important; max-height:112px !important;
             overflow:hidden !important;
         }
         .st-key-v23841_scenario_card {
             background:#fff; border:1px solid #d8e5f2; border-radius:8px;
-            padding:7px 11px 8px; height:176px !important; min-height:176px !important;
-            max-height:176px !important; box-sizing:border-box; overflow:hidden;
+            padding:7px 11px 6px; height:112px !important; min-height:112px !important;
+            max-height:112px !important; box-sizing:border-box; overflow:hidden;
         }
         .st-key-v23841_scenario_card .v21290-bottom {
             border:0 !important; border-radius:0 !important; padding:0 !important;
@@ -8534,11 +8534,11 @@ elif page=="Company Command Centre":
         }
         .st-key-v23841_scenario_card [data-testid="stButton"] { margin-top:auto !important; }
         .st-key-v23841_scenario_card .v21290-scenario {
-            max-height:77px; overflow-y:auto; overflow-wrap:anywhere;
+            max-height:42px; overflow-y:auto; overflow-wrap:anywhere;
         }
         .st-key-v23841_scenario_card [data-testid="stButton"] { text-align:right; }
         .st-key-v23841_scenario_card [data-testid="stButton"] button {
-            width:auto !important; min-height:24px !important; height:24px !important;
+            width:auto !important; min-height:20px !important; height:20px !important;
             padding:0 9px !important; border:0 !important; background:transparent !important;
             color:#086ee8 !important; font-size:10px !important; font-weight:750 !important;
             box-shadow:none !important;
