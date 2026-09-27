@@ -14,7 +14,7 @@ def fmt(v,ratio=False,eps=False):
  return f"{v:,.2f}"
 
 def render(ticker):
- st.header("Fundamentals | Financial Intelligence")
+ st.markdown("<div style=\"background:white;border:1px solid #d9e5f3;border-radius:12px;padding:16px 20px;margin-bottom:12px\"><div style=\"color:#0868d8;font-size:11px;font-weight:800;letter-spacing:.1em\">AXÍA / COMPANY COMMAND CENTRE / FUNDAMENTALS</div><h2 style=\"margin:5px 0;color:#142d4d\">Financial Intelligence</h2><p style=\"margin:0;color:#60758f;font-size:12px\">Three-statement history, ratios and sector-adaptive research.</p></div>",unsafe_allow_html=True)
  st.caption("Historical financial statements, derived ratios and sector-specific disclosures. Provider data is not an audited filing.")
  frequency=st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  try: data=load(ticker,frequency or "Annual (5Y)")
@@ -23,7 +23,7 @@ def render(ticker):
   st.caption(f"Provider error: {type(exc).__name__}")
   return
  currency=data["currency"]
- st.caption(f"Ticker: {ticker} · Reporting currency: {currency} · Source: {data['provider']}")
+ st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
  for issue in data["quality"]: st.warning(issue)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
