@@ -8200,6 +8200,9 @@ elif page=="Company Command Centre":
         [class*="st-key-v2373_cat_card_"] [data-testid="stVerticalBlock"]{gap:0!important}
         [class*="st-key-v2373_cat_card_"] .stButton{display:flex!important;justify-content:flex-end!important}
         [class*="st-key-v2373_cat_card_"] .stButton>button{width:auto!important;min-height:22px!important;height:22px!important;padding:0 2px!important;border:0!important;background:transparent!important;color:#086ee8!important;box-shadow:none!important;font-size:8.5px!important;font-weight:900!important}
+        /* V23.8.2: footer navigation is scoped to the catalyst card only. */
+        [class*="st-key-v2373_cat_card_"]{position:relative!important;padding-bottom:35px!important}
+        [class*="st-key-v2373_cat_card_"] [class*="st-key-v21290_nav_cat_"]{position:absolute!important;right:12px!important;bottom:8px!important;z-index:2!important}
         .v2373-cat-body{margin-top:2px;border-top:1px solid #dfe8f2;min-width:0;overflow:hidden}
         .v2373-cat-body .v21290-row{grid-template-columns:57px minmax(0,1fr) 15px;min-width:0}
         /* V23.8.1: scoped footer link; other cards retain their original layout. */
@@ -8241,7 +8244,12 @@ elif page=="Company Command Centre":
         _v21291_prov=announcement_provenance_global(
             _prov_ticker,_v21291_coverage, exchange=_prov_exchange, country=_prov_country
         )
-        _cat_df=_cccatalysts.head(5).copy() if _cccatalysts is not None and not _cccatalysts.empty else pd.DataFrame()
+        # V23.8.2: evidence-gated, ticker-scoped catalyst preview.
+        from services.catalyst_intelligence_engine import build_catalyst_preview
+        _cat_events=build_catalyst_preview(ticker,stored_rows=_cccatalysts,limit=5)
+        _cat_df=pd.DataFrame([{"event":e["event"],"event_date":e["event_date"],
+            "status":e["date_status"],"category":e["category"],"source":e["source"],
+            "date_revised":e["date_revised"]} for e in _cat_events])
 
         def _v21290_pick(row, names, default=""):
             for n in names:
@@ -8469,12 +8477,10 @@ elif page=="Company Command Centre":
                         _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main">{html.escape(_event)}</span><span class="status {"done" if _done else ""}">{"●" if _done else "○"}</span></div>')
                 _body="".join(_rows) if _rows else '<div class="v21290-empty">No stored catalysts yet. Add evidence in Catalyst Calendar.</div>'
                 with st.container(border=True,key=f"v2373_cat_card_{ticker}"):
-                    _ch1,_ch2=st.columns([4.5,1],gap="small",vertical_alignment="center")
-                    with _ch1: st.markdown('<div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div>',unsafe_allow_html=True)
-                    with _ch2:
-                        if st.button("View all →",key=f"v21290_nav_cat_{ticker}"):
-                            _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
+                    st.markdown('<div class="v21290-title"><span class="v21290-icon">✿</span>Upcoming Catalysts</div>',unsafe_allow_html=True)
                     st.markdown(f'<div class="v2373-cat-body">{_body}</div>',unsafe_allow_html=True)
+                    if st.button("View all →",key=f"v21290_nav_cat_{ticker}"):
+                        _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
             with _m4:
                 _attention=[]
                 if _ccattention is not None and not _ccattention.empty:
