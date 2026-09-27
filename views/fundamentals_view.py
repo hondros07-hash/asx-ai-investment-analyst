@@ -37,7 +37,9 @@ def _render_workspace(ticker):
  sector=data.get("category") or category(data.get("meta") or {},ticker)
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
- st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
+ st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Trading ticker: {ticker} · Provider financial currency: {currency} · Provider-transcribed; not independently audited")
+ if str(ticker).upper()=="QAN.MU": st.info("QAN.MU is a secondary Munich trading listing of Qantas. Issuer disclosures are routed to primary ASX listing QAN.AX; provider financial figures below are not filing-reconciled.")
+ if currency=="Unconfirmed": st.warning("Financial reporting currency is unconfirmed by the current provider response. Monetary values are shown in provider units; do not assume AUD or EUR until reconciled to a dated filing.")
  for issue in data.get("quality",[]): st.warning(issue)
  periods=data.get("periods",[])
  negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
@@ -63,7 +65,7 @@ def _render_workspace(ticker):
    with strong_label:
     st.markdown('<p style="margin:0;text-align:right;color:#60758f;font-size:12px;line-height:1.6">100 · Financial strength</p>',unsafe_allow_html=True)
   else:
-   st.info("Composite indicator withheld until at least 60% of the weighted evidence is available.")
+   st.info("Composite indicator unavailable: "+("airline-specific evidence has not been integrated and verified." if sector=="airline" else "at least 60% of weighted evidence is required."))
   c1,c2=st.columns(2)
   c1.metric("Data coverage",str(health["coverage"])+"%")
   c2.metric("Data confidence",str(health["confidence"])+"%")
@@ -123,7 +125,7 @@ def _render_workspace(ticker):
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Issuer-specific operating measures are separate from generic financial statement ratios.")
-  st.markdown("**Issuer operating KPIs · Evidence register**")
+  st.markdown("**Issuer operating KPIs · Verification requirements (not a live filing feed)**")
   st.dataframe(pd.DataFrame(kpi_rows(sector)),hide_index=True,use_container_width=True)
   destinations=disclosure_destinations(ticker)
   if destinations:
@@ -132,7 +134,7 @@ def _render_workspace(ticker):
     st.link_button(destination["label"]+" ↗",destination["url"])
     st.caption(destination["status"])
   else: st.caption("No validated official disclosure destination configured for this listing.")
-  st.caption("These links are research starting points, not verified citations for any individual KPI. Reporting dates, values and source pages remain unverified.")
+  st.caption("Disclosure links are discovery destinations, not citations for individual KPI values. No issuer KPI values are extracted or verified here.")
   source=data
   fallback=False
   if not periods and frequency=="TTM":
@@ -156,11 +158,11 @@ def _render_workspace(ticker):
    st.info("Issuer-specific operating KPIs require official disclosures; they are not inferred from generic statement fields.")
    st.caption("Definitions and required evidence are listed above; values will remain unavailable until verified against a dated filing.")
   if p:
-   st.caption("Financial statement metrics · "+str(p)+" · "+str(source.get("currency","Unconfirmed"))+" · "+str(source.get("frequency","")))
-   rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Provider statement / derived" if v is not None else "Unavailable from compatible components"} for k,v in standard.items()]
+   st.caption("Provider-transcribed financial statement metrics (not issuer-verified) · "+str(p)+" · Currency: "+str(source.get("currency","Unconfirmed"))+" · "+str(source.get("frequency","")))
+   rows=[{"Metric":k,"Value":fmt(v,ratio=k in ("Revenue Growth","Operating Margin","Return on Equity")),"Evidence":"Provider-transcribed / calculated; filing unverified" if v is not None else "Unavailable from compatible components"} for k,v in standard.items()]
    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
   else: st.info("No compatible annual or quarterly statements are available from this provider. No values have been estimated.")
-  st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs.")
+  st.caption("Statement-derived ratios are not substitutes for issuer-disclosed operational KPIs. Values may use different definitions from issuer-reported underlying metrics.")
  with tabs[3]:
   st.subheader("Historical financial trends")
   chart_data=data
