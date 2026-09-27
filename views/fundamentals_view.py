@@ -315,18 +315,18 @@ def _render_workspace(ticker):
  for statement_tab, statement_group in ((1,"Income Statement"),(2,"Balance Sheet"),(3,"Cash Flow")):
   with tabs[statement_tab]:
     st.caption("Provider-transcribed figures, not reconciled to issuer filings. Monetary units: "+currency+". EPS is per share; missing values are not estimated.")
-    mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode")
+    mode=st.segmented_control("Statement display",["Reported values","Period growth","Common size"],default="Reported values",key="axia_statement_mode_"+str(statement_tab))
     mode=mode or "Reported values"
     if mode=="Period growth":
      st.caption("Change against the preceding available reporting period. Annual = annual change; quarterly = sequential quarter change, not year-on-year. Non-positive or missing bases are withheld.")
     elif mode=="Common size":
      st.caption("Income statement: % of revenue · Balance sheet: % of total assets · Cash flow: % of operating cash flow. Non-positive or missing denominators are withheld; EPS and share counts are excluded.")
     col_a,col_b=st.columns(2)
-    with col_a: show_sparks=st.checkbox("Show inline sparklines",value=True,key="axia_statement_inline_sparks")
-    with col_b: reverse_order=st.checkbox("Oldest period first",value=False,key="axia_statement_reverse")
+    with col_a: show_sparks=st.checkbox("Show inline sparklines",value=True,key="axia_statement_inline_sparks_"+str(statement_tab))
+    with col_b: reverse_order=st.checkbox("Oldest period first",value=False,key="axia_statement_reverse_"+str(statement_tab))
     for group,table in data["statements"].items():
       if group != statement_group: continue
-     with st.expander(group,expanded=True):
+      with st.expander(group,expanded=True):
       if not data["periods"]: st.info("No complete periods available.");continue
       df=statement_table(data,group,mode,fmt,reverse=reverse_order,sparklines=show_sparks)
       config={"10Y Trend":st.column_config.ImageColumn("Trend · oldest → newest",width="small",help="Raw reported values; number of periods depends on available data.")} if show_sparks else {}
