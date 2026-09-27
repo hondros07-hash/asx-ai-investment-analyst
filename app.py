@@ -8510,65 +8510,75 @@ elif page=="Company Command Centre":
                 st.markdown(f'<div class="v21290-card v21290-attn"><div class="v21290-title"><span class="v21290-icon">▲</span>What Requires My Attention?</div>{_ah}</div>',unsafe_allow_html=True)
 
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
-        # V23.8.4.1 — explicit 22px separation and a true in-card action.
+        # V23.8.4.6 — compact scenario card, with the action in the header.
         st.markdown("""<style>
         .st-key-v23841_widget_row { margin-top:22px !important; }
-        /* Compact, matching cards: fixed box dimensions without percent-height feedback. */
         .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:flex-start !important; }
         .st-key-v23841_widget_row [data-testid="column"]:first-child .v21290-bottom {
-            height:112px !important; min-height:112px !important; max-height:112px !important;
-            overflow:hidden !important;
+            min-height:112px !important; height:auto !important; max-height:none !important;
+            overflow:visible !important;
         }
         .st-key-v23841_scenario_card {
             background:#fff; border:1px solid #d8e5f2; border-radius:8px;
-            padding:7px 11px 6px; height:112px !important; min-height:112px !important;
-            max-height:112px !important; box-sizing:border-box; overflow:hidden;
-        }
-        .st-key-v23841_scenario_card .v21290-bottom {
-            border:0 !important; border-radius:0 !important; padding:0 !important;
-            height:auto !important; min-height:0 !important; overflow:visible !important;
+            padding:9px 12px 10px; height:auto !important; min-height:112px !important;
+            max-height:none !important; box-sizing:border-box; overflow:visible !important;
         }
         .st-key-v23841_scenario_card > [data-testid="stVerticalBlock"] {
-            gap:0 !important; height:100% !important; display:flex !important;
-            flex-direction:column !important;
+            gap:0 !important; height:auto !important;
         }
-        .st-key-v23841_scenario_card [data-testid="stButton"] { margin-top:auto !important; }
-        .st-key-v23841_scenario_card .v21290-scenario {
-            max-height:42px; overflow-y:auto; overflow-wrap:anywhere;
+        .st-key-v23841_scenario_card .v23846-title {
+            color:#086ee8; font-size:10.5px; font-weight:950; padding-top:4px;
         }
         .st-key-v23841_scenario_card [data-testid="stButton"] { text-align:right; }
         .st-key-v23841_scenario_card [data-testid="stButton"] button {
-            width:auto !important; min-height:20px !important; height:20px !important;
-            padding:0 9px !important; border:0 !important; background:transparent !important;
+            width:auto !important; min-height:24px !important; height:24px !important;
+            padding:0 5px !important; border:0 !important; background:transparent !important;
             color:#086ee8 !important; font-size:10px !important; font-weight:750 !important;
             box-shadow:none !important;
         }
         .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {
             background:#edf5ff !important; color:#0754b6 !important;
         }
+        .v23846-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+            gap:8px; border-top:1px solid #e4edf7; padding-top:8px; margin-top:3px; }
+        .v23846-metric { min-width:0; }
+        .v23846-metric .k {font-size:7.5px; font-weight:800; color:#67809c;}
+        .v23846-metric .v {font-size:12px; font-weight:900; color:#10264b; margin-top:2px;}
+        .v23846-note {font-size:8.5px; line-height:1.35; color:#45688f; margin-top:7px;}
+        .v23846-source {font-size:7px; color:#7a90a7; margin-top:4px;}
         </style>""",unsafe_allow_html=True)
+
         with st.container(key="v23841_widget_row"):
             _b1,_b2=st.columns([.98,1.78],gap="small")
             with _b1:
                 st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">♙ <span>Position Context (if in Portfolio)</span></div><div class="v21290-stats"><div class="v21290-stat"><div class="k">Shares</div><div class="v">{f"{_qty:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Avg. Cost</div><div class="v">{display_price(_avg,ticker) if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Market Value</div><div class="v">{_cur+f"{_mv:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Unrealised P/L</div><div class="v {"v21261-pos" if np.isfinite(_pnl) and _pnl>=0 else "v21261-neg"}">{f"{_pp:+.1%} ({_cur}{_pnl:+,.0f})" if np.isfinite(_pnl) else "—"}</div></div></div></div>',unsafe_allow_html=True)
             with _b2:
                 with st.container(key="v23841_scenario_card"):
-                    _needs=[]
-                    if np.isfinite(_ccbase): _needs.append(f"support the base valuation case of {display_price(_ccbase,ticker)}")
-                    if _attention: _needs.append("resolve or de-risk the current attention conditions")
-                    _met=[]
-                    if '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
-                        for _,r in _thesis_rows.iterrows():
-                            if str(r.get("status") or "").lower() in {"met","on track","pass","passed","true"}: _met.append(str(r.get("metric") or r.get("condition") or "thesis condition"))
-                    if _met: _needs.append("keep evidenced thesis conditions on track")
-                    _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions before a stronger scenario is supported.")
-                    # V23.8.4: separate observed market price from model-derived scenario.
-                    _market_reference=display_price(price,ticker) if np.isfinite(price) and price>0 else "Unavailable"
-                    _base_reference=display_price(_ccbase,ticker) if np.isfinite(_ccbase) else "Unavailable"
-                    _sc=(f"Market price: {_market_reference} · AXÍA model base case: {_base_reference}. "
-                         + _sc + " Reverse expectations require a validated model and explicit assumptions.")
-                    st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
-                    st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+                    _head_title,_head_action=st.columns([2.2,1],gap="small",vertical_alignment="center")
+                    with _head_title:
+                        st.markdown('<div class="v23846-title">◎ &nbsp;What Would Need to Happen?</div>',unsafe_allow_html=True)
+                    with _head_action:
+                        st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+                    _market_ok=np.isfinite(price) and price>0
+                    _base_ok=np.isfinite(_ccbase)
+                    _market_reference=display_price(price,ticker) if _market_ok else "Unavailable"
+                    _base_reference=display_price(_ccbase,ticker) if _base_ok else "Unavailable"
+                    _gap=(_ccbase/price-1)*100 if _market_ok and _base_ok else np.nan
+                    _gap_text=f"{_gap:+.1f}%" if np.isfinite(_gap) else "Unavailable"
+                    _attention_count=len(_attention) if isinstance(_attention,(list,tuple,set)) else (1 if _attention else 0)
+                    _status=("Attention conditions require review" if _attention_count else "Review the assumptions behind the base case")
+                    if not _base_ok: _status="Base valuation unavailable; inspect model inputs"
+                    st.markdown(
+                        '<div class="v23846-metrics">'
+                        f'<div class="v23846-metric"><div class="k">MARKET PRICE</div><div class="v">{html.escape(_market_reference)}</div></div>'
+                        f'<div class="v23846-metric"><div class="k">AXÍA BASE CASE</div><div class="v">{html.escape(_base_reference)}</div></div>'
+                        f'<div class="v23846-metric"><div class="k">VALUATION GAP</div><div class="v">{html.escape(_gap_text)}</div></div>'
+                        '</div>'
+                        f'<div class="v23846-note"><b>Thesis focus:</b> {html.escape(_status)}. '
+                        'Primary valuation swing factor is not displayed until supported by model sensitivity calculations.</div>'
+                        '<div class="v23846-source">Model-derived valuation gap, not a price prediction. Market price and model assumptions may differ in timestamp.</div>',
+                        unsafe_allow_html=True
+                    )
 
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
