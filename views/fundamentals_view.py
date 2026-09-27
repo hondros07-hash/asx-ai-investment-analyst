@@ -111,8 +111,6 @@ def _financial_overview(data,ticker,currency):
  inc=data["statements"]["Income Statement"];cf=data["statements"]["Cash Flow"];ratios=data.get("ratios",{})
  p=periods[0]
  def v(group,key,period):return group.get(key,{}).get(period)
- st.markdown("### Financial Overview")
- st.caption("Latest reporting period: "+str(p)+" · "+currency+" · Provider-transcribed; not issuer-verified.")
  # Reference-inspired cards: values and growth are drawn exclusively from comparable provider periods.
  def _card_value(value,percent=False):
   if value is None or not isinstance(value,(int,float)) or not math.isfinite(value): return "—"
