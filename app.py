@@ -4688,31 +4688,18 @@ div[data-testid="stFragment"] div[data-testid="stButton"] button[kind="secondary
 </style>
 """,unsafe_allow_html=True)
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False, max_entries=1024)
 def _professional_security_suggestions(term):
-    """Return compact global security labels for the autocomplete component."""
+    """V23.7.22: bounded autocomplete; no quote/history/info probes while typing."""
     term=(term or "").strip()
-    if len(term)<1:
+    if len(term)<2:
         return []
     try:
-        matches=search_securities(term,_search_key)
+        from services.fast_security_search import fast_security_suggestions
+        return fast_security_suggestions(term, _search_key, limit=10)
     except Exception:
         return []
-    if matches is None or matches.empty:
-        return []
-    labels=[]
-    mapping={}
-    for _,r in matches.head(8).iterrows():
-        sym=str(r.get("Symbol","") or "").strip()
-        company=str(r.get("Company","") or "").strip()
-        exchange=str(r.get("Exchange","") or "").strip()
-        country=str(r.get("Country","") or "Global").strip()
-        label=" · ".join(x for x in [sym,company,exchange,country] if x)
-        if label and label not in mapping:
-            mapping[label]=(sym,exchange,country)
-            labels.append(label)
-    # Mapping is reconstructed on selection too; keeping only labels makes this cache safe.
-    return labels
+
 
 def _resolve_professional_search_label(label):
     parts=[x.strip() for x in str(label or "").split(" · ")]
@@ -4741,6 +4728,8 @@ def _home_live_search_fragment():
         label="",
         clear_on_submit=True,
         rerun_on_update=False,
+        debounce=300,
+        min_execution_time=0,
         # V20.7.4.17.2 — Home Search Border Continuity Fix. Keep the exact
         # V20.7.4.17.1 geometry, but paint the outline INSIDE the visible control.
         # This prevents the component frame from clipping the bottom edge. Scoped
