@@ -27,6 +27,24 @@ def fmt(v,ratio=False,eps=False):
 
 def render(ticker):
  st.markdown("<style>\n.st-key-axia_fund_workspace [data-testid=\"stVerticalBlock\"]{gap:.55rem}\n.st-key-axia_fund_workspace [data-baseweb=\"tab-list\"]{border-bottom:1px solid #d9e5f3;gap:10px}\n.st-key-axia_fund_workspace [data-baseweb=\"tab\"]{color:#47617d;font-weight:650;padding:8px}\n.st-key-axia_fund_workspace [aria-selected=\"true\"]{color:#0868d8!important;border-bottom-color:#0868d8!important}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"]{background:#fff;border:1px solid #d9e5f3;border-radius:10px;overflow:hidden;margin-bottom:8px}\n.st-key-axia_fund_workspace [data-testid=\"stExpander\"] summary{background:#f6f9fe;color:#173b63;font-weight:750;padding:10px 14px}\n.st-key-axia_fund_workspace [data-testid=\"stDataFrame\"]{border:1px solid #e0e9f3;border-radius:8px;overflow:hidden}\n.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-checked=\"true\"],.st-key-axia_fund_workspace [data-testid=\"stSegmentedControl\"] button[aria-pressed=\"true\"]{background:#0868d8!important;color:white!important;border-color:#0868d8!important}\n</style>",unsafe_allow_html=True)
+ st.markdown("""<style>
+/* Scoped AXÍA Fundamentals presentation: no changes to global navigation. */
+.st-key-axia_fund_workspace {color:#173b63}
+.st-key-axia_fund_workspace [data-testid="stMetric"]{background:linear-gradient(145deg,#fff,#f7faff);border:1px solid #dce7f2;border-radius:13px;padding:14px 16px;box-shadow:0 3px 12px rgba(20,45,77,.035)}
+.st-key-axia_fund_workspace [data-testid="stMetricLabel"]{color:#60758f;font-size:.8rem;font-weight:650}
+.st-key-axia_fund_workspace [data-testid="stMetricValue"]{color:#142d4d;font-weight:760}
+.st-key-axia_fund_workspace [data-testid="stTabs"] [data-baseweb="tab-list"]{background:#f5f8fc;border:1px solid #e0e9f3;border-radius:11px;padding:4px;gap:3px;overflow-x:auto}
+.st-key-axia_fund_workspace [data-testid="stTabs"] [data-baseweb="tab"]{border-radius:8px;white-space:nowrap;padding:9px 13px;font-size:.86rem}
+.st-key-axia_fund_workspace [data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"]{background:white;color:#0868d8!important;box-shadow:0 1px 5px rgba(20,45,77,.1);border-bottom-color:transparent!important}
+.st-key-axia_fund_workspace [data-testid="stExpander"]{box-shadow:0 2px 10px rgba(20,45,77,.035)}
+.st-key-axia_fund_workspace [data-testid="stExpander"] summary{background:#f8fafd!important;border-bottom:1px solid #e6edf5}
+.st-key-axia_fund_workspace [data-testid="stAlert"]{border-radius:10px;border-width:1px}
+.st-key-axia_fund_workspace [data-testid="stDownloadButton"] button{background:#fff;color:#173b63;border:1px solid #cbd9e9;border-radius:9px;font-weight:650}
+.st-key-axia_fund_workspace [data-testid="stDownloadButton"] button:hover{border-color:#0868d8;color:#0868d8}
+.st-key-axia_fund_workspace h3{color:#142d4d;letter-spacing:-.025em}
+.st-key-axia_fund_workspace [data-testid="stPlotlyChart"]{background:white;border:1px solid #e0e9f3;border-radius:12px;padding:7px}
+@media(max-width:800px){.st-key-axia_fund_workspace [data-testid="stMetric"]{padding:10px}.st-key-axia_fund_workspace [data-baseweb="tab"]{font-size:.78rem!important}}
+</style>""",unsafe_allow_html=True)
  with st.container(key="axia_fund_workspace"):
   _render_workspace(ticker)
 
@@ -310,11 +328,14 @@ def _render_workspace(ticker):
     st.caption("Receivables and inventory ratios use reported revenue, and may not be comparable for banks, BNPL companies or issuers with different business models.")
     st.caption("No official filing reconciliation, segment-level cash-flow bridge or issuer-specific accounting adjustments are claimed. Missing values remain unavailable.")
  with tabs[5]:
-  st.subheader("Data lineage & verification")
+  st.markdown('<div style="background:linear-gradient(110deg,#102f51,#1a507b);color:white;border-radius:14px;padding:21px 24px;margin:2px 0 17px;box-shadow:0 7px 20px rgba(16,47,81,.13)"><div style="font-size:11px;font-weight:800;letter-spacing:.13em;color:#9ed1f3">AXÍA · RESEARCH TRANSPARENCY</div><div style="font-size:23px;font-weight:750;letter-spacing:-.025em;margin-top:5px">Data Confidence &amp; Verification</div><div style="font-size:12px;color:#d4e5f4;margin-top:5px">Traceable financial inputs · Internal consistency · Source limitations</div></div>',unsafe_allow_html=True)
   checks=validate(data)
   counts=summary(checks)
   st.markdown("**Statement integrity diagnostics**")
   st.caption("Automated checks assess internal consistency only; a pass is not an audit or issuer-filing verification.")
+  summary_cols=st.columns(4)
+  for col,label,status in zip(summary_cols,("Checks passed","Mismatches","Definition differences","Not testable"),("Pass","Mismatch","Definition differs","Not testable")):
+   with col: st.metric(label,counts.get(status,0))
   st.caption(" · ".join(k+": "+str(v) for k,v in counts.items() if v))
   flagged=[r for r in checks if r["Status"] in ("Mismatch","Definition differs","Invalid","Unconfirmed","Provisional")]
   if flagged:
