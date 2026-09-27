@@ -133,7 +133,9 @@ def _render_workspace(ticker):
  sector=data.get("category") or category(data.get("meta") or {},ticker)
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
+ is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
  _issuer_header(data,ticker,currency)
+ if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
  quality_notes=list(data.get("quality",[]))
  if currency=="Unconfirmed":
   quality_notes.insert(0,"Provider statement currency is unconfirmed. "+("Qantas issuer reports in AUD, but QAN.MU provider monetary units are not verified. " if is_qantas else "")+"Do not interpret or convert monetary values until reconciled to a dated issuer filing.")
