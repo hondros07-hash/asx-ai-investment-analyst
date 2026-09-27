@@ -4003,33 +4003,34 @@ if page in _chr_company_pages:
     _chr_page_title="AXÍA | "+str(_title_company or "Company Command Centre")
 st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide")
 
-# V23.8.4.9 — Keep the browser tab branded, including after Streamlit reruns.
-# The title is resolved above from the active route and selected company.
-# A zero-height component updates the parent document (not the iframe title).
-# Observe title changes because Streamlit's frontend may restore its own suffix.
-components.html(
-    """<script>
+# V23.8.4.11 — Single title controller, including Streamlit frontend rewrites.
+# Observe <head>, not just the original <title> node: Streamlit may replace it.
+# Keep one controller so the enriched company name can supersede the early title.
+def _axia_browser_title(title):
+    _script = """
     (() => {
-      const desired = """ + json.dumps(_chr_page_title, ensure_ascii=False) + """;
+      const desired = TITLE_JSON;
       try {
-        const doc = window.parent.document;
+        const host = window.parent;
+        const doc = host.document;
+        host.__axiaDesiredTitle = desired;
+        if (host.__axiaTitleObserver) host.__axiaTitleObserver.disconnect();
         const apply = () => {
-          if (doc.title !== desired) doc.title = desired;
+          const next = host.__axiaDesiredTitle;
+          if (next && doc.title !== next) doc.title = next;
         };
         apply();
-        const titleNode = doc.querySelector("head > title");
-        if (titleNode) {
-          const observer = new MutationObserver(apply);
-          observer.observe(titleNode, {childList: true, characterData: true, subtree: true});
-        }
+        const observer = new MutationObserver(apply);
+        observer.observe(doc.head, {childList: true, characterData: true, subtree: true});
+        host.__axiaTitleObserver = observer;
       } catch (_) {
-        // Browser sandbox restrictions must not affect page rendering.
+        // The native st.set_page_config title remains the fallback.
       }
     })();
-    </script>""",
-    height=0,
-    scrolling=False,
-)
+    """.replace("TITLE_JSON", json.dumps(str(title), ensure_ascii=False))
+    components.html("<script>" + _script + "</script>", height=0, scrolling=False)
+
+_axia_browser_title(_chr_page_title)
 
 
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
@@ -7266,13 +7267,8 @@ elif page=="Company Command Centre":
         _resolved_company_name=str(_ccname or "").strip()
         if _resolved_company_name.upper() not in _invalid_names and _resolved_company_name:
             _resolved_tab_title="AXÍA | "+_resolved_company_name
-            components.html(
-                "<script>try { window.parent.document.title = " +
-                json.dumps(_resolved_tab_title, ensure_ascii=False) +
-                "; } catch (_) {}</script>",
-                height=0,
-                scrolling=False,
-            )
+            st.set_page_config(page_title=_resolved_tab_title)
+            _axia_browser_title(_resolved_tab_title)
         # V21.2.15 — always query the exact Yahoo listing once for current identity, logo and market-session metadata.
         # Search quote payloads can expose logoUrl/marketState even when Ticker.info is otherwise complete.
         _quote_probe_ok=False
