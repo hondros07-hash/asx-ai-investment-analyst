@@ -4179,7 +4179,7 @@ _PAGE_SUBTITLES={
  "Trade Centre":"Paper-trade planning and execution workflow",
 }
 _shell_sub=_PAGE_SUBTITLES.get(page,"Axía research workspace")
-if page not in {"Dashboard","Company Search","Company Command Centre","About"}:
+if page not in {"Dashboard","Company Search","Company Command Centre"} and page not in _CHR_LEGAL_PAGES and page not in _CHR_AUTH_PAGES:
     st.markdown(f"""<div class="mia-shell-head">
 <div><div class="mia-eyebrow">Axía / {primary}</div>
 <div class="mia-shell-title">{page}</div><div class="mia-shell-sub">{_shell_sub}</div></div>
@@ -9060,50 +9060,8 @@ elif page=="About":
     render_about_us()
 
 elif page=="Our Mission":
-    st.markdown("""
-    <style>
-    .axia-mission{max-width:1060px;margin:12px auto 30px;color:#243b59}
-    .axia-mission-hero{background:#fff;border:1px solid #d8e5f2;border-radius:16px;padding:38px 42px;text-align:center}
-    .axia-mission-eyebrow{color:#086ee8;font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
-    .axia-mission h1{font-size:38px;color:#086ee8;margin:12px 0}
-    .axia-mission h2{font-size:22px;color:#183b68;margin:32px 0 12px}
-    .axia-mission-lead{font-size:18px;line-height:1.65;max-width:800px;margin:12px auto;color:#385777}
-    .axia-mission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
-    .axia-mission-tile{background:#fff;border:1px solid #d8e5f2;border-radius:12px;padding:20px}
-    .axia-mission-tile h3{font-size:16px;color:#086ee8;margin:0 0 9px}
-    .axia-mission-tile p,.axia-mission-copy{font-size:14px;line-height:1.75;color:#4b6480;margin:0}
-    .axia-mission-path{background:#f1f7ff;border:1px solid #d8e5f2;border-radius:12px;padding:22px;line-height:2;color:#24496f}
-    .axia-mission-close{margin-top:24px;border:1px solid #bdd5f5;background:#f1f7ff;border-radius:12px;padding:22px;text-align:center;font-weight:800;color:#086ee8;font-size:19px}
-    @media(max-width:700px){.axia-mission-hero{padding:25px 17px}.axia-mission h1{font-size:30px}.axia-mission-grid{grid-template-columns:1fr}}
-    </style>
-    <div class="axia-mission">
-      <section class="axia-mission-hero">
-        <div class="axia-mission-eyebrow">Our Mission</div>
-        <h1>All the evidence. A clearer perspective.</h1>
-        <p class="axia-mission-lead">To bring fragmented financial information together into one trusted investment research platform, helping investors understand what matters, evaluate the evidence and make informed decisions with greater clarity and confidence.</p>
-        <p class="axia-mission-copy">One platform. Complete perspective. Less searching. Less noise. More understanding.</p>
-      </section>
-      <h2>Why AXÍA exists</h2>
-      <p class="axia-mission-copy">Investment research is spread across market-data services, company filings, financial news, charting tools, valuation models and portfolio trackers. Moving between disconnected sources creates distraction and makes it harder to understand how new information affects an investment. AXÍA is being built to bring that research together in one connected environment—not to overwhelm investors with more information, but to help them understand it.</p>
-      <div class="axia-mission-tile" style="margin-top:22px;background:#f1f7ff;border-color:#bdd5f5">
-        <h3>20% Experience. 80% Intelligence.</h3>
-        <p>The website makes research accessible. The intelligence behind it does the problem-solving: verifying data, connecting evidence, analysing companies, testing valuations and monitoring the assumptions behind investment decisions. We build the intelligence first, then design the interface that communicates it.</p>
-      </div>
-      <h2>Our five principles</h2>
-      <div class="axia-mission-grid">
-        <div class="axia-mission-tile"><h3>One connected research hub</h3><p>Bring market data, financial statements, official announcements, news, valuations, technical analysis and portfolio context into a coherent workflow.</p></div>
-        <div class="axia-mission-tile"><h3>Evidence before opinion</h3><p>Make important figures traceable to their source, reporting period and methodology. Distinguish verified facts from forecasts, model assumptions and AI interpretation.</p></div>
-        <div class="axia-mission-tile"><h3>Clarity over information overload</h3><p>Surface what matters first, while keeping the underlying documents, calculations and detailed research accessible.</p></div>
-        <div class="axia-mission-tile"><h3>Analysis, not just aggregation</h3><p>Connect business performance, market conditions, valuation, risks and portfolio exposure so investors can understand the relationships.</p></div>
-        <div class="axia-mission-tile"><h3>Continuous accountability</h3><p>Monitor whether new financial results and company developments continue to support the assumptions behind an investment thesis.</p></div>
-      </div>
-      <h2>From information to understanding</h2>
-      <div class="axia-mission-path">Discover a company &rarr; Gather verified evidence &rarr; Analyse the business &rarr; Understand valuation &rarr; Establish a thesis &rarr; Monitor what changes.</div>
-      <h2>How we earn trust</h2>
-      <p class="axia-mission-copy">AXÍA aims to show where important information comes from, when it was updated and how analytical outputs were calculated. Reported figures, modelled valuations, forecasts, stale information and missing data should be clearly distinguished. Where evidence is unavailable or uncertain, the platform should say so rather than inventing a result or presenting an estimate as a fact. These are our design commitments, not a claim that every feature or data source is already complete.</p>
-      <div class="axia-mission-close">AXÍA helps investors make their own decisions. It does not make decisions for them.</div>
-    </div>
-    """,unsafe_allow_html=True)
+    from views.our_mission import render_our_mission
+    render_our_mission()
 
 elif page in {"Privacy","Disclaimer","Terms","Data Sources","Contact"}:
     st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
