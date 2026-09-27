@@ -8510,28 +8510,51 @@ elif page=="Company Command Centre":
                 st.markdown(f'<div class="v21290-card v21290-attn"><div class="v21290-title"><span class="v21290-icon">▲</span>What Requires My Attention?</div>{_ah}</div>',unsafe_allow_html=True)
 
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
-        _b1,_b2=st.columns([.98,1.78],gap="small")
-        with _b1:
-            st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">♙ <span>Position Context (if in Portfolio)</span></div><div class="v21290-stats"><div class="v21290-stat"><div class="k">Shares</div><div class="v">{f"{_qty:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Avg. Cost</div><div class="v">{display_price(_avg,ticker) if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Market Value</div><div class="v">{_cur+f"{_mv:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Unrealised P/L</div><div class="v {"v21261-pos" if np.isfinite(_pnl) and _pnl>=0 else "v21261-neg"}">{f"{_pp:+.1%} ({_cur}{_pnl:+,.0f})" if np.isfinite(_pnl) else "—"}</div></div></div></div>',unsafe_allow_html=True)
-        with _b2:
-            _needs=[]
-            if np.isfinite(_ccbase): _needs.append(f"support the base valuation case of {display_price(_ccbase,ticker)}")
-            if _attention: _needs.append("resolve or de-risk the current attention conditions")
-            _met=[]
-            if '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
-                for _,r in _thesis_rows.iterrows():
-                    if str(r.get("status") or "").lower() in {"met","on track","pass","passed","true"}: _met.append(str(r.get("metric") or r.get("condition") or "thesis condition"))
-            if _met: _needs.append("keep evidenced thesis conditions on track")
-            _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions before a stronger scenario is supported.")
-            # V23.8.4: separate observed market price from model-derived scenario.
-            _market_reference=display_price(price,ticker) if np.isfinite(price) and price>0 else "Unavailable"
-            _base_reference=display_price(_ccbase,ticker) if np.isfinite(_ccbase) else "Unavailable"
-            _sc=(f"Market price: {_market_reference} · AXÍA model base case: {_base_reference}. "
-                 + _sc + " Reverse expectations require a validated model and explicit assumptions.")
-            st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
-            _scenario_footer_left,_scenario_footer_right=st.columns([3,1.4],gap="small")
-            with _scenario_footer_right:
-                st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
+        # V23.8.4.1 — explicit 22px separation and a true in-card action.
+        st.markdown("""<style>
+        .st-key-v23841_widget_row { margin-top:22px !important; }
+        .st-key-v23841_scenario_card {
+            background:#fff; border:1px solid #d8e5f2; border-radius:8px;
+            padding:7px 11px 8px; min-height:100px; box-sizing:border-box;
+        }
+        .st-key-v23841_scenario_card .v21290-bottom {
+            border:0 !important; border-radius:0 !important; padding:0 !important;
+            height:auto !important; min-height:0 !important; overflow:visible !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stVerticalBlock"] { gap:0 !important; }
+        .st-key-v23841_scenario_card [data-testid="stButton"] { text-align:right; }
+        .st-key-v23841_scenario_card [data-testid="stButton"] button {
+            width:auto !important; min-height:24px !important; height:24px !important;
+            padding:0 9px !important; border:0 !important; background:transparent !important;
+            color:#086ee8 !important; font-size:10px !important; font-weight:750 !important;
+            box-shadow:none !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {
+            background:#edf5ff !important; color:#0754b6 !important;
+        }
+        </style>""",unsafe_allow_html=True)
+        with st.container(key="v23841_widget_row"):
+            _b1,_b2=st.columns([.98,1.78],gap="small")
+            with _b1:
+                st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">♙ <span>Position Context (if in Portfolio)</span></div><div class="v21290-stats"><div class="v21290-stat"><div class="k">Shares</div><div class="v">{f"{_qty:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Avg. Cost</div><div class="v">{display_price(_avg,ticker) if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Market Value</div><div class="v">{_cur+f"{_mv:,.0f}" if _qty else "—"}</div></div><div class="v21290-stat"><div class="k">Unrealised P/L</div><div class="v {"v21261-pos" if np.isfinite(_pnl) and _pnl>=0 else "v21261-neg"}">{f"{_pp:+.1%} ({_cur}{_pnl:+,.0f})" if np.isfinite(_pnl) else "—"}</div></div></div></div>',unsafe_allow_html=True)
+            with _b2:
+                with st.container(key="v23841_scenario_card"):
+                    _needs=[]
+                    if np.isfinite(_ccbase): _needs.append(f"support the base valuation case of {display_price(_ccbase,ticker)}")
+                    if _attention: _needs.append("resolve or de-risk the current attention conditions")
+                    _met=[]
+                    if '_thesis_rows' in locals() and _thesis_rows is not None and not _thesis_rows.empty:
+                        for _,r in _thesis_rows.iterrows():
+                            if str(r.get("status") or "").lower() in {"met","on track","pass","passed","true"}: _met.append(str(r.get("metric") or r.get("condition") or "thesis condition"))
+                    if _met: _needs.append("keep evidenced thesis conditions on track")
+                    _sc=f"For {_ccname}, the evidence would need to "+("; ".join(_needs)+"." if _needs else "strengthen across fundamentals, valuation and measurable thesis conditions before a stronger scenario is supported.")
+                    # V23.8.4: separate observed market price from model-derived scenario.
+                    _market_reference=display_price(price,ticker) if np.isfinite(price) and price>0 else "Unavailable"
+                    _base_reference=display_price(_ccbase,ticker) if np.isfinite(_ccbase) else "Unavailable"
+                    _sc=(f"Market price: {_market_reference} · AXÍA model base case: {_base_reference}. "
+                         + _sc + " Reverse expectations require a validated model and explicit assumptions.")
+                    st.markdown(f'<div class="v21290-bottom"><div class="v21290-bottom-title">◎ <span>What Would Need to Happen?</span></div><div class="v21290-scenario">{html.escape(_sc)}</div><div class="v21290-source">Scenario narrative is generated from Axía valuation, thesis and attention evidence; it is not a price prediction.</div></div>',unsafe_allow_html=True)
+                    st.button("View Scenario Analysis  →",key=f"v21290_nav_scen_{ticker}",use_container_width=True,on_click=_chr_set_cc_sub_v2111,args=("Valuation",))
 
 elif page=="Before I Invest":
     st.header(f"Before I Invest — {ticker}")
