@@ -8567,75 +8567,81 @@ elif page=="Company Command Centre":
         _qty=float(hold.get("quantity",0) or 0); _avg=float(hold.get("avg_cost",0) or 0); _mv=_qty*price; _pnl=(price-_avg)*_qty if _qty else np.nan; _pp=price/_avg-1 if _qty and _avg else np.nan
         # V23.8.4.8 — compact card: one header row and one content block.
         st.markdown("""<style>
-        /* V23.8.4.14 — equal-height paired cards, scoped to this row only. */
-        .st-key-v23841_widget_row { margin-top:22px !important; }
-        .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] {
+        /* V23.8.4.15 — compact, top-aligned, equal-height Overview cards. */
+        .st-key-v23841_widget_row {margin-top:12px !important;}
+        .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] {
             align-items:stretch !important;
         }
         .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-            display:flex !important; flex-direction:column !important;
             align-self:stretch !important;
-        }
-        .st-key-v23841_widget_row > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
-            flex:1 !important; height:100% !important;
         }
         .st-key-v23841_widget_row .v21290-bottom,
         .st-key-v23841_widget_row .st-key-v23841_scenario_card {
-            min-height:128px !important; height:100% !important;
-            max-height:none !important; box-sizing:border-box !important;
-            border:1px solid #d8e5f2 !important; border-radius:8px !important;
-            background:#fff !important; padding:10px 12px !important;
-            overflow:visible !important;
+            min-height:0 !important;height:auto !important;max-height:none !important;
+            border:1px solid #d8e5f2 !important;border-radius:8px !important;
+            background:#fff !important;padding:9px 11px !important;
+            box-sizing:border-box !important;overflow:visible !important;
         }
         .st-key-v23841_widget_row .v21290-bottom {
-            display:flex !important; flex-direction:column !important;
-        }
-        .st-key-v23841_widget_row .v21290-stats {
-            flex:1; align-items:center;
+            min-height:105px !important;
         }
         .st-key-v23841_widget_row .v21290-bottom-title {
-            margin-bottom:8px !important;
+            margin:0 0 12px !important;line-height:20px !important;
         }
-        .st-key-v23841_widget_row .v23848-metrics {
-            gap:5px 14px !important;
+        .st-key-v23841_widget_row .v21290-stats {
+            align-items:center !important;
         }
-        .st-key-v23841_widget_row .v23848-summary {
-            margin-top:5px !important;
-        }
-        .st-key-v23841_widget_row .v23848-source {
-            margin-top:3px !important;
-        }
-        .st-key-v23841_widget_row [data-testid="stHorizontalBlock"] { align-items:center !important; }
         .st-key-v23841_scenario_card {
-            background:#fff; border:1px solid #d8e5f2; border-radius:8px;
-            padding:10px 12px !important; min-height:128px !important;
-            height:100% !important; max-height:none !important; box-sizing:border-box;
-            overflow:visible !important;
+            min-height:105px !important;
         }
         .st-key-v23841_scenario_card > [data-testid="stVerticalBlock"] {
-            gap:0 !important; height:auto !important;
+            gap:0 !important;min-height:0 !important;
+            justify-content:flex-start !important;
         }
-        .st-key-v23841_scenario_card [data-testid="stMarkdownContainer"] p {margin:0 !important;}
+        .st-key-v23841_scenario_card [data-testid="stMarkdownContainer"] p {
+            margin:0 !important;
+        }
         .st-key-v23841_scenario_card [data-testid="stHorizontalBlock"] {
-            align-items:center !important; min-height:25px !important;
+            align-items:center !important;min-height:0 !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stColumn"] {
+            display:flex !important;align-items:center !important;
+        }
+        .st-key-v23841_scenario_card [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            gap:0 !important;justify-content:center !important;
         }
         .st-key-v23841_scenario_card .v23848-title {
-            color:#086ee8;font-size:10.5px;font-weight:950;line-height:22px;
+            color:#086ee8;font-size:10.5px;font-weight:950;line-height:20px;
         }
-        .st-key-v23841_scenario_card [data-testid="stButton"] {text-align:right;margin:0 !important;}
+        .st-key-v23841_scenario_card [data-testid="stButton"] {
+            text-align:right;margin:0 !important;
+        }
         .st-key-v23841_scenario_card [data-testid="stButton"] button {
-            width:auto !important;min-height:22px !important;height:22px !important;
+            width:auto !important;min-height:20px !important;height:20px !important;
             padding:0 4px !important;border:0 !important;background:transparent !important;
             color:#086ee8 !important;font-size:10px !important;font-weight:750 !important;
             box-shadow:none !important;margin:0 0 0 auto !important;
         }
-        .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {background:#edf5ff !important;}
-        .v23848-metrics{display:flex;flex-wrap:wrap;gap:6px 20px;border-top:1px solid #e4edf7;
-            padding-top:7px;margin-top:4px;align-items:baseline}
-        .v23848-metric{font-size:9px;color:#476381;white-space:nowrap}
-        .v23848-metric b{font-size:10px;color:#142f53;font-weight:850}
-        .v23848-summary{font-size:9px;line-height:1.4;color:#45688f;margin-top:6px}
-        .v23848-source{font-size:7.5px;line-height:1.35;color:#7a90a7;margin-top:4px}
+        .st-key-v23841_scenario_card [data-testid="stButton"] button:hover {
+            background:#edf5ff !important;
+        }
+        .st-key-v23841_scenario_card .v23848-metrics {
+            display:flex;flex-wrap:wrap;gap:4px 14px;
+            border-top:1px solid #e4edf7;padding-top:6px;margin-top:5px;
+            align-items:baseline;
+        }
+        .st-key-v23841_scenario_card .v23848-metric {
+            font-size:9px;color:#476381;white-space:nowrap;
+        }
+        .st-key-v23841_scenario_card .v23848-metric b {
+            font-size:10px;color:#142f53;font-weight:850;
+        }
+        .st-key-v23841_scenario_card .v23848-summary {
+            font-size:9px;line-height:1.35;color:#45688f;margin-top:4px;
+        }
+        .st-key-v23841_scenario_card .v23848-source {
+            font-size:7.5px;line-height:1.3;color:#7a90a7;margin-top:3px;
+        }
         </style>""",unsafe_allow_html=True)
 
         with st.container(key="v23841_widget_row"):
