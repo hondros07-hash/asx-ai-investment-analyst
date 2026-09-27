@@ -39,7 +39,7 @@ def _issuer_header(data, ticker, currency):
  delta=f"{change:+.2f}%" if isinstance(change,(int,float)) and math.isfinite(change) else "Change unavailable"
  delta_color="#168b62" if isinstance(change,(int,float)) and change>=0 else "#c54450" if isinstance(change,(int,float)) else "#60758f"
  def stat(label,v,kind="number"):
-  display=("—" if not isinstance(v,(int,float)) or not math.isfinite(v) else f"{v*100:.2f}%" if kind=="percent" else f"{v:.1f}×" if kind=="multiple" else fmt(v))
+  display=("—" if not isinstance(v,(int,float)) or not math.isfinite(v) else f"{v:.2f}%" if kind=="percent" else f"{v:.1f}×" if kind=="multiple" else fmt(v))
   return '<div style="padding:0 12px;border-left:1px solid #dce6f2"><strong style="display:block;color:#142d4d;font-size:16px">'+display+'</strong><span style="color:#60758f;font-size:11px">'+label+'</span></div>'
  stats=stat("Market Cap",m.get("marketCap"))+stat("P/E (TTM)",m.get("trailingPE"),"multiple")+stat("Dividend Yield",m.get("dividendYield"),"percent")+stat("Beta (5Y)",m.get("beta"))
  identity=' &nbsp; | &nbsp; '.join(safe(v) for v in (str(ticker).upper(),m.get("fullExchangeName") or m.get("exchange") or "Exchange unconfirmed",m.get("country") or "Country unconfirmed",m.get("sector") or "Sector unconfirmed",m.get("industry") or "Industry unconfirmed"))
@@ -124,8 +124,8 @@ def render(ticker):
   _render_workspace(ticker)
 
 def _render_workspace(ticker):
- frequency=st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
- try: data=load(ticker,frequency or "Annual (5Y)")
+ frequency=st.session_state.get("axia_fund_period") or "Annual (5Y)"
+ try: data=load(ticker,frequency)
  except Exception as exc:
   st.error("Financial statements could not be loaded. Try again or inspect the issuer's filings.")
   st.caption(f"Provider error: {type(exc).__name__}")
@@ -136,6 +136,7 @@ def _render_workspace(ticker):
  is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
  _issuer_header(data,ticker,currency)
  if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
+ st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
  quality_notes=list(data.get("quality",[]))
  if currency=="Unconfirmed":
   quality_notes.insert(0,"Provider statement currency is unconfirmed. "+("Qantas issuer reports in AUD, but QAN.MU provider monetary units are not verified. " if is_qantas else "")+"Do not interpret or convert monetary values until reconciled to a dated issuer filing.")
