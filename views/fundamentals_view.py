@@ -11,6 +11,7 @@ from services.sector_kpi_engine import kpi_rows, disclosure_destinations
 from services.fundamental_health_engine import assess
 from services.fundamentals_integrity_engine import validate, summary
 from services.fundamentals_statement_view_engine import display_frame, row_trend
+from services.advanced_fundamental_ratios_engine import compute as advanced_ratios, METRICS as ADVANCED_GROUPS, PERCENT as ADVANCED_PERCENT, DAYS as ADVANCED_DAYS
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -143,6 +144,28 @@ def _render_workspace(ticker):
     st.dataframe(df,hide_index=True,use_container_width=True)
     st.download_button("Export "+group+" ratios CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_ratios.csv",mime="text/csv",key="axia_ratio_"+group)
   st.caption("ROE uses period-end equity where average equity is unavailable. Du Pont is an algebraic breakdown, not an independent audit.")
+  st.markdown("### Advanced returns, solvency & working capital")
+  advanced,method_notes=advanced_ratios(data)
+  st.caption("Additional ratios use provider-transcribed inputs. Missing inputs, unsuitable denominators and sector-inapplicable metrics are withheld, not estimated.")
+  for group,keys in ADVANCED_GROUPS.items():
+   with st.expander(group,expanded=True):
+    rows=[]
+    for key in keys:
+     row={"Ratio":key}
+     for period in data["periods"]:
+      value=advanced.get(period,{}).get(key)
+      row[period]=fmt(value,ratio=key in ADVANCED_PERCENT) if key in ADVANCED_PERCENT else (f"{value:,.1f} days" if key in ADVANCED_DAYS and value is not None else fmt(value))
+     rows.append(row)
+    df=pd.DataFrame(rows)
+    st.dataframe(df,hide_index=True,use_container_width=True)
+    st.download_button("Export "+group+" CSV",df.to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_"+group.replace(" ","_")+"_advanced.csv",mime="text/csv",key="axia_advanced_"+group)
+  with st.expander("Advanced ratio definitions & limitations",expanded=False):
+   st.caption("ROIC = EBIT × (1 − effective tax proxy) / average (debt + equity − cash). The effective tax proxy is clamped to 0–50%; this is not issuer-reported ROIC.")
+   st.caption("Net debt / EBITDA uses positive EBITDA. Interest coverage = EBIT / absolute reported interest expense. Debt cash coverage uses positive total debt.")
+   st.caption("DSO = average receivables / revenue × days; DIO = average inventory / absolute cost of revenue × days; DPO = average payables / absolute cost of revenue × days; CCC = DSO + DIO − DPO.")
+   st.caption("Annual calculations use 365 days; quarterly calculations require a preceding reporting date 70–110 days earlier. TTM working-capital cycle is withheld pending matching average balances.")
+   st.caption("Bank and BNPL ROIC, net debt/EBITDA and conventional working-capital-cycle metrics are withheld pending sector-specific methods. All figures remain provider-transcribed, not filing-verified.")
+
  with tabs[2]:
   st.subheader(sector.upper()+" | Sector-adaptive KPIs")
   st.caption("Issuer-specific operating measures are separate from generic financial statement ratios.")
