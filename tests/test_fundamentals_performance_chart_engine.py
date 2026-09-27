@@ -17,7 +17,7 @@ class PerformanceChartTests(unittest.TestCase):
   self.assertIsNone(row["Net income margin"])
   self.assertIsNone(row["Free cash flow"])
  def test_no_mutation(self):
-  data=self.sample();original=dict(data["periods"]);performance(data)
+  data=self.sample();original=list(data["periods"]);performance(data)
   self.assertEqual(data["periods"],original)
 
 if __name__=="__main__": unittest.main()
