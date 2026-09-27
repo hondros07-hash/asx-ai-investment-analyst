@@ -193,7 +193,7 @@ def render(ticker):
 .axia-issuer-flag{display:inline-block;width:20px;height:15px;object-fit:cover;vertical-align:-2px;margin-right:4px;border-radius:1px}
 .axia-issuer-tagline{font-size:12px;color:#60758f;font-style:italic;margin-top:0}
 .st-key-axia_fund_issuer [data-testid="stButton"]{display:flex;justify-content:flex-end}
-.st-key-axia_fund_issuer [data-testid="stButton"] button{height:32px;min-height:32px;padding:0 12px;border:1px solid #1670eb;border-radius:5px;background:#fff;color:#0868d8;font-size:12px;font-weight:700}
+.st-key-axia_fund_issuer [data-testid="stButton"] button{height:32px;min-height:32px;padding:0 12px;border:1px solid #1670eb;border-radius:5px;background:#fff;color:#0868d8;font-size:12px;font-weight:700;transform:translateY(-10px)}
 .axia-issuer-market{text-align:right}
 .axia-issuer-quote{font-size:clamp(18px,1.65vw,28px);font-weight:800;line-height:1.15;color:#142d4d;white-space:nowrap;text-align:left;transform:translate(-40px, -4px)}
 .axia-issuer-quote span{font-size:14px;margin-left:5px}
