@@ -5,45 +5,58 @@ from announcement_engine import (
     sec_archive, _issuer_ir_fallback, _empty_disclosures,
 )
 
-def get_regulatory_announcements(ticker, provider_url="", provider_key="", limit=25,
-                                 exchange="", country=""):
-    """Return (records, coverage, identity) with explicit source/failure metadata.
+import time
+import streamlit as st
 
-    Official SEC legacy adapter is an independent official fallback. Issuer IR is
-    clearly marked issuer-sourced, never described as exchange-confirmed.
-    """
+@st.cache_data(ttl=300, show_spinner=False, max_entries=256)
+def _cached_regulatory(ticker, provider_url, provider_key, limit, exchange, country, refresh_token):
+    """Cache successful and failed retrieval briefly; refresh token permits explicit retry."""
+    return _retrieve_regulatory(ticker, provider_url, provider_key, limit, exchange, country)
+
+def _retrieve_regulatory(ticker, provider_url="", provider_key="", limit=25, exchange="", country=""):
     identity=resolve_announcement_market(ticker, exchange, country)
     market=identity.get("market", "UNKNOWN")
+    started=time.monotonic()
+    diagnostics=[]
     try:
         df, coverage, identity=official_disclosure_gateway(
             ticker, provider_url, provider_key, limit, exchange=exchange, country=country)
     except Exception as exc:
         df=_empty_disclosures("UPSTREAM_ERROR", identity.get("authority",market),
                               ticker, [type(exc).__name__])
-        coverage=identity.get("authority", market)
+        coverage=identity.get("authority",market)
+    status=str(getattr(df,"attrs",{}).get("status","UPSTREAM_ERROR"))
     if df is not None and not df.empty:
-        df.attrs.setdefault("source_tier", "official")
+        df.attrs.update({"source_tier":"official","retrieval_ms":round((time.monotonic()-started)*1000)})
         return df.head(limit), coverage, identity
-    status=str(getattr(df, "attrs", {}).get("status", "UPSTREAM_ERROR"))
-    # Missing credentials and mismatched identities must remain visible.
-    if status in {"SEC_USER_AGENT_REQUIRED", "IDENTITY_MISMATCH", "IDENTITY_FAILED"}:
-        return df, coverage, identity
-    if market in {"NYSE", "NASDAQ"}:
+    if status in {"SEC_USER_AGENT_REQUIRED","IDENTITY_MISMATCH","IDENTITY_FAILED"}:
+        return df,coverage,identity
+    if market in {"NYSE","NASDAQ"}:
         try:
-            alt=sec_archive(ticker, limit)
+            alt=sec_archive(ticker,limit)
             if alt is not None and not alt.empty:
-                alt.attrs.update({"status":"SUCCESS", "source_tier":"official",
-                                  "fallback":"SEC EDGAR alternate official adapter"})
-                return alt.head(limit), "SEC EDGAR alternate official adapter", identity
-        except Exception:
-            pass
+                alt.attrs.update({"status":"SUCCESS","source_tier":"official",
+                                  "fallback":"SEC EDGAR alternate official adapter",
+                                  "retrieval_ms":round((time.monotonic()-started)*1000)})
+                return alt.head(limit),"SEC EDGAR alternate official adapter",identity
+        except Exception as exc:
+            diagnostics.append(type(exc).__name__)
     if market=="ASX":
         try:
-            alt=_issuer_ir_fallback(ticker, market, limit)
+            alt=_issuer_ir_fallback(ticker,market,limit)
             if alt is not None and not alt.empty:
-                alt.attrs.update({"status":"ISSUER_FALLBACK", "source_tier":"issuer",
-                                  "fallback":"Issuer investor relations; not exchange-verified"})
-                return alt.head(limit), "Issuer investor relations (not exchange-verified)", identity
-        except Exception:
-            pass
-    return df, coverage, identity
+                alt.attrs.update({"status":"ISSUER_FALLBACK","source_tier":"issuer",
+                                  "fallback":"Issuer investor relations; not exchange-verified",
+                                  "retrieval_ms":round((time.monotonic()-started)*1000)})
+                return alt.head(limit),"Issuer investor relations (not exchange-verified)",identity
+        except Exception as exc:
+            diagnostics.append(type(exc).__name__)
+    if df is None:
+        df=_empty_disclosures("UPSTREAM_ERROR",identity.get("authority",market),ticker,diagnostics)
+    df.attrs["retrieval_ms"]=round((time.monotonic()-started)*1000)
+    df.attrs["diagnostics"]=list(df.attrs.get("diagnostics") or [])+diagnostics
+    return df,coverage,identity
+
+def get_regulatory_announcements(ticker, provider_url="", provider_key="", limit=25,
+                                 exchange="", country="", refresh_token=0):
+    return _cached_regulatory(ticker,provider_url,provider_key,limit,exchange,country,refresh_token)

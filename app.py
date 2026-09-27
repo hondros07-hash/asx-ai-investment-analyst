@@ -8220,7 +8220,8 @@ elif page=="Company Command Centre":
             _id_exchange=str(_secid.get("exchange") or _secid.get("market") or st.session_state.get("chr_active_exchange","") or _ccmeta.get("exchange") or _ccmeta.get("exchDisp") or "")
             _id_country=str(_secid.get("country") or st.session_state.get("chr_active_country","") or _ccmeta.get("country") or "")
             _v21291_ann_all,_v21291_coverage,_v21292_identity=get_regulatory_announcements(
-                _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country
+                _id_ticker,_ann_url,_ann_key,25, exchange=_id_exchange, country=_id_country,
+                refresh_token=st.session_state.get(f"axia_disclosure_refresh_{ticker}",0)
             )
         except Exception as _sec_error:
             _v21291_ann_all,_v21291_coverage=pd.DataFrame(),"Announcement source unavailable"
@@ -8414,7 +8415,7 @@ elif page=="Company Command Centre":
                         _pdf=(f'<a class="v21291-pdf" href="{html.escape(_url,quote=True)}" target="_blank" rel="noopener">{_doc_label}</a>' if _url else '<span class="v21291-na">—</span>')
                         _rows.append(f'<div class="v21290-row"><span>{html.escape(_d)}</span><span class="main" title="{html.escape(_t,quote=True)}">{html.escape(_t)}</span><span class="meta">{html.escape(_ty)}</span><span class="pdf">{_pdf}</span></div>')
                 _sec_status=str(getattr(_v21291_ann_all,"attrs",{}).get("status","") or "") if _v21291_ann_all is not None else ""
-                _status_msg={"ISSUER_FALLBACK":"Issuer investor-relations documents (not exchange-verified).","IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Official disclosure source could not be reached; announcements are unavailable, not confirmed absent.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
+                _status_msg={"ISSUER_FALLBACK":"Issuer investor-relations documents (not exchange-verified).","IDENTITY_FAILED":"Disclosure identity could not be resolved.","UPSTREAM_ERROR":"Disclosure source temporarily unavailable. No absence of filings is implied.","PARSE_FAILED":"Official disclosure response could not be parsed.","NO_DISCLOSURES":"No investor-relevant disclosures were returned.","CIK_RESOLUTION_FAILED":"SEC ticker/CIK mapping could not be resolved.","SEC_REQUEST_FAILED":"SEC EDGAR could not be reached.","NO_INVESTOR_FILINGS":"No investor-relevant SEC filings were returned.","IDENTITY_FAILED":"SEC ticker/CIK resolution failed; check SEC_USER_AGENT and listing.","SEC_USER_AGENT_REQUIRED":"Configure SEC_USER_AGENT with a real application contact to retrieve SEC filings.","IDENTITY_MISMATCH":"SEC issuer identity does not match the selected ticker."}.get(_sec_status,"")
                 _authority=str(_v21291_prov.get("authority") or "")
                 _empty_fallback=("Disclosure source could not be resolved for this listing." if str(_v21291_prov.get("market") or "")=="UNKNOWN" else "No rows returned from "+(_authority or "the configured announcement source")+".")
                 _empty_detail=html.escape(_status_msg or _empty_fallback)
@@ -8428,6 +8429,10 @@ elif page=="Company Command Centre":
                 with st.container(border=True,key=f"v21310_ann_card_{ticker}"):
                     st.markdown(f'<div class="v21310-ann-title"><span class="v21290-icon">♟</span> Latest Announcements &amp; Reports <span class="v21261-info" title="{html.escape(_tip,quote=True)}">i</span></div>',unsafe_allow_html=True)
                     st.markdown(f'<div class="v21310-ann-body">{_body09}</div><div class="v21310-ann-source">{html.escape(str(_v21291_prov.get("market") or ""))} · {html.escape(str(_v21291_coverage or _v21291_prov.get("authority") or ""))}</div>',unsafe_allow_html=True)
+                    if _ann_df.empty and _sec_status not in {"NO_DISCLOSURES","NO_INVESTOR_FILINGS"}:
+                        if st.button("Retry disclosures ↻",key=f"v23724_retry_{ticker}",help="Retry the official source and labelled fallback."):
+                            st.session_state[f"axia_disclosure_refresh_{ticker}"]=st.session_state.get(f"axia_disclosure_refresh_{ticker}",0)+1
+                            st.rerun()
                     # V23.7.9.1: footer navigation retains the active ticker.
                     if st.button("View all →",key=f"v21310_nav_ann_{ticker}",use_container_width=False):
                         _chr_set_cc_sub_v2111("Announcements & Reports")
