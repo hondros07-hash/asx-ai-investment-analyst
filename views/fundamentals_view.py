@@ -55,6 +55,8 @@ def _render_workspace(ticker):
    # The gradient and endpoint labels must occupy separate native Streamlit blocks.
    # A combined HTML block can collapse its measured height and overlap the next cards.
    st.markdown('<div style="position:relative;width:100%;height:15px;border-radius:99px;background:linear-gradient(90deg,#c83d4d 0%,#e8bb47 50%,#159b62 100%);overflow:hidden"><div style="position:absolute;left:calc('+str(score)+'% - 2px);top:0;height:100%;width:4px;background:white;border:1px solid #18324d;box-sizing:border-box"></div></div>',unsafe_allow_html=True)
+   # Reserve a visible vertical gap so the gradient never touches the endpoint labels.
+   st.markdown('<div aria-hidden="true" style="display:block;height:18px;min-height:18px;line-height:18px">&nbsp;</div>',unsafe_allow_html=True)
    weak_label,strong_label=st.columns(2)
    with weak_label:
     st.caption("0 · Financial weakness")
