@@ -9,6 +9,7 @@ import streamlit as st
 from services.fundamentals_engine import load, SECTOR, category
 from services.sector_kpi_engine import kpi_rows, disclosure_destinations
 from services.fundamental_health_engine import assess
+from services.fundamentals_integrity_engine import validate, summary
 
 def fmt(v,ratio=False,eps=False):
  if v is None or not isinstance(v,(int,float)) or not math.isfinite(v): return "—"
@@ -95,7 +96,7 @@ def _render_workspace(ticker):
    for note in health["notes"]: st.caption("• "+note)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
-  st.caption("Amounts in reporting currency unless otherwise indicated. EPS is per share. Missing values are not estimated.")
+  st.caption("Amounts in provider statement units (currency unconfirmed where indicated). EPS is per share. Missing values are not estimated.")
   for group,table in data["statements"].items():
    with st.expander(group,expanded=True):
     if not data["periods"]: st.info("No complete periods available.");continue
@@ -199,6 +200,13 @@ def _render_workspace(ticker):
       st.caption(f"{years}-year CAGR: {(points[-1][1]/points[0][1])**(1/years)-1:+.1%}")
  with tabs[4]:
   st.subheader("Data lineage & verification")
+  checks=validate(data)
+  counts=summary(checks)
+  st.markdown("**Statement integrity diagnostics**")
+  st.caption("Automated checks assess internal consistency only; a pass is not an audit or issuer-filing verification.")
+  st.dataframe(pd.DataFrame(checks),hide_index=True,use_container_width=True)
+  st.caption(" · ".join(k+": "+str(v) for k,v in counts.items() if v))
+  st.download_button("Export integrity diagnostics CSV",pd.DataFrame(checks).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_integrity.csv",mime="text/csv",key="axia_integrity_export")
   st.warning("Provider-transcribed figures have not been reconciled to audited issuer filings. No filing-page verification is claimed.")
   metadata={"Provider":data.get("provider","Unavailable"),"Reporting currency":currency,"Period basis":data.get("frequency",frequency),"Audit status":"Provider-transcribed; unverified","Restatement status":"Not established","Issuer filing reference":"Not linked to a specific reporting period"}
   st.dataframe(pd.DataFrame([{"Field":k,"Value":v} for k,v in metadata.items()]),hide_index=True,use_container_width=True)

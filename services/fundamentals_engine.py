@@ -24,6 +24,7 @@ ROWS = {
   "Current Liabilities": ["Current Liabilities"],
   "Inventory": ["Inventory"],
   "Total Assets": ["Total Assets"],
+  "Total Liabilities": ["Total Liabilities Net Minority Interest", "Total Liabilities"],
   "Total Debt": ["Total Debt"],
   "Net Debt": ["Net Debt"],
   "Stockholders Equity": ["Stockholders Equity", "Total Equity Gross Minority Interest"],
