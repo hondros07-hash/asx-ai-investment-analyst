@@ -3654,6 +3654,7 @@ def _chr_clear_legal_route_v21300():
 
 def _chr_set_legal_route_v21300(target):
     if target in _CHR_LEGAL_PAGES:
+        _chr_clear_auth_route_v23000()
         st.session_state["chr_legal_page"]=target
 
 _CHR_AUTH_PAGES={"Sign In","Register"}
@@ -3762,7 +3763,7 @@ _material_icons={"home":":material/home:","search":":material/search:","document
 
 def _chr_render_primary_nav_item_v2112(idx, item):
     _key,_icon,_title,_sub=item
-    _active=(_key==primary)
+    _active=(_key==primary and st.session_state.get("chr_legal_page") not in _CHR_LEGAL_PAGES and st.session_state.get("chr_auth_route_v23000") not in _CHR_AUTH_PAGES)
     _clean_title=_title.split("  ",1)[-1]
     st.button(_clean_title,key=f"chr_nav_native_{idx}",use_container_width=True,
               type="primary" if _active else "secondary",
@@ -3802,7 +3803,7 @@ with st.sidebar.container():
 # inside the same container, so no later primary item can render between them.
 with st.sidebar.container():
     _chr_render_primary_nav_item_v2112(2,NAV_ITEMS[2])
-    if primary=="Company Command Centre":
+    if primary=="Company Command Centre" and st.session_state.get("chr_legal_page") not in _CHR_LEGAL_PAGES and st.session_state.get("chr_auth_route_v23000") not in _CHR_AUTH_PAGES:
         _chr_render_cc_children_v2112()
 
 # All remaining global navigation follows the complete Command Centre block.
@@ -3985,6 +3986,17 @@ if _chr_legal_page in _CHR_LEGAL_PAGES:
 _chr_auth_page=st.session_state.get("chr_auth_route_v23000")
 if _chr_auth_page in _CHR_AUTH_PAGES:
     page=_chr_auth_page
+
+# V23.8.4.7 — one resolved page identity for browser title and navigation.
+_chr_company_pages=set(PAGE_MAP[( "Company Command Centre", _sub)] for _sub in SUBPAGES["Company Command Centre"])
+_chr_page_identity=page
+_chr_page_title="AXÍA | "+("Home" if page=="Dashboard" else page)
+if page in _chr_company_pages:
+    _title_ticker=str(st.session_state.get("chr_active_ticker") or ticker or "").strip().upper()
+    _saved_identity=st.session_state.get("chr_page_company_identity_v23847") or {}
+    _title_company=(_saved_identity.get("name") if _saved_identity.get("ticker")==_title_ticker else None) or _title_ticker
+    _chr_page_title="AXÍA | "+str(_title_company or "Company Command Centre")
+st.set_page_config(page_title=_chr_page_title, page_icon="🏛️", layout="wide")
 
 # Comparison is a utility workspace, not a twelfth Command Centre research engine.
 try:
@@ -7214,6 +7226,7 @@ elif page=="Company Command Centre":
                 _rn=company_name(ticker) if 'company_name' in globals() else None
                 if _rn and str(_rn).strip().upper() not in _invalid_names: _ccname=_rn
             except Exception: pass
+        st.session_state["chr_page_company_identity_v23847"]={"ticker":str(ticker).upper(),"name":str(_ccname).strip()}
         # V21.2.15 — always query the exact Yahoo listing once for current identity, logo and market-session metadata.
         # Search quote payloads can expose logoUrl/marketState even when Ticker.info is otherwise complete.
         _quote_probe_ok=False
@@ -9150,6 +9163,8 @@ def render_chrimata_global_legal_footer():
     [class*="st-key-chr_footer_nav_"]{margin-top:0!important;margin-bottom:0!important;}
     [class*="st-key-chr_footer_nav_"] button{min-height:0!important;height:auto!important;padding:2px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#3f6f9f!important;font-size:11.5px!important;font-weight:800!important;line-height:1.35!important;white-space:nowrap!important;}
     [class*="st-key-chr_footer_nav_"] button:hover{color:#175d9c!important;text-decoration:underline!important;background:transparent!important;border:0!important;}
+    /* The active footer page is the only underlined legal navigation item. */
+    [class*="st-key-chr_footer_nav_"] button[kind="primary"]{color:#086ee8!important;text-decoration:underline!important;text-underline-offset:4px!important;text-decoration-thickness:2px!important;}
     .chr-legal-copy{width:100%;box-sizing:border-box;padding:5px 0 88px;color:#6b7f98;font-size:10.5px;line-height:1.45;}
     .chr-legal-copy p{margin:4px 0;}.chr-legal-title{font-weight:750;color:#455f7d;}
     .chr-legal-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf1;color:#8190a3;font-size:9.8px;}
@@ -9171,7 +9186,7 @@ def render_chrimata_global_legal_footer():
         nav=st.columns([.62,1.15,.70,.88,.60,1.02,.68], gap="small", vertical_alignment="center")
         for i,label in enumerate(labels):
             with nav[i]:
-                st.button(label,key=f"chr_footer_nav_{i}",type="tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
+                st.button(label,key=f"chr_footer_nav_{i}",type="primary" if st.session_state.get("chr_legal_page")==label and st.session_state.get("chr_auth_route_v23000") not in _CHR_AUTH_PAGES else "tertiary",on_click=_chr_set_legal_route_v21300,args=(label,),use_container_width=True)
 
     st.markdown(r"""
     <div class="chr-legal-copy">
