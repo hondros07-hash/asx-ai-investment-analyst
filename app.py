@@ -8483,6 +8483,17 @@ elif page=="Company Command Centre":
                         _chr_set_cc_sub_v2111("Catalyst Calendar"); st.rerun()
             with _m4:
                 _attention=[]
+                # V23.8.3: optional sourced event adapter; never infer exposure from a headline.
+                # Providers can populate these independently of the Overview render.
+                try:
+                    from services.global_event_intelligence_engine import attention_from_global_events
+                    _global_events=st.session_state.get("axia_global_event_records", [])
+                    _company_exposure=st.session_state.get("axia_company_exposure_profiles", {}).get(ticker, {})
+                    _external_attention=attention_from_global_events(ticker,_company_exposure,_global_events,limit=4)
+                    for _event in _external_attention:
+                        _attention.append((_event["title"],_event["detail"],"Watch"))
+                except (ImportError,TypeError,ValueError,AttributeError,KeyError):
+                    _external_attention=[]
                 if _ccattention is not None and not _ccattention.empty:
                     for _,r in _ccattention.head(4).iterrows():
                         _item=_v21290_pick(r,["Item","item","Metric","metric","Condition","condition"],"Research condition")
