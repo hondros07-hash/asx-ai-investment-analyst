@@ -31,7 +31,7 @@ def _render_workspace(ticker):
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
  st.caption(f"Company: {data.get('meta',{}).get('longName') or ticker} · Ticker: {ticker} · Reporting currency: {currency} · Provider-transcribed; not independently audited")
- for issue in data["quality"]: st.warning(issue)
+ for issue in data.get("quality",[]): st.warning(issue)
  tabs=st.tabs(["Financial Statements","Key Ratios","Sector KPIs","Growth & Trends","Sources & Verification"])
  with tabs[0]:
   st.caption("Amounts in reporting currency unless otherwise indicated. EPS is per share. Missing values are not estimated.")
@@ -92,5 +92,5 @@ def _render_workspace(ticker):
   st.write("Period basis:",data.get("frequency",frequency))
   st.write("Restatement status: Not independently established")
   st.write("Issuer filing/page references: Not linked; verify against official filings.")
-  if data["derived"]:
+  if data.get("derived"):
    st.dataframe(pd.DataFrame([{"Metric":k[0],"Period":k[1],"Method":v} for k,v in data["derived"].items()]),hide_index=True,use_container_width=True)
