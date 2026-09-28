@@ -1,5 +1,4 @@
 """AXÍA fundamentals: provider statements, conservative derivations and provenance."""
-from functools import lru_cache
 from datetime import datetime, timezone
 import streamlit as st
 import math
@@ -115,7 +114,6 @@ def derive(data):
  data["derived"]=out
  return data
 
-@lru_cache(maxsize=128)
 @st.cache_data(ttl=3600, show_spinner=False, max_entries=96)
 def load(ticker, frequency="Annual (5Y)"):
  # Cache key includes the selected ticker and reporting mode; provider data is
