@@ -34,7 +34,7 @@ def company_navigation_snapshot(ticker, history_loader, info_loader, state,
 
     # Never carry a prior company's snapshot through a failed provider call.
     state.pop(STATE_KEY, None)
-    bars = history_loader(symbol, period)
+    bars = history_loader(symbol) if period == "5y" else history_loader(symbol, period)
     profile = info_loader(symbol) if _valid_bars(bars) else {}
     profile = profile if isinstance(profile, dict) else {}
     if _valid_bars(bars):
