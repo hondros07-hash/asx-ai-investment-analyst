@@ -161,7 +161,7 @@ def _financial_overview(data,ticker,currency):
   display_period=_display_date(item["period"])
   if mode=="ttm" and not display_period.endswith(" TTM"):
    display_period+=" TTM"
-  change_class="up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral"
+  change_class=("up" if item.get("comparison_status") in ("turnaround","improving") else "down" if item.get("comparison_status") in ("turned_negative","declining") else "neutral") if label=="Operating Income" else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")
   tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency),quote=True)
   try:
    spark=_spark(item["history"])
