@@ -30,6 +30,25 @@ _CACHE_LOCK = Lock()
 _TTL = 3600
 
 
+def _safe(value):
+    """Normalize provider values to JSON-safe primitives."""
+    import numpy as np
+    import pandas as pd
+    if value is None or value is pd.NaT:
+        return None
+    if isinstance(value, dict):
+        return {str(k): _safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_safe(v) for v in value]
+    if isinstance(value, (float, np.floating)):
+        return float(value) if isfinite(value) else None
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return value
+
+
 def _ticker(value: str) -> str:
     value = value.strip().upper()
     if not value or len(value) > 24 or not all(c.isalnum() or c in ".^=-_" for c in value):
@@ -119,7 +138,7 @@ def company_search(q: str = Query(min_length=1, max_length=80), limit: int = Que
 def financial_statements(ticker: str, period: Period = "Annual (5Y)"):
     ticker = _ticker(ticker)
     data = _snapshot(ticker, period)
-    return {"ticker": ticker, "period": period, "data": data,
+    return {"ticker": ticker, "period": period, "data": _safe(data),
             "provenance": {"source": data.get("provider"), "checked_at": data.get("provider_checked_at"),
                            "cache_ttl_seconds": _TTL, "issuer_reconciled": False}}
 
@@ -129,7 +148,7 @@ def independent_kpis(ticker: str, period: Period = "Annual (5Y)"):
     ticker = _ticker(ticker)
     data = _snapshot(ticker, period)
     return {"ticker": ticker, "period": period, "currency": data.get("currency"),
-            "metrics": run_independently(data, data.get("currency")),
+            "metrics": _safe(run_independently(data, data.get("currency"))),
             "source": data.get("provider"), "checked_at": data.get("provider_checked_at")}
 
 
@@ -144,7 +163,7 @@ def company_valuation(ticker: str):
     data = _snapshot(ticker, "Annual (5Y)")
     inputs = provider_inputs(data.get("meta") or {})
     result = calculate_dcf_scenarios(**inputs)
-    return {"ticker": ticker, "valuation": result, "source": data.get("provider"),
+    return {"ticker": ticker, "valuation": _safe(result), "source": data.get("provider"),
             "checked_at": data.get("provider_checked_at")}
 
 
@@ -154,7 +173,7 @@ def forecast(request: ForecastRequest):
     def compute():
         history = yf.Ticker(ticker).history(period="5y", interval="1d", auto_adjust=True)
         return build_12m_forecast(history, current_price=request.current_price, security=ticker)
-    return {"ticker": ticker, "forecast": _provider(compute),
+    return {"ticker": ticker, "forecast": _safe(_provider(compute)),
             "source": "Yahoo Finance price history", "model": "AXÍA existing 12-month forecast engine"}
 
 
