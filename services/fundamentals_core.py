@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import math
 import pandas as pd
 import yfinance as yf
+from services.data_integrity_engine import audit_snapshot
 
 ROWS = {
  "Income Statement": {
@@ -199,4 +200,9 @@ def load_uncached(ticker, frequency="Annual (5Y)"):
  derive_input["derived"]={}
  derived=derive(derive_input)
  data["ratios"]=derived.get("ratios",{});data["derived"]=derived.get("derived",{})
+ integrity=audit_snapshot(data)
+ data["identity"]=integrity["identity"]
+ data["currency"]=integrity["currency"]
+ data["ratios"]=integrity["ratios"]
+ data["integrity"]={"status":integrity["status"],"issues":integrity["issues"]}
  return data
