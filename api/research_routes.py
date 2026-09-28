@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 from math import isfinite
 from urllib.request import Request, urlopen
 import json
+import os
 import pandas as pd
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
-from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
 
 router = APIRouter(prefix="/v1/companies", tags=["company-research"])
 
@@ -114,9 +114,13 @@ def announcements(ticker: str):
     except (TypeError,ValueError):
         return {"ticker":ticker,"status":"unavailable","filings":[],"source":None,
                 "message":"Issuer CIK not verified; SEC filings cannot be matched safely."}
+    user_agent=os.getenv("AXIA_SEC_USER_AGENT","").strip()
+    if not user_agent:
+        return {"ticker":ticker,"status":"unavailable","filings":[],"source":"SEC EDGAR",
+                "message":"Configure AXIA_SEC_USER_AGENT with a real application name and contact before SEC retrieval."}
     def fetch():
         req=Request(f"https://data.sec.gov/submissions/CIK{cik:010d}.json",
-                    headers={"User-Agent":"AXIA research contact support@axiaindex.com","Accept":"application/json"})
+                    headers={"User-Agent":user_agent,"Accept":"application/json"})
         with urlopen(req,timeout=12) as response:return json.load(response)
     filing_data=_provider(fetch)
     recent=(filing_data.get("filings") or {}).get("recent") or {}
