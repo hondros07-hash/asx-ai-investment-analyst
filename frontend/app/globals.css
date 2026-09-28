@@ -26,3 +26,6 @@
 .research-entry{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;border-bottom:1px solid var(--line);padding:14px 0;font-size:13px}
 .research-entry strong{flex:1 1 220px}.research-entry span,.research-entry small{color:var(--muted)}.research-entry a{color:var(--blue);text-decoration:underline}
 .research-section .model-values{margin-top:18px}.research-section .model-values dd{font-size:13px}
+
+/* V24.2 — global workspace responsive discovery */
+.workspace-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}.workspace-grid .panel{margin:8px 0;min-width:0}.workspace-grid strong{font-size:23px}.workspace-grid small{color:var(--muted)}.search-form select{background:white;border:1px solid var(--line);border-radius:8px;padding:12px;max-width:150px}@media(max-width:600px){.workspace-grid{grid-template-columns:1fr}.search-form{flex-wrap:wrap}.search-form select{max-width:none;width:100%}}
