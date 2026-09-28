@@ -1,10 +1,9 @@
 export type ApiResult<T> = {data:T|null;error:string|null};
 const base=process.env.AXIA_API_URL || "http://127.0.0.1:8000";
-const TIMEOUT_MS=12000;
 export async function api<T>(path:string):Promise<ApiResult<T>> {
  try {
   if(!path.startsWith("/") || path.startsWith("//")) return {data:null,error:"Invalid research API path"};
-  const response=await fetch(base+path,{next:{revalidate:60},signal:AbortSignal.timeout(TIMEOUT_MS)});
+  const response=await fetch(base+path,{next:{revalidate:60}});
   if(!response.ok) return {data:null,error:response.status===504?"Data provider timed out":response.status===503?"Data provider temporarily unavailable":`API returned ${response.status}`};
   const data:unknown=await response.json();
   if(data===null || typeof data!=="object" || Array.isArray(data)) return {data:null,error:"Invalid research API response"};
