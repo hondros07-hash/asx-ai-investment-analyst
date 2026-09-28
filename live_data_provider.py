@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import pandas as pd
 import yfinance as yf
+from services.performance_engine import cached_load
 
 TD_BASE = "https://api.twelvedata.com"
 
@@ -62,13 +63,17 @@ def twelve_series(symbol: str, api_key: str, interval="1day", outputsize=500) ->
 
 def yahoo_history(symbol: str, period="5y", interval="1d") -> pd.DataFrame:
     try:
-        return yf.Ticker(symbol).history(period=period, interval=interval, auto_adjust=True)
+        data = cached_load("quote" if interval.endswith(("m", "h")) else "history",
+            (str(symbol).upper(), period, interval, True),
+            lambda: yf.Ticker(symbol).history(period=period, interval=interval, auto_adjust=True))
+        return data.copy()
     except Exception:
         return pd.DataFrame()
 
 def yahoo_quote(symbol: str) -> Quote:
     try:
-        h = yf.Ticker(symbol).history(period="5d", interval="1d", auto_adjust=True)
+        h = cached_load("quote", (str(symbol).upper(), "5d", "1d", True),
+            lambda: yf.Ticker(symbol).history(period="5d", interval="1d", auto_adjust=True))
         if h.empty:
             return Quote(symbol, None, "Yahoo/yfinance", status="error", message="No price returned.")
         return Quote(symbol, float(h["Close"].iloc[-1]), "Yahoo/yfinance",
