@@ -23,6 +23,11 @@ class PerformanceEngineTests(unittest.TestCase):
             cache.get_or_load("x", lambda: (_ for _ in ()).throw(RuntimeError()))
         self.assertEqual(cache.stats()["entries"], 0)
 
+    def test_missing_value_is_not_cached(self):
+        cache = BoundedTTLCache(CachePolicy(60))
+        self.assertIsNone(cache.get_or_load('x', lambda: None))
+        self.assertEqual(cache.stats()['entries'], 0)
+
     def test_monitor_records_failure(self):
         monitor = PerformanceMonitor()
         @monitor.measure("test")
