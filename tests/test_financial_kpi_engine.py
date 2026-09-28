@@ -41,6 +41,23 @@ class FinancialKPITests(unittest.TestCase):
         self.assertEqual(build_kpi([obs(2025, 1, 5), obs(2025, 2, 6, "AUD")],
                                    "quarterly").status, "currency_mismatch")
 
+    def test_missing_prior_year_is_not_qoq(self):
+        rows = [obs(2025, 1, 100), obs(2025, 2, 110)]
+        result = build_kpi(rows, "quarterly")
+        self.assertIsNone(result.growth_pct)
+        self.assertEqual(result.status, "comparison_unavailable")
+
+    def test_gap_does_not_create_false_ttm(self):
+        rows = [obs(2024, 1, 100), obs(2024, 2, 100),
+                obs(2024, 4, 100), obs(2025, 1, 100)]
+        self.assertEqual(build_kpi(rows, "ttm").status, "incomplete_ttm")
+
+    def test_sparkline_is_chronological_and_exact(self):
+        rows = [obs(2025, 2, 110), obs(2025, 1, 100)]
+        points = chart_points(build_kpi(rows, "quarterly"))
+        self.assertEqual([p["value"] for p in points], [100, 110])
+        self.assertEqual(points[-1]["date"], "2025-06-28")
+
     def test_reverse_scale(self):
         self.assertEqual(delta_state(5, True), "negative")
         self.assertEqual(delta_state(-5, True), "positive")
