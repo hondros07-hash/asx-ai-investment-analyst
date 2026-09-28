@@ -17,7 +17,7 @@ for path in paths:
             body = response.read(1024 * 1024)
             if not body:
                 raise RuntimeError("empty response")
-            if path == "/robots.txt" and b"User-agent" not in body:
+            if path == "/robots.txt" and b"user-agent:" not in body.lower():
                 raise RuntimeError("invalid robots response")
             if path == "/sitemap.xml" and b"<urlset" not in body:
                 raise RuntimeError("invalid sitemap response")
