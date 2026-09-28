@@ -4245,6 +4245,29 @@ def _chr_render_market_strip_v2376():
 
 _chr_render_market_strip_v2376()
 
+# V23.10 — responsive presentation is isolated from financial engines and desktop CSS.
+from pathlib import Path as _AxiaResponsivePath
+_axia_responsive_css = _AxiaResponsivePath(__file__).resolve().parent / "assets" / "responsive_v2310.css"
+if _axia_responsive_css.is_file():
+    st.markdown("<style>" + _axia_responsive_css.read_text(encoding="utf-8") + "</style>",
+                unsafe_allow_html=True)
+
+# Native buttons remain keyboard-accessible and use the existing route controller.
+with st.container(key="axia_mobile_nav_v2310"):
+    _mobile_home, _mobile_search, _mobile_watch, _mobile_portfolio, _mobile_more = st.columns(5, gap="small")
+    for _mobile_col, _mobile_label, _mobile_target in (
+        (_mobile_home, "Home", "Home"),
+        (_mobile_search, "Search", "Company Search"),
+        (_mobile_watch, "Watchlist", "Watchlist"),
+        (_mobile_portfolio, "Portfolio", "Portfolio"),
+        (_mobile_more, "More", "Markets"),
+    ):
+        with _mobile_col:
+            st.button(_mobile_label, key="mobile_nav_" + _mobile_label.lower(),
+                      use_container_width=True,
+                      on_click=_chr_set_primary_nav_v2074191, args=(_mobile_target,),
+                      disabled=_mobile_target not in _valid_nav)
+
 
 _PAGE_SUBTITLES={
  "Dashboard":"Market overview and research starting point",
