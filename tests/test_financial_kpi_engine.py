@@ -58,6 +58,15 @@ class FinancialKPITests(unittest.TestCase):
         self.assertEqual([p["value"] for p in points], [100, 110])
         self.assertEqual(points[-1]["date"], "2025-06-28")
 
+    def test_duplicate_period_is_rejected(self):
+        rows = [obs(2025, 1, 100), obs(2025, 1, 101)]
+        self.assertEqual(build_kpi(rows, "quarterly").status, "duplicate_period")
+
+    def test_latest_bar_matches_displayed_value(self):
+        rows = [obs(2024, q, 100) for q in range(1, 5)] + [obs(2025, 1, 110)]
+        result = build_kpi(rows, "quarterly")
+        self.assertEqual(chart_points(result)[-1]["value"], result.value)
+
     def test_reverse_scale(self):
         self.assertEqual(delta_state(5, True), "negative")
         self.assertEqual(delta_state(-5, True), "positive")
