@@ -8,6 +8,9 @@ class IdentityTests(unittest.TestCase):
         self.assertTrue(validate_identity("KO", "The Coca-Cola Company",
                                           {"longName": "The Coca-Cola Company"})["valid"])
 
+    def test_bare_symbol_is_not_a_company_name(self):
+        self.assertFalse(names_compatible("KO", "The Coca-Cola Company"))
+
     def test_wrong_company_is_rejected(self):
         result = validate_identity("KO", "The Coca-Cola Company",
                                    {"longName": "PepsiCo, Inc."})
