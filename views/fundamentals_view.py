@@ -159,8 +159,12 @@ def _financial_overview(data,ticker,currency):
  st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for exact provider values and reporting dates. Historical bars are provider-transcribed and are not independently reconciled to issuer filings.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
-  _load_fundamentals.clear()
-  st.rerun()
+  clear_cache=getattr(_load_fundamentals,"clear",None)
+  if callable(clear_cache):
+   clear_cache()
+   st.rerun()
+  else:
+   st.warning("Financial refresh is unavailable in this deployment; the current provider data remains visible.")
  rows=financial_performance(data);labels=[r["Period"] for r in rows]
  a,b=st.columns([1.35,1])
  with a:
