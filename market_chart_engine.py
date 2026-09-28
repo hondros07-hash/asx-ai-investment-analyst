@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
+from services.performance_engine import cached_load
 
 RANGES = {
     "1D": ("1d", "5m"),
@@ -21,8 +22,11 @@ RANGES = {
 
 def _download(ticker, period, interval):
     try:
-        d = yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
-        return d.dropna(subset=["Close"])
+        def fetch():
+            return yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
+        kind = "quote" if interval.endswith("m") or interval.endswith("h") else "history"
+        d = cached_load(kind, (str(ticker).upper(), period, interval, True), fetch)
+        return d.dropna(subset=["Close"]).copy()
     except Exception:
         return pd.DataFrame()
 
