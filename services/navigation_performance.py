@@ -1,9 +1,7 @@
-"""AXÍA V23.7.23 — short-lived, per-session navigation snapshot.
+"""AXÍA V23.12 — safe per-session navigation cache.
 
-The existing Streamlit data caches remain authoritative across sessions. This
-layer avoids repeated cache deserialisation and repeated profile/history work
-while moving between research subpages for the same listing. It never caches
-failures and does not alter intraday/live quote freshness policies.
+Provider and Streamlit caches remain authoritative. This cache is short-lived,
+ticker-and-parameter scoped, and never stores failed/empty provider responses.
 """
 from __future__ import annotations
 from time import monotonic
@@ -12,27 +10,36 @@ SNAPSHOT_TTL_SECONDS = 45
 STATE_KEY = "_axia_navigation_snapshot_v23723"
 TIMING_KEY = "_axia_navigation_timing_v23723"
 
-def company_navigation_snapshot(ticker, history_loader, info_loader, state):
-    symbol = str(ticker or "").strip().upper()
-    started = monotonic()
-    snapshot = state.get(STATE_KEY)
-    if (snapshot and snapshot.get("ticker") == symbol
-            and started - snapshot.get("loaded_at", 0) < SNAPSHOT_TTL_SECONDS
-            and snapshot.get("history") is not None
-            and not snapshot["history"].empty):
-        state[TIMING_KEY] = {"ticker": symbol, "cache": "session",
-                             "elapsed_ms": round((monotonic() - started) * 1000, 2)}
-        return snapshot["history"], snapshot["profile"]
 
-    # Keep loaders on the Streamlit script thread: Streamlit cache decorators
-    # and session state should not be invoked from unmanaged worker threads.
-    bars = history_loader(symbol)
-    profile = info_loader(symbol)
-    if bars is not None and not bars.empty:
-        state[STATE_KEY] = {"ticker": symbol, "loaded_at": monotonic(),
-                            "history": bars, "profile": profile or {}}
-    else:
-        state.pop(STATE_KEY, None)
-    state[TIMING_KEY] = {"ticker": symbol, "cache": "provider_or_streamlit",
-                         "elapsed_ms": round((monotonic() - started) * 1000, 2)}
-    return bars, profile or {}
+def _valid_bars(bars):
+    return bars is not None and not getattr(bars, "empty", True)
+
+
+def company_navigation_snapshot(ticker, history_loader, info_loader, state,
+                                *, period="5y", refresh=False, clock=monotonic):
+    symbol = str(ticker or "").strip().upper()
+    if not symbol:
+        raise ValueError("Ticker is required")
+    started = clock()
+    snapshot = state.get(STATE_KEY)
+    key = (symbol, str(period))
+    if (not refresh and snapshot and snapshot.get("key") == key
+            and 0 <= started - snapshot.get("loaded_at", 0) < SNAPSHOT_TTL_SECONDS
+            and _valid_bars(snapshot.get("history"))):
+        state[TIMING_KEY] = {"cache": "session", "elapsed_ms": round((clock()-started)*1000, 2),
+                             "period": str(period)}
+        # Copies prevent mutations on one page leaking into another.
+        bars = snapshot["history"]
+        return bars.copy(deep=True), dict(snapshot["profile"])
+
+    # Never carry a prior company's snapshot through a failed provider call.
+    state.pop(STATE_KEY, None)
+    bars = history_loader(symbol, period)
+    profile = info_loader(symbol) if _valid_bars(bars) else {}
+    profile = profile if isinstance(profile, dict) else {}
+    if _valid_bars(bars):
+        state[STATE_KEY] = {"key": key, "loaded_at": clock(),
+                            "history": bars.copy(deep=True), "profile": dict(profile)}
+    state[TIMING_KEY] = {"cache": "provider_or_streamlit",
+                         "elapsed_ms": round((clock()-started)*1000, 2), "period": str(period)}
+    return bars, dict(profile)
