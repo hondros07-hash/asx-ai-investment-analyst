@@ -156,7 +156,11 @@ def _financial_overview(data,ticker,currency):
   tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency)+"; "+("YoY" if mode!="ttm" else "TTM comparison unavailable"),quote=True)
   cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
- st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Growth uses comparable prior-year periods. Hover over bars for exact provider values and reporting dates. TTM growth is withheld without comparable historical TTM.")
+ st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for exact provider values and reporting dates. Historical bars are provider-transcribed and are not independently reconciled to issuer filings.")
+ if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
+  from services.fundamentals_engine import load as _load_fundamentals
+  _load_fundamentals.clear()
+  st.rerun()
  rows=financial_performance(data);labels=[r["Period"] for r in rows]
  a,b=st.columns([1.35,1])
  with a:
