@@ -4071,35 +4071,49 @@ def _chr_header_market_order_v2321():
     if home not in _CHR_HEADER_INDEX_V2321: home="AU"
     return ([home]+[x for x in defaults if x!=home])[:5]
 
-@st.cache_data(ttl=60,show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def _chr_header_quote_v2321(code):
-    """Latest provider observation; exchange-live status is not guaranteed."""
+    """Provider observation with source timestamp; never claim exchange-real-time."""
     from datetime import datetime, timezone
-    name,ticker,flag=_CHR_HEADER_INDEX_V2321[code]
-    result={"name":name,"flag":flag,"price":None,"pct":None,"asof":"Unknown",
-            "status":"Unavailable","checked":datetime.now(timezone.utc).strftime("%H:%M UTC")}
+    from zoneinfo import ZoneInfo
+    name, ticker, flag = _CHR_HEADER_INDEX_V2321[code]
+    now = datetime.now(timezone.utc)
+    result = {"name": name, "flag": flag, "price": None, "pct": None,
+              "asof": "Unknown", "status": "Unavailable",
+              "checked": now.astimezone(ZoneInfo("Australia/Melbourne")).strftime("%d %b %H:%M AEST/AEDT")}
     try:
-        asset=yf.Ticker(ticker)
-        intraday=asset.history(period="2d",interval="1m",auto_adjust=False)
-        daily=asset.history(period="5d",interval="1d",auto_adjust=False)
-        d=pd.to_numeric(daily["Close"],errors="coerce").dropna() if daily is not None and not daily.empty and "Close" in daily.columns else pd.Series(dtype=float)
-        m=pd.to_numeric(intraday["Close"],errors="coerce").dropna() if intraday is not None and not intraday.empty and "Close" in intraday.columns else pd.Series(dtype=float)
+        asset = yf.Ticker(ticker)
+        intraday = asset.history(period="2d", interval="1m", auto_adjust=False)
+        daily = asset.history(period="5d", interval="1d", auto_adjust=False)
+        d = pd.to_numeric(daily["Close"], errors="coerce").dropna() if daily is not None and not daily.empty and "Close" in daily else pd.Series(dtype=float)
+        m = pd.to_numeric(intraday["Close"], errors="coerce").dropna() if intraday is not None and not intraday.empty and "Close" in intraday else pd.Series(dtype=float)
         if not m.empty:
-            result["price"]=float(m.iloc[-1])
-            stamp=m.index[-1]
-            if getattr(stamp,"tzinfo",None) is not None:
-                result["asof"]=stamp.tz_convert("UTC").strftime("%d %b %H:%M UTC")
-            result["status"]="Provider quote · delay unverified"
-            if len(d)>=2:
-                previous=float(d.iloc[-2] if d.index[-1].date()>=stamp.date() else d.iloc[-1])
-                if previous: result["pct"]=(result["price"]/previous-1)*100
+            stamp = pd.Timestamp(m.index[-1])
+            if stamp.tzinfo is not None:
+                utc_stamp = stamp.tz_convert("UTC")
+                result["asof"] = utc_stamp.astimezone(ZoneInfo("Australia/Melbourne")).strftime("%d %b %H:%M %Z")
+                age = max(0, (now - utc_stamp.to_pydatetime()).total_seconds())
+                result["status"] = ("Provider quote · delay unverified" if age < 900
+                                    else "Stale provider quote" if age < 86400
+                                    else "Previous session · market may be closed")
+            else:
+                result["asof"] = str(stamp) + " · timezone unverified"
+                result["status"] = "Provider timestamp unverified"
+            result["price"] = float(m.iloc[-1])
+            if len(d) >= 2:
+                # Daily index dates use the exchange timezone, as does the intraday index.
+                same_session = d.index[-1].date() >= stamp.date()
+                previous = float(d.iloc[-2] if same_session else d.iloc[-1])
+                if previous:
+                    result["pct"] = (result["price"] / previous - 1) * 100
         elif not d.empty:
-            result["price"]=float(d.iloc[-1])
-            if len(d)>=2 and float(d.iloc[-2]): result["pct"]=(result["price"]/float(d.iloc[-2])-1)*100
-            result["asof"]=str(d.index[-1].date())
-            result["status"]="Daily close · intraday unavailable"
+            result["price"] = float(d.iloc[-1])
+            if len(d) >= 2 and float(d.iloc[-2]):
+                result["pct"] = (result["price"] / float(d.iloc[-2]) - 1) * 100
+            result["asof"] = str(d.index[-1].date()) + " · exchange date"
+            result["status"] = "Daily close · intraday unavailable"
     except Exception:
-        result["status"]="Quote unavailable"
+        result["status"] = "Quote unavailable"
     return result
 
 def _chr_render_header_ribbon_v2321():
@@ -4182,17 +4196,37 @@ st.markdown(r"""<style>
 </style>""",unsafe_allow_html=True)
 
 def _chr_native_index_cell_v2322(code):
-    q=_chr_header_quote_v2321(code)
-    price="—" if q["price"] is None else f'{q["price"]:,.2f}'
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    q = _chr_header_quote_v2321(code)
+    price = "—" if q["price"] is None else f'{q["price"]:,.2f}'
     if q["pct"] is None:
-        move,cls="—","chr-v2322-index-flat"
-    elif q["pct"]>=0:
-        move,cls=f'▲ +{q["pct"]:.2f}%',"chr-v2322-index-up"
+        move, cls = "—", "chr-v2322-index-flat"
+    elif q["pct"] >= 0:
+        move, cls = f'▲ +{q["pct"]:.2f}%', "chr-v2322-index-up"
     else:
-        move,cls=f'▼ {q["pct"]:.2f}%',"chr-v2322-index-down"
-    st.markdown(f'<div class="chr-v2322-index" title="{q["status"]} | Quote: {q["asof"]} | Checked: {q["checked"]}"><div class="chr-v2322-index-name">{q["flag"]} {q["name"]}</div><div class="chr-v2322-index-price">{price}</div><div class="{cls}">{move}</div><div class="chr-v2322-index-asof">{q["asof"]} · {q["status"]}</div></div>',unsafe_allow_html=True)
+        move, cls = f'▼ {q["pct"]:.2f}%', "chr-v2322-index-down"
+    checked = datetime.now(timezone.utc).astimezone(ZoneInfo("Australia/Melbourne")).strftime("%d %b %H:%M:%S %Z")
+    # Weekend closure is definitive; weekday status is deliberately not asserted
+    # without an exchange holiday calendar and a licensed live market-status feed.
+    zones = {"AU": "Australia/Sydney", "US": "America/New_York",
+             "GB": "Europe/London", "JP": "Asia/Tokyo",
+             "HK": "Asia/Hong_Kong", "CA": "America/Toronto",
+             "GR": "Europe/Athens"}
+    local = datetime.now(timezone.utc).astimezone(ZoneInfo(zones.get(code, "UTC")))
+    session = "Weekend · market closed" if local.weekday() >= 5 else "Market status unverified"
+    from html import escape
+    note = f'Quote: {q["asof"]} | Checked: {checked} | {session} | {q["status"]}'
+    st.markdown(
+        f'<div class="chr-v2322-index" title="{escape(note, quote=True)}">'
+        f'<div class="chr-v2322-index-name">{escape(q["flag"] + " " + q["name"])}</div>'
+        f'<div class="chr-v2322-index-price">{price}</div>'
+        f'<div class="{cls}">{move}</div>'
+        f'<div class="chr-v2322-index-asof" title="{escape(note, quote=True)}">'
+        f'Quote {escape(q["asof"])} · Checked {escape(checked)} · {escape(session)}</div></div>',
+        unsafe_allow_html=True)
 
-@st.fragment(run_every="60s")
+@st.fragment(run_every="30s")
 def _chr_render_market_strip_v2376():
     """Refresh only the ribbon, not the full application."""
     with st.container(key="v2322_market_strip"):
