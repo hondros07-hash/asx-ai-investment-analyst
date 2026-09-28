@@ -227,7 +227,11 @@ def render(ticker):
 .axia-kpi-body{display:contents}
 .axia-kpi-label{grid-column:2;grid-row:1;align-self:center;min-width:0;font-size:clamp(11px,.95vw,15px);font-weight:700;color:#49617d;white-space:normal;line-height:1.2}
 .axia-kpi-label small{font-size:10px;font-weight:500;white-space:nowrap}
-.axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2}
+.axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2;-webkit-text-size-adjust:100%;text-size-adjust:100%;font-variant-numeric:tabular-nums}
+/* V23.8.5: all KPI figures share the Revenue typography; never enlarge a negative value. */
+.axia-kpi-card-operating .axia-kpi-number{font-size:clamp(20px,2vw,31px);font-weight:800;line-height:1.2;letter-spacing:normal;transform:none}
+/* Keep long negative YoY comparisons away from the trend sparkline. */
+.axia-kpi-card-operating .axia-kpi-change{max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);line-height:1.2}
 .axia-kpi-change{position:absolute;left:63px;bottom:17px;max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
 .axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:34px;display:flex;align-items:flex-end;gap:2px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
