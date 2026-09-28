@@ -4850,6 +4850,7 @@ def _home_live_search_fragment():
             st.session_state["chr_active_exchange"]=_parts[-2] if len(_parts)>=3 else ""
             st.session_state["chr_active_country"]=_parts[-1] if len(_parts)>=2 else ""
             st.session_state["chr_primary_nav"]="Company Command Centre"
+            st.session_state["chr_cc_sub_v21001"]="Overview"
             # Consume each autocomplete selection once; URL state is not used.
             st.session_state["chr_last_search_commit_v2054"]=resolved
             st.rerun()
@@ -6460,6 +6461,7 @@ def _chr_company_search_page():
                     "provider_symbol": resolved,
                 }
                 st.session_state["chr_primary_nav"]="Company Command Centre"
+                st.session_state["chr_cc_sub_v21001"]="Overview"
                 st.rerun()
             if st.button("☆  Add to Watchlist",use_container_width=True,key="chr_search_watch_v207421"):
                 try:watch_add(resolved);st.toast(f"{resolved} added to Watchlist.")
