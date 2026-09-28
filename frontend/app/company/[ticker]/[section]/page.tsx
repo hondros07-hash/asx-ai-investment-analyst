@@ -5,7 +5,7 @@ import {Shell} from "../../../../components/Shell";
 import {KpiCards} from "../../../../components/KpiCards";
 import {StatementResearch,ModelResearch} from "../../../../components/ResearchPanels";
 import {ResearchSection} from "../../../../components/ResearchSection";
-import {api,KpiResponse,StatementResponse,ValuationResponse,ForecastResponse} from "../../../../lib/api";
+import {api,KpiResponse,StatementResponse,ValuationResponse,ForecastResponse} from "../../../../lib/research-api";
 
 const sections=["overview","fundamentals","technical","announcements","report-intelligence","news","thesis","catalysts","quant","forecasts","finance"];
 const names:Record<string,string>={overview:"Overview",fundamentals:"Fundamentals",technical:"Technical",announcements:"Announcements & Reports","report-intelligence":"Report Intelligence",news:"News",thesis:"Thesis Scorecard",catalysts:"Catalyst Calendar",quant:"Quant",forecasts:"Forecasts",finance:"Finance"};
