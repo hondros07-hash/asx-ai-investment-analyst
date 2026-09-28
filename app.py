@@ -7250,7 +7250,12 @@ elif page=="Company Command Centre":
     # V21.3.17 — canonical security identity is resolved before price, metadata,
     # financials or news are loaded. Price magnitude is never used to guess identity.
     _preselected=st.session_state.get("chr_company_search_selected") or {}
-    _expected_company=str(_preselected.get("Company") or name or "").strip()
+    _selected_identity_ticker=str(_preselected.get("_resolved") or _preselected.get("Ticker") or "").upper().strip()
+    # A search selection belongs to this listing only when its ticker matches.
+    # Do not compare a previous company's name with a newly selected ticker.
+    _expected_company=(str(_preselected.get("Company") or "").strip()
+                       if _selected_identity_ticker==str(ticker).upper().strip()
+                       else str(name or "").strip())
     _identity_resolution=canonicalize_security(ticker,_expected_company)
     if _identity_resolution.get("changed"):
         ticker=_identity_resolution["ticker"]
@@ -7320,7 +7325,15 @@ elif page=="Company Command Centre":
         # sector/industry for an unrelated company when provider metadata is missing.
         _safe_tags=safe_classification(_ccmeta,cls)
         _ccsector=_safe_tags["sector"]; _ccindustry=_safe_tags["industry"]
-        _identity_check=validate_identity(ticker,_expected_company or _ccname,_ccmeta)
+        # Prefer the actual provider name for identity checks; enrichment/search
+        # display names must not masquerade as provider verification.
+        _provider_identity=dict(meta) if isinstance(meta,dict) else {}
+        _provider_name=_provider_identity.get("longName") or _provider_identity.get("shortName")
+        if not _provider_name:
+            _provider_name=_ccrich.get("longName") or _ccrich.get("shortName") if isinstance(_ccrich,dict) else None
+            if _provider_name:
+                _provider_identity["longName"]=_provider_name
+        _identity_check=validate_identity(ticker,_expected_company or _ccname,_provider_identity)
         if not _identity_check.get("valid"):
             st.warning(f"Listing identity could not be verified for {ticker}. Price and company metrics may be withheld until the selected listing is confirmed.")
         _ccprev=float(h["Close"].iloc[-2]) if len(h)>1 else np.nan; _ccchg=price-_ccprev if np.isfinite(_ccprev) else np.nan; _ccpct=_ccchg/_ccprev if np.isfinite(_ccprev) and _ccprev else np.nan
