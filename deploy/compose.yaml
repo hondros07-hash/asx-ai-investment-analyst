@@ -1,0 +1,35 @@
+# Deploy behind a TLS reverse proxy; do not expose the API publicly.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    networks: [internal]
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        AXIA_SITE_URL: ${AXIA_SITE_URL:?Set the staging or production HTTPS origin}
+    environment:
+      AXIA_SITE_URL: ${AXIA_SITE_URL:?Set the staging or production HTTPS origin}
+      AXIA_API_URL: http://api:8000
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${AXIA_FRONTEND_PORT:-3000}:3000"
+    networks: [internal]
+networks:
+  internal:
+    driver: bridge

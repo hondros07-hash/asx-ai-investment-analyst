@@ -189,3 +189,7 @@ app.include_router(research_router)
 
 from api.workspace_routes import router as workspace_router
 app.include_router(workspace_router)
+
+# Deployment health routes never depend on third-party market providers.
+from api.health import router as health_router
+app.include_router(health_router)
