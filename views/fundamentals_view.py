@@ -169,7 +169,6 @@ def _financial_overview(data,ticker,currency):
    spark='<span class="axia-kpi-no-trend">Trend unavailable</span>'
   cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
- st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for source dates and values. Intermediate sparkline bars are visual interpolation, not additional reported periods. Provider history is not independently reconciled to issuer filings.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
   clear_cache=getattr(_load_fundamentals,"clear",None)
@@ -300,9 +299,7 @@ def _render_workspace(ticker):
  if sector not in SECTOR: sector="general"
  currency=data.get("currency") or "Unconfirmed"
  is_qantas=str(ticker).upper() in ("QAN.MU","QAN.AX")
- # Keep the reporting selector accessible on every tab, without separating the
- # issuer banner from the Financial Overview navigation and KPI cards.
- st.segmented_control("Reporting period",["Annual (5Y)","Quarterly (8Q)","TTM"],default="Annual (5Y)",key="axia_fund_period")
+ # Reporting basis remains Annual (5Y) by default; the visible selector is removed.
  quality_notes=list(data.get("quality",[]))
  if currency=="Unconfirmed":
   quality_notes.insert(0,"Provider statement currency is unconfirmed. "+("Qantas issuer reports in AUD, but QAN.MU provider monetary units are not verified. " if is_qantas else "")+"Do not interpret or convert monetary values until reconciled to a dated issuer filing.")
@@ -599,6 +596,8 @@ def _render_workspace(ticker):
     st.dataframe(pd.DataFrame(checks),hide_index=True,use_container_width=True)
    st.download_button("Export integrity diagnostics CSV",pd.DataFrame(checks).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_integrity.csv",mime="text/csv",key="axia_integrity_export")
    st.info("Source status: provider-transcribed figures; issuer-filing reconciliation is pending. Internal checks do not establish audit verification.")
+   with st.expander("Financial statement source and chart methodology",expanded=False):
+    st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for source dates and values. Intermediate sparkline bars are visual interpolation, not additional reported periods. Provider history is not independently reconciled to issuer filings.")
    metadata={"Provider":data.get("provider","Unavailable"),"Reporting currency":currency,"Period basis":data.get("frequency",frequency),"Audit status":"Provider-transcribed; unverified","Restatement status":"Not established","Issuer filing reference":"Not linked to a specific reporting period"}
    st.dataframe(pd.DataFrame([{"Field":k,"Value":v} for k,v in metadata.items()]),hide_index=True,use_container_width=True)
    st.caption("A company website is not evidence of an individual financial statement value. Official filing links must be matched to the selected period before verification badges are shown.")
