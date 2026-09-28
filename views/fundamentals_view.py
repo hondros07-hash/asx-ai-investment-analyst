@@ -143,7 +143,7 @@ def _financial_overview(data,ticker,currency):
    else:
     tip="Visual interpolation between "+_display_date(valid[left][0])+" and "+_display_date(valid[right][0])+"; not a reported period"
    samples.append((value,tip))
-  maximum=max(abs(value) for value,_ in valid) or 1
+  maximum=max(abs(value) for _,value in valid) or 1
   return '<span class="axia-kpi-spark" aria-label="Historical trend; intermediate bars are visual interpolation between reported periods">'+''.join(
    '<i title="'+html.escape(tip,quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
    for value,tip in samples)+'</span>'
