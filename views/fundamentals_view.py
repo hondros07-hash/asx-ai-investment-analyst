@@ -161,13 +161,13 @@ def _financial_overview(data,ticker,currency):
   display_period=_display_date(item["period"])
   if mode=="ttm" and not display_period.endswith(" TTM"):
    display_period+=" TTM"
-  change_class=("up" if item.get("comparison_status") in ("turnaround","improving") else "down" if item.get("comparison_status") in ("turned_negative","declining") else "neutral") if label=="Operating Income" else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")
+  change_class=("up" if item.get("comparison_status") in ("turnaround","improving") else "down" if item.get("comparison_status") in ("turned_negative","declining") else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")) if label=="Operating Income" else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")
   tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency),quote=True)
   try:
    spark=_spark(item["history"])
   except Exception:
    spark='<span class="axia-kpi-no-trend">Trend unavailable</span>'
-  cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
+  cards.append('<div class="axia-kpi-card'+(" axia-kpi-card-operating" if label=="Operating Income" else "")+'" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
@@ -229,6 +229,10 @@ def render(ticker):
 .axia-kpi-label small{font-size:10px;font-weight:500;white-space:nowrap}
 .axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2}
 .axia-kpi-change{position:absolute;left:63px;bottom:17px;max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Operating Income: Revenue-reference typography; other KPI cards remain unchanged. */
+.axia-kpi-card-operating .axia-kpi-number{font-size:clamp(30px,3.1vw,48px);font-weight:850;line-height:1.08;margin-top:15px;letter-spacing:-.025em}
+.axia-kpi-card-operating .axia-kpi-change{font-size:clamp(15px,1.35vw,21px);font-weight:800;bottom:17px;max-width:calc(100% - 108px);line-height:1.15}
+.axia-kpi-card-operating .axia-kpi-change.neutral{font-size:clamp(11px,.95vw,14px)}
 .axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
 .axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:34px;display:flex;align-items:flex-end;gap:2px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
 .axia-kpi-no-trend{position:absolute;right:10px;bottom:10px;font-size:9px;color:#8190a4}
