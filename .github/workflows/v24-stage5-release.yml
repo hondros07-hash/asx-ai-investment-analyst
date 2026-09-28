@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund && npm run lint && npm run build
+      - run: npm install --no-audit --no-fund && npm run lint && npm run build
         working-directory: frontend
         env:
           AXIA_SITE_URL: https://staging.example.invalid
@@ -37,9 +37,15 @@ jobs:
           AXIA_SITE_URL: https://staging.example.invalid
       - run: docker build -f api/Dockerfile -t axia-api:ci .
       - run: docker build -f frontend/Dockerfile --build-arg AXIA_SITE_URL=https://staging.example.invalid -t axia-frontend:ci .
-      - run: docker compose -f deploy/compose.yaml up -d --no-build
+      - run: docker compose -f deploy/compose.yaml up -d --build
         env:
           AXIA_SITE_URL: https://staging.example.invalid
+      - run: |
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
       - run: python scripts/deployment_smoke.py
         env:
           AXIA_SMOKE_ORIGIN: http://127.0.0.1:3000
