@@ -22,7 +22,7 @@ from services.independent_financial_kpi_engines import run_independently
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs
 from services.forecast_engine import build_12m_forecast
 
-app = FastAPI(title="AXÍA Research API", version="24.1.0",
+app = FastAPI(title="AXÍA Research API", version="24.2.0",
               description="Provider-transcribed research data, not audited issuer filings.")
 _POOL = ThreadPoolExecutor(max_workers=6)
 _CACHE = {}
@@ -184,3 +184,6 @@ def company_forecast(ticker: str):
 # V24.1: isolated read-only Company Command Centre research endpoints.
 from api.research_routes import router as research_router
 app.include_router(research_router)
+
+from api.workspace_routes import router as workspace_router
+app.include_router(workspace_router)
