@@ -58,6 +58,8 @@ class BoundedTTLCache:
                 del self._items[key]
             self.misses += 1
         value = loader()  # Never hold the global lock across provider I/O.
+        if value is None or (hasattr(value, "empty") and value.empty):
+            return value
         with self._lock:
             self._items[key] = (monotonic() + self.policy.ttl_seconds, value)
             self._items.move_to_end(key)
