@@ -1,5 +1,7 @@
 """AXÍA fundamentals: provider statements, conservative derivations and provenance."""
 from functools import lru_cache
+from datetime import datetime, timezone
+import streamlit as st
 import math
 import pandas as pd
 import yfinance as yf
@@ -114,7 +116,11 @@ def derive(data):
  return data
 
 @lru_cache(maxsize=128)
+@st.cache_data(ttl=3600, show_spinner=False, max_entries=96)
 def load(ticker, frequency="Annual (5Y)"):
+ # Cache key includes the selected ticker and reporting mode; provider data is
+ # checked again after one hour, not misrepresented as live exchange data.
+ checked_at=datetime.now(timezone.utc).isoformat(timespec="seconds")
  stock=yf.Ticker(ticker)
  try: meta=stock.info or {}
  except Exception: meta={}
@@ -139,7 +145,7 @@ def load(ticker, frequency="Annual (5Y)"):
  periods=sorted(set(c for f in frames if isinstance(f,pd.DataFrame) for c in f.columns),reverse=True)[:limit]
  labels=[str(pd.Timestamp(c).date()) for c in periods]
  data={"ticker":ticker,"meta":meta,"currency":meta.get("financialCurrency") or "Unconfirmed","frequency":frequency,
-       "periods":labels,"statements":{},"quality":[],"ratios":{}}
+       "periods":labels,"statements":{},"quality":[],"ratios":{}, "provider_checked_at":checked_at}
  if not periods: data["quality"].append("No financial statement periods returned by provider.")
  for (group,aliases),frame in zip(ROWS.items(),frames):
   table={}
@@ -158,7 +164,10 @@ def load(ticker, frequency="Annual (5Y)"):
   # Align the four most recent income-statement quarters. Never sum balance-sheet stocks.
   income, balance, cashflow=frames
   aligned=sorted(set(income.columns).intersection(cashflow.columns),reverse=True)[:4] if all(isinstance(x,pd.DataFrame) and not x.empty for x in (income,cashflow)) else []
-  if len(aligned)==4:
+  def _quarter_number(column):
+   stamp=pd.Timestamp(column)
+   return stamp.year*4+(stamp.month-1)//3
+  if len(aligned)==4 and all(_quarter_number(a)-_quarter_number(b)==1 for a,b in zip(aligned,aligned[1:])):
    end=str(pd.Timestamp(aligned[0]).date()); label=end+" TTM"
    aligned_labels=[str(pd.Timestamp(c).date()) for c in aligned]
    latest_balance=sorted(balance.columns,reverse=True)[0] if isinstance(balance,pd.DataFrame) and not balance.empty else None
@@ -176,7 +185,7 @@ def load(ticker, frequency="Annual (5Y)"):
    data["quality"].append("TTM flow metrics use four aligned reported quarters; balance sheet uses latest available quarter.")
   else:
    data["periods"]=[]
-   data["quality"].append("TTM unavailable: four aligned quarterly income and cash-flow periods were not returned. Select Annual or Quarterly for reported figures.")
+   data["quality"].append("TTM unavailable: four consecutive aligned quarterly income and cash-flow periods were not returned. Select Annual or Quarterly for reported figures.")
  # Drop wholly empty reporting periods, retaining partial years.
  if frequency!="TTM":
   usable=[p for p in data["periods"] if sum(values.get(p) is not None for table in data["statements"].values() for values in table.values()) >= 2]
