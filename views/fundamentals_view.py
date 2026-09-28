@@ -149,36 +149,25 @@ def _financial_overview(data,ticker,currency):
    for value,tip in samples)+'</span>'
  from datetime import date as _kpi_date
  from services.financial_kpi_engine import Observation as _KPIObservation, build_kpi as _build_kpi
- metrics=(("Revenue","▤",inc,"Revenue",False),("Operating Income","▣",inc,"Operating Income (EBIT)",False),("Net Income","♧",inc,"Net Income",False),("Free Cash Flow","▢",cf,"Free Cash Flow",False),("Operating Margin","◉",None,"Operating Margin",True))
+ from services.independent_financial_kpi_engines import run_independently
+ icons={"Revenue":"▤","Operating Income":"▣","Net Income":"♧","Free Cash Flow":"▢","Operating Margin":"◉"}
  cards=[]
  mode="ttm" if data.get("frequency")=="TTM" else "quarterly" if "Quarterly" in str(data.get("frequency")) else "annual"
- for label,icon,group,key,percent in metrics:
-  def read(period):
-   return ratios.get(period,{}).get(key) if group is None else v(group,key,period)
-  history=[(period,read(period)) for period in reversed(periods)]
-  current=read(p)
-  delta=None
-  display_period=_display_date(p) if mode!="ttm" else _display_date(str(p).replace(" TTM","")+" TTM")
-  if not percent and mode!="ttm":
-   observations=[]
-   for period,value in history:
-    try:
-     if isinstance(value,(int,float)) and math.isfinite(value) and currency and currency!="Unconfirmed":
-      observations.append(_KPIObservation(str(period),_kpi_date.fromisoformat(str(period)),float(value),str(currency),mode,"Yahoo Finance financial statements"))
-    except (ValueError,TypeError):
-     continue
-   result=_build_kpi(observations,mode)
-   # Never substitute a different historical period when latest is missing.
-   current=result.value if observations and observations[-1].period==str(p) else None
-   if current is not None and result.growth_pct is not None:
-    delta=f"{result.growth_pct:+.1f}% {result.comparison}"
-  elif percent and len(periods)>1 and mode!="ttm":
-   prior=read(periods[1])
-   if all(isinstance(x,(int,float)) and math.isfinite(x) for x in (current,prior)):
-    delta=f"{(current-prior)*100:+.1f} pp vs previous period"
+ results=run_independently(data,currency)
+ for label,icon in icons.items():
+  item=results[label]
+  current=item["value"]
+  delta=item["delta"]
+  display_period=_display_date(item["period"])
+  if mode=="ttm" and not display_period.endswith(" TTM"):
+   display_period+=" TTM"
   change_class="up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral"
-  tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency)+"; "+("YoY" if mode!="ttm" else "TTM comparison unavailable"),quote=True)
-  cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
+  tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency),quote=True)
+  try:
+   spark=_spark(item["history"])
+  except Exception:
+   spark='<span class="axia-kpi-no-trend">Trend unavailable</span>'
+  cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
  st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for source dates and values. Intermediate sparkline bars are visual interpolation, not additional reported periods. Provider history is not independently reconciled to issuer filings.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
