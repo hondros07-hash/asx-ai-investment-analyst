@@ -18,7 +18,7 @@ def _norm_name(v: str) -> str:
 
 def names_compatible(expected: str, actual: str) -> bool:
     a,b=_norm_name(expected),_norm_name(actual)
-    if not a or not b:return True
+    if not a or not b:return False
     return a==b or a in b or b in a
 
 def verified_primary_listing(company_name: str) -> Optional[dict]:
@@ -51,8 +51,12 @@ def safe_classification(info: dict | None, resolved_profile: dict | None = None)
 def validate_identity(ticker: str, expected_name: str, provider_info: dict | None) -> dict:
     info=provider_info or {}
     actual=info.get("longName") or info.get("shortName") or ""
+    # Missing provider identity must remain unverified, never silently pass.
     ok=names_compatible(expected_name,actual)
+    reason=("provider_name_missing" if not actual else
+            "expected_name_missing" if not expected_name else
+            "identity_match" if ok else "company_name_mismatch")
     return {"valid":bool(ok),"ticker":str(ticker or "").upper(),"expected_name":expected_name,
             "provider_name":actual,"exchange":info.get("fullExchangeName") or info.get("exchange"),
             "currency":info.get("currency"),"quote_type":info.get("quoteType"),
-            "reason":"identity_match" if ok else "company_name_mismatch"}
+            "reason":reason}
