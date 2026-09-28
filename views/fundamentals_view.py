@@ -116,27 +116,45 @@ def _financial_overview(data,ticker,currency):
   if value is None or not isinstance(value,(int,float)) or not math.isfinite(value): return "—"
   if percent: return f"{value*100:,.1f}%"
   return fmt(value)
- def _spark(values):
-  points=[x for x in values if isinstance(x,(int,float)) and math.isfinite(x)]
-  if len(points)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
-  maximum=max(abs(x) for x in points) or 1
-  return '<span class="axia-kpi-spark" aria-label="Historical reported values, oldest to newest">'+''.join('<i style="height:'+str(max(3,round(abs(x)/maximum*32)))+'px;background:'+('#cf5260' if x<0 else '#14a57d')+'"></i>' for x in points)+'</span>'
+ def _spark(items):
+  valid=[(period,value) for period,value in items if isinstance(value,(int,float)) and math.isfinite(value)]
+  if len(valid)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
+  maximum=max(abs(value) for _,value in valid) or 1
+  return '<span class="axia-kpi-spark" aria-label="Reported values, oldest to newest">'+''.join(
+   '<i title="'+html.escape(str(period)+": "+_card_value(value),quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*32)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
+   for period,value in valid)+'</span>'
+ from datetime import date as _kpi_date
+ from services.financial_kpi_engine import Observation as _KPIObservation, build_kpi as _build_kpi, delta_state as _delta_state
  metrics=(("Revenue","▤",inc,"Revenue",False),("Operating Income","▣",inc,"Operating Income (EBIT)",False),("Net Income","♧",inc,"Net Income",False),("Free Cash Flow","▢",cf,"Free Cash Flow",False),("Operating Margin","◉",None,"Operating Margin",True))
  cards=[]
+ mode="ttm" if data.get("frequency")=="TTM" else "quarterly" if "Quarterly" in str(data.get("frequency")) else "annual"
  for label,icon,group,key,percent in metrics:
   def read(period):
    return ratios.get(period,{}).get(key) if group is None else v(group,key,period)
   current=read(p)
-  previous=read(periods[1]) if len(periods)>1 and data.get("frequency")!="TTM" else None
+  history=[(period,read(period)) for period in reversed(periods)]
   delta=None
-  if current is not None and previous is not None and all(isinstance(x,(int,float)) and math.isfinite(x) for x in (current,previous)):
-   if percent: delta=f"{(current-previous)*100:+.1f} pp"
-   elif previous>0: delta=f"{(current/previous-1)*100:+.1f}%"
-  history=[read(period) for period in reversed(periods)]
+  display_period=("TTM ending "+str(p)) if mode=="ttm" else str(p)
+  if not percent and mode!="ttm":
+   observations=[]
+   for period,value in history:
+    try:
+     if isinstance(value,(int,float)) and math.isfinite(value):
+      observations.append(_KPIObservation(str(period),_kpi_date.fromisoformat(str(period)),float(value),str(currency),mode,"Yahoo Finance financial statements"))
+    except (ValueError,TypeError):
+     continue
+   result=_build_kpi(observations,mode)
+   current=result.value
+   if result.growth_pct is not None: delta=f"{result.growth_pct:+.1f}% {result.comparison}"
+  elif percent and len(periods)>1 and mode!="ttm":
+   prior=read(periods[1])
+   if all(isinstance(x,(int,float)) and math.isfinite(x) for x in (current,prior)):
+    delta=f"{(current-prior)*100:+.1f} pp vs previous period"
   change_class="up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral"
-  cards.append('<div class="axia-kpi-card"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+("TTM" if data.get("frequency")=="TTM" else "latest") +')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
+  tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+("YoY" if mode!="ttm" else "TTM comparison unavailable"),quote=True)
+  cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
- st.caption("Comparisons use the preceding available reported period (not necessarily year-on-year). TTM comparisons are withheld without a comparable prior TTM; sparklines show available periods, oldest to newest.")
+ st.caption("Provider: Yahoo Finance financial statements. Annual/quarterly KPI growth uses comparable prior-year periods; TTM comparison is withheld without a verified prior TTM. Hover over historical bars for reporting dates and values.")
  rows=financial_performance(data);labels=[r["Period"] for r in rows]
  a,b=st.columns([1.35,1])
  with a:
