@@ -289,7 +289,7 @@ def render(ticker):
   _render_workspace(ticker)
 
 def _render_workspace(ticker):
- frequency=st.session_state.get("axia_fund_period") or "Annual (5Y)"
+ frequency="Annual (5Y)"  # Fixed display basis while the selector is hidden.
  try: data=load(ticker,frequency)
  except Exception as exc:
   st.error("Financial statements could not be loaded. Try again or inspect the issuer's filings.")
