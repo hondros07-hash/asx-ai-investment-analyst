@@ -127,7 +127,8 @@ def _financial_overview(data,ticker,currency):
  def _spark(items):
   valid=[(period,value) for period,value in items if isinstance(value,(int,float)) and math.isfinite(value)]
   if len(valid)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
-  # Only actual provider periods become bars; never interpolate or invent history.\n  maximum=max(abs(value) for _,value in valid) or 1
+  # Only actual provider periods become bars; never interpolate or invent history.
+  maximum=max(abs(value) for _,value in valid) or 1
   return '<span class="axia-kpi-spark" aria-label="Reported values, oldest to newest">'+''.join(
    '<i title="'+html.escape(_display_date(period)+": "+_card_value(value)+" "+str(currency),quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
    for period,value in valid)+'</span>'
