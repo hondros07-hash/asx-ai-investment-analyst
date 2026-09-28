@@ -22,7 +22,7 @@ from services.independent_financial_kpi_engines import run_independently
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs
 from services.forecast_engine import build_12m_forecast
 
-app = FastAPI(title="AXÍA Research API", version="24.2.0",
+app = FastAPI(title="AXÍA Research API", version="24.3.0",
               description="Provider-transcribed research data, not audited issuer filings.")
 _POOL = ThreadPoolExecutor(max_workers=6)
 _CACHE = {}
@@ -74,6 +74,8 @@ def _snapshot(ticker: str, period: str):
         if entry and monotonic() - entry[0] < _TTL:
             return entry[1]
     result = _provider(lambda: load_uncached(ticker, period))
+    if not isinstance(result, dict) or not result:
+        raise HTTPException(503, "Financial data unavailable")
     with _CACHE_LOCK:
         if len(_CACHE) >= 96:
             _CACHE.pop(next(iter(_CACHE)))
