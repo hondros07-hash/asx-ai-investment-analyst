@@ -4,6 +4,7 @@ import Link from "next/link";
 import {Shell} from "../../../../components/Shell";
 import {KpiCards} from "../../../../components/KpiCards";
 import {StatementResearch,ModelResearch} from "../../../../components/ResearchPanels";
+import {ResearchSection} from "../../../../components/ResearchSection";
 import {api,KpiResponse,StatementResponse,ValuationResponse,ForecastResponse} from "../../../../lib/api";
 
 const sections=["overview","fundamentals","technical","announcements","report-intelligence","news","thesis","catalysts","quant","forecasts","finance"];
@@ -26,7 +27,8 @@ export default async function Company({params,searchParams}:{params:Promise<{tic
   section==="forecasts"?api<ForecastResponse>(base+"/forecast"):Promise.resolve(null)
  ]);
  const identity=statements?.data?.data.identity;const companyName=identity?.name||ticker.toUpperCase();
- const pending=!["overview","fundamentals","finance","forecasts"].includes(section);
+ const researchSections=["technical","announcements","report-intelligence","news","thesis","catalysts","quant"];
+ const research=researchSections.includes(section)?await api<Record<string,unknown>>(base+"/"+section):null;
  return <Shell ticker={ticker}><div className="eyebrow">AXÍA / COMPANY COMMAND CENTRE</div>
  <div className="company-heading"><div className="company-logo" aria-hidden="true">{ticker.slice(0,2).toUpperCase()}</div><div><h1>{companyName}</h1><p className="muted">{ticker.toUpperCase()}{identity?.exchange?" · "+identity.exchange:""}{identity?.country&&identity.country!=="Unconfirmed"?" · "+identity.country:""} · All the evidence. A clearer perspective.</p></div></div>
  <nav className="subnav" aria-label="Company research sections">{sections.map(s=><Link key={s} className={s===section?"selected":""} aria-current={s===section?"page":undefined} href={`/company/${encoded}/${s}`}>{names[s]}</Link>)}</nav>
@@ -42,6 +44,7 @@ export default async function Company({params,searchParams}:{params:Promise<{tic
  {section==="finance"&&statements?.data&&<StatementResearch response={statements.data}/>}
  {section==="finance"&&valuation?.data&&<ModelResearch label="Valuation" value={valuation.data.valuation} source={valuation.data.source}/>}
  {section==="forecasts"&&forecast?.data&&<ModelResearch label="12-month forecast" value={forecast.data.forecast} source={forecast.data.source}/>}
- {pending&&<div className="panel"><h3>{names[section]} migration pending</h3><p className="muted">This section has not yet been connected to a verified API contract. The existing Streamlit research workspace remains authoritative during migration. No simulated results are displayed.</p><Link className="button" href={`/company/${encoded}/fundamentals`}>View available financial research →</Link></div>}
+ {research?.error&&<div role="alert" className="panel error">{names[section]}: {research.error}. No substitute results have been generated.</div>}
+ {research?.data&&<ResearchSection section={section} data={research.data}/> }
  </Shell>;
 }

@@ -21,3 +21,8 @@
 .model-values dd{font-weight:700;margin:8px 0 0;overflow-wrap:anywhere}
 .model-json{white-space:pre-wrap;overflow-wrap:anywhere;max-height:440px;overflow:auto;font-size:11px}
 @media(max-width:600px){.research-context span{width:100%}.period-nav a{flex:1;text-align:center}.panel{padding:15px}}
+
+/* V24.1 — source-backed Company Command Centre research sections. */
+.research-entry{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;border-bottom:1px solid var(--line);padding:14px 0;font-size:13px}
+.research-entry strong{flex:1 1 220px}.research-entry span,.research-entry small{color:var(--muted)}.research-entry a{color:var(--blue);text-decoration:underline}
+.research-section .model-values{margin-top:18px}.research-section .model-values dd{font-size:13px}
