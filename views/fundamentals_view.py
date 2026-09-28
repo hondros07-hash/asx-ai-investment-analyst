@@ -125,13 +125,28 @@ def _financial_overview(data,ticker,currency):
   except ValueError:
    return str(value)
  def _spark(items):
-  valid=[(period,value) for period,value in items if isinstance(value,(int,float)) and math.isfinite(value)]
+  valid=[(period,float(value)) for period,value in items if isinstance(value,(int,float)) and math.isfinite(value)]
   if len(valid)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
-  # Only actual provider periods become bars; never interpolate or invent history.
-  maximum=max(abs(value) for _,value in valid) or 1
-  return '<span class="axia-kpi-spark" aria-label="Reported values, oldest to newest">'+''.join(
-   '<i title="'+html.escape(_display_date(period)+": "+_card_value(value)+" "+str(currency),quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
-   for period,value in valid)+'</span>'
+  # Nine slim visual samples, interpolated only between genuine provider
+  # observations. Intermediates are NOT additional reported financial periods.
+  samples=[]
+  last=len(valid)-1
+  for index in range(9):
+   position=index*last/8
+   left=min(int(position),last)
+   right=min(left+1,last)
+   weight=position-left
+   value=valid[left][1]*(1-weight)+valid[right][1]*weight
+   if abs(weight)<1e-9 or left==right:
+    period=valid[left][0]
+    tip=_display_date(period)+": "+_card_value(value)+" "+str(currency)+" (reported)"
+   else:
+    tip="Visual interpolation between "+_display_date(valid[left][0])+" and "+_display_date(valid[right][0])+"; not a reported period"
+   samples.append((value,tip))
+  maximum=max(abs(value) for value,_ in valid) or 1
+  return '<span class="axia-kpi-spark" aria-label="Historical trend; intermediate bars are visual interpolation between reported periods">'+''.join(
+   '<i title="'+html.escape(tip,quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
+   for value,tip in samples)+'</span>'
  from datetime import date as _kpi_date
  from services.financial_kpi_engine import Observation as _KPIObservation, build_kpi as _build_kpi
  metrics=(("Revenue","▤",inc,"Revenue",False),("Operating Income","▣",inc,"Operating Income (EBIT)",False),("Net Income","♧",inc,"Net Income",False),("Free Cash Flow","▢",cf,"Free Cash Flow",False),("Operating Margin","◉",None,"Operating Margin",True))
@@ -165,7 +180,7 @@ def _financial_overview(data,ticker,currency):
   tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency)+"; "+("YoY" if mode!="ttm" else "TTM comparison unavailable"),quote=True)
   cards.append('<div class="axia-kpi-card" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,percent))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or "Comparison unavailable")+'</div></div>'+_spark(history)+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
- st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for exact provider values and reporting dates. Historical bars are provider-transcribed and are not independently reconciled to issuer filings.")
+ st.caption("Source: Yahoo Finance financial statements · "+str(currency)+" · "+str(data.get("frequency"))+". Provider last checked: "+str(data.get("provider_checked_at") or "Unavailable")+". Cached for up to 1 hour; source statements update on provider publication, not continuously. Hover over bars for source dates and values. Intermediate sparkline bars are visual interpolation, not additional reported periods. Provider history is not independently reconciled to issuer filings.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
   clear_cache=getattr(_load_fundamentals,"clear",None)
@@ -227,7 +242,7 @@ def render(ticker):
 .axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2}
 .axia-kpi-change{position:absolute;left:63px;bottom:17px;max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
-.axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:43px;display:flex;align-items:flex-end;gap:3px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
+.axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:43px;display:flex;align-items:flex-end;gap:2px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
 .axia-kpi-no-trend{position:absolute;right:10px;bottom:10px;font-size:9px;color:#8190a4}
 @media(max-width:1250px){.axia-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.axia-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
