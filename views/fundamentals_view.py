@@ -301,7 +301,6 @@ def _render_workspace(ticker):
  if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
  with st.container(key="axia_fund_issuer"):
   _issuer_header(data,ticker,currency)
- if is_qantas: st.caption("Qantas issuer primary listing: QAN.AX (ASX) · Issuer reports in AUD; provider financial currency remains independently unverified.")
  tabs=st.tabs(["Financial Overview","Income Statement","Balance Sheet","Cash Flow","Key Metrics","Growth & Trends","Capital Allocation","Valuation & Peers","Data & Verification"])
  with tabs[0]:
   _financial_overview(data,ticker,currency)
