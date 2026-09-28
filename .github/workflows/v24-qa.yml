@@ -22,7 +22,6 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: python -m pip install -r requirements.txt pytest
-      - run: python -c "import services; print(services.__file__); import os; print(os.listdir(\'services\')[:30])"
       - run: PYTHONPATH=. python -m pytest -q tests/test_v243_integration.py tests/test_v242_workspace.py tests/test_v241_research_routes.py tests/test_navigation_performance_v2312.py
   frontend:
     runs-on: ubuntu-latest
