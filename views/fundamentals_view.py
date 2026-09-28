@@ -121,7 +121,7 @@ def _financial_overview(data,ticker,currency):
   if len(valid)<2: return '<span class="axia-kpi-no-trend">Trend unavailable</span>'
   maximum=max(abs(value) for _,value in valid) or 1
   return '<span class="axia-kpi-spark" aria-label="Reported values, oldest to newest">'+''.join(
-   '<i title="'+html.escape(str(period)+": "+_card_value(value)+" "+str(currency),quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*32)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
+   '<i title="'+html.escape(str(period)+": "+_card_value(value)+" "+str(currency),quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
    for period,value in valid)+'</span>'
  from datetime import date as _kpi_date
  from services.financial_kpi_engine import Observation as _KPIObservation, build_kpi as _build_kpi
@@ -210,12 +210,15 @@ def render(ticker):
  st.markdown("""<style>
 /* Scoped AXÍA Fundamentals presentation: no changes to global navigation. */
 .axia-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:1px 0 17px}
-.axia-kpi-card{display:flex;align-items:flex-start;gap:10px;min-width:0;position:relative;background:#fff;border:1px solid #dce7f2;border-radius:9px;padding:15px 12px;min-height:116px;box-shadow:0 2px 9px rgba(20,45,77,.04)}
-.axia-kpi-icon{flex:0 0 29px;height:29px;border-radius:5px;background:#174b82;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700}
-.axia-kpi-body{min-width:0;flex:1}.axia-kpi-label{font-size:12px;font-weight:700;color:#49617d;white-space:nowrap}.axia-kpi-label small{font-size:10px;font-weight:500}
-.axia-kpi-number{font-size:clamp(17px,1.5vw,24px);font-weight:800;color:#142d4d;white-space:nowrap;margin:6px 0 2px}
-.axia-kpi-change{font-size:12px;font-weight:750}.axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
-.axia-kpi-spark{position:absolute;right:10px;bottom:12px;height:33px;display:flex;align-items:flex-end;gap:3px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px}
+.axia-kpi-card{display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:12px;min-width:0;position:relative;background:#fff;border:1px solid #e4ebf4;border-radius:12px;padding:16px 13px 14px;min-height:145px;box-shadow:0 1px 5px rgba(20,45,77,.045)}
+.axia-kpi-icon{grid-column:1;grid-row:1;flex:none;width:38px;height:38px;border-radius:7px;background:#174b82;color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700}
+.axia-kpi-body{display:contents}
+.axia-kpi-label{grid-column:2;grid-row:1;align-self:center;min-width:0;font-size:clamp(11px,.95vw,15px);font-weight:700;color:#49617d;white-space:normal;line-height:1.2}
+.axia-kpi-label small{font-size:10px;font-weight:500;white-space:nowrap}
+.axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2}
+.axia-kpi-change{position:absolute;left:63px;bottom:17px;max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
+.axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:43px;display:flex;align-items:flex-end;gap:3px}.axia-kpi-spark i{display:block;width:5px;border-radius:1px}
 .axia-kpi-no-trend{position:absolute;right:10px;bottom:10px;font-size:9px;color:#8190a4}
 @media(max-width:1250px){.axia-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.axia-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
