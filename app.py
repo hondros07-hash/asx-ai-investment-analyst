@@ -16,6 +16,7 @@ from valuation_lab import scenarios, margin_of_safety
 from reverse_dcf import implied_growth
 from evidence_engine import evidence_for, thesis_rules, add_thesis_rule
 from services.thesis_engine import build_thesis_scorecard, ThesisThresholds
+from services.research_experience_engine import validate_research_condition, evidence_reference
 from services.thesis_status_engine import calculate_thesis_status
 from services.thesis_template_engine import get_thesis_template, classify_thesis_template
 from services.research_score_engine import calculate_research_score
@@ -6704,7 +6705,13 @@ elif page=="Something Changed":
     v19_phase3_db_upgrade()
     all_events=monitoring_events(None,200,False)
     if all_events.empty:
-        st.info("No change events have been recorded yet. Use Markets → Scan selected companies for changes, or save snapshots from a Company Command Centre.")
+        st.info("No material changes recorded yet. Save a baseline snapshot before monitoring can detect changes.")
+        if st.button("Open Markets to scan companies", key="v2311_scan_market"):
+            _chr_set_primary_nav_v2074191("Markets")
+            st.rerun()
+        if st.button("Open Company Command Centre to save a baseline", key="v2311_monitor_baseline"):
+            _chr_set_primary_nav_v2074191("Company Command Centre")
+            st.rerun()
     else:
         c1,c2,c3=st.columns(3)
         c1.metric("Recorded changes",str(len(all_events)))
@@ -9044,15 +9051,19 @@ elif page=="Thesis Scorecard":
         metric=c1.text_input("Metric",placeholder="e.g. US TTV growth")
         operator=c2.selectbox("Condition",[">",">=","<","<="])
         threshold=c3.number_input("Threshold",value=0.0)
-        current=c4.number_input("Current reported value",value=0.0)
-        source=st.text_input("Evidence/source",placeholder="e.g. FY26 results presentation p. 12")
+        current=c4.number_input("Current reported value",value=None,placeholder="Required — no assumed zero")
+        source=st.text_input("Evidence/source",placeholder="Filing URL, provider, or report and page")
         add=st.form_submit_button("Add thesis condition")
-    if add and metric:
-        ok={">":current>threshold,">=":current>=threshold,"<":current<threshold,"<=":current<=threshold}[operator]
-        status="Met" if ok else "Watch / Broken"
-        con.execute("INSERT INTO thesis_rules(ticker,metric,operator,threshold,current_value,status,source,updated_at) VALUES(?,?,?,?,?,?,?,?)",
-                    (ticker,metric,operator,threshold,current,status,source,datetime.now(timezone.utc).isoformat()))
-        con.commit(); st.success("Condition added."); st.rerun()
+    if add:
+        _valid, _reason = validate_research_condition(metric, threshold, current, source)
+        if not _valid:
+            st.warning(_reason)
+        else:
+            ok={">":current>threshold,">=":current>=threshold,"<":current<threshold,"<=":current<=threshold}[operator]
+            status="Met" if ok else "Watch / Broken"
+            con.execute("INSERT INTO thesis_rules(ticker,metric,operator,threshold,current_value,status,source,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                        (ticker,metric.strip(),operator,threshold,current,status,source.strip(),datetime.now(timezone.utc).isoformat()))
+            con.commit(); st.success("Condition added with evidence."); st.rerun()
     thesis_cols=["id","metric","operator","threshold","current_value","status","source","updated_at"]
     try:
         rows=con.execute(
@@ -9067,8 +9078,16 @@ elif page=="Thesis Scorecard":
         con.close()
     if not df.empty:
         st.dataframe(df,use_container_width=True,hide_index=True)
+        with st.expander("Evidence references for saved conditions", expanded=False):
+            for _row in df.itertuples(index=False):
+                _reference=evidence_reference(_row.source)
+                st.markdown("**" + html.escape(str(_row.metric)) + "** · " + html.escape(str(_row.updated_at)))
+                if _reference["url"]:
+                    st.link_button("Open source", _reference["url"])
+                else:
+                    st.caption(_reference["label"] or "No source recorded — verify this condition.")
     else:
-        st.info("No user-defined thesis conditions yet. Showing the automatic evidence scorecard used by Overview.")
+        st.info("No user-defined thesis conditions yet. Add a measurable condition and its source above. The automatic evidence scorecard is shown below.")
         _auto_meta=info(ticker) or {}
         _auto_class=safe_company_classification(ticker)
         _auto_price=np.nan
@@ -9111,7 +9130,8 @@ elif page=="Catalyst Calendar":
     if not cats.empty:
         st.dataframe(cats,use_container_width=True,hide_index=True)
     else:
-        st.info("No catalysts recorded.")
+        st.info("No catalysts recorded for this listing. Add a dated event and its source using the form above.")
+        st.caption("Start with the next results release, AGM, dividend date, or thesis checkpoint. Verify dates against official announcements.")
 
 elif page=="Strategy Builder":
     st.header(f"No-Code Strategy Builder — {ticker}")
