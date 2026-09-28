@@ -1,7 +1,7 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 COPY frontend ./
 ARG AXIA_SITE_URL
 ENV AXIA_SITE_URL=${AXIA_SITE_URL}
