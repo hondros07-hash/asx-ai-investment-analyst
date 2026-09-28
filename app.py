@@ -7333,7 +7333,23 @@ elif page=="Company Command Centre":
             _provider_name=_ccrich.get("longName") or _ccrich.get("shortName") if isinstance(_ccrich,dict) else None
             if _provider_name:
                 _provider_identity["longName"]=_provider_name
-        _identity_check=validate_identity(ticker,_expected_company or _ccname,_provider_identity)
+        # A bare symbol is a search placeholder, not a company-name claim.
+        # Prefer a name from an exact-symbol provider quote if the profile is empty.
+        _identity_expected=str(_expected_company or "").strip()
+        if _identity_expected.upper() in _invalid_names:
+            _identity_expected=""
+        if not _provider_name and _quote_probe_ok:
+            _quote_identity_name=_exact.get("longname") or _exact.get("shortname")
+            if _quote_identity_name:
+                _provider_identity["longName"]=_quote_identity_name
+                _provider_name=_quote_identity_name
+        if not _identity_expected and _quote_probe_ok:
+            _identity_expected=str(_exact.get("longname") or _exact.get("shortname") or "").strip()
+        # If there is no independently supplied company name, compare the
+        # exact-symbol provider identity against the resolved display name.
+        if not _identity_expected:
+            _identity_expected=str(_ccname or "").strip()
+        _identity_check=validate_identity(ticker,_identity_expected,_provider_identity)
         if not _identity_check.get("valid"):
             st.warning(f"Listing identity could not be verified for {ticker}. Price and company metrics may be withheld until the selected listing is confirmed.")
         _ccprev=float(h["Close"].iloc[-2]) if len(h)>1 else np.nan; _ccchg=price-_ccprev if np.isfinite(_ccprev) else np.nan; _ccpct=_ccchg/_ccprev if np.isfinite(_ccprev) and _ccprev else np.nan
