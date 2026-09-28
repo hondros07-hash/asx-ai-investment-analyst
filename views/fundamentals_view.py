@@ -145,7 +145,7 @@ def _financial_overview(data,ticker,currency):
    samples.append((value,tip))
   maximum=max(abs(value) for _,value in valid) or 1
   return '<span class="axia-kpi-spark" aria-label="Historical trend; intermediate bars are visual interpolation between reported periods">'+''.join(
-   '<i title="'+html.escape(tip,quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*43)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
+   '<i title="'+html.escape(tip,quote=True)+'" style="height:'+str(max(3,round(abs(value)/maximum*34)))+'px;background:'+('#cf5260' if value<0 else '#14a57d')+'"></i>'
    for value,tip in samples)+'</span>'
  from datetime import date as _kpi_date
  from services.financial_kpi_engine import Observation as _KPIObservation, build_kpi as _build_kpi
@@ -242,7 +242,7 @@ def render(ticker):
 .axia-kpi-number{grid-column:2;grid-row:2;align-self:start;font-size:clamp(20px,2vw,31px);font-weight:800;color:#142d4d;white-space:nowrap;margin:12px 0 0;line-height:1.2}
 .axia-kpi-change{position:absolute;left:63px;bottom:17px;max-width:calc(100% - 105px);font-size:clamp(10px,.95vw,14px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .axia-kpi-change.up{color:#168b62}.axia-kpi-change.down{color:#c54450}.axia-kpi-change.neutral{font-size:10px;color:#60758f}
-.axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:43px;display:flex;align-items:flex-end;gap:2px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
+.axia-kpi-spark{position:absolute;right:12px;bottom:15px;height:34px;display:flex;align-items:flex-end;gap:2px}.axia-kpi-spark i{display:block;width:4px;border-radius:1px;flex:0 0 4px}
 .axia-kpi-no-trend{position:absolute;right:10px;bottom:10px;font-size:9px;color:#8190a4}
 @media(max-width:1250px){.axia-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.axia-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
