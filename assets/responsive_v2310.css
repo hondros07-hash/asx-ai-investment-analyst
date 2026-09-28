@@ -1,0 +1,54 @@
+/* AXÍA V23.10 — mobile-first overrides; desktop rules intentionally untouched. */
+@media (max-width: 767px) {
+  html, body, .stApp {max-width:100%;overflow-x:hidden}
+  .main .block-container, [data-testid="stMainBlockContainer"] {
+    padding: .65rem .7rem 5.5rem!important;max-width:100%!important;
+  }
+  .chrimata-parthenon {height:74px!important;min-height:74px!important;border-radius:8px!important;overflow:hidden!important}
+  .chrimata-parthenon img {height:74px!important;min-height:74px!important;max-height:74px!important;object-fit:cover!important;object-position:center!important}
+  /* Keep five indices in one scrollable line rather than five stacked 60px cards. */
+  [class*="st-key-v2322_market_strip"] [data-testid="stHorizontalBlock"] {
+    display:flex!important;flex-wrap:nowrap!important;gap:6px!important;
+    overflow-x:auto!important;overscroll-behavior-inline:contain;
+    scrollbar-width:thin;align-items:stretch!important;
+  }
+  [class*="st-key-v2322_market_strip"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    flex:0 0 146px!important;width:146px!important;min-width:146px!important;
+    max-width:146px!important;margin:0!important;padding:0!important;
+  }
+  [class*="st-key-v2322_market_strip"] {overflow:hidden!important;max-width:100%!important}
+  [class*="st-key-v2322_market_strip"] [data-testid="stColumn"] * {
+    overflow-wrap:normal!important;
+  }
+  [class*="st-key-v2322_market_strip"] [data-testid="stColumn"] p,
+  [class*="st-key-v2322_market_strip"] [data-testid="stColumn"] small {
+    white-space:nowrap!important;text-overflow:ellipsis!important;overflow:hidden!important;
+  }
+  [class*="st-key-v2322_market_strip"] button {min-height:36px!important;font-size:12px!important}
+  /* Country selection becomes a compact horizontal chooser, never six full-width rows. */
+  .main [data-testid="stHorizontalBlock"]:has(button[key^="country_"]) {
+    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+    gap:6px!important;scrollbar-width:thin;padding-bottom:4px!important;
+  }
+  .main [data-testid="stHorizontalBlock"]:has(button[key^="country_"]) > [data-testid="stColumn"] {
+    flex:0 0 128px!important;min-width:128px!important;width:128px!important;
+    max-width:128px!important;margin:0!important;
+  }
+  .main [data-testid="stHorizontalBlock"]:has(button[key^="country_"]) button {
+    width:100%!important;min-height:42px!important;white-space:nowrap!important;
+    font-size:12px!important;padding:4px 6px!important;
+  }
+  .main [data-testid="stHorizontalBlock"]:has(button[key^="country_"]) button::before {
+    font-size:15px!important;margin-right:4px!important;
+  }
+  [data-testid="stMain"] img, [data-testid="stMain"] svg,
+  [data-testid="stMain"] canvas {max-width:100%}
+  [data-testid="stMain"] .js-plotly-plot {max-width:100%!important}
+  [data-testid="stMain"] [data-testid="stDataFrame"] {max-width:100%;overflow-x:auto}
+  .mia-shell-head {flex-wrap:wrap!important;gap:6px!important}
+  .mia-shell-title {font-size:clamp(1.3rem,5vw,1.8rem)!important}
+  .v421results {height:min(540px,65vh)!important}
+  .v421card {max-width:100%!important}
+  .axia-mobile-nav {display:block!important}
+}
+@media (min-width:768px) {.axia-mobile-nav{display:none!important}}
