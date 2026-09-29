@@ -169,6 +169,14 @@ def _financial_overview(data,ticker,currency):
    spark='<span class="axia-kpi-no-trend">Trend unavailable</span>'
   cards.append('<div class="axia-kpi-card'+(" axia-kpi-card-operating" if label=="Operating Income" else "")+'" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
+ # Verification status describes the Revenue data pipeline, not its isolated calculation engine.
+ # Do not promote these labels without implementing and recording actual verification.
+ with st.expander("Revenue · data verification status",expanded=False):
+  st.caption("Calculation: independent KPI engine · Underlying source: shared Yahoo Finance financial snapshot.")
+  st.markdown("**Independent data provider:** No")
+  st.markdown("**Official filing verification:** Pending")
+  st.markdown("**Live value confirmed:** Not tested")
+  st.caption("These are verification states, not a claim that reported revenue is incorrect. Reconcile the displayed period and currency against the issuer filing before changing a status.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
   clear_cache=getattr(_load_fundamentals,"clear",None)
