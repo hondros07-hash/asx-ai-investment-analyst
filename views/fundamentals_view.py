@@ -232,30 +232,135 @@ def _financial_overview(data,ticker,currency):
    st.rerun()
   else:
    st.warning("Financial refresh is unavailable in this deployment; the current provider data remains visible.")
- rows=financial_performance(data);labels=[r["Period"] for r in rows]
- a,b=st.columns([1.35,1])
- with a:
-  st.markdown("### Financial Performance")
-  fig=go.Figure()
-  for key,color in (("Revenue","#173b63"),("Operating income","#0868d8"),("Net income","#80b8ec"),("Free cash flow","#159b72")):fig.add_trace(go.Bar(name=key,x=labels,y=[r[key] for r in rows],marker_color=color))
-  fig.update_layout(barmode="group",height=320,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.17),xaxis=dict(type="category"))
-  st.plotly_chart(fig,use_container_width=True,key="axia_overview_performance")
- with b:
-  st.markdown("### Margins & Profitability")
-  fig=go.Figure()
-  for key,color in (("Operating margin","#168b62"),("Net income margin","#a3c931")):fig.add_trace(go.Scatter(name=key,x=labels,y=[r[key] for r in rows],mode="lines+markers",connectgaps=False,line=dict(color=color,width=3)))
-  fig.update_layout(height=320,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white",legend=dict(orientation="h",y=1.17),xaxis=dict(type="category"),yaxis=dict(ticksuffix="%"))
-  st.plotly_chart(fig,use_container_width=True,key="axia_overview_margins")
- a,b=st.columns([1.35,1])
- with a:
-  st.markdown("### Latest Financial Statements")
-  records=[{"Period":period,"Revenue":v(inc,"Revenue",period),"Gross profit":v(inc,"Gross Profit",period),"Operating income":v(inc,"Operating Income (EBIT)",period),"Net income":v(inc,"Net Income",period),"Diluted EPS":v(inc,"Diluted EPS",period),"Free cash flow":v(cf,"Free Cash Flow",period)} for period in periods]
-  st.dataframe(pd.DataFrame(records),hide_index=True,use_container_width=True)
-  st.download_button("Download summary CSV",pd.DataFrame(records).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_overview.csv",mime="text/csv",key="axia_overview_export")
- with b:
-  st.markdown("### Key Financial Ratios")
-  keys=("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Current Ratio","Debt / Equity")
-  st.dataframe(pd.DataFrame([dict({"Metric":key},**{period:fmt(ratios.get(period,{}).get(key),ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA")) for period in periods}) for key in keys]),hide_index=True,use_container_width=True)
+ # Independent charts: each handles its own mode and errors without affecting KPI cards.
+ from services.fundamentals_overview_chart_engine import performance_series, margin_series
+ def _chart_snapshot(mode):
+  return data if mode=="Annual" else load(ticker,"Quarterly (8Q)")
+ def _chart_label(period,mode):
+  try:
+   stamp=pd.Timestamp(period)
+   if mode=="Annual": return "FY"+str(stamp.year)[-2:]
+   return "Q"+str((stamp.month-1)//3+1)+" · "+str(stamp.year)
+  except (ValueError,TypeError): return str(period)
+ def _chart_caption(snapshot,mode):
+  return ("Source: Yahoo Finance via yfinance · "+mode+" financial statements · "+str(snapshot.get("currency") or "Currency unconfirmed")+
+          " · provider checked "+str(snapshot.get("provider_checked_at") or "unknown")+
+          " · not reconciled to official issuer filings.")
+ left_chart,right_chart=st.columns([1.35,1],gap="small")
+ with left_chart:
+  with st.container(border=True,key="axia_financial_performance_widget"):
+   st.markdown("### Financial Performance")
+   performance_mode=st.radio("Financial Performance period",["Annual","Quarterly","5 Year","10 Year"],horizontal=True,label_visibility="collapsed",key="axia_financial_performance_mode")
+   try:
+    basis="Quarterly" if performance_mode=="Quarterly" else "Annual"
+    snapshot=_chart_snapshot(basis)
+    requested=10 if performance_mode=="10 Year" else 5 if performance_mode in ("5 Year","Annual") else 8
+    series=performance_series(snapshot,requested)
+    if not series or not any(row[k] is not None for row in series for k in ("Revenue","Operating Income","Net Income","Free Cash Flow")):
+     st.info("No financial statement series available for this reporting basis.")
+    else:
+     labels=[_chart_label(row["Period"],basis) for row in series]
+     fig=go.Figure()
+     for metric,color in (("Revenue","#173b63"),("Operating Income","#0868d8"),("Net Income","#80b8ec"),("Free Cash Flow","#159b72")):
+      fig.add_trace(go.Bar(name=metric,x=labels,y=[row[metric]/1e6 if row[metric] is not None else None for row in series],
+                           marker_color=color,customdata=[row["Period"] for row in series],
+                           hovertemplate="%{customdata}<br>"+metric+": %{y:,.2f} million "+str(snapshot.get("currency") or "")+"<extra></extra>"))
+     fig.update_layout(barmode="group",height=355,margin=dict(l=8,r=8,t=44,b=18),
+                       paper_bgcolor="white",plot_bgcolor="white",font=dict(color="#304965"),
+                       legend=dict(orientation="h",y=1.18,x=0,font=dict(size=10)),
+                       yaxis=dict(title="Millions ("+str(snapshot.get("currency") or "unconfirmed")+")",gridcolor="#e7eef6",zerolinecolor="#c9d6e5"),
+                       xaxis=dict(type="category"),hovermode="x unified")
+     st.plotly_chart(fig,use_container_width=True,key="axia_overview_performance")
+     if len(series)<requested:
+      st.caption("Only "+str(len(series))+" provider reporting periods are available for this selection; missing years are not estimated.")
+    st.caption(_chart_caption(snapshot,basis))
+   except Exception as exc:
+    st.warning("Financial Performance chart is unavailable; the other widget and KPI cards remain available.")
+    st.caption("Chart error: "+type(exc).__name__)
+ with right_chart:
+  with st.container(border=True,key="axia_margins_profitability_widget"):
+   st.markdown("### Margins & Profitability")
+   margin_mode=st.radio("Margins reporting period",["Quarterly","Annual"],horizontal=True,label_visibility="collapsed",key="axia_margins_mode")
+   try:
+    snapshot=_chart_snapshot(margin_mode)
+    series=margin_series(snapshot,8 if margin_mode=="Quarterly" else 5)
+    if not series or not any(row[k] is not None for row in series for k in ("Operating Margin","Net Income Margin")):
+     st.info("Margins unavailable: comparable revenue and income observations were not returned.")
+    else:
+     labels=[_chart_label(row["Period"],margin_mode) for row in series]
+     fig=go.Figure()
+     for metric,color in (("Operating Margin","#087e53"),("Net Income Margin","#a0c72c")):
+      fig.add_trace(go.Scatter(name=metric,x=labels,y=[row[metric] for row in series],mode="lines+markers",
+                               connectgaps=False,line=dict(color=color,width=3),marker=dict(size=6),
+                               customdata=[row["Period"] for row in series],
+                               hovertemplate="%{customdata}<br>"+metric+": %{y:.1f}%<extra></extra>"))
+     fig.update_layout(height=355,margin=dict(l=8,r=8,t=44,b=18),paper_bgcolor="white",plot_bgcolor="white",
+                       font=dict(color="#304965"),legend=dict(orientation="h",y=1.18,x=0,font=dict(size=10)),
+                       yaxis=dict(ticksuffix="%",gridcolor="#e7eef6",zerolinecolor="#c9d6e5"),
+                       xaxis=dict(type="category"),hovermode="x unified")
+     st.plotly_chart(fig,use_container_width=True,key="axia_overview_margins")
+    st.caption(_chart_caption(snapshot,margin_mode))
+   except Exception as exc:
+    st.warning("Margins & Profitability chart is unavailable; the other widget and KPI cards remain available.")
+    st.caption("Chart error: "+type(exc).__name__)
+ # The statement and ratio cards have separate, provider-backed table models.
+ from services.fundamentals_overview_table_engine import statements as overview_statements, ratio_rows as overview_ratio_rows
+ def _table_period(period):
+  try:
+   stamp=pd.Timestamp(str(period).replace(" TTM",""))
+   return "FY"+str(stamp.year)[-2:]+(" (TTM)" if "TTM" in str(period) else "")
+  except (ValueError,TypeError): return str(period)
+ def _million(value):
+  return f"{value/1e6:,.0f}" if isinstance(value,(int,float)) and math.isfinite(value) else "—"
+ def _ratio_display(value,metric):
+  if not isinstance(value,(int,float)) or not math.isfinite(value): return "—"
+  return f"{value:,.2f}" if metric=="EPS" else f"{value*100:,.1f}%"
+ def _ratio_trend(values):
+  if len(values)<2 or any(not isinstance(x,(int,float)) or not math.isfinite(x) for x in values): return "—"
+  low,high=min(values),max(values)
+  if high==low: return "▅"*len(values)
+  blocks="▁▂▃▄▅▆▇█"
+  return "".join(blocks[min(7,max(0,round((v-low)/(high-low)*7)))] for v in values)
+ statement_col,ratio_col=st.columns([1.35,1],gap="small")
+ with statement_col:
+  with st.container(border=True,key="axia_latest_financial_statements_widget"):
+   heading,download=st.columns([3,1],vertical_alignment="center")
+   with heading: st.markdown("### Latest Financial Statements")
+   records=overview_statements(data)
+   raw=pd.DataFrame(records)
+   with download:
+    st.download_button("↓ Download CSV",raw.to_csv(index=False).encode("utf-8"),file_name=ticker.replace(".","_")+"_financial_overview.csv",mime="text/csv",key="axia_overview_export",use_container_width=True,disabled=raw.empty)
+   if raw.empty: st.info("No financial statements available for the selected company.")
+   else:
+    view=pd.DataFrame([{"Period":_table_period(row["Period"]),
+     "Revenue":_million(row["Revenue"]),"Gross Profit":_million(row["Gross Profit"]),
+     "Operating Income":_million(row["Operating Income"]),"Net Income":_million(row["Net Income"]),
+     "EPS":f'{row["EPS"]:,.2f}' if isinstance(row["EPS"],(int,float)) and math.isfinite(row["EPS"]) else "—",
+     "Free Cash Flow":_million(row["Free Cash Flow"])} for row in records])
+    st.dataframe(view,hide_index=True,use_container_width=True,height=min(330,36*(len(view)+1)+8),
+      column_config={"Period":st.column_config.TextColumn("Period"),"Revenue":st.column_config.TextColumn("Revenue (m)"),
+       "Gross Profit":st.column_config.TextColumn("Gross Profit (m)"),
+       "Operating Income":st.column_config.TextColumn("Operating Income (m)"),
+       "Net Income":st.column_config.TextColumn("Net Income (m)"),
+       "EPS":st.column_config.TextColumn("EPS"),
+       "Free Cash Flow":st.column_config.TextColumn("Free Cash Flow (m)")})
+   st.caption("Source: Yahoo Finance via yfinance · "+str(currency)+" · monetary columns in millions; EPS in "+str(currency)+" per share. Provider-transcribed, not issuer-filing verified.")
+ with ratio_col:
+  with st.container(border=True,key="axia_key_financial_ratios_widget"):
+   st.markdown("### Key Financial Ratios")
+   ratio_records=overview_ratio_rows(data)
+   chronological=list(reversed(periods))
+   selected=chronological[-4:]
+   rows=[]
+   for metric in ratio_records:
+    indexed=dict(zip(metric["Periods"],metric["Values"]))
+    values=[indexed.get(period) for period in selected]
+    rows.append({"Metric":metric["Metric"],**{_table_period(period):_ratio_display(value,metric["Metric"]) for period,value in zip(selected,values)},
+                 "Trend":_ratio_trend(values)})
+   if rows:
+    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True,height=min(330,36*(len(rows)+1)+8))
+   else: st.info("No ratio periods available for the selected company.")
+   st.caption("Source: normalized provider statements · percentage metrics shown as %; EPS in "+str(currency)+". Trends represent actual comparable periods only. ROIC is withheld until verified invested-capital inputs are available.")
  a,b=st.columns([1.15,1])
  with a:
   st.markdown("### Capital Allocation · Cash Flow Bridge")
