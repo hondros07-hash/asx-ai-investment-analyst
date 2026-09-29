@@ -210,7 +210,10 @@ class DividendCorporateActionBroker:
     are preferred; exchange-qualified Yahoo declared events are a fallback.
     """
     def fetch(self, market, universe, horizon_days=120, twelve_data_key="", fmp_key=""):
-        start=date.today(); end=start+timedelta(days=horizon_days)
+        # Include past ex-dates when the dividend payment falls in the future window.
+        # The presentation adapter applies the final payment-date filter.
+        start=date.today()-timedelta(days=120) if market in {"Australia","New Zealand"} else date.today()
+        end=date.today()+timedelta(days=horizon_days)
         universe=tuple(dict.fromkeys(str(x).strip() for x in universe if str(x).strip()))
         diagnostics={"attempted":[],"configured":[],"market":market,"universe_size":len(universe)}
         rows=[]
