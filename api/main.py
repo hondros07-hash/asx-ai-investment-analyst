@@ -201,3 +201,7 @@ app.include_router(research_memory_router)
 # V24.8: deterministic, bounded evidence explanation; no external provider calls.
 from api.explainability_routes import router as explainability_router
 app.include_router(explainability_router)
+
+# V24.9: owner-scoped personal research journal; disabled with research-memory flag.
+from api.personal_research_routes import router as personal_research_router
+app.include_router(personal_research_router)
