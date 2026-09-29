@@ -43,6 +43,7 @@ from announcement_engine import (announcements, fetch_document, extract_text, ev
     announcements_global, official_disclosure_gateway, announcement_provenance_global, resolve_announcement_market)
 from global_dividends import upcoming_dividends
 from corporate_actions_calendar import corporate_actions_calendar
+from services.dividend_calendar_engine import normalize_dividends, top_five, source_link
 from services.evidence_thesis_integration import EvidenceToThesisEngine, CompanyExposure
 from services.synthesis_core import Evidence as SynthesisEvidence
 from services.intelligence_event_gateway import normalize_event
@@ -3980,6 +3981,9 @@ elif primary in SUBPAGES:
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
+if primary=="Markets" and st.session_state.get("axia_dividend_route"):
+    page="Upcoming Dividends"
+
 # V21.3.00 — unified legal navigation: session state is authoritative.
 _chr_legal_page=st.session_state.get("chr_legal_page")
 if _chr_legal_page in _CHR_LEGAL_PAGES:
@@ -4439,6 +4443,70 @@ def overview_global_dividends(market, tickers, twelve_data_key="", fmp_key=""):
     # V20.5.9: forward corporate-actions provider hierarchy. Calendar data is
     # cached because declarations change far less frequently than market prices.
     return corporate_actions_calendar(market, tuple(tickers), 120, twelve_data_key, fmp_key)
+
+@st.cache_data(ttl=900, show_spinner=False)
+def axia_dividend_calendar(country, universe, td_key="", fmp_key=""):
+    raw=corporate_actions_calendar(country, tuple(universe), 90, td_key, fmp_key)
+    normalized=normalize_dividends(raw,country)
+    normalized.attrs["provider_status"]=raw.attrs.get("status","UNKNOWN")
+    normalized.attrs["provider_diagnostics"]=raw.attrs.get("diagnostics",{})
+    return normalized
+
+
+def render_axia_dividend_calendar():
+    st.title("Upcoming Dividends")
+    st.caption("Australia and New Zealand · declared cash dividends with payment dates in the next 90 days. Ex-dates may already have passed.")
+    country=st.radio("Market",["Australia","New Zealand"],horizontal=True,key="axia_div_country")
+    try: td=st.secrets.get("TWELVE_DATA_API_KEY","")
+    except Exception: td=""
+    try: fmp=st.secrets.get("FMP_API_KEY","")
+    except Exception: fmp=""
+    nz=["FPH.NZ","AIR.NZ","SPK.NZ","MEL.NZ","AIA.NZ","IFT.NZ","CEN.NZ","MCY.NZ","GNE.NZ","MFT.NZ","KMD.NZ","SKC.NZ","SUM.NZ","RYM.NZ","POT.NZ","ATM.NZ","EBO.NZ","FBU.NZ"]
+    universe=TOP_GAINERS_UNIVERSE["Australia"] if country=="Australia" else nz
+    with st.spinner("Loading declared dividend events…"):
+        calendar=axia_dividend_calendar(country,tuple(universe),td,fmp)
+    st.caption("Payment window: today through 90 days · Source: configured Twelve Data/FMP calendar and Yahoo declared-event fallback. Coverage is provider-dependent, not a complete exchange register.")
+    if calendar.empty:
+        st.warning("No eligible events with known payment dates were returned. This does not mean no companies are paying dividends.")
+        st.caption("Provider status: "+str(calendar.attrs.get("provider_status","UNKNOWN")))
+    else:
+        a,b,d=st.columns(3)
+        a.metric("Payments in window",len(calendar))
+        b.metric("Ex-dates still ahead",int((pd.to_datetime(calendar["Ex-Date"]).dt.date>=datetime.now().date()).sum()))
+        d.metric("Official filings reconciled",0,help="Provider calendar records are not automatically official-filing verified.")
+        search=st.text_input("Search company or ticker",key="axia_div_search")
+        x,y,z=st.columns(3)
+        types=["All"]+sorted(set(calendar["Type"].dropna().astype(str)) - {"—"})
+        dtype=x.selectbox("Dividend type",types,key="axia_div_type")
+        verified=y.checkbox("Officially verified only",key="axia_div_verified")
+        order=z.selectbox("Sort by",["Payment date (earliest)","Ex-date (earliest)","Amount (highest)"],key="axia_div_sort")
+        view=calendar.copy()
+        if search.strip():view=view[view["Ticker"].str.contains(search.strip(),case=False,regex=False)|view["Company"].str.contains(search.strip(),case=False,regex=False)]
+        if dtype!="All":view=view[view["Type"]==dtype]
+        if verified:view=view.iloc[0:0]
+        if order=="Ex-date (earliest)":view=view.sort_values(["Ex-Date","Ticker"])
+        elif order=="Amount (highest)":view=view.assign(_amt=pd.to_numeric(view["Amount"],errors="coerce")).sort_values("_amt",ascending=False).drop(columns="_amt")
+        page_size=st.selectbox("Rows per page",[10,25,50],key="axia_div_rows")
+        pages=max(1,(len(view)+page_size-1)//page_size)
+        page_no=st.number_input("Page",min_value=1,max_value=pages,value=1,key="axia_div_page")
+        st.dataframe(view.iloc[(page_no-1)*page_size:page_no*page_size].drop(columns=["Source URL"]),use_container_width=True,hide_index=True)
+        st.caption(f"Showing {len(view)} matching events · No dividend forecasts or invented franking percentages.")
+        if not view.empty:
+            options=list(view.index)
+            selected=st.selectbox("Inspect dividend evidence",options,format_func=lambda i: str(view.loc[i,"Ticker"])+" · "+str(view.loc[i,"Pay-Date"]),key="axia_div_selected")
+            item=view.loc[selected]
+            with st.container(border=True):
+                st.subheader(str(item["Company"])+" · "+str(item["Ticker"]))
+                st.write("Ex-date: "+str(item["Ex-Date"])+" · Payment date: "+str(item["Pay-Date"]))
+                st.write("Amount: "+str(item["Amount"])+" "+str(item["Currency"])+" · Franking: "+str(item["Franking"]))
+                st.write("Provider: "+str(item["Source"])+" · Evidence: "+str(item["Evidence status"]))
+                link=source_link(item)
+                if link:st.link_button("Open source evidence",link)
+                else:st.caption("No direct official issuer filing URL supplied by the provider. Official verification remains pending.")
+    if st.button("← Back to Markets",key="axia_div_back"):
+        st.session_state["axia_dividend_route"]=False
+        st.rerun()
+
 
 def overview_fmt_price(x):
     return "—" if not np.isfinite(_mia_num(x)) else f"{float(x):,.2f}"
@@ -5166,13 +5234,15 @@ def render_global_market_overview():
     # V23.4.3: use the broader country universe for dividend discovery rather
     # than the 12–20 securities used by the market overview cards.
     _div_universe=tuple(dict.fromkeys(list(TOP_GAINERS_UNIVERSE.get(market,[]))+list(cfg.get('universe',[]))))
-    dividends=overview_global_dividends(market, _div_universe, _td_div_key, _fmp_div_key)
+    dividends=(axia_dividend_calendar(market,_div_universe,_td_div_key,_fmp_div_key)
+               if market=="Australia" else overview_global_dividends(market,_div_universe,_td_div_key,_fmp_div_key))
     _div_status=str(getattr(dividends,'attrs',{}).get('status','UNKNOWN')) if dividends is not None else 'UNAVAILABLE'
     _div_diag=dict(getattr(dividends,'attrs',{}).get('diagnostics',{}) or {}) if dividends is not None else {}
     if dividends is not None and not dividends.empty:
         _div_display=dividends.copy()
         _div_display["_sort_ex"]=pd.to_datetime(_div_display["Ex-Date"],errors="coerce")
-        _div_display=_div_display.sort_values(["_sort_ex","Ticker"],na_position="last").head(5)
+        _div_display=(_div_display.sort_values(["Pay-Date","Ticker"]).head(5) if market=="Australia"
+                      else _div_display.sort_values(["_sort_ex","Ticker"],na_position="last").head(5))
         for _,r in _div_display.iterrows():
             amt=r.get('Amount','—')
             try: amt='—' if pd.isna(amt) else f"{float(amt):.4g}"
@@ -6590,7 +6660,14 @@ if page in {"Sign In","Register"}:
         st.caption("By continuing, you agree to Axía's Terms and Privacy Policy.")
         st.button("← Back to Axía",key=f"v2330_back_{page}",on_click=_chr_clear_auth_route_v23000)
 
+elif page=="Upcoming Dividends":
+    render_axia_dividend_calendar()
+
 elif page=="Markets":
+    if st.button("📅 Upcoming Dividends · Australia & New Zealand",key="axia_open_dividends"):
+        st.session_state["axia_dividend_route"]=True
+        st.rerun()
+
     st.header("Global Market Opportunity Dashboard")
     with st.expander("🔎 Universal symbol search",expanded=False):
         _uq=st.text_input("Find any company or ticker",placeholder="Pepsi, PEP, Qantas, QAN, Zip, ZIP…",key="market_universal_query")
@@ -6736,6 +6813,10 @@ elif page=="Company Search":
 
 elif page=="Dashboard":
     render_global_market_overview()
+    if st.button("View all dividends →",key="axia_home_dividends"):
+        st.session_state["axia_dividend_route"]=True
+        st.session_state["chr_primary_nav"]="Markets"
+        st.rerun()
 
 elif page=="Announcements & Reports":
     st.header(f"Announcements & Reports — {ticker} — {name}")
