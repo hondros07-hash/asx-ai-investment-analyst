@@ -311,10 +311,18 @@ def _render_workspace(ticker):
   with st.expander("Data quality and source limitations · "+str(len(quality_notes))+" notice(s)",expanded=False):
    for issue in quality_notes: st.caption("• "+str(issue))
  periods=data.get("periods",[])
- negative_equity={p for p in periods if (data.get("statements",{}).get("Balance Sheet",{}).get("Stockholders Equity",{}).get(p) or 0)<0}
- if negative_equity: st.warning("Negative shareholders’ equity: ROE, debt/equity and equity multiplier are suppressed for affected periods.")
+ # Derive this notice exclusively from the currently selected issuer's loaded balance sheet.
+ # Missing/non-numeric equity is not treated as zero or negative.
+ equity_by_period=(data.get("statements") or {}).get("Balance Sheet",{}).get("Stockholders Equity",{})
+ negative_equity={p for p in periods if isinstance(equity_by_period.get(p),(int,float)) and math.isfinite(equity_by_period[p]) and equity_by_period[p]<0}
  with st.container(key="axia_fund_issuer"):
   _issuer_header(data,ticker,currency)
+ if negative_equity:
+  affected=[str(p) for p in periods if p in negative_equity]
+  with st.expander("⚠ Financial ratio limitation · "+str(len(affected))+" affected period(s)",expanded=False):
+   st.caption("Negative shareholders’ equity was reported in the following periods: "+", ".join(affected)+".")
+   st.caption("ROE, debt-to-equity, equity multiplier and Du Pont ROE are withheld for those periods; other periods are unaffected.")
+   st.caption("Source: provider-transcribed Balance Sheet → Stockholders Equity for "+str(ticker).upper()+". Issuer-filing reconciliation is pending; inspect Data & Verification and the original issuer filing before relying on these figures.")
  tabs=st.tabs(["Financial Overview","Income Statement","Balance Sheet","Cash Flow","Key Metrics","Growth & Trends","Capital Allocation","Valuation & Peers","Data & Verification"],on_change="rerun",key="axia_fund_active_tab")
  with tabs[0]:
   if tabs[0].open:
