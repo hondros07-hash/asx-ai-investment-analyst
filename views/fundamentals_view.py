@@ -321,7 +321,47 @@ def _financial_overview(data,ticker,currency):
   if high==low: return "▅"*len(values)
   blocks="▁▂▃▄▅▆▇█"
   return "".join(blocks[min(7,max(0,round((v-low)/(high-low)*7)))] for v in values)
- statement_col,ratio_col=st.columns([1.35,1],gap="small")
+ # Reference-matched compact HTML tables avoid dataframe chrome, scrolling,
+ # unformatted provider units and oversized row spacing.
+ st.markdown("""<style>
+ .axia-fin-table-card{background:#fff;border:1px solid #dce7f5;border-radius:11px;padding:14px 13px 10px;box-shadow:0 1px 3px #173b6310;min-width:0}
+ .axia-fin-table-title{font-size:20px;font-weight:750;color:#183553;margin:0 0 13px}
+ .axia-fin-table-scroll{overflow-x:auto}
+ .axia-fin-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto;color:#29435f;font-size:13px}
+ .axia-fin-table th{background:#f1f6fd;color:#405875;font-weight:700;line-height:1.2;white-space:normal}
+ .axia-fin-table th,.axia-fin-table td{padding:9px 8px;border-right:1px solid #e0e9f3;border-bottom:1px solid #e0e9f3;text-align:center;vertical-align:middle}
+ .axia-fin-table th:first-child,.axia-fin-table td:first-child{text-align:left;font-weight:650;border-left:1px solid #e0e9f3}
+ .axia-fin-table tr:first-child th{border-top:1px solid #e0e9f3}
+ .axia-fin-table tr:first-child th:first-child{border-top-left-radius:6px}
+ .axia-fin-table tr:first-child th:last-child{border-top-right-radius:6px}
+ .axia-fin-table tr:last-child td:first-child{border-bottom-left-radius:6px}
+ .axia-fin-table tr:last-child td:last-child{border-bottom-right-radius:6px}
+ .axia-fin-table td{font-variant-numeric:tabular-nums;font-weight:550}
+ .axia-fin-table .axia-spark{display:flex;align-items:flex-end;justify-content:center;gap:3px;height:24px;min-width:70px}
+ .axia-fin-table .axia-spark i{display:block;width:5px;background:#0ba66a;border-radius:1px 1px 0 0}
+ .axia-fin-table-note{font-size:11px;color:#6c7e93;margin-top:9px}
+ .st-key-axia_financial_csv_download button{background:transparent!important;border:0!important;box-shadow:none!important;color:#126bd5!important;font-weight:750!important;padding:0!important;min-height:28px!important}
+ </style>""",unsafe_allow_html=True)
+ def _table_markup(headers,rows,note):
+  header="".join("<th scope='col'>"+html.escape(str(h))+"</th>" for h in headers)
+  body="".join("<tr>"+"".join("<td>"+str(cell)+"</td>" for cell in row)+"</tr>" for row in rows)
+  return "<div class='axia-fin-table-scroll'><table class='axia-fin-table'><thead><tr>"+header+"</tr></thead><tbody>"+body+"</tbody></table></div><div class='axia-fin-table-note'>"+html.escape(note)+"</div>"
+ def _cash_label(value):
+  return html.escape(_million(value)) if isinstance(value,(int,float)) and math.isfinite(value) else "—"
+ def _period_label(period):
+  raw=str(period)
+  if raw.endswith(" TTM"): raw=raw[:-4]+" (LTM)"
+  try:
+   dt=datetime.fromisoformat(raw[:10])
+   return "FY"+str(dt.year)[-2:]+(" (LTM)" if "(LTM)" in raw else "")
+  except ValueError: return raw
+ def _bars(values):
+  ordered=[x for x in values if isinstance(x,(int,float)) and math.isfinite(x)]
+  if len(ordered)<2:return "—"
+  lo,hi=min(ordered),max(ordered)
+  heights=[8+round(16*(v-lo)/(hi-lo)) if hi>lo else 16 for v in ordered]
+  return "<span class='axia-spark' aria-label='Historical trend, oldest to newest'>"+"".join("<i style='height:"+str(h)+"px' title='"+html.escape(f"{v:,.2f}",quote=True)+"'></i>" for h,v in zip(heights,ordered))+"</span>"
+ statement_col,ratio_col=st.columns([1.15,1],gap="small")
  with statement_col:
   with st.container(border=True,key="axia_latest_financial_statements_widget"):
    heading,download=st.columns([3,1],vertical_alignment="center")
@@ -329,38 +369,28 @@ def _financial_overview(data,ticker,currency):
    records=overview_statements(data)
    raw=pd.DataFrame(records)
    with download:
-    st.download_button("↓ Download CSV",raw.to_csv(index=False).encode("utf-8"),file_name=ticker.replace(".","_")+"_financial_overview.csv",mime="text/csv",key="axia_overview_export",use_container_width=True,disabled=raw.empty)
-   if raw.empty: st.info("No financial statements available for the selected company.")
+    st.download_button("↓ Download CSV",raw.to_csv(index=False).encode("utf-8"),file_name=ticker.replace(".","_")+"_financial_overview.csv",mime="text/csv",key="axia_financial_csv_download",use_container_width=True,disabled=raw.empty)
+   if not records: st.info("No financial statements available for the selected company.")
    else:
-    view=pd.DataFrame([{"Period":_table_period(row["Period"]),
-     "Revenue":_million(row["Revenue"]),"Gross Profit":_million(row["Gross Profit"]),
-     "Operating Income":_million(row["Operating Income"]),"Net Income":_million(row["Net Income"]),
-     "EPS":f'{row["EPS"]:,.2f}' if isinstance(row["EPS"],(int,float)) and math.isfinite(row["EPS"]) else "—",
-     "Free Cash Flow":_million(row["Free Cash Flow"])} for row in records])
-    st.dataframe(view,hide_index=True,use_container_width=True,height=min(330,36*(len(view)+1)+8),
-      column_config={"Period":st.column_config.TextColumn("Period"),"Revenue":st.column_config.TextColumn("Revenue (m)"),
-       "Gross Profit":st.column_config.TextColumn("Gross Profit (m)"),
-       "Operating Income":st.column_config.TextColumn("Operating Income (m)"),
-       "Net Income":st.column_config.TextColumn("Net Income (m)"),
-       "EPS":st.column_config.TextColumn("EPS"),
-       "Free Cash Flow":st.column_config.TextColumn("Free Cash Flow (m)")})
-   st.caption("Source: Yahoo Finance via yfinance · "+str(currency)+" · monetary columns in millions; EPS in "+str(currency)+" per share. Provider-transcribed, not issuer-filing verified.")
+    cells=[]
+    for row in records:
+     eps=row["EPS"]
+     cells.append([html.escape(_period_label(row["Period"]))]+[_cash_label(row[k]) for k in ("Revenue","Gross Profit","Operating Income","Net Income")]+[f"{eps:,.2f}" if isinstance(eps,(int,float)) and math.isfinite(eps) else "—",_cash_label(row["Free Cash Flow"])])
+    st.markdown(_table_markup(["Period","Revenue<br>("+html.escape(str(currency))+"m)","Gross Profit<br>("+html.escape(str(currency))+"m)","Operating Income<br>("+html.escape(str(currency))+"m)","Net Income<br>("+html.escape(str(currency))+"m)","EPS<br>("+html.escape(str(currency))+")","Free Cash Flow<br>("+html.escape(str(currency))+"m)"],cells,"Source: Yahoo Finance via yfinance · monetary values in millions · provider-transcribed, not independently filing-verified.").replace("&lt;br&gt;","<br>"),unsafe_allow_html=True)
  with ratio_col:
   with st.container(border=True,key="axia_key_financial_ratios_widget"):
    st.markdown("### Key Financial Ratios")
    ratio_records=overview_ratio_rows(data)
    chronological=list(reversed(periods))
    selected=chronological[-4:]
-   rows=[]
-   for metric in ratio_records:
-    indexed=dict(zip(metric["Periods"],metric["Values"]))
-    values=[indexed.get(period) for period in selected]
-    rows.append({"Metric":metric["Metric"],**{_table_period(period):_ratio_display(value,metric["Metric"]) for period,value in zip(selected,values)},
-                 "Trend":_ratio_trend(values)})
-   if rows:
-    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True,height=min(330,36*(len(rows)+1)+8))
+   if ratio_records and selected:
+    ratio_cells=[]
+    for metric in ratio_records:
+     indexed=dict(zip(metric["Periods"],metric["Values"]))
+     values=[indexed.get(period) for period in selected]
+     ratio_cells.append([html.escape(str(metric["Metric"]))]+[html.escape(_ratio_display(value,metric["Metric"])) for value in values]+[_bars(values)])
+    st.markdown(_table_markup(["Metric"]+[html.escape(_period_label(period)) for period in selected]+["Trend"],ratio_cells,"Source: normalized provider statements · trends use reported periods only. ROIC withheld without verified inputs."),unsafe_allow_html=True)
    else: st.info("No ratio periods available for the selected company.")
-   st.caption("Source: normalized provider statements · percentage metrics shown as %; EPS in "+str(currency)+". Trends represent actual comparable periods only. ROIC is withheld until verified invested-capital inputs are available.")
  from services.fundamentals_allocation_confidence_engine import capital_bridge as _capital_bridge, confidence as _confidence
  bridge=_capital_bridge(data)
  audit=_confidence(data)
