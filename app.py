@@ -6232,7 +6232,10 @@ def _chr_company_search_page():
         _q=query.strip().lower()
         view["_name_match"]=view["Company"].fillna("").astype(str).str.lower().map(lambda x: 2 if x==_q else (1 if _q in x else 0))
         view["_ticker_match"]=view["Ticker"].fillna("").astype(str).str.lower().eq(_q).astype(int)
-        view["_home_listing"]=((view["Country"].eq("United States")) & (view["Market"].isin(["NYSE","NASDAQ"]))).astype(int)
+        # Rank within the investor's selected market, never globally prefer US ADRs.
+        # An explicit ASX choice must not be displaced by a US OTC listing.
+        _selected_market={"Australia":"ASX","United States":"NYSE","United Kingdom":"LSE","Japan":"TSE","Hong Kong":"HKEX","Canada":"TSX"}.get(country_tab,"")
+        view["_home_listing"]=(view["Market"].eq(_selected_market)).astype(int) if _selected_market else 0
         view["_cap_rank"]=pd.to_numeric(view["Market Cap"],errors="coerce").fillna(-1)
         # Exact ticker, matching company name, then US listing for US company matches.
         view=view.sort_values(["_ticker_match","_name_match","_home_listing","_cap_rank"],ascending=[False,False,False,False],kind="stable").drop(columns=["_ticker_match","_name_match","_home_listing","_cap_rank"]).reset_index(drop=True)
@@ -6493,6 +6496,11 @@ def _chr_company_search_page():
                 st.caption("Issuer market cap unavailable: reporting currency or conversion not verified.")
             st.markdown(f'<div class="v421stats"><div class="v421stat"><span>Market Cap</span><b>{_cap_display}</b></div><div class="v421stat"><span>52 Week Range</span><b>{rng}</b></div><div class="v421stat"><span>P/E Ratio</span><b>{pet}</b></div><div class="v421stat"><span>Dividend Yield</span><b>{dyt}</b></div><div class="v421stat"><span>Sector</span><b>{html.escape(str(sector))}</b></div><div class="v421stat"><span>Industry</span><b>{html.escape(str(industry))}</b></div></div><div class="v421section-rule"></div><div class="v421cons-title"><b>Analyst Consensus</b><span class="v421pill">{html.escape(rec)}</span></div><div class="v421consbar" aria-label="Consensus indicator"><span class="buy"></span><span class="hold"></span><span class="sell"></span></div><div class="v421analyst-note"><span>{html.escape(analyst_txt)}</span><span>Provider consensus</span></div><div class="v421target"><span>12M Target</span><b>{tt}</b></div>',unsafe_allow_html=True)
             if st.button("Open Company Command Centre  →",type="primary",use_container_width=True,key="chr_search_open_cc_v207421"):
+                # Use the exact selected row's resolved listing, not a same-issuer ADR.
+                _selected_market=str(selected.get("Market") or "").upper()
+                if _selected_market=="ASX" and not resolved.upper().endswith(".AX"):
+                    st.error("ASX listing identity mismatch. Select the QAN.AX ordinary-share row; a US ADR cannot substitute for an ASX listing.")
+                    st.stop()
                 st.session_state["chr_active_ticker"]=resolved
                 st.session_state["mia_search_query"]=resolved
                 _active_exchange=str(selected.get("Exchange") or selected.get("Market") or "")
