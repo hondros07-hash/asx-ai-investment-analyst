@@ -4183,7 +4183,7 @@ st.markdown(r"""<style>
 .st-key-v2322_market_strip .stButton>button{height:28px!important;min-height:28px!important;margin-top:13px!important;
  border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;font-size:12px!important;font-weight:700!important;padding:0 5px!important;color:#174f86!important}
 .chr-v2322-index{padding:5px 12px 4px;min-height:66px;line-height:1.06;white-space:nowrap;overflow:hidden}
-.chr-v2322-index-name{font-size:11px;font-weight:750;color:#38536d;overflow:hidden;text-overflow:ellipsis}
+.chr-v2322-index-name{font-size:11px;font-weight:750;color:#38536d;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;white-space:nowrap}.chr-v2322-index-name>span:last-child{overflow:hidden;text-overflow:ellipsis}.chr-v2322-flag{width:19px;height:13px;flex:0 0 19px;object-fit:cover;border-radius:2px;border:1px solid #d9e3ed}.chr-v2322-flag-fallback{font-size:10px;font-weight:850;color:#174f86;flex:none}.chr-v2322-flag-fallback[hidden]{display:none}
 .chr-v2322-index-price{font-size:17px;font-weight:800;color:#102b46;margin-top:4px;font-variant-numeric:tabular-nums}
 .chr-v2322-index-up{font-size:10px;font-weight:750;color:#00a86b;margin-top:3px}
 .chr-v2322-index-down{font-size:10px;font-weight:750;color:#ef4444;margin-top:3px}
@@ -4220,7 +4220,7 @@ def _chr_native_index_cell_v2322(code):
     note = f'Quote: {q["asof"]} | Checked: {checked} | {session} | {q["status"]}'
     st.markdown(
         f'<div class="chr-v2322-index" title="{escape(note, quote=True)}">'
-        f'<div class="chr-v2322-index-name">{escape(q["flag"] + " " + q["name"])}</div>'
+        f'<div class="chr-v2322-index-name"><img class="chr-v2322-flag" src="https://flagcdn.com/w40/{escape(code.lower(), quote=True)}.png" alt="{escape(code, quote=True)} flag" loading="eager" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="chr-v2322-flag-fallback" hidden>{escape(code)}</span><span>{escape(q["name"])}</span></div>'
         f'<div class="chr-v2322-index-price">{price}</div>'
         f'<div class="{cls}">{move}</div>'
         f'<div class="chr-v2322-index-asof" title="{escape(note, quote=True)}">'
