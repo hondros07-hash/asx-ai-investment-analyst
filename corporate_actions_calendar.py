@@ -7,6 +7,7 @@ from global_dividends import upcoming_dividends as yahoo_upcoming_dividends
 UA={"User-Agent":"Mozilla/5.0 Chrimata/20.6.2","Accept":"application/json"}
 COUNTRY_ALIASES={
     "Australia":["AU","Australia"],
+    "New Zealand":["NZ","New Zealand"],
     "United States":["US","United States"],
     "United Kingdom":["GB","United Kingdom"],
     "Japan":["JP","Japan"],
@@ -15,16 +16,18 @@ COUNTRY_ALIASES={
 }
 MIC_CODES={
     "Australia":{"XASX","CXAC"},
+    "New Zealand":{"XNZE"},
     "United States":{"XNAS","XNGS","XNMS","XNYS","XASE","ARCX","BATS"},
     "United Kingdom":{"XLON"},"Japan":{"XTKS"},"Hong Kong":{"XHKG"},"Canada":{"XTSE","XTSX"},
 }
 EXCHANGES={
     "Australia":{"ASX","CBOE AUSTRALIA"},
+    "New Zealand":{"NZX","NEW ZEALAND EXCHANGE"},
     "United States":{"NASDAQ","NYSE","AMEX","NYSE ARCA","CBOE"},
     "United Kingdom":{"LSE","LONDON STOCK EXCHANGE"},"Japan":{"TSE","JPX"},
     "Hong Kong":{"HKEX","HONG KONG STOCK EXCHANGE"},"Canada":{"TSX","TSXV"},
 }
-SUFFIX={"Australia":".AX","United Kingdom":".L","Japan":".T","Hong Kong":".HK","Canada":".TO"}
+SUFFIX={"Australia":".AX","New Zealand":".NZ","United Kingdom":".L","Japan":".T","Hong Kong":".HK","Canada":".TO"}
 
 def _get_json(url, timeout=12):
     req=urllib.request.Request(url,headers=UA)
@@ -135,7 +138,7 @@ def _twelve_next_per_security(market,start,end,key,universe):
     """
     if not key:return []
     out=[]
-    exchange_hint={"Australia":"ASX","United Kingdom":"LSE","Japan":"TSE","Hong Kong":"HKEX","Canada":"TSX"}.get(market)
+    exchange_hint={"Australia":"ASX","New Zealand":"NZX","United Kingdom":"LSE","Japan":"TSE","Hong Kong":"HKEX","Canada":"TSX"}.get(market)
     for raw in universe:
         base_symbol=_norm_symbol(raw).split('.')[0]
         params={"apikey":key,"symbol":base_symbol,"range":"next"}
