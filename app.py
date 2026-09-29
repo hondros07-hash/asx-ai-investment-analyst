@@ -5234,13 +5234,15 @@ def render_global_market_overview():
     # V23.4.3: use the broader country universe for dividend discovery rather
     # than the 12–20 securities used by the market overview cards.
     _div_universe=tuple(dict.fromkeys(list(TOP_GAINERS_UNIVERSE.get(market,[]))+list(cfg.get('universe',[]))))
-    dividends=overview_global_dividends(market, _div_universe, _td_div_key, _fmp_div_key)
+    dividends=(axia_dividend_calendar(market,_div_universe,_td_div_key,_fmp_div_key)
+               if market=="Australia" else overview_global_dividends(market,_div_universe,_td_div_key,_fmp_div_key))
     _div_status=str(getattr(dividends,'attrs',{}).get('status','UNKNOWN')) if dividends is not None else 'UNAVAILABLE'
     _div_diag=dict(getattr(dividends,'attrs',{}).get('diagnostics',{}) or {}) if dividends is not None else {}
     if dividends is not None and not dividends.empty:
         _div_display=dividends.copy()
         _div_display["_sort_ex"]=pd.to_datetime(_div_display["Ex-Date"],errors="coerce")
-        _div_display=_div_display.sort_values(["_sort_ex","Ticker"],na_position="last").head(5)
+        _div_display=(_div_display.sort_values(["Pay-Date","Ticker"]).head(5) if market=="Australia"
+                      else _div_display.sort_values(["_sort_ex","Ticker"],na_position="last").head(5))
         for _,r in _div_display.iterrows():
             amt=r.get('Amount','—')
             try: amt='—' if pd.isna(amt) else f"{float(amt):.4g}"
