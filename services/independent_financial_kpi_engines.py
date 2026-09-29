@@ -34,6 +34,9 @@ def _calculate(data, metric, currency):
     current_period = str(periods[0]) if periods else ""
     current = history[-1][1] if history and str(history[-1][0]) == current_period else None
     delta = None
+    prior_value = None
+    prior_period = None
+    comparison_status = "unavailable"
     if metric == "Operating Margin":
         if len(history) > 1 and _number(current) and _number(history[-2][1]) and mode != "ttm":
             delta = f"{(current-history[-2][1])*100:+.1f} pp vs previous period"
@@ -48,11 +51,31 @@ def _calculate(data, metric, currency):
                     continue
         result = build_kpi(observations, mode)
         current = result.value if observations and observations[-1].period == current_period else None
+        if current is not None and result.previous is not None:
+            prior_value = result.previous
+            lag = 1 if mode == "annual" else 4
+            if len(result.history) > lag:
+                prior_period = result.history[-1-lag].period
+        if metric == "Operating Income" and current is not None and prior_value is not None:
+            if prior_value < 0 and current >= 0:
+                comparison_status = "turnaround"
+                delta = "Turned profitable YoY"
+            elif prior_value >= 0 and current < 0:
+                comparison_status = "turned_negative"
+                delta = "Turned loss-making YoY"
+            elif prior_value < 0 and current < 0:
+                comparison_status = "improving" if current > prior_value else "declining" if current < prior_value else "unchanged"
+                delta = "Loss narrowed YoY" if current > prior_value else "Loss widened YoY" if current < prior_value else "Loss unchanged YoY"
+            else:
+                comparison_status = "improving" if current > prior_value else "declining" if current < prior_value else "unchanged"
         if current is not None and result.growth_pct is not None:
             delta = f"{result.growth_pct:+.1f}% {result.comparison}"
     return {"metric": metric, "value": current if _number(current) else None,
             "history": history, "delta": delta, "period": current_period,
-            "percent": metric == "Operating Margin", "status": "ok" if _number(current) else "unavailable"}
+            "percent": metric == "Operating Margin", "status": "ok" if _number(current) else "unavailable",
+            "previous_value": prior_value, "previous_period": prior_period,
+            "comparison_status": comparison_status, "source": SOURCE,
+            "provider_checked_at": data.get("provider_checked_at"), "currency": currency}
 
 
 def revenue(data, currency): return _calculate(data, "Revenue", currency)
@@ -75,5 +98,8 @@ def run_independently(data, currency):
         except Exception:
             results[name] = {"metric": name, "value": None, "history": [],
                              "delta": None, "period": str((data.get("periods") or [""])[0]),
-                             "percent": name == "Operating Margin", "status": "error"}
+                             "percent": name == "Operating Margin", "status": "error",
+                             "previous_value": None, "previous_period": None,
+                             "comparison_status": "unavailable", "source": SOURCE,
+                             "provider_checked_at": data.get("provider_checked_at"), "currency": currency}
     return results

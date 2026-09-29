@@ -36,6 +36,35 @@ class IndependentKPITests(unittest.TestCase):
         self.assertIsNone(results["Free Cash Flow"]["value"])
         self.assertEqual(results["Revenue"]["value"], 110)
 
+    def test_operating_income_decline_exposes_prior_year_evidence(self):
+        self.data["statements"]["Income Statement"]["Operating Income (EBIT)"]["2026-06-30"] = 17.64
+        result = engine.operating_income(self.data, "AUD")
+        self.assertEqual(result["comparison_status"], "declining")
+        self.assertEqual(result["previous_value"], 20.0)
+        self.assertEqual(result["previous_period"], "2025-06-30")
+        self.assertEqual(result["delta"], "-11.8% YOY")
+
+    def test_operating_income_loss_narrowing_is_improvement(self):
+        self.data["statements"]["Income Statement"]["Operating Income (EBIT)"] = {
+            "2026-06-30": -8.0, "2025-06-30": -10.0}
+        result = engine.operating_income(self.data, "AUD")
+        self.assertEqual(result["comparison_status"], "improving")
+        self.assertEqual(result["delta"], "Loss narrowed YoY")
+
+    def test_operating_income_turnaround_and_new_loss(self):
+        values = self.data["statements"]["Income Statement"]["Operating Income (EBIT)"]
+        values["2025-06-30"], values["2026-06-30"] = -10.0, 2.0
+        self.assertEqual(engine.operating_income(self.data, "AUD")["comparison_status"], "turnaround")
+        values["2025-06-30"], values["2026-06-30"] = 10.0, -2.0
+        self.assertEqual(engine.operating_income(self.data, "AUD")["comparison_status"], "turned_negative")
+
+    def test_operating_income_missing_comparison_is_not_invented(self):
+        del self.data["statements"]["Income Statement"]["Operating Income (EBIT)"]["2025-06-30"]
+        result = engine.operating_income(self.data, "AUD")
+        self.assertIsNone(result["previous_value"])
+        self.assertIsNone(result["previous_period"])
+        self.assertEqual(result["comparison_status"], "unavailable")
+
 
 if __name__ == "__main__":
     unittest.main()
