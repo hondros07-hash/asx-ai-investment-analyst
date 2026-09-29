@@ -182,12 +182,22 @@ def _financial_overview(data,ticker,currency):
     if saved and saved.get("key")!=evidence_key:
      st.session_state.pop("axia_revenue_verification",None)
      saved=None
-    if st.button("Check official SEC revenue evidence",key="axia_verify_revenue"):
+    # Verify the selected listing before choosing a regulator; USD is not a US-listing test.
+    _identity=st.session_state.get("chr_security_identity") or {}
+    _selected_symbol=str(_identity.get("provider_symbol") or ticker).upper()
+    _selected_exchange=str(_identity.get("market") or _identity.get("exchange") or "").upper()
+    _asx_listing=str(ticker).upper().endswith(".AX") or _selected_exchange=="ASX"
+    _identity_conflict=bool(_identity.get("provider_symbol") and _selected_symbol!=str(ticker).upper())
+    if _identity_conflict:
+     st.error("The selected listing differs from the loaded financial security. Reselect the exact listing before verification.")
+    elif _asx_listing:
+     st.info("ASX issuer: official revenue reconciliation requires its matching ASX financial report. SEC verification is not applicable, including when statements are in USD.")
+    elif st.button("Check official SEC revenue evidence",key="axia_verify_revenue"):
      with st.spinner("Checking SEC issuer identity and matching annual revenue…"):
       evidence=reconcile_annual_revenue(ticker,data)
      st.session_state["axia_revenue_verification"]={"key":evidence_key,"evidence":evidence}
      saved=st.session_state["axia_revenue_verification"]
-    evidence=saved["evidence"] if saved else None
+    evidence=saved["evidence"] if saved and not (_asx_listing or _identity_conflict) else None
     if evidence:
      independent=evidence["independent"];filing=evidence["filing"];snapshot=evidence["snapshot"]
      st.markdown("**Independent data provider:** "+str(independent["status"]))
@@ -200,9 +210,9 @@ def _financial_overview(data,ticker,currency):
      st.caption("Checked: "+str(evidence["checked_at"])+" UTC · "+str(evidence["ticker"])+" · "+str(evidence["period"]))
     else:
      st.markdown("**Independent data provider:** Not checked")
-     st.markdown("**Official filing verification:** Pending")
-     st.markdown("**Live value confirmed:** Not tested")
-     st.caption("Annual revenue is a periodic filing metric, not a live quote. SEC matching currently supports USD annual US issuers only.")
+     st.markdown("**Official filing verification:** "+("ASX filing connector pending" if _asx_listing else "Pending"))
+     st.markdown("**Live value confirmed:** Not applicable to periodic revenue")
+     st.caption("Revenue is a periodic filing metric, not a live quote. Verification requires evidence for the exact selected listing.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
   clear_cache=getattr(_load_fundamentals,"clear",None)
