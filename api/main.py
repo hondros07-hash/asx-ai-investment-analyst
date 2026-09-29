@@ -205,3 +205,7 @@ app.include_router(explainability_router)
 # V24.9: owner-scoped personal research journal; disabled with research-memory flag.
 from api.personal_research_routes import router as personal_research_router
 app.include_router(personal_research_router)
+
+# V25.0: global methodology reference and safe comparison endpoints.
+from api.global_methodology_routes import router as global_methodology_router
+app.include_router(global_methodology_router)
