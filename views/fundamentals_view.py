@@ -361,20 +361,64 @@ def _financial_overview(data,ticker,currency):
     st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True,height=min(330,36*(len(rows)+1)+8))
    else: st.info("No ratio periods available for the selected company.")
    st.caption("Source: normalized provider statements · percentage metrics shown as %; EPS in "+str(currency)+". Trends represent actual comparable periods only. ROIC is withheld until verified invested-capital inputs are available.")
- a,b=st.columns([1.15,1])
- with a:
-  st.markdown("### Capital Allocation · Cash Flow Bridge")
-  capex=v(cf,"Capital Expenditure",p)
-  fig=go.Figure(go.Bar(x=["Operating cash flow","Capital expenditure","Free cash flow"],y=[v(cf,"Operating Cash Flow",p),-abs(capex) if capex is not None else None,v(cf,"Free Cash Flow",p)],marker_color=["#173b63","#d7a044","#159b72"]))
-  fig.update_layout(height=230,margin=dict(l=5,r=5,t=10,b=25),paper_bgcolor="white",plot_bgcolor="white")
-  st.plotly_chart(fig,use_container_width=True,key="axia_overview_cash_bridge")
-  st.caption("No unsupported dividend, buyback or debt-repayment allocation is inferred.")
- with b:
-  st.markdown("### Data Confidence & Verification")
-  counts=summary(validate(data));c1,c2,c3=st.columns(3)
-  c1.metric("Passed",counts.get("Pass",0));c2.metric("Mismatches",counts.get("Mismatch",0));c3.metric("Provider-reported",counts.get("Provider-reported",0))
-  st.info("Internal consistency only. Issuer-filing reconciliation remains pending.")
-  st.caption("See Sources & Verification for affected periods and differences.")
+ from services.fundamentals_allocation_confidence_engine import capital_bridge as _capital_bridge, confidence as _confidence
+ bridge=_capital_bridge(data)
+ audit=_confidence(data)
+ capital_col,confidence_col=st.columns([1.15,1],gap="small")
+ with capital_col:
+  with st.container(border=True,key="axia_capital_allocation_widget"):
+   st.markdown("### Capital Allocation · Cash Flow Bridge")
+   st.caption("Period: "+_table_period(bridge["period"])+" · "+str(bridge["currency"]))
+   metric_col,chart_col=st.columns([1,3],vertical_alignment="center")
+   with metric_col:
+    st.caption("Free Cash Flow")
+    st.markdown("#### "+_million(bridge["fcf"])+"m" if bridge["fcf"] is not None else "#### —")
+    st.caption("Provider-derived" if bridge["fcf_derived"] else "Provider-reported" if bridge["fcf"] is not None else "Unavailable")
+   with chart_col:
+    if bridge["ocf"] is not None and bridge["capex"] is not None:
+     # A waterfall communicates the actual OCF-to-FCF reconciliation; it does
+     # not pretend dividends, buybacks or debt changes are allocation of FCF.
+     complete=bridge["reconciles"]
+     labels=["Operating cash flow","Capital expenditure"]
+     values=[bridge["ocf"]/1e6,bridge["capex"]/1e6]
+     measures=["absolute","relative"]
+     if complete:
+      labels.append("Free cash flow");values.append(bridge["fcf"]/1e6);measures.append("total")
+     fig=go.Figure(go.Waterfall(x=labels,y=values,measure=measures,
+       text=[f"{v:,.0f}" for v in values],textposition="outside",
+       connector={"line":{"color":"#b6c7dc","width":1}},
+       increasing={"marker":{"color":"#15a87c"}},
+       decreasing={"marker":{"color":"#e75b65"}},
+       totals={"marker":{"color":"#245d9e"}}))
+     fig.update_layout(height=240,margin=dict(l=5,r=5,t=24,b=55),
+       paper_bgcolor="white",plot_bgcolor="white",showlegend=False,
+       yaxis_title=str(bridge["currency"])+" millions",
+       xaxis={"tickfont":{"size":10}},yaxis={"gridcolor":"#e9eef5"})
+     st.plotly_chart(fig,use_container_width=True,key="axia_overview_cash_bridge")
+     if not complete:
+      st.warning("Provider FCF does not reconcile with OCF less CapEx; the total bar is withheld.")
+    else:
+     st.info("Operating cash flow and capital expenditure are required to show the bridge.")
+   st.caption(bridge["note"])
+   st.caption("Dividends, buybacks, debt reduction and reinvestment are not shown: the current normalized feed does not provide separately verified allocation amounts.")
+ with confidence_col:
+  with st.container(border=True,key="axia_data_confidence_widget"):
+   heading,detail=st.columns([3,1],vertical_alignment="center")
+   with heading: st.markdown("### 🛡 Data Confidence & Verification")
+   with detail:
+    if st.button("View Details",key="axia_overview_confidence_details",use_container_width=True):
+     st.session_state["axia_overview_confidence_open"]=not st.session_state.get("axia_overview_confidence_open",False)
+   c1,c2,c3,c4=st.columns(4,gap="small")
+   with c1: st.metric("Passed",audit["passed"],help="Internal consistency checks only; not independent filing verification.")
+   with c2: st.metric("Mismatches",audit["mismatches"],help="Includes definition differences and invalid values.")
+   with c3: st.metric("Provider-reported",audit["provider_reported"],help="Metadata reported by provider; not independently audited.")
+   with c4: st.metric("Filing links",audit["filing_links"],help="Only issuer- and period-matched verified filing links count.")
+   st.warning("Provider-transcribed figures have not been reconciled to audited issuer filings. Internal checks are not an audit.")
+   st.caption("Not testable: "+str(audit["not_testable"])+" · Provisional: "+str(audit["provisional"])+" · Unconfirmed: "+str(audit["unconfirmed"]))
+   if st.session_state.get("axia_overview_confidence_open",False):
+    st.markdown("**Verification details**")
+    st.caption(audit["provider"])
+    st.dataframe(pd.DataFrame(audit["checks"]),hide_index=True,use_container_width=True,height=250)
  st.caption("Unavailable values are not estimated; figures are in provider-reported monetary units.")
 
 def render(ticker):
