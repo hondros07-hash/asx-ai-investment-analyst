@@ -1,5 +1,5 @@
 """Deterministic global market methodology endpoints; no provider access."""
-from fastapi import APIRouter,HTTPException
+from fastapi import APIRouter,HTTPException,Body
 from pydantic import BaseModel,Field
 from services.global_methodology_engine import MARKETS,market_identity,normalize_observation,compare_global
 router=APIRouter(prefix="/v1/global-methodology",tags=["global-methodology"])
@@ -13,7 +13,7 @@ def identity(exchange:str,ticker:str):
  try:return market_identity(exchange,ticker)
  except ValueError as exc:raise HTTPException(422,str(exc))
 @router.post("/compare")
-def compare(items:list[ObservationIn]=Field(min_length=2,max_length=2)):
+def compare(items:list[ObservationIn]=Body(min_length=2,max_length=2)):
  if len(items)!=2:raise HTTPException(422,"Exactly two observations required")
  try:
   left,right=[normalize_observation(item.model_dump()) for item in items]
