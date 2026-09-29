@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt pytest
-      - run: PYTHONPATH=. python -m pytest --import-mode=importlib -q tests/test_v245_deployment.py tests/test_v243_integration.py tests/test_v242_workspace.py tests/test_v241_research_routes.py tests/test_v246_research_memory.py tests/test_v247_research_memory_routes.py tests/test_v248_explainability.py tests/test_v249_personal_research.py
+      - run: PYTHONPATH=. python -m pytest --import-mode=importlib -q tests/test_v245_deployment.py tests/test_v243_integration.py tests/test_v242_workspace.py tests/test_v241_research_routes.py tests/test_v246_research_memory.py tests/test_v247_research_memory_routes.py tests/test_v248_explainability.py tests/test_v249_personal_research.py tests/test_v250_global_methodology.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
