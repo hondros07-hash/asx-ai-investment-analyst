@@ -193,3 +193,7 @@ app.include_router(workspace_router)
 # Deployment health routes never depend on third-party market providers.
 from api.health import router as health_router
 app.include_router(health_router)
+
+# V24.7 research memory: off by default; authenticated and owner-scoped.
+from api.research_memory_routes import router as research_memory_router
+app.include_router(research_memory_router)
