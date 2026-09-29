@@ -197,3 +197,7 @@ app.include_router(health_router)
 # V24.7 research memory: off by default; authenticated and owner-scoped.
 from api.research_memory_routes import router as research_memory_router
 app.include_router(research_memory_router)
+
+# V24.8: deterministic, bounded evidence explanation; no external provider calls.
+from api.explainability_routes import router as explainability_router
+app.include_router(explainability_router)
