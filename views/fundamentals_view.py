@@ -303,16 +303,64 @@ def _financial_overview(data,ticker,currency):
    except Exception as exc:
     st.warning("Margins & Profitability chart is unavailable; the other widget and KPI cards remain available.")
     st.caption("Chart error: "+type(exc).__name__)
- a,b=st.columns([1.35,1])
- with a:
-  st.markdown("### Latest Financial Statements")
-  records=[{"Period":period,"Revenue":v(inc,"Revenue",period),"Gross profit":v(inc,"Gross Profit",period),"Operating income":v(inc,"Operating Income (EBIT)",period),"Net income":v(inc,"Net Income",period),"Diluted EPS":v(inc,"Diluted EPS",period),"Free cash flow":v(cf,"Free Cash Flow",period)} for period in periods]
-  st.dataframe(pd.DataFrame(records),hide_index=True,use_container_width=True)
-  st.download_button("Download summary CSV",pd.DataFrame(records).to_csv(index=False).encode(),file_name=ticker.replace(".","_")+"_overview.csv",mime="text/csv",key="axia_overview_export")
- with b:
-  st.markdown("### Key Financial Ratios")
-  keys=("Gross Margin","Operating Margin","Net Margin","ROE","ROA","Current Ratio","Debt / Equity")
-  st.dataframe(pd.DataFrame([dict({"Metric":key},**{period:fmt(ratios.get(period,{}).get(key),ratio=key in ("Gross Margin","Operating Margin","Net Margin","ROE","ROA")) for period in periods}) for key in keys]),hide_index=True,use_container_width=True)
+ # The statement and ratio cards have separate, provider-backed table models.
+ from services.fundamentals_overview_table_engine import statements as overview_statements, ratio_rows as overview_ratio_rows
+ def _table_period(period):
+  try:
+   stamp=pd.Timestamp(str(period).replace(" TTM",""))
+   return "FY"+str(stamp.year)[-2:]+(" (TTM)" if "TTM" in str(period) else "")
+  except (ValueError,TypeError): return str(period)
+ def _million(value):
+  return f"{value/1e6:,.0f}" if isinstance(value,(int,float)) and math.isfinite(value) else "—"
+ def _ratio_display(value,metric):
+  if not isinstance(value,(int,float)) or not math.isfinite(value): return "—"
+  return f"{value:,.2f}" if metric=="EPS" else f"{value*100:,.1f}%"
+ def _ratio_trend(values):
+  if len(values)<2 or any(not isinstance(x,(int,float)) or not math.isfinite(x) for x in values): return "—"
+  low,high=min(values),max(values)
+  if high==low: return "▅"*len(values)
+  blocks="▁▂▃▄▅▆▇█"
+  return "".join(blocks[min(7,max(0,round((v-low)/(high-low)*7)))] for v in values)
+ statement_col,ratio_col=st.columns([1.35,1],gap="small")
+ with statement_col:
+  with st.container(border=True,key="axia_latest_financial_statements_widget"):
+   heading,download=st.columns([3,1],vertical_alignment="center")
+   with heading: st.markdown("### Latest Financial Statements")
+   records=overview_statements(data)
+   raw=pd.DataFrame(records)
+   with download:
+    st.download_button("↓ Download CSV",raw.to_csv(index=False).encode("utf-8"),file_name=ticker.replace(".","_")+"_financial_overview.csv",mime="text/csv",key="axia_overview_export",use_container_width=True,disabled=raw.empty)
+   if raw.empty: st.info("No financial statements available for the selected company.")
+   else:
+    view=pd.DataFrame([{"Period":_table_period(row["Period"]),
+     "Revenue":_million(row["Revenue"]),"Gross Profit":_million(row["Gross Profit"]),
+     "Operating Income":_million(row["Operating Income"]),"Net Income":_million(row["Net Income"]),
+     "EPS":f'{row["EPS"]:,.2f}' if isinstance(row["EPS"],(int,float)) and math.isfinite(row["EPS"]) else "—",
+     "Free Cash Flow":_million(row["Free Cash Flow"])} for row in records])
+    st.dataframe(view,hide_index=True,use_container_width=True,height=min(330,36*(len(view)+1)+8),
+      column_config={"Period":st.column_config.TextColumn("Period"),"Revenue":st.column_config.TextColumn("Revenue (m)"),
+       "Gross Profit":st.column_config.TextColumn("Gross Profit (m)"),
+       "Operating Income":st.column_config.TextColumn("Operating Income (m)"),
+       "Net Income":st.column_config.TextColumn("Net Income (m)"),
+       "EPS":st.column_config.TextColumn("EPS"),
+       "Free Cash Flow":st.column_config.TextColumn("Free Cash Flow (m)")})
+   st.caption("Source: Yahoo Finance via yfinance · "+str(currency)+" · monetary columns in millions; EPS in "+str(currency)+" per share. Provider-transcribed, not issuer-filing verified.")
+ with ratio_col:
+  with st.container(border=True,key="axia_key_financial_ratios_widget"):
+   st.markdown("### Key Financial Ratios")
+   ratio_records=overview_ratio_rows(data)
+   chronological=list(reversed(periods))
+   selected=chronological[-4:]
+   rows=[]
+   for metric in ratio_records:
+    indexed=dict(zip(metric["Periods"],metric["Values"]))
+    values=[indexed.get(period) for period in selected]
+    rows.append({"Metric":metric["Metric"],**{_table_period(period):_ratio_display(value,metric["Metric"]) for period,value in zip(selected,values)},
+                 "Trend":_ratio_trend(values)})
+   if rows:
+    st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True,height=min(330,36*(len(rows)+1)+8))
+   else: st.info("No ratio periods available for the selected company.")
+   st.caption("Source: normalized provider statements · percentage metrics shown as %; EPS in "+str(currency)+". Trends represent actual comparable periods only. ROIC is withheld until verified invested-capital inputs are available.")
  a,b=st.columns([1.15,1])
  with a:
   st.markdown("### Capital Allocation · Cash Flow Bridge")
