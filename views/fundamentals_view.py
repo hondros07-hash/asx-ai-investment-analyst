@@ -162,7 +162,7 @@ def _financial_overview(data,ticker,currency):
   if mode=="ttm" and not display_period.endswith(" TTM"):
    display_period+=" TTM"
   change_class=("up" if item.get("comparison_status") in ("turnaround","improving") else "down" if item.get("comparison_status") in ("turned_negative","declining") else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")) if label=="Operating Income" else ("up" if delta and delta.startswith("+") else "down" if delta and delta.startswith("-") else "neutral")
-  tooltip=html.escape("Source: Yahoo Finance financial statements; "+str(display_period)+"; "+str(currency),quote=True)
+  tooltip=html.escape("Source: Yahoo Finance financial statements (not issuer-filing verified); "+str(display_period)+"; "+str(currency)+"; intermediate trend bars are interpolated visual samples, not reported periods",quote=True)
   try:
    spark=_spark(item["history"])
   except Exception:
@@ -171,6 +171,17 @@ def _financial_overview(data,ticker,currency):
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
  # Native evidence control aligned with the Revenue card, without a full-width disclosure.
  evidence_columns=st.columns([1,1,1,1,1],gap="small")
+ with evidence_columns[1]:
+   with st.popover("ⓘ Operating Income evidence",help="Inspect the reported input, comparable period and provider limitations",use_container_width=True):
+    operating=results["Operating Income"]
+    st.caption("Independent calculation · Shared Yahoo Finance financial-statement snapshot. Not reconciled to an issuer filing.")
+    st.markdown("**Current period:** "+str(operating.get("period") or "Unavailable"))
+    st.markdown("**Operating income (EBIT):** "+(_card_value(operating.get("value"))+" "+str(currency) if operating.get("value") is not None else "Unavailable"))
+    st.markdown("**Comparable period:** "+str(operating.get("previous_period") or "Unavailable"))
+    st.markdown("**Comparable operating income:** "+(_card_value(operating.get("previous_value"))+" "+str(currency) if operating.get("previous_value") is not None else "Unavailable"))
+    st.markdown("**Comparison:** "+str(operating.get("delta") or "Unavailable"))
+    st.caption("Provider last checked: "+str(operating.get("provider_checked_at") or "Unavailable")+". Source field: Operating Income, fallback EBIT. Figures are provider-transcribed, not independently verified against the company's filing.")
+    st.caption("The nine trend bars interpolate between actual available statement observations. Intermediate bars are not additional reported periods; hover for details.")
  with evidence_columns[0]:
    with st.popover("ⓘ Revenue evidence",help="Revenue source and official filing reconciliation",use_container_width=True):
     from services.revenue_verification_engine import reconcile_annual_revenue
