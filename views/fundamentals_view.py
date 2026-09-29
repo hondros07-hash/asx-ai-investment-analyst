@@ -240,7 +240,7 @@ def _financial_overview(data,ticker,currency):
   try:
    stamp=pd.Timestamp(period)
    if mode=="Annual": return "FY"+str(stamp.year)[-2:]
-   return "Q"+str((stamp.month-1)//3+1)+"\\n"+str(stamp.year)
+   return "Q"+str((stamp.month-1)//3+1)+" · "+str(stamp.year)
   except (ValueError,TypeError): return str(period)
  def _chart_caption(snapshot,mode):
   return ("Source: Yahoo Finance via yfinance · "+mode+" financial statements · "+str(snapshot.get("currency") or "Currency unconfirmed")+
