@@ -3981,7 +3981,7 @@ elif primary in SUBPAGES:
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-if primary=="Markets" and (st.session_state.get("axia_dividend_route") or st.query_params.get("axia_page")=="upcoming-dividends"):
+if st.query_params.get("axia_page")=="upcoming-dividends" or (primary=="Markets" and st.session_state.get("axia_dividend_route")):
     page="Upcoming Dividends"
 
 # V21.3.00 — unified legal navigation: session state is authoritative.
