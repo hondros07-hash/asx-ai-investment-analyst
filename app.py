@@ -3981,7 +3981,7 @@ elif primary in SUBPAGES:
     page=PAGE_MAP[(primary,sub)]
 else: page=primary
 
-if primary=="Markets" and st.session_state.get("axia_dividend_route"):
+if st.query_params.get("axia_page")=="upcoming-dividends" or (primary=="Markets" and st.session_state.get("axia_dividend_route")):
     page="Upcoming Dividends"
 
 # V21.3.00 — unified legal navigation: session state is authoritative.
@@ -4448,6 +4448,8 @@ def overview_global_dividends(market, tickers, twelve_data_key="", fmp_key=""):
 def axia_dividend_calendar(country, universe, td_key="", fmp_key=""):
     raw=corporate_actions_calendar(country, tuple(universe), 90, td_key, fmp_key)
     normalized=normalize_dividends(raw,country)
+    normalized.attrs["status"]=raw.attrs.get("status","UNKNOWN")
+    normalized.attrs["diagnostics"]=raw.attrs.get("diagnostics",{})
     normalized.attrs["provider_status"]=raw.attrs.get("status","UNKNOWN")
     normalized.attrs["provider_diagnostics"]=raw.attrs.get("diagnostics",{})
     return normalized
@@ -4505,6 +4507,8 @@ def render_axia_dividend_calendar():
                 else:st.caption("No direct official issuer filing URL supplied by the provider. Official verification remains pending.")
     if st.button("← Back to Markets",key="axia_div_back"):
         st.session_state["axia_dividend_route"]=False
+        if st.query_params.get("axia_page")=="upcoming-dividends":
+            del st.query_params["axia_page"]
         st.rerun()
 
 
@@ -5311,7 +5315,7 @@ table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px 7px;b
         panel_asof = "Live" if market_is_open else "At Close"
     smooth_html=_chr_smooth_market_component(market,instruments,selected_key,range_map,sectors,index_table,date_label,time_label,zone_label,market_status,market_is_open,updated_label,panel_asof)
     components.html(smooth_html,height=496,scrolling=False)
-    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— AXÍA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>{vol_name} <span>{vol_source}</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="vol-state {vol_state_class}">{vol_state}</div><div class="gleg"><span class="low">■ Low &lt;15</span><span class="normal">■ Normal 15–30</span><span class="high">■ High &gt;30</span></div></div><p class="chr-note">{vol_note}</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer>View all dividends →</footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
+    html=f'''<div class="chr-home-v2020"><div class="chr-overview-head"><div><div class="chr-overview-title"><span class="chr-overview-flag flag-{flag_class}" aria-label="{market} flag"></span><span>Market Overview – {market}</span></div><div class="chr-overview-meta">{date_label} &nbsp; · &nbsp; {time_label} {zone_label} &nbsp; | &nbsp; <span class="chr-market-status {'open' if market_is_open else 'closed'}">{market_status}</span> &nbsp; · &nbsp; <span class="chr-live-updated">● Live · Data updated {updated_label}</span></div></div><div class="chr-overview-quote">“The best investments are built on knowledge, not noise.”<small>— AXÍA</small></div></div><div class="chr-metrics">{cards}</div><div class="chr-grid-main"><section class="chr-panel chr-chart-panel"><header>{chart_title} <span class="chr-range-links">{range_links}</span></header><div class="chr-bigchart">{chart_svg}{xaxis_html}<strong style="color:{chart_col}">{last_txt}</strong><div class="chr-prev-close">Prev Close<br><b>{prev_txt}</b></div></div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Sectors <span class="chr-panel-asof">{panel_asof}</span></header><div class="chr-sector-tabs"><span class="active">Day</span><span>Week</span><span>Month</span><span>YTD</span></div><div class="chr-sectors">{sector_html}</div></section><section class="chr-panel"><header>{"ASX" if market=="Australia" else market} Indices <span class="chr-panel-asof">{panel_asof}</span></header>{index_table}</section></div><div class="chr-grid-mid"><section class="chr-panel"><header>Top Gainers ({market})</header>{gain_t}<footer>View more gainers →</footer></section><section class="chr-panel"><header>Biggest Fallers ({market})</header>{fall_t}<footer>View more fallers →</footer></section><section class="chr-panel"><header>Watchlist <span>My Watchlist</span></header>{watch_t}<footer>Go to Watchlist →</footer></section><section class="chr-panel"><header>{vol_name} <span>{vol_source}</span></header><div class="chr-gauge"><div class="arc"><div class="needle" style="transform:rotate({needle:.0f}deg)"></div><b>{vix_text}</b></div><div class="vol-state {vol_state_class}">{vol_state}</div><div class="gleg"><span class="low">■ Low &lt;15</span><span class="normal">■ Normal 15–30</span><span class="high">■ High &gt;30</span></div></div><p class="chr-note">{vol_note}</p></section></div><div class="chr-grid-bottom"><section class="chr-panel"><header>Upcoming Dividends ({market})</header>{div_t}<footer><a href="?axia_page=upcoming-dividends" target="_self" aria-label="Open Upcoming Dividends calendar under Markets">View all dividends →</a></footer></section><section class="chr-panel"><header>Upcoming IPOs / Earnings ({market})</header>{earn_t}<footer>View calendar →</footer></section><section class="chr-panel"><header>Global Markets <span>Live market indices</span></header>{glob_t}<footer>View more global markets →</footer></section></div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
 def global_yahoo_symbol(symbol, market):
@@ -6813,10 +6817,6 @@ elif page=="Company Search":
 
 elif page=="Dashboard":
     render_global_market_overview()
-    if st.button("View all dividends →",key="axia_home_dividends"):
-        st.session_state["axia_dividend_route"]=True
-        st.session_state["chr_primary_nav"]="Markets"
-        st.rerun()
 
 elif page=="Announcements & Reports":
     st.header(f"Announcements & Reports — {ticker} — {name}")
