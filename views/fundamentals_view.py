@@ -169,37 +169,40 @@ def _financial_overview(data,ticker,currency):
    spark='<span class="axia-kpi-no-trend">Trend unavailable</span>'
   cards.append('<div class="axia-kpi-card'+(" axia-kpi-card-operating" if label=="Operating Income" else "")+'" title="'+tooltip+'"><div class="axia-kpi-icon">'+icon+'</div><div class="axia-kpi-body"><div class="axia-kpi-label">'+html.escape(label)+' <small>('+html.escape(display_period)+')</small></div><div class="axia-kpi-number">'+html.escape(_card_value(current,item["percent"]))+'</div><div class="axia-kpi-change '+change_class+'">'+html.escape(delta or ("Metric unavailable" if item["status"]=="error" else "Comparison unavailable"))+'</div></div>'+spark+'</div>')
  st.markdown('<div class="axia-kpi-grid">'+''.join(cards)+'</div>',unsafe_allow_html=True)
- with st.expander("Revenue · independent evidence & verification",expanded=False):
-  from services.revenue_verification_engine import reconcile_annual_revenue
-  st.caption("Independent KPI calculation · Base data: shared Yahoo Finance financial statements.")
-  revenue_period=(data.get("periods") or [""])[0]
-  revenue_value=((data.get("statements") or {}).get("Income Statement") or {}).get("Revenue",{}).get(revenue_period)
-  evidence_key=(str(ticker).upper(),str(data.get("frequency")),str(revenue_period),str(data.get("currency")),str(revenue_value))
-  saved=st.session_state.get("axia_revenue_verification")
-  if saved and saved.get("key")!=evidence_key:
-   st.session_state.pop("axia_revenue_verification",None)
-   saved=None
-  if st.button("Check official SEC revenue evidence",key="axia_verify_revenue"):
-   with st.spinner("Checking SEC issuer identity and matching annual revenue…"):
-    evidence=reconcile_annual_revenue(ticker,data)
-   st.session_state["axia_revenue_verification"]={"key":evidence_key,"evidence":evidence}
-   saved=st.session_state["axia_revenue_verification"]
-  evidence=saved["evidence"] if saved else None
-  if evidence:
-   independent=evidence["independent"];filing=evidence["filing"];snapshot=evidence["snapshot"]
-   st.markdown("**Independent data provider:** "+str(independent["status"]))
-   st.caption(str(independent["reason"]))
-   st.markdown("**Official filing verification:** "+str(filing["status"]))
-   st.caption(str(filing["reason"]))
-   if filing.get("url"): st.link_button("Open SEC filing evidence",filing["url"])
-   st.markdown("**Live value confirmed:** "+str(snapshot["status"]))
-   st.caption(str(snapshot["reason"]))
-   st.caption("Checked: "+str(evidence["checked_at"])+" UTC · "+str(evidence["ticker"])+" · "+str(evidence["period"]))
-  else:
-   st.markdown("**Independent data provider:** Not checked")
-   st.markdown("**Official filing verification:** Pending")
-   st.markdown("**Live value confirmed:** Not tested")
-   st.caption("Annual revenue is a periodic filing metric, not a live quote. SEC matching currently supports USD annual US issuers only.")
+ # Native evidence control aligned with the Revenue card, without a full-width disclosure.
+ evidence_columns=st.columns([1,1,1,1,1],gap="small")
+ with evidence_columns[0]:
+   with st.popover("ⓘ Revenue evidence",help="Revenue source and official filing reconciliation",use_container_width=True):
+    from services.revenue_verification_engine import reconcile_annual_revenue
+    st.caption("Independent KPI calculation · Base data: shared Yahoo Finance financial statements.")
+    revenue_period=(data.get("periods") or [""])[0]
+    revenue_value=((data.get("statements") or {}).get("Income Statement") or {}).get("Revenue",{}).get(revenue_period)
+    evidence_key=(str(ticker).upper(),str(data.get("frequency")),str(revenue_period),str(data.get("currency")),str(revenue_value))
+    saved=st.session_state.get("axia_revenue_verification")
+    if saved and saved.get("key")!=evidence_key:
+     st.session_state.pop("axia_revenue_verification",None)
+     saved=None
+    if st.button("Check official SEC revenue evidence",key="axia_verify_revenue"):
+     with st.spinner("Checking SEC issuer identity and matching annual revenue…"):
+      evidence=reconcile_annual_revenue(ticker,data)
+     st.session_state["axia_revenue_verification"]={"key":evidence_key,"evidence":evidence}
+     saved=st.session_state["axia_revenue_verification"]
+    evidence=saved["evidence"] if saved else None
+    if evidence:
+     independent=evidence["independent"];filing=evidence["filing"];snapshot=evidence["snapshot"]
+     st.markdown("**Independent data provider:** "+str(independent["status"]))
+     st.caption(str(independent["reason"]))
+     st.markdown("**Official filing verification:** "+str(filing["status"]))
+     st.caption(str(filing["reason"]))
+     if filing.get("url"): st.link_button("Open SEC filing evidence",filing["url"])
+     st.markdown("**Live value confirmed:** "+str(snapshot["status"]))
+     st.caption(str(snapshot["reason"]))
+     st.caption("Checked: "+str(evidence["checked_at"])+" UTC · "+str(evidence["ticker"])+" · "+str(evidence["period"]))
+    else:
+     st.markdown("**Independent data provider:** Not checked")
+     st.markdown("**Official filing verification:** Pending")
+     st.markdown("**Live value confirmed:** Not tested")
+     st.caption("Annual revenue is a periodic filing metric, not a live quote. SEC matching currently supports USD annual US issuers only.")
  if st.button("Refresh financial statements",key="axia_refresh_fundamentals"):
   from services.fundamentals_engine import load as _load_fundamentals
   clear_cache=getattr(_load_fundamentals,"clear",None)
