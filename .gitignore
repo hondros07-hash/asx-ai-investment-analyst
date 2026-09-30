@@ -1,3 +1,32 @@
+# Environment files
 .env
 .env.*
 !.env.example
+
+# Python virtual environments
+.venv/
+.venv-api/
+venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Next.js / Node generated files
+frontend/node_modules/
+frontend/.next/
+node_modules/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
