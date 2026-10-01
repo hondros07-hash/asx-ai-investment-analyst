@@ -5,6 +5,7 @@ import {Shell} from "../../../../components/Shell";
 import {KpiCards} from "../../../../components/KpiCards";
 import {StatementResearch,ModelResearch} from "../../../../components/ResearchPanels";
 import {ResearchSection} from "../../../../components/ResearchSection";
+import {ReportIntelligence} from "../../../../components/ReportIntelligence";
 import {api,KpiResponse,StatementResponse,ValuationResponse,ForecastResponse} from "../../../../lib/research-api";
 
 const sections=["overview","fundamentals","technical","announcements","report-intelligence","news","thesis","catalysts","quant","forecasts","finance"];
@@ -45,6 +46,7 @@ export default async function Company({params,searchParams}:{params:Promise<{tic
  {section==="finance"&&valuation?.data&&<ModelResearch label="Valuation" value={valuation.data.valuation} source={valuation.data.source}/>}
  {section==="forecasts"&&forecast?.data&&<ModelResearch label="12-month forecast" value={forecast.data.forecast} source={forecast.data.source}/>}
  {research?.error&&<div role="alert" className="panel error">{names[section]}: {research.error}. No substitute results have been generated.</div>}
- {research?.data&&<ResearchSection section={section} data={research.data}/> }
+ {research?.data&&section==="report-intelligence"&&<ReportIntelligence data={research.data}/>}
+ {research?.data&&section!=="report-intelligence"&&<ResearchSection section={section} data={research.data}/>}
  </Shell>;
 }
