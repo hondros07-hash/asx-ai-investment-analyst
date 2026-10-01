@@ -13,6 +13,8 @@ import pandas as pd
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query
 from services.technical_engine import calculate_technical_snapshot, core_indicator_frame
+from services.regulatory.sec import get_sec_investor_filings
+from services.report_intelligence_engine import build_report_intelligence, select_core_reports
 
 router = APIRouter(prefix="/v1/companies", tags=["company-research"])
 
@@ -173,9 +175,65 @@ def announcements(ticker: str):
 
 @router.get("/{ticker}/report-intelligence")
 def report_intelligence(ticker: str):
-    result=announcements(ticker)
-    return {**result,"analysis_status":"not_migrated",
-            "message":"Official filing links are provided when verified. AI extraction and document analysis are not yet connected."}
+    ticker = _ticker(ticker)
+
+    # Official non-US disclosure connectors are migrated independently.
+    # Never substitute SEC data for a non-US listing.
+    if ticker.endswith((".AX", ".L", ".HK", ".T", ".TO", ".V")):
+        return {
+            "ticker": ticker,
+            "status": "unavailable",
+            "issuer_verified": False,
+            "filings": [],
+            "decision_reports": [],
+            "core_reports": {
+                "annual": [],
+                "quarterly": [],
+                "current": [],
+                "foreign": [],
+            },
+            "analysis_status": "not_connected",
+            "message": "An official exchange filing connector is not yet configured for this listing.",
+        }
+
+    source = _provider(
+        lambda: get_sec_investor_filings(ticker, limit=250)
+    )
+
+    if source.get("status") != "available" or not source.get("issuer_verified"):
+        source["issuer_verified"] = bool(source.get("issuer_verified", False))
+        return {
+            **source,
+            "decision_reports": [],
+            "core_reports": {
+                "annual": [],
+                "quarterly": [],
+                "current": [],
+                "foreign": [],
+            },
+            "analysis_status": "unavailable",
+        }
+
+    report = build_report_intelligence(
+        ticker=source["ticker"],
+        issuer=source.get("issuer"),
+        issuer_verified=source.get("issuer_verified", False),
+        filings=source.get("filings", []),
+        source=source.get("source"),
+        market="United States",
+    )
+
+    core = select_core_reports(report["filings"])
+
+    return {
+        **report,
+        "core_reports": core,
+        "analysis_status": "foundation_available",
+        "message": (
+            "Verified official filings and core report selection are available. "
+            "Document extraction and evidence-backed report analysis are not yet connected."
+        ),
+    }
 
 
 @router.get("/{ticker}/thesis")
