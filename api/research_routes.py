@@ -108,21 +108,55 @@ def announcements(ticker: str):
     if ticker.endswith((".AX",".L",".HK",".T",".TO",".V")):
         return {"ticker":ticker,"status":"unavailable","filings":[],"source":None,
                 "message":"An official exchange filing connector is not yet configured for this listing."}
-    info=_provider(lambda: yf.Ticker(ticker).info or {})
-    cik=info.get("cik") or info.get("cikNumber")
-    try:cik=int(cik)
-    except (TypeError,ValueError):
-        return {"ticker":ticker,"status":"unavailable","filings":[],"source":None,
-                "message":"Issuer CIK not verified; SEC filings cannot be matched safely."}
     user_agent=os.getenv("AXIA_SEC_USER_AGENT","").strip()
     if not user_agent:
         return {"ticker":ticker,"status":"unavailable","filings":[],"source":"SEC EDGAR",
                 "message":"Configure AXIA_SEC_USER_AGENT with a real application name and contact before SEC retrieval."}
+
+    # Resolve US issuer identity from the SEC's official ticker directory.
+    def fetch_ticker_directory():
+        req=Request("https://www.sec.gov/files/company_tickers.json",
+                    headers={"User-Agent":user_agent,"Accept":"application/json"})
+        with urlopen(req,timeout=12) as response:return json.load(response)
+
+    ticker_directory=_provider(fetch_ticker_directory)
+    matches=[
+        entry for entry in ticker_directory.values()
+        if str(entry.get("ticker","")).upper()==ticker
+    ] if isinstance(ticker_directory,dict) else []
+
+    if len(matches)!=1:
+        return {"ticker":ticker,"status":"unavailable","filings":[],"source":"SEC EDGAR",
+                "message":"Issuer identity could not be uniquely verified through the SEC ticker directory."}
+
+    try:cik=int(matches[0].get("cik_str"))
+    except (TypeError,ValueError):
+        return {"ticker":ticker,"status":"unavailable","filings":[],"source":"SEC EDGAR",
+                "message":"Issuer CIK not verified; SEC filings cannot be matched safely."}
+
+
     def fetch():
         req=Request(f"https://data.sec.gov/submissions/CIK{cik:010d}.json",
                     headers={"User-Agent":user_agent,"Accept":"application/json"})
         with urlopen(req,timeout=12) as response:return json.load(response)
     filing_data=_provider(fetch)
+
+    # Fail closed unless the SEC submissions record reconciles to the
+    # ticker-directory identity resolved above.
+    try:
+        returned_cik=int(filing_data.get("cik"))
+    except (TypeError,ValueError):
+        returned_cik=None
+
+    returned_tickers=[
+        str(value).upper()
+        for value in (filing_data.get("tickers") or [])
+    ]
+
+    if returned_cik!=cik or ticker not in returned_tickers:
+        return {"ticker":ticker,"status":"unavailable","filings":[],"source":"SEC EDGAR",
+                "message":"SEC submissions identity did not reconcile with the verified issuer."}
+
     recent=(filing_data.get("filings") or {}).get("recent") or {}
     fields=("accessionNumber","form","filingDate","primaryDocument","primaryDocDescription")
     rows=[dict(zip(fields,values)) for values in zip(*(recent.get(field,[]) for field in fields))]
