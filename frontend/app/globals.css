@@ -29,3 +29,472 @@
 
 /* V24.2 — global workspace responsive discovery */
 .workspace-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}.workspace-grid .panel{margin:8px 0;min-width:0}.workspace-grid strong{font-size:23px}.workspace-grid small{color:var(--muted)}.search-form select{background:white;border:1px solid var(--line);border-radius:8px;padding:12px;max-width:150px}@media(max-width:600px){.workspace-grid{grid-template-columns:1fr}.search-form{flex-wrap:wrap}.search-form select{max-width:none;width:100%}}
+
+/* V24.3 — AXÍA Home Market Intelligence Dashboard */
+.axia-home{
+  width:100%;
+  max-width:1600px;
+  margin:0 auto;
+  color:var(--navy);
+}
+
+.home-top-strip{
+  display:grid;
+  grid-template-columns:minmax(330px,1.72fr) minmax(650px,2.28fr);
+  gap:10px;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.home-company-search{
+  height:44px;
+  display:flex;
+  align-items:center;
+  background:#fff;
+  border:1px solid #d7e2ef;
+  border-radius:5px;
+  overflow:hidden;
+}
+
+.home-search-icon{
+  width:42px;
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  color:#708198;
+  font-size:20px;
+}
+
+.home-company-search input{
+  width:100%;
+  height:100%;
+  border:0;
+  outline:0;
+  background:#fff;
+  color:#10264b;
+  padding:0 12px 0 0;
+  font-size:12px;
+}
+
+.home-company-search input::placeholder{
+  color:#66778f;
+}
+
+.home-country-nav{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:7px;
+}
+
+.home-country-nav button{
+  height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  background:#fff;
+  color:#10264b;
+  border:1px solid #d7e2ef;
+  border-radius:5px;
+  cursor:pointer;
+  font-size:10px;
+  font-weight:700;
+  white-space:nowrap;
+  transition:border-color .15s ease,background .15s ease,color .15s ease;
+}
+
+.home-country-nav button:hover{
+  border-color:#1687ff;
+  background:#f8fbff;
+  color:#0874df;
+}
+
+.home-country-nav button.active{
+  border:2px solid #1687ff;
+  background:#fff;
+  color:#0874df;
+}
+
+.home-country-flag{
+  font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  font-size:17px;
+  line-height:1;
+}
+
+.home-overview{
+  width:100%;
+}
+
+.home-overview-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:30px;
+  margin:4px 0 16px;
+}
+
+.home-overview-heading h1{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:0;
+  font-size:18px;
+  font-weight:800;
+  color:#17365d;
+}
+
+.home-overview-heading h1>span{
+  font-family:"Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  font-size:21px;
+}
+
+.home-overview-heading p{
+  margin:6px 0 0;
+  color:#708198;
+  font-size:11px;
+}
+
+.home-overview-heading blockquote{
+  margin:0;
+  max-width:360px;
+  text-align:right;
+  color:#51677f;
+  font-size:11px;
+  font-style:italic;
+  line-height:1.5;
+}
+
+.home-overview-heading blockquote small{
+  display:block;
+  margin-top:2px;
+  color:#8292a6;
+  font-style:normal;
+}
+
+.home-headline-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.home-market-card{
+  min-height:82px;
+  text-align:left;
+  padding:11px 13px;
+  border:1px solid #dce5ef;
+  border-radius:6px;
+  background:#fff;
+  color:#17365d;
+  cursor:pointer;
+  box-shadow:0 1px 3px rgba(16,38,75,.04);
+}
+
+.home-market-card.selected{
+  border-color:#1687ff;
+  box-shadow:inset 0 0 0 1px #1687ff;
+}
+
+.home-market-card>span{
+  display:block;
+  color:#65778b;
+  font-size:10px;
+  font-weight:700;
+}
+
+.home-market-card>strong{
+  display:block;
+  margin-top:8px;
+  font-size:20px;
+  line-height:1;
+}
+
+.home-market-card>small{
+  display:block;
+  margin-top:7px;
+  color:#8b9bad;
+  font-size:9px;
+}
+
+.home-unavailable{
+  color:#8b9bad;
+}
+
+.home-primary-grid{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.home-secondary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.home-bottom-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.home-widget{
+  min-width:0;
+  min-height:225px;
+  background:#fff;
+  border:1px solid #dce5ef;
+  border-radius:6px;
+  overflow:hidden;
+  box-shadow:0 1px 3px rgba(16,38,75,.04);
+}
+
+.home-widget>header{
+  min-height:42px;
+  padding:0 13px;
+  border-bottom:1px solid #edf1f5;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  background:#fff;
+}
+
+.home-widget>header strong{
+  color:#20364f;
+  font-size:11px;
+}
+
+.home-widget>header span{
+  color:#8292a6;
+  font-size:9px;
+  white-space:nowrap;
+}
+
+.home-chart-widget{
+  min-height:315px;
+}
+
+.home-chart-widget header nav{
+  display:flex;
+  gap:3px;
+}
+
+.home-chart-widget header nav button,
+.home-widget-tabs button{
+  border:0;
+  background:transparent;
+  color:#718096;
+  font-size:9px;
+  cursor:pointer;
+  padding:4px 6px;
+  border-radius:4px;
+}
+
+.home-chart-widget header nav button:hover,
+.home-widget-tabs button:hover{
+  background:#f1f6fc;
+  color:#0b57d0;
+}
+
+.home-chart-widget header nav button.active,
+.home-widget-tabs button.active{
+  background:#eef5ff;
+  color:#0b57d0;
+  font-weight:700;
+}
+
+.home-chart-empty{
+  position:relative;
+  height:270px;
+  padding:25px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
+
+.home-chart-grid{
+  position:absolute;
+  inset:15px;
+  background-image:
+    linear-gradient(#edf1f5 1px,transparent 1px),
+    linear-gradient(90deg,#edf1f5 1px,transparent 1px);
+  background-size:100% 25%,16.66% 100%;
+  opacity:.7;
+  pointer-events:none;
+}
+
+.home-chart-empty>strong{
+  position:relative;
+  z-index:1;
+  font-size:32px;
+}
+
+.home-chart-empty>p{
+  position:relative;
+  z-index:1;
+  margin:8px 0 0;
+  color:#8292a6;
+  font-size:10px;
+  background:rgba(255,255,255,.9);
+  padding:4px 7px;
+}
+
+.home-widget-tabs{
+  display:flex;
+  gap:4px;
+  padding:8px 11px 0;
+}
+
+.home-table-head{
+  display:grid;
+  grid-template-columns:.7fr 1.5fr 1fr .8fr;
+  padding:8px 11px;
+  border-bottom:1px solid #edf1f5;
+  background:#fafbfd;
+  color:#65778b;
+  font-size:9px;
+  font-weight:700;
+}
+
+.home-table-head span:nth-child(n+3){
+  text-align:right;
+}
+
+.home-empty-state{
+  min-height:145px;
+  padding:20px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#718096;
+  font-size:10px;
+  line-height:1.5;
+}
+
+.home-volatility{
+  min-height:105px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.home-volatility strong{
+  font-size:28px;
+}
+
+.home-volatility>span{
+  color:#718096;
+  font-size:10px;
+  font-weight:700;
+}
+
+.home-widget-note{
+  margin:0;
+  padding:0 14px 14px;
+  text-align:center;
+  color:#8292a6;
+  font-size:9px;
+  line-height:1.45;
+}
+
+.home-research-cta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+  margin-top:10px;
+  padding:18px 20px;
+  background:#fff;
+  border:1px solid #dce5ef;
+  border-radius:6px;
+}
+
+.home-research-cta h2{
+  margin:4px 0;
+  font-size:16px;
+}
+
+.home-research-cta p{
+  max-width:760px;
+  margin:0;
+  color:#708198;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.home-research-cta .button{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+@media(max-width:1350px){
+  .home-top-strip{
+    grid-template-columns:1fr;
+  }
+
+  .home-primary-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .home-chart-widget{
+    grid-column:1/-1;
+  }
+
+  .home-secondary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:900px){
+  .home-country-nav{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+
+  .home-headline-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .home-primary-grid,
+  .home-bottom-grid{
+    grid-template-columns:1fr;
+  }
+
+  .home-overview-heading{
+    display:block;
+  }
+
+  .home-overview-heading blockquote{
+    max-width:none;
+    margin-top:12px;
+    text-align:left;
+  }
+}
+
+@media(max-width:600px){
+  .home-country-nav,
+  .home-headline-grid,
+  .home-secondary-grid{
+    grid-template-columns:1fr;
+  }
+
+  .home-country-nav button{
+    justify-content:flex-start;
+    padding:0 14px;
+  }
+
+  .home-research-cta{
+    display:block;
+  }
+
+  .home-research-cta .button{
+    display:inline-block;
+    margin-top:14px;
+  }
+}

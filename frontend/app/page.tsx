@@ -1,5 +1,16 @@
-import type {Metadata} from "next";
-import {canonical} from "../lib/seo";
-export const metadata:Metadata={alternates:{canonical:canonical("/")}};
-import Link from "next/link";import {Shell} from "../components/Shell";
-export default function Home(){return <Shell><div className="eyebrow">AXÍA / HOME</div><h1>Global Market Intelligence</h1><p className="muted">All the evidence. A clearer perspective.</p><section className="panel"><h2>Company research</h2><p>Search listed companies and open the Company Command Centre.</p><Link className="button" href="/search">Explore companies →</Link></section></Shell>}
+import type { Metadata } from "next";
+import { canonical } from "../lib/seo";
+import { Shell } from "../components/Shell";
+import { HomeDashboard } from "../components/HomeDashboard";
+
+export const metadata: Metadata = {
+  alternates: { canonical: canonical("/") },
+};
+
+export default function Home() {
+  return (
+    <Shell>
+      <HomeDashboard />
+    </Shell>
+  );
+}
