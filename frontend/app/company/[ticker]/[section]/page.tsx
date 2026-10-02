@@ -11,7 +11,20 @@ import {api,KpiResponse,StatementResponse,ValuationResponse,ForecastResponse} fr
 const sections=["overview","fundamentals","technical","announcements","report-intelligence","news","thesis","catalysts","quant","forecasts","finance"];
 const names:Record<string,string>={overview:"Overview",fundamentals:"Fundamentals",technical:"Technical",announcements:"Announcements & Reports","report-intelligence":"Report Intelligence",news:"News",thesis:"Thesis Scorecard",catalysts:"Catalyst Calendar",quant:"Quant",forecasts:"Forecasts",finance:"Finance"};
 export async function generateMetadata({params}:{params:Promise<{ticker:string;section:string}>}):Promise<Metadata>{
- const {ticker,section}=await params;return {title:`${ticker} — ${names[section]||"Company"}`,robots:{index:false,follow:false}};
+ const {ticker,section}=await params;
+ const normalizedTicker=ticker.toUpperCase();
+ const encoded=encodeURIComponent(normalizedTicker);
+
+ const statements=await api<StatementResponse>(
+  "/v1/companies/"+encoded+"/financial-statements?period="+encodeURIComponent("Annual (5Y)")
+ );
+
+ const companyName=statements.data?.data.identity?.name||normalizedTicker;
+
+ return {
+  title:`${companyName} — ${names[section]||"Company"}`,
+  robots:{index:false,follow:false}
+ };
 }
 export default async function Company({params,searchParams}:{params:Promise<{ticker:string;section:string}>;searchParams:Promise<{period?:string}>}){
  const {ticker,section}=await params;const {period:requested}=await searchParams;

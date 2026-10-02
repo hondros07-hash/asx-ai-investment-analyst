@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { canonical } from "../lib/seo";
-import { Shell } from "../components/Shell";
-import { HomeDashboard } from "../components/HomeDashboard";
+import { HomeReferenceShell } from "../components/HomeReferenceShell";
+import { HomeDashboardReference } from "../components/HomeDashboardReference";
 
 export const metadata: Metadata = {
   alternates: { canonical: canonical("/") },
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <Shell>
-      <HomeDashboard />
-    </Shell>
+    <HomeReferenceShell>
+      <HomeDashboardReference />
+    </HomeReferenceShell>
   );
 }

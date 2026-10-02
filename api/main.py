@@ -130,7 +130,7 @@ def company_search(q: str = Query(min_length=1, max_length=80), limit: int = Que
         raise HTTPException(422, "Search query required")
     def search():
         result = yf.Search(term, max_results=limit, news_count=0)
-        return [{"symbol": row.get("symbol"), "name": row.get("shortname") or row.get("longname"),
+        return [{"symbol": row.get("symbol"), "name": row.get("longname") or row.get("shortname") or row.get("symbol"),
                  "exchange": row.get("exchange"), "quote_type": row.get("quoteType")}
                 for row in (result.quotes or [])[:limit] if row.get("symbol")]
     return {"query": term, "results": _provider(search), "source": "Yahoo Finance search"}
