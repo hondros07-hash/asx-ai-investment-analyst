@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CompanyLogo } from "./CompanyLogo";
 import { FormEvent, useEffect, useState } from "react";
 
 const MARKETS = [
@@ -13,6 +14,15 @@ const MARKETS = [
 ] as const;
 
 type MarketName = (typeof MARKETS)[number]["name"];
+
+const MARKET_EXCHANGES: Record<MarketName, readonly string[]> = {
+  Australia: ["ASX"],
+  "United States": ["NYQ", "NAS", "NMS", "ASE"],
+  "United Kingdom": ["LSE"],
+  Japan: ["JPX"],
+  "Hong Kong": ["HKG"],
+  Canada: ["TOR", "TSX"],
+};
 
 const MARKET_META: Record<
   MarketName,
@@ -57,6 +67,37 @@ const GLOBAL_RIBBON = [
   { market: "JP", flag: "🇯🇵", name: "NIKKEI", ticker: "^N225" },
   { market: "HK", flag: "🇭🇰", name: "HANG SENG", ticker: "^HSI" },
 ] as const;
+
+type CompanySearchResult = {
+  symbol: string;
+  name?: string;
+  exchange?: string;
+  quote_type?: string;
+};
+
+function rankSearchResults(
+  results: CompanySearchResult[],
+  market: MarketName
+): CompanySearchResult[] {
+  const preferredExchanges = MARKET_EXCHANGES[market];
+
+  return results
+    .map((result, index) => ({
+      result,
+      index,
+      preferred: result.exchange
+        ? preferredExchanges.includes(result.exchange.toUpperCase())
+        : false,
+    }))
+    .sort((a, b) => {
+      if (a.preferred !== b.preferred) {
+        return a.preferred ? -1 : 1;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ result }) => result);
+}
 
 function EmptyValue() {
   return <span className="home-unavailable">—</span>;
@@ -131,7 +172,12 @@ export function HomeDashboardReference() {
           }>;
         } = await response.json();
 
-        setSearchResults((data.results ?? []).slice(0, 8));
+        const rankedResults = rankSearchResults(
+          data.results ?? [],
+          market
+        );
+
+        setSearchResults(rankedResults.slice(0, 8));
         setSearchOpen(true);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
@@ -149,7 +195,7 @@ export function HomeDashboardReference() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, market]);
 
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -254,12 +300,19 @@ export function HomeDashboardReference() {
                     className="home-search-result"
                     onClick={() => setSearchOpen(false)}
                   >
-                    <span className="home-search-result-main">
-                      <strong>{result.name || result.symbol}</strong>
-                      <small>
-                        {result.symbol}
-                        {result.exchange ? ` · ${result.exchange}` : ""}
-                      </small>
+                    <span className="home-search-result-identity">
+                      <CompanyLogo
+                        ticker={result.symbol}
+                        name={result.name}
+                        size={40}
+                      />
+                      <span className="home-search-result-main">
+                        <strong>{result.name || result.symbol}</strong>
+                        <small>
+                          {result.symbol}
+                          {result.exchange ? ` · ${result.exchange}` : ""}
+                        </small>
+                      </span>
                     </span>
 
                     {result.quote_type && (

@@ -21,6 +21,7 @@ from services.fundamentals_core import load_uncached
 from services.independent_financial_kpi_engines import run_independently
 from services.valuation_engine import calculate_dcf_scenarios, provider_inputs
 from services.forecast_engine import build_12m_forecast
+from services.company_logo_resolver import resolve_company_domain
 
 app = FastAPI(title="AXÍA Research API", version="24.3.0",
               description="Provider-transcribed research data, not audited issuer filings.")
@@ -121,6 +122,18 @@ class ForecastRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "axia-research-api", "version": app.version}
+
+
+@app.get("/v1/companies/{ticker}/identity")
+def company_identity(ticker: str):
+    symbol = _ticker(ticker)
+    domain = _provider(lambda: resolve_company_domain(symbol))
+
+    return {
+        "ticker": symbol,
+        "domain": domain,
+        "source": "Yahoo Finance company website",
+    }
 
 
 @app.get("/v1/companies/search")

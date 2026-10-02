@@ -583,3 +583,45 @@
   font-size:11px;
   background:#fff;
 }
+
+/* AXÍA company identity — Market Index style autocomplete logo */
+.home-search-result-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+}
+
+.axia-company-logo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+
+.axia-company-logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.axia-company-logo-fallback {
+  color: #6b7d91;
+  background: #f7f9fc;
+  border: 1px solid #e4eaf1;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.home-search-result-identity .home-search-result-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
