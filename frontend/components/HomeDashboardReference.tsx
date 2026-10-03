@@ -504,21 +504,39 @@ export function HomeDashboardReference() {
           </section>
         </div>
 
-        <div className="home-research-cta">
-          <div>
-            <span className="eyebrow">AXÍA RESEARCH</span>
-            <h2>From market context to company intelligence.</h2>
-            <p>
-              Search a listed company and continue into the Company Command
-              Centre for fundamental, technical, filing, valuation and forecast
-              research.
-            </p>
-          </div>
-
-          <Link className="button" href="/search">
-            Explore companies →
+        <div className="home-dashboard-actions">
+          <Link className="home-dashboard-action" href="/calendar">
+            View all dividends →
           </Link>
         </div>
+
+        <footer className="home-reference-footer">
+          <nav className="home-reference-footer-links" aria-label="AXÍA information">
+            <Link href="/about">About</Link>
+            <Link href="/our-mission">Our Mission</Link>
+            <span>Privacy</span>
+            <Link href="/disclaimer">Disclaimer</Link>
+            <span>Terms</span>
+            <Link href="/data-sources">Data Sources</Link>
+            <span>Contact</span>
+          </nav>
+
+          <p className="home-reference-footer-disclaimer">
+            AXÍA provides market data, analytics and research tools for
+            informational purposes only. Nothing on this website constitutes
+            financial advice, investment advice, or a recommendation to buy or
+            sell any security.
+          </p>
+
+          <p className="home-reference-footer-source">
+            Data sourced from multiple market data providers and official
+            company disclosures. Delayed data may apply.
+          </p>
+
+          <p className="home-reference-footer-copyright">
+            © 2026 AXÍA · Market Investment Analyst
+          </p>
+        </footer>
       </section>
     </div>
   );

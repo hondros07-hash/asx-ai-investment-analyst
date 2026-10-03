@@ -625,3 +625,143 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* AXÍA Home lower dashboard — reference action */
+.home-dashboard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 10px;
+  margin-bottom: 18px;
+}
+
+.home-dashboard-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #1f5f9f;
+  border: 1px solid #d8e2ec;
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgba(16, 38, 75, 0.03);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.home-dashboard-action:hover {
+  background: #f7faff;
+  border-color: #c7d6e6;
+  color: #164f88;
+}
+
+/* AXÍA Home footer — reference layout */
+footer.home-reference-footer {
+  display: block;
+  margin: 0 -18px -18px;
+  padding: 14px 18px 16px;
+  background: #ffffff;
+  border-top: 1px solid #dfe6ee;
+  color: #66798f;
+  text-align: left;
+  justify-content: initial;
+}
+
+.home-reference-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4eaf1;
+}
+
+.home-reference-footer-links a,
+.home-reference-footer-links span {
+  position: relative;
+  padding: 0 14px;
+  color: #1f5f9f;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.home-reference-footer-links a:hover {
+  color: #123f70;
+  text-decoration: underline;
+}
+
+.home-reference-footer-links a:not(:last-child)::after,
+.home-reference-footer-links span:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 0;
+  width: 1px;
+  height: 10px;
+  background: #d7dee7;
+}
+
+.home-reference-footer-disclaimer,
+.home-reference-footer-source,
+.home-reference-footer-copyright {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.home-reference-footer-disclaimer {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #66798f;
+  text-align: left;
+}
+
+.home-reference-footer-source {
+  margin-top: 0;
+  margin-bottom: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+  color: #8493a5;
+  text-align: left;
+}
+
+.home-reference-footer-copyright {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #8d9bad;
+  text-align: right;
+}
+
+.home-secondary-grid .home-widget {
+  min-height: 185px;
+}
+
+.home-bottom-grid .home-widget {
+  min-height: 175px;
+}
+
+@media (max-width: 700px) {
+  footer.home-reference-footer {
+    margin-left: -12px;
+    margin-right: -12px;
+  }
+
+  .home-reference-footer-links {
+    justify-content: center;
+    row-gap: 8px;
+  }
+
+  .home-reference-footer-links a,
+  .home-reference-footer-links span {
+    padding: 0 8px;
+  }
+}
